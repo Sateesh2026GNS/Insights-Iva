@@ -71,6 +71,7 @@ def empty_manual_document() -> dict[str, Any]:
             "email": "",
             "billing_address": "",
             "dispatch_address": "",
+            "company_address": "",
         },
         "order": {
             "sales_order_date": "",
@@ -1257,6 +1258,7 @@ def build_manual_sales_document(jc: SalesJobCard, doc: dict[str, Any]) -> dict[s
             "email": customer.get("email"),
             "billing_address": customer.get("billing_address"),
             "dispatch_address": customer.get("dispatch_address"),
+            "company_address": customer.get("company_address"),
         },
         "order_details": {
             "sales_order_date": order.get("sales_order_date"),
@@ -1582,7 +1584,7 @@ def delete_manual_job_card(db: Session, tenant_id: int, job_card_id: int, user: 
     assignments = _get_send_assignments(details)
     store_wf = get_store_workflow(details)
     if assignments or store_wf.get("sent_at") or (jc.workflow_stage and jc.workflow_stage not in (MANUAL_WORKFLOW_DRAFT, "DRAFT", "MANUAL_DRAFT", MANUAL_WORKFLOW_SAVED, "SAVED")):
-        raise HTTPException(status_code=400, detail="Cannot delete a job card that has already been sent")
+        raise HTTPException(status_code=400, detail="Sent job cards can't be deleted")
 
     # Clean up dependent stage job cards if any exist
     db.query(WorkflowStageJobCard).filter(

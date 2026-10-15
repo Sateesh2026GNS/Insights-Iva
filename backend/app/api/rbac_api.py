@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
 from app.core.permissions import (
+    analytics_child_key_from_path,
     get_role_names,
     require_admin,
     require_permission,
+    user_can_access_analytics_child,
     user_has_permission,
     user_is_admin,
 )
@@ -222,6 +224,10 @@ def get_sidebar_menus(
                         continue
                 if is_operator and c.get("path") and c.get("path") not in OPERATOR_SIDEBAR_CHILDREN:
                     continue
+                if section["key"] == "analytics":
+                    child_key = analytics_child_key_from_path(c.get("path"))
+                    if child_key and not user_can_access_analytics_child(current_user, child_key):
+                        continue
                 if _user_can_see_module(current_user, c["module"]):
                     allowed_children.append(
                         SidebarChildResponse(

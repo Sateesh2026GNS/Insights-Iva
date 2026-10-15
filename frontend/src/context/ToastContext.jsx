@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 
 import { setApiErrorHandler } from "../api/axiosConfig";
+import OperationErrorDialog from "../components/common/OperationErrorDialog";
 import { formatApiError } from "../utils/apiError";
+import { resolveOperationErrorDialog } from "../utils/operationError";
 
 const ToastContext = createContext(null);
 
@@ -12,7 +14,39 @@ function normalizeToastMessage(message) {
 }
 
 export function formatSimpleToastMessage(text, isError, type = "success") {
-  if (isError) return String(text || "").trim() || "Something went wrong.";
+  if (isError) {
+    const raw = String(text || "").trim();
+    if (!raw) return "Something went wrong.";
+    const lower = raw.toLowerCase();
+    if (
+      lower.includes("value error") ||
+      lower.includes("validation error") ||
+      lower.includes("validation failed") ||
+      lower.includes("enter valid") ||
+      lower.includes("valid input") ||
+      lower.includes("valid digit") ||
+      lower.includes("cannot start with") ||
+      lower.includes("must begin with") ||
+      lower.includes("must contain only numeric") ||
+      lower.includes("must be exactly 10 digits") ||
+      lower.includes("must start with 6") ||
+      lower.includes("invalid gstin") ||
+      lower.includes("valid gstin") ||
+      lower.includes("valid email") ||
+      lower.includes("valid quantity") ||
+      lower.includes("valid amount") ||
+      lower.includes("valid phone") ||
+      lower.includes("valid mobile") ||
+      lower.includes("valid number") ||
+      lower.includes("check your input") ||
+      lower.includes("check the highlighted field errors") ||
+      lower.includes("invalid input") ||
+      /^[a-z0-9_]+(\.[a-z0-9_]+)*:\s*value error/i.test(raw)
+    ) {
+      return "Enter valid inputs";
+    }
+    return raw;
+  }
 
   const raw = String(text || "").trim();
   if (!raw) return "Something went wrong.";
@@ -95,7 +129,12 @@ export function resolveToastVisualState(type, text) {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  const lastErrorRef = useRef({ message: null, at: 0 });
+  const [operationError, setOperationError] = useState(null);
+  const lastErrorRef = useRef({ message: null, at: 0, dialogKey: null });
+
+  const dismissOperationError = useCallback(() => {
+    setOperationError(null);
+  }, []);
 
   const addToast = useCallback((message, type = "success") => {
     let text = normalizeToastMessage(message);
@@ -126,13 +165,26 @@ export function ToastProvider({ children }) {
 
     if (isError) {
       const now = Date.now();
+      const dialogContent = resolveOperationErrorDialog(text);
+      if (dialogContent) {
+        const dialogKey = `${dialogContent.title}::${dialogContent.message}`;
+        if (
+          lastErrorRef.current.dialogKey === dialogKey &&
+          now - lastErrorRef.current.at < 4000
+        ) {
+          return;
+        }
+        lastErrorRef.current = { message: text, at: now, dialogKey };
+        setOperationError(dialogContent);
+        return;
+      }
       if (
         lastErrorRef.current.message === text &&
         now - lastErrorRef.current.at < 4000
       ) {
         return;
       }
-      lastErrorRef.current = { message: text, at: now };
+      lastErrorRef.current = { message: text, at: now, dialogKey: null };
     }
 
     const id = Date.now() + Math.random();
@@ -170,14 +222,6 @@ export function ToastProvider({ children }) {
       ) {
         return;
       }
-      const now = Date.now();
-      if (
-        lastErrorRef.current.message === message &&
-        now - lastErrorRef.current.at < 4000
-      ) {
-        return;
-      }
-      lastErrorRef.current = { message, at: now };
       addToast(message, "error");
     });
     return () => setApiErrorHandler(null);
@@ -196,6 +240,12 @@ export function ToastProvider({ children }) {
         }
       `}</style>
       {children}
+      <OperationErrorDialog
+        open={Boolean(operationError)}
+        title={operationError?.title}
+        message={operationError?.message}
+        onClose={dismissOperationError}
+      />
       {/* Top Notification / Toast Container (positioned cleanly below the header bar) */}
       <div className="fixed top-[calc(var(--navbar-height,3.5rem)+0.75rem)] right-4 sm:right-6 z-[9999] flex flex-col items-center sm:items-end gap-2.5 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-md w-full sm:w-auto">
         {toasts.map((t) => {

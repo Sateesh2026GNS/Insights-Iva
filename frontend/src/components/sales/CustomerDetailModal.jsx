@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   FileText,
   History,
   IndianRupee,
+  Maximize2,
+  Minimize2,
   ShoppingCart,
   Trash2,
   Truck,
@@ -25,10 +28,15 @@ const TABS = [
 ];
 
 function Field({ label, value }) {
+  const displayVal =
+    value !== undefined && value !== null && String(value).trim() !== "" ? value : "—";
+  const isEmpty = displayVal === "—";
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2">
+    <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-100">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-0.5 text-sm font-medium text-slate-800">{value ?? "—"}</p>
+      <p className={`mt-0.5 text-sm font-medium break-words ${isEmpty ? "text-slate-400 font-normal" : "text-slate-800"}`}>
+        {displayVal}
+      </p>
     </div>
   );
 }
@@ -54,7 +62,20 @@ function TabPlaceholder({ title, link, linkLabel }) {
 
 export default function CustomerDetailModal({ customer, onClose, onEdit, onDelete }) {
   const [tab, setTab] = useState("overview");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   if (!customer) return null;
+  if (typeof document === "undefined") return null;
 
   const dashboard = [
     { label: "Total Orders", value: customer.total_orders ?? 0 },
@@ -65,21 +86,116 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
     { label: "Last Payment", value: customer.last_payment || "—" },
   ];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-          <div>
-            <p className="text-xs font-semibold text-[var(--color-primary)]">{customer.customer_code}</p>
-            <h2 className="text-xl font-bold text-slate-900">{customer.company}</h2>
-            <p className="text-sm text-slate-500">{customer.contact_person} · {customer.city}, {customer.state}</p>
+  const sidebarWidth = typeof document !== "undefined"
+    ? document.getElementById("app-sidebar")?.getBoundingClientRect().width || 0
+    : 0;
+
+  return createPortal(
+    <div
+      className={`fixed inset-0 z-[120] flex items-center justify-center bg-black/40 transition-all overflow-hidden ${
+        isFullscreen ? "p-0" : ""
+      }`}
+      style={
+        isFullscreen
+          ? undefined
+          : {
+              paddingLeft: `calc(${sidebarWidth}px + 1rem)`,
+              paddingRight: "1rem",
+              paddingTop: "calc(var(--navbar-height, 3.5rem) + 1rem)",
+              paddingBottom: "1rem",
+            }
+      }
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="customer-detail-title"
+    >
+      <div
+        className={`flex w-full flex-col overflow-hidden bg-white shadow-2xl transition-all duration-150 animate-in fade-in zoom-in-95 duration-150 ${
+          isFullscreen
+            ? "h-full w-full max-w-none max-h-none rounded-none"
+            : "w-full max-w-4xl rounded-2xl"
+        }`}
+        style={
+          isFullscreen
+            ? undefined
+            : { maxHeight: "calc(100dvh - var(--navbar-height, 3.5rem) - 2rem)" }
+        }
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Header - Always pinned at top */}
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-bold text-[var(--color-primary)]">
+                {customer.customer_code || "—"}
+              </span>
+              {customer.status && (
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    String(customer.status).toLowerCase() === "active"
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20"
+                      : "bg-slate-100 text-slate-600 ring-1 ring-slate-300/30"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      String(customer.status).toLowerCase() === "active"
+                        ? "bg-emerald-500"
+                        : "bg-slate-400"
+                    }`}
+                  />
+                  {String(customer.status).toLowerCase() === "active" ? "Active" : customer.status}
+                </span>
+              )}
+            </div>
+            <h2 id="customer-detail-title" className="mt-1 truncate text-xl font-bold text-slate-900">
+              {customer.company_name || customer.company || customer.name || customer.display_name || "Customer Details"}
+            </h2>
+            {customer.company_name &&
+              customer.name &&
+              customer.name !== "—" &&
+              customer.name.trim().toLowerCase() !== customer.company_name.trim().toLowerCase() && (
+                <p className="text-xs font-medium text-slate-500">
+                  Customer Name: <span className="text-slate-700">{customer.name}</span>
+                </p>
+            )}
+            <p className="mt-0.5 truncate text-xs sm:text-sm text-slate-500">
+              {[
+                customer.contact_person,
+                [customer.city, customer.state].filter(Boolean).join(", "),
+                customer.phone,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsFullscreen((prev) => !prev)}
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              title={isFullscreen ? "Exit Fullscreen" : "Full Screen"}
+              aria-label={isFullscreen ? "Exit Fullscreen" : "Full Screen"}
+            >
+              {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              title="Close"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 sm:grid-cols-6">
+        {/* Dashboard Metrics */}
+        <div className="grid shrink-0 grid-cols-3 gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 sm:grid-cols-6">
           {dashboard.map((d) => (
             <div key={d.label} className="text-center">
               <p className="text-[10px] font-medium text-slate-500">{d.label}</p>
@@ -88,13 +204,18 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-slate-100 px-5 py-2">
+        {/* Tabs Bar */}
+        <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-slate-100 bg-white px-5 py-2">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tab === t.id ? "bg-[var(--color-primary)] text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
+                tab === t.id
+                  ? "bg-[var(--color-primary)] text-white shadow-xs"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
             >
               {t.label}
             </button>
@@ -108,7 +229,18 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
                 <h3 className="mb-3 text-sm font-bold text-slate-800">General Information</h3>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Field label="Customer Code" value={customer.customer_code} />
-                  <Field label="Company Name" value={customer.company} />
+                  <Field label="Company Name" value={customer.company_name || customer.company} />
+                  <Field
+                    label="Customer Name"
+                    value={
+                      (() => {
+                        const comp = String(customer.company_name || customer.company || "").trim().toLowerCase();
+                        const raw = String(customer.name || customer.display_name || "").trim();
+                        if (!raw || raw === "—" || raw.toLowerCase() === comp) return "";
+                        return raw;
+                      })()
+                    }
+                  />
                   <Field label="Customer Type" value={customer.customer_type} />
                   <Field label="Industry" value={customer.industry} />
                   <Field label="GST Number" value={customer.gstin} />
@@ -209,37 +341,52 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
           {tab === "activity" && <TabPlaceholder title="Activity Log" />}
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
-          <Button type="button" onClick={() => onEdit(customer)} variant="primary" className="text-xs">Edit</Button>
-          <Link to="/sales/orders" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
-            <ShoppingCart className="h-3.5 w-3.5" /> Sales History
-          </Link>
-          <Link
-            to={customer.id ? `/accounts/ledger/customer/${customer.id}` : "/accounts/ledger"}
-            state={{ name: customer.company || customer.name }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline"
-          >
-            <History className="h-3.5 w-3.5" /> Ledger
-          </Link>
-          <Link to="/sales/invoices" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
-            <IndianRupee className="h-3.5 w-3.5" /> Payments
-          </Link>
-          <Link to="/sales/dispatch" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
-            <Truck className="h-3.5 w-3.5" /> Dispatch
-          </Link>
-          <button type="button" onClick={() => onDelete(customer)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">
-            <Trash2 className="h-3.5 w-3.5" /> Delete
-          </button>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={() => onEdit(customer)} variant="primary" className="text-xs">Edit</Button>
+            <Link to="/sales/orders" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
+              <ShoppingCart className="h-3.5 w-3.5" /> Sales History
+            </Link>
+            <Link
+              to={customer.id ? `/accounts/ledger/customer/${customer.id}` : "/accounts/ledger"}
+              state={{ name: customer.company || customer.name }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline"
+            >
+              <History className="h-3.5 w-3.5" /> Ledger
+            </Link>
+            <Link to="/sales/invoices" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
+              <IndianRupee className="h-3.5 w-3.5" /> Payments
+            </Link>
+            <Link to="/sales/dispatch" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 no-underline">
+              <Truck className="h-3.5 w-3.5" /> Dispatch
+            </Link>
+          </div>
+          {onDelete && (
+            <button type="button" onClick={() => onDelete(customer)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </button>
+          )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
 export function CustomerFormModal({ customer, onClose, onSave }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const [form, setForm] = useState({
     customer_code: customer?.customer_code || "",
-    company: customer?.company || customer?.name || "",
+    company: customer?.company_name || customer?.company || customer?.name || "",
     contact_person: customer?.contact_person || customer?.contact_name || "",
     phone: customer?.phone || "",
     email: customer?.email || "",
@@ -269,9 +416,17 @@ export function CustomerFormModal({ customer, onClose, onSave }) {
     return next;
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
       <form
+        onMouseDown={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
           if (!form.company.trim()) {
@@ -426,6 +581,7 @@ export function CustomerFormModal({ customer, onClose, onSave }) {
           <Button variant="primary" type="submit" >Save Customer</Button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }

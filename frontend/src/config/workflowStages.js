@@ -229,7 +229,9 @@ export function getStageByRouteSegment(segment) {
 }
 
 export function getStageNavLinks(orderId) {
-  return WORKFLOW_STAGES.filter((s) => s.routeSegment).map((s) => ({
+  // BOM correction is handled from the workflow queue, not by a stage job-card
+  // page. Exclude it here so the production route is not duplicated/misleading.
+  return WORKFLOW_STAGES.filter((s) => s.routeSegment && s.stageKey !== "bom_pending").map((s) => ({
     key: s.stageKey,
     label: s.label.split(" ")[0],
     path: `/manufacturing/workflow/order/${orderId}/${s.routeSegment}`,

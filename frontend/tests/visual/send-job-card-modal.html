@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Send Job Card Modal Preview</title>
+    <link rel="stylesheet" href="../../src/index.css" />
+    <link rel="stylesheet" href="../../src/styles/workflow-next-step.css" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.45);
+        font-family: var(--font-sans);
+        padding: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="admin-modal__dialog send-job-card-modal__shell w-full max-w-md rounded-2xl bg-white">
+      <div class="admin-modal__header admin-modal__header--accent flex items-start justify-between gap-4 border-b px-6 py-4">
+        <h2 class="admin-modal__title text-lg font-medium text-slate-900">Send Job Card</h2>
+        <button type="button" class="rounded-lg p-1.5 text-slate-400" aria-label="Close">✕</button>
+      </div>
+      <div class="admin-modal__body send-job-card-modal__body px-6 py-5">
+        <div class="send-job-card-modal">
+          <div class="send-job-card-modal__info" role="note">
+            <svg class="send-job-card-modal__info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <p>Sending routes this job card to the selected user. This is separate from Save — only click Send when you are ready to forward the job card.</p>
+          </div>
+          <div class="send-job-card-modal__jc">
+            <span class="send-job-card-modal__jc-label">Job Card No.</span>
+            <span class="send-job-card-modal__jc-value">JC-2026-0042</span>
+          </div>
+          <div class="send-job-card-modal__scroll">
+            <p class="send-job-card-modal__section-title">Send To</p>
+            <div class="send-job-card-modal__roles">
+              <label class="send-job-card-modal__role-row is-selected">
+                <input type="checkbox" class="send-job-card-modal__role-checkbox" checked />
+                <span class="send-job-card-modal__role-label">Production</span>
+              </label>
+              <label class="send-job-card-modal__role-row">
+                <input type="checkbox" class="send-job-card-modal__role-checkbox" />
+                <span class="send-job-card-modal__role-label">Store</span>
+              </label>
+            </div>
+            <div class="send-job-card-modal__user-panel">
+              <p class="send-job-card-modal__user-panel-title">Select User — Production</p>
+              <button type="button" class="ui-searchable-select" style="width:100%">Alex Operator · Production</button>
+            </div>
+          </div>
+          <div class="send-job-card-modal__footer">
+            <button type="button" class="ui-btn ui-btn--outline ui-btn--sm send-job-card-modal__btn-cancel">Cancel</button>
+            <button type="button" class="ui-btn ui-btn--primary ui-btn--sm send-job-card-modal__btn-send">Send Job Card</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -96,7 +96,7 @@
   padding: 14px 16px;
   border-bottom: 1px solid var(--rp-border);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--rp-title);
 }
 
@@ -328,7 +328,7 @@
 .hr-roles-permissions__modal-header h2 {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--rp-title);
 }
 

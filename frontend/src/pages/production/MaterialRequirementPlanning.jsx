@@ -354,7 +354,7 @@ export default function MaterialRequirementPlanning() {
               emptyState={
                 <div className="py-12 text-center">
                   <p className="text-sm text-[var(--color-text-secondary)]">No BOM components for this product.</p>
-                  <Button variant="primary" to="/masters/bom" className="mt-4 inline-flex">
+                  <Button variant="primary" to="/production/bom" className="mt-4 inline-flex">
                     Maintain BOM
                   </Button>
                 </div>

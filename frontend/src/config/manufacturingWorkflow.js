@@ -5,7 +5,7 @@ import { CalendarClock, ClipboardCheck, FileText, GitBranch, ListChecks, Package
 export const MANUFACTURING_WORKFLOW_STEPS = [
   { id: "sales_order", label: "Sales Order", shortLabel: "Sales Order", path: "/sales/orders" },
   { id: "production_planning", label: "Production Planning", shortLabel: "Production Planning", path: "/production/planning" },
-  { id: "bom", label: "Bill of Materials (BOM)", shortLabel: "Bill of Materials", path: "/masters/bom" },
+  { id: "bom", label: "Bill of Materials (BOM)", shortLabel: "Bill of Materials", path: "/production/bom" },
   { id: "purchase_request", label: "Purchase Request", shortLabel: "Purchase Request", path: "/procurement/material-requests" },
   { id: "purchase_order", label: "Purchase Order", shortLabel: "Purchase Order", path: "/procurement/purchase-orders" },
   { id: "grn", label: "Goods Receipt Note (GRN)", shortLabel: "Goods Receipt", path: "/procurement/goods-receipt" },
@@ -242,7 +242,7 @@ export const DEFAULT_RESPONSIBILITY_STAGES = [
     id: "bom",
     label: "BOM",
     responsible_role: "Production Manager",
-    path: "/masters/bom",
+    path: "/production/bom",
     tasks: ["Load active BOM", "Verify components"],
   },
   {

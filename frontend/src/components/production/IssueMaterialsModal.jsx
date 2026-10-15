@@ -89,6 +89,10 @@ export default function IssueMaterialsModal({ workOrder, onClose, onSuccess, add
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
+    if (!canIssueMaterials) {
+      addToast?.(materialsError || "This work order has no BOM components to issue.", "error");
+      return;
+    }
     setSubmitting(true);
 
     const selectedMachine = machines.find((m) => String(m.id) === String(form.machine_id));
@@ -257,7 +261,7 @@ export default function IssueMaterialsModal({ workOrder, onClose, onSuccess, add
             ) : materials.length === 0 ? (
               <p className="px-3 py-3 text-sm text-amber-700">No BOM components are linked to this work order.</p>
             ) : (
-              <div>
+              <div className="max-h-48 overflow-auto">
                 {materials.map((material, index) => (
                   <div key={`${material.item_id || material.sku || material.component_name}-${index}`} className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 last:border-0 dark:border-slate-800">
                     <div className="min-w-0">

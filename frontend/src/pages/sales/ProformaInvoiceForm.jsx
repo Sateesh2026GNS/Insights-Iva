@@ -1051,7 +1051,7 @@ export default function ProformaInvoiceForm() {
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
                     <input
                       type="search"
-                      placeholder="Search Buyer by Name, GSTIN, Phone..."
+                      placeholder="Search"
                       value={customerSearch}
                       onChange={(e) => setCustomerSearch(e.target.value)}
                       className="w-full rounded-lg border border-[#e4e4ea] bg-white py-2 pl-9 pr-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
@@ -1158,7 +1158,7 @@ export default function ProformaInvoiceForm() {
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9aa5]" />
                     <input
                       type="search"
-                      placeholder="Search Consignee..."
+                      placeholder="Search"
                       value={consigneeSearch}
                       onChange={(e) => setConsigneeSearch(e.target.value)}
                       className="w-full rounded-lg border border-[#e4e4ea] bg-white py-2 pl-9 pr-3 text-[13px]"

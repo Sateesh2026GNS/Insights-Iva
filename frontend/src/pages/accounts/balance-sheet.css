@@ -17,7 +17,7 @@
 /* ── Title block ── */
 .bs-page-title {
   font-size: 18px !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   color: #111111 !important;
   margin: 0 0 2px 0 !important;
   padding: 0 !important;
@@ -126,7 +126,7 @@
 }
 
 .bs-th-label {
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   color: #111111 !important;
   text-align: left !important;
 }
@@ -165,7 +165,7 @@
 ───────────────────────────────────────────────── */
 .bs-table tbody tr.bs-section-row td {
   background: #ffffff !important;
-  font-weight: 700 !important;         /* ← BOLD */
+  font-weight: 600 !important;         /* ← BOLD */
   color: #111111 !important;
   font-size: 12px !important;
   padding: 6px 10px !important;
@@ -173,14 +173,14 @@
 
 /* section title cells (label columns) */
 .bs-table tbody tr.bs-section-row td.bs-section-title {
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   text-align: left !important;
 }
 
 /* section amount cells (right-aligned) */
 .bs-table tbody tr.bs-section-row td.bs-section-amount {
   text-align: right !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   font-variant-numeric: tabular-nums !important;
 }
 
@@ -226,18 +226,18 @@
 .bs-table tbody tr.bs-total-row td {
   background: #e4e4e4 !important;
   border-top: 2px solid #777777 !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   font-size: 12px !important;
   padding: 7px 10px !important;
 }
 
 .bs-table tbody tr.bs-total-row td.bs-total-label {
   text-align: left !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 
 .bs-table tbody tr.bs-total-row td.bs-total-amount {
   text-align: right !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   font-variant-numeric: tabular-nums !important;
 }

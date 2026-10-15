@@ -15,6 +15,7 @@ export default function ConfirmDialog({
   loading = false,
   loadingLabel,
   confirmDisabled = false,
+  showConfirm = true,
   onConfirm,
   onClose,
   children,
@@ -75,15 +76,17 @@ export default function ConfirmDialog({
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               {cancelLabel}
             </Button>
-            <Button
-              type="button"
-              variant={destructive ? "danger" : "primary"}
-              onClick={onConfirm}
-              disabled={loading || confirmDisabled}
-              loading={loading}
-            >
-              {loading ? loadingLabel || confirmLabel : confirmLabel}
-            </Button>
+            {showConfirm ? (
+              <Button
+                type="button"
+                variant={destructive ? "danger" : "primary"}
+                onClick={onConfirm}
+                disabled={loading || confirmDisabled}
+                loading={loading}
+              >
+                {loading ? loadingLabel || confirmLabel : confirmLabel}
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>

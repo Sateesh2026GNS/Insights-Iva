@@ -21,6 +21,12 @@ describe("roleRedirect", () => {
     expect(getDashboardPathForRole({ role_name: "Finance Manager" })).toBe("/accounts/dashboard");
   });
 
+  it("routes admin to root ERP dashboard", () => {
+    expect(getDashboardPathForRole("Admin")).toBe("/");
+    expect(getDashboardPathForRole("Administrator")).toBe("/");
+    expect(getDashboardPathForRole({ role: "Admin" })).toBe("/");
+  });
+
   it("does not send sales manager to accounts dashboard", () => {
     expect(getDashboardPathForRole("Sales Manager")).toBe("/sales");
   });

@@ -12,7 +12,7 @@
   --erp-page-bg: #f6f8fc;
   --erp-card-border: #d1d5db;
   --erp-header-text: #ffffff;
-  --erp-label-size: 1rem;
+  --erp-label-size: 0.75rem;
   --erp-value-size: 0.9375rem;
   --erp-section-title: 1.0625rem;
 }
@@ -411,7 +411,7 @@
   background-color: var(--erp-primary) !important;
   color: #ffffff !important;
   font-size: 0.9375rem;
-  font-weight: 700;
+  font-weight: var(--table-header-font-weight, 600);
   border-color: var(--erp-primary-dark) !important;
 }
 
@@ -437,11 +437,13 @@
 
 /* Forms */
 .ui-label {
+  font-family: var(--font-sans);
   font-size: var(--erp-label-size);
-  font-weight: 700;
+  font-weight: 500;
+  line-height: 1.375;
   letter-spacing: 0;
   text-transform: none;
-  color: #111827;
+  color: var(--color-text-muted);
   margin-bottom: 0.375rem;
 }
 
@@ -473,9 +475,10 @@
 }
 
 .inventory-header-control__label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #374151;
+  font-family: var(--font-sans);
+  font-size: var(--erp-label-size);
+  font-weight: 500;
+  color: var(--color-text-muted);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -510,9 +513,9 @@
 
 .erp-form-modal .ui-label,
 .inventory-form-modal .ui-label {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
+  font-size: var(--erp-label-size);
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
 .erp-form-modal .inventory-hero-header,
@@ -685,7 +688,7 @@
 .erp-confirm-dialog__title {
   margin: 0;
   font-size: 1.0625rem;
-  font-weight: 700;
+  font-weight: var(--heading-font-weight, 600);
   line-height: 1.35;
   color: #ffffff;
 }

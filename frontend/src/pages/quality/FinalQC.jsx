@@ -246,7 +246,7 @@ export default function FinalQC() {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Search by QC no, customer, sales order, product..."
+            placeholder="Search"
             aria-label="Search final QC records"
           />
           <div className="flex flex-wrap items-center gap-2.5">

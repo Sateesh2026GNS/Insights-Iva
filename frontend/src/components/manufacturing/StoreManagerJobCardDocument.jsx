@@ -43,6 +43,7 @@ export default function StoreManagerJobCardDocument({
   storeContext = null,
   materialCheck = null,
   companyProfile = null,
+  productLines = null,
 }) {
   const doc = useMemo(
     () =>
@@ -53,8 +54,9 @@ export default function StoreManagerJobCardDocument({
         storeContext,
         materialCheck,
         companyProfile,
+        productLines,
       }),
-    [manualCard, soCard, row, storeContext, materialCheck, companyProfile]
+    [manualCard, soCard, row, storeContext, materialCheck, companyProfile, productLines]
   );
 
   const logoUrl = resolveCompanyLogoUrl(companyProfile);
@@ -103,8 +105,27 @@ export default function StoreManagerJobCardDocument({
             <FieldRow label="Store Location" value={doc.header.location} />
             <FieldRow label="Production Department" value={doc.department.department} />
             <FieldRow label="Sales Job Card No." value={doc.department.job_card_no} />
-            <FieldRow label="Product Code" value={doc.department.product_code} />
-            <FieldRow label="Product Name" value={doc.department.product_name} />
+            {doc.department.products?.length ? (
+              <div className="sjc-doc__field-row">
+                <span className="sjc-doc__field-label">Products</span>
+                <div className="sjc-doc__field-value" style={{ display: "block" }}>
+                  {doc.department.products.map((product, index) => (
+                    <div key={`${product.product_code}-${product.product_name}-${index}`}>
+                      {product.product_code ? `${product.product_code} · ` : ""}
+                      {product.product_name || "—"}
+                      {product.quantity != null && product.quantity !== ""
+                        ? ` — ${fmtNum(product.quantity)} ${product.uom || ""}`
+                        : ""}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <FieldRow label="Product Code" value={doc.department.product_code} />
+                <FieldRow label="Product Name" value={doc.department.product_name} />
+              </>
+            )}
             <FieldRow label="Process" value={doc.department.process} />
             <FieldRow label="Machine" value={doc.department.machine} />
             <FieldRow

@@ -16,6 +16,7 @@ const pathLabels = {
   machines: "Machines",
   reports: "Daily Reports",
   create: "Create",
+  new: "Create",
   inventory: "Inventory",
   "raw-materials": "Raw Materials",
   "finished-goods": "Finished Goods",
@@ -61,6 +62,7 @@ const pathLabels = {
   quality: "Quality",
   analytics: "Analytics",
   executive: "Executive Dashboard",
+  live: "Live Dashboard",
   forecasting: "Forecasting",
   alerts: "Alerts",
   "low-stock": "Low Stock",
@@ -161,7 +163,7 @@ const pathLabels = {
 /** Exact pathname → navbar title (inventory and other routes where segment labels are ambiguous). */
 const PAGE_TITLE_OVERRIDES = {
   "/my-job-cards": "My Job Cards",
-  "/sales/job-cards/create": "Create Job Card",
+  "/sales/job-cards/create": "Sales Job Card",
   "/accounts/gst": "GST",
   "/reports": "Reports",
   "/accounts/reports": "Reports",
@@ -204,11 +206,20 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/dashboard": "Dashboard",
   "/production/planning": "Production Planning",
   "/sales": "Dashboard",
+  "/analytics": "Executive Dashboard",
+  "/analytics/executive": "Executive Dashboard",
+  "/analytics/live": "Live Dashboard",
+  "/analytics/production": "Production KPI",
+  "/analytics/inventory": "Inventory KPI",
+  "/analytics/sales": "Sales KPI",
+  "/analytics/finance": "Finance KPI",
+  "/sales/leads/new": "Create New Lead",
 };
 
 const BREADCRUMB_TITLE_OVERRIDES = {
   "/inventory": "Stock Items",
   "/production/dashboard": "Dashboard",
+  "/sales/leads/new": "Create New Lead",
 };
 
 const STAGE_LABELS = {
@@ -271,7 +282,8 @@ function getLabel(segment, segments, index) {
 
   if (segment === "dashboard" && prev === "inventory") return "Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
-  if (segment === "create" && prev && ENTITY_SINGULAR[prev]) {
+  if ((segment === "create" || segment === "new") && prev && ENTITY_SINGULAR[prev]) {
+    if (segment === "new" && prev === "leads") return "Create New Lead";
     return `Create ${ENTITY_SINGULAR[prev]}`;
   }
   if (segment === "edit" && index >= 2) {
@@ -315,7 +327,7 @@ function getLabel(segment, segments, index) {
     ENTITY_SINGULAR[prev] &&
     !pathLabels[segment] &&
     segment.length > 0 &&
-    !["create", "edit", "copy", "bulk-import"].includes(segment)
+    !["create", "new", "edit", "copy", "bulk-import"].includes(segment)
   ) {
     return `${ENTITY_SINGULAR[prev]} Details`;
   }
@@ -449,7 +461,7 @@ export function getPageTitle(pathname, user = null) {
     return "Job Card Details";
   }
   if (/^\/sales\/job-cards\/\d+\/edit$/i.test(path)) {
-    return "Edit Job Card";
+    return "Sales Job Card";
   }
   const stageMatch = path.match(/^\/manufacturing\/workflow\/order\/\d+\/([a-z0-9_-]+)$/i);
   if (stageMatch && stageMatch[1]) {

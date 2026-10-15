@@ -6,7 +6,7 @@ import Button from "../../components/common/Button";
 import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
 import { Input, Select } from "../../components/common/FormField";
 import AdjustProfilePhotoModal from "../../components/settings/AdjustProfilePhotoModal";
-import AccountOverviewCard from "../../components/settings/AccountOverviewCard";
+import CompanySubscriptionDetailsModal from "../../components/settings/CompanySubscriptionDetailsModal";
 import useAuth from "../../hooks/useAuth";
 import { useToast } from "../../context/ToastContext";
 import { changeAuthPassword, updateAuthProfile } from "../../api/authApi";
@@ -173,7 +173,7 @@ export function MyAccountProfileView() {
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showOverview, setShowOverview] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const [form, setForm] = useState({
     displayName: "",
@@ -381,13 +381,12 @@ export function MyAccountProfileView() {
         <button
           type="button"
           className="my-account-more__toggle"
-          onClick={() => setShowOverview((v) => !v)}
-          aria-expanded={showOverview}
+          onClick={() => setDetailsOpen(true)}
         >
-          {showOverview ? "Hide" : "Show"} company & subscription details
+          Show company & subscription details
         </button>
-        {showOverview ? <AccountOverviewCard /> : null}
       </div>
+      <CompanySubscriptionDetailsModal open={detailsOpen} onClose={() => setDetailsOpen(false)} />
     </section>
   );
 }

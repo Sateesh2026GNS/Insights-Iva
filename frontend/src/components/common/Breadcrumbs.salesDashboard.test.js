@@ -21,4 +21,14 @@ describe("Breadcrumbs sales manager dashboard", () => {
     expect(getPageTitle("/sales/orders")).toBe("Sales Orders");
     expect(getPageTitle("/sales/customers")).toBe("Customers");
   });
+
+  it("shows Create New Lead for /sales/leads/new instead of Lead Details", () => {
+    expect(getPageTitle("/sales/leads/new")).toBe("Create New Lead");
+    const trail = getBreadcrumbTrail("/sales/leads/new");
+    expect(trail).toHaveLength(4);
+    expect(trail[0]).toEqual({ label: "Dashboard", path: "/" });
+    expect(trail[1]).toEqual({ label: "Sales", path: "/sales" });
+    expect(trail[2]).toEqual({ label: "Leads", path: "/sales/leads" });
+    expect(trail[3]).toEqual({ label: "Create New Lead", path: "/sales/leads/new" });
+  });
 });

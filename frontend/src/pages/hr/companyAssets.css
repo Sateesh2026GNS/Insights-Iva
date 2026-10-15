@@ -200,7 +200,7 @@
 .hr-company-assets__modal-title {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ca-title);
 }
 
@@ -315,7 +315,7 @@
 
 .hr-company-assets__kpi-value {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
   line-height: 1.2;
 }

@@ -483,7 +483,7 @@ export default function Leads() {
               <SearchBar
                 value={tableSearch}
                 onChange={setTableSearch}
-                placeholder="Search leads..."
+                placeholder="Search"
                 aria-label="Search leads"
               />
               <Button

@@ -198,4 +198,12 @@ describe("CreateLeadPage actions", () => {
     expect(screen.getByText("sales.leads.create.title")).toBeInTheDocument();
     expect(addToast).not.toHaveBeenCalledWith("sales.leads.create.created", "success");
   });
+
+  it("does not display currency words under the expected value input", async () => {
+    await readyForm();
+    const expectedValueInput = fieldInput("sales.leads.create.expectedValue");
+    expect(expectedValueInput).toBeInTheDocument();
+    fireEvent.change(expectedValueInput, { target: { value: "50" } });
+    expect(screen.queryByText(/fifty rupees only/i)).not.toBeInTheDocument();
+  });
 });

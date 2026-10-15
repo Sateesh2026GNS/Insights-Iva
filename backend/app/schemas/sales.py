@@ -36,7 +36,8 @@ def _validate_email(value: str) -> str:
 
 class CustomerBase(BaseModel):
     tenant_id: int
-    name: str
+    name: str | None = None
+    company_name: str | None = None
     contact_name: str | None = None
     address_line1: str | None = None
     address_line2: str | None = None
@@ -68,15 +69,26 @@ class CustomerBase(BaseModel):
 
 
 
-def _validate_customer_name(value: Any, *, required: bool) -> str | None:
+def _validate_customer_name(value: Any, *, required: bool = False, field_label: str = "Company Name") -> str | None:
     if value is None:
         if required:
-            raise ValueError("Company Name is required")
+            raise ValueError(f"{field_label} is required")
         return None
     val_str = str(value).strip()
     if not val_str:
         if required:
-            raise ValueError("Company Name is required")
+            raise ValueError(f"{field_label} is required")
+        return None
+    if len(val_str) > 100:
+        raise ValueError(f"{field_label} cannot exceed 100 characters")
+    if not any(c.isalpha() for c in val_str):
+        raise ValueError(f"{field_label} must contain at least one letter")
+    return val_str
+
+
+def _validate_company_name_field(value: Any) -> str | None:
+    val_str = _optional_text(value)
+    if val_str is None:
         return None
     if len(val_str) > 100:
         raise ValueError("Company Name cannot exceed 100 characters")
@@ -119,12 +131,23 @@ class CustomerCreate(CustomerBase):
             raise ValueError("A custom field with this name already exists")
         return value
 
+    @field_validator("company_name", mode="before")
+    @classmethod
+    def validate_company_name(cls, value: Any) -> str | None:
+        return _validate_company_name_field(value)
+
     @field_validator("name", mode="before")
     @classmethod
-    def validate_name(cls, value: Any) -> str:
-        validated = _validate_customer_name(value, required=True)
-        assert validated is not None
-        return validated
+    def validate_name(cls, value: Any) -> str | None:
+        return _validate_customer_name(value, required=False)
+
+    @model_validator(mode="after")
+    def validate_name_or_company(self):
+        has_name = bool(self.name and self.name.strip())
+        has_company = bool(self.company_name and self.company_name.strip())
+        if not has_name and not has_company:
+            raise ValueError("Company Name is required")
+        return self
 
     @field_validator("contact_name", mode="before")
     @classmethod
@@ -169,6 +192,7 @@ class CustomerUpdate(BaseModel):
         return value
 
     name: str | None = None
+    company_name: str | None = None
     contact_name: str | None = None
     address_line1: str | None = None
     address_line2: str | None = None
@@ -183,6 +207,11 @@ class CustomerUpdate(BaseModel):
     credit_limit: float | None = Field(None, ge=0.0)
     outstanding: float | None = Field(None, ge=0.0)
     status: str | None = None
+
+    @field_validator("company_name", mode="before")
+    @classmethod
+    def validate_company_name(cls, value: Any) -> str | None:
+        return _validate_company_name_field(value)
 
     @field_validator("name", mode="before")
     @classmethod

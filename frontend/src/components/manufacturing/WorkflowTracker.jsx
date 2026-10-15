@@ -41,7 +41,7 @@ const STATE_STYLES = {
 };
 
 /** 9-step workflow tracker with completed / current / pending / blocked / rejected states. */
-export default function WorkflowTracker({ steps = [], currentStage = null, embedded = false }) {
+export default function WorkflowTracker({ steps = [], currentStage = null, embedded = false, showStageSummary = true }) {
   const stageLabel =
     currentStage?.stage_label ||
     steps.find((s) => s.status === "current")?.label ||
@@ -112,11 +112,13 @@ export default function WorkflowTracker({ steps = [], currentStage = null, embed
           })}
         </div>
 
-        <div className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] bg-[var(--color-primary-soft)]/80 px-4 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-primary)]">Current Stage</p>
-          <p className="mt-0.5 text-sm font-bold text-[var(--color-text)]">{stageLabel}</p>
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{stageHint}</p>
-        </div>
+        {showStageSummary ? (
+          <div className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] bg-[var(--color-primary-soft)]/80 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-primary)]">Current Stage</p>
+            <p className="mt-0.5 text-sm font-bold text-[var(--color-text)]">{stageLabel}</p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{stageHint}</p>
+          </div>
+        ) : null}
       </div>
     </>
   );

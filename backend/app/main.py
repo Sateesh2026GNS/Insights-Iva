@@ -94,6 +94,7 @@ from app.routers import (
     production_api_router,
     settings_api_router,
 )
+from app.routers.bom_api import router as bom_api_router
 from app.core.database import engine
 
 # Import all models so they register with Base.metadata
@@ -103,6 +104,7 @@ from app.models import (  # noqa: F401
     ai_agent,
     alert,
     bom,
+    product_bom_structure,
     company_settings,
     department,
     document,
@@ -321,7 +323,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         else:
             formatted_errors.append(msg)
 
-    first_detail = formatted_errors[0] if formatted_errors else "Validation error"
+    first_detail = "Enter valid inputs"
 
     if request.url.path.startswith("/api/"):
         from app.utils.api_response import error_response
@@ -564,6 +566,8 @@ def on_startup():
 
 app.include_router(settings_api_router)
 app.include_router(notifications_api_router)
+# Versioned BOM must register before operator_api /api/bom/{id} (legacy BillOfMaterial).
+app.include_router(bom_api_router)
 # Static paths like /api/machines/my must register before operator_api /machines/{machine_id}
 app.include_router(operator_execution_router, prefix="/api")
 app.include_router(operator_api_router)

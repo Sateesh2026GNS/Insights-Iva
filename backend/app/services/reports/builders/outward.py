@@ -79,6 +79,12 @@ def build_material_issue_register(ctx: ReportBuildContext, filters: ReportFilter
     filters_supported=["date_from", "date_to", "search"],
 )
 def build_issue_vs_bom_variance(ctx: ReportBuildContext, filters: ReportFilters) -> tuple[Select, dict]:
+    """Compare issued qty with BOM required qty.
+
+    ``required_qty`` on issue lines is seeded from ``expected_consumption(work_order_id)``
+    when a work order is linked (gross quantity including scrap). Legacy material-check
+    lines keep their stored required qty.
+    """
     required = WorkflowMaterialIssueLine.required_qty
     issued = WorkflowMaterialIssueLine.issued_qty
     variance = issued - required

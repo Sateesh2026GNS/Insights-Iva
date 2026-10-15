@@ -2,7 +2,15 @@ import ChartExportMenu from "./ChartExportMenu";
 import AnalyticsEmptyChart from "./AnalyticsEmptyChart";
 
 export default function AnalyticsChartCard({
-  id, title, subtitle, children, data = [], dataKeys, sourceLink, sourceLabel, height = "h-[300px]",
+  id,
+  title,
+  subtitle,
+  children,
+  data = [],
+  dataKeys,
+  sourceLink,
+  sourceLabel,
+  height = "h-[280px]",
 }) {
   const hasData = Array.isArray(data) && data.length > 0 && data.some((d) => {
     const entry = d && typeof d === "object" ? d : {};
@@ -13,19 +21,19 @@ export default function AnalyticsChartCard({
   });
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
-          {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>}
+    <section className="ui-card ui-card--padded min-w-0">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="text-sm font-medium text-[var(--color-text)]">{title}</h3>
+          {subtitle ? <p className="ui-caption mt-0.5">{subtitle}</p> : null}
         </div>
-        {hasData && <ChartExportMenu chartId={id} title={title} data={data} dataKeys={dataKeys} />}
+        {hasData ? <ChartExportMenu chartId={id} title={title} data={data} dataKeys={dataKeys} /> : null}
       </div>
       <div id={id} className={hasData ? height : ""}>
         {hasData ? children : (
           <AnalyticsEmptyChart title={`No ${title} data`} sourceLink={sourceLink} sourceLabel={sourceLabel} />
         )}
       </div>
-    </div>
+    </section>
   );
 }

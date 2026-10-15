@@ -632,12 +632,64 @@ export default function ProductionJobCardSections({
 
       <Section title="Approval / Verification">
         <FieldGrid>
-          <ReadOnlyField label="Prepared By" value={approval.prepared_by} />
-          <ReadOnlyField label="Prepared Date" value={fmtDeliveryDisplay(approval.prepared_date)} />
-          <ReadOnlyField label="Checked By" value={approval.checked_by} />
-          <ReadOnlyField label="Checked Date" value={fmtDeliveryDisplay(approval.checked_date)} />
-          <ReadOnlyField label="Approved By" value={approval.approved_by} />
-          <ReadOnlyField label="Approved Date" value={fmtDeliveryDisplay(approval.approved_date)} />
+          {canApproval ? (
+            <>
+              <div className="job-card-page__field">
+                <Input
+                  label="Prepared By"
+                  value={approval.prepared_by || ""}
+                  onChange={(e) => patchApproval("prepared_by", e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="job-card-page__field">
+                <DatePicker
+                  label="Prepared Date"
+                  value={approval.prepared_date || ""}
+                  onChange={(value) => patchApproval("prepared_date", value)}
+                />
+              </div>
+              <div className="job-card-page__field">
+                <Input
+                  label="Checked By"
+                  value={approval.checked_by || ""}
+                  onChange={(e) => patchApproval("checked_by", e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="job-card-page__field">
+                <DatePicker
+                  label="Checked Date"
+                  value={approval.checked_date || ""}
+                  onChange={(value) => patchApproval("checked_date", value)}
+                />
+              </div>
+              <div className="job-card-page__field">
+                <Input
+                  label="Approved By"
+                  value={approval.approved_by || ""}
+                  onChange={(e) => patchApproval("approved_by", e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="job-card-page__field">
+                <DatePicker
+                  label="Approved Date"
+                  value={approval.approved_date || ""}
+                  onChange={(value) => patchApproval("approved_date", value)}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <ReadOnlyField label="Prepared By" value={approval.prepared_by} />
+              <ReadOnlyField label="Prepared Date" value={fmtDeliveryDisplay(approval.prepared_date)} />
+              <ReadOnlyField label="Checked By" value={approval.checked_by} />
+              <ReadOnlyField label="Checked Date" value={fmtDeliveryDisplay(approval.checked_date)} />
+              <ReadOnlyField label="Approved By" value={approval.approved_by} />
+              <ReadOnlyField label="Approved Date" value={fmtDeliveryDisplay(approval.approved_date)} />
+            </>
+          )}
           {canApproval ? (
             <div className="job-card-page__field job-card-page__field--span-full">
               <Textarea

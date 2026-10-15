@@ -14,7 +14,10 @@ describe("SearchableSelect", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select state/i }));
+    const trigger = screen.getByRole("button", { name: /select state/i });
+    expect(trigger).toHaveClass("ui-searchable-select");
+
+    fireEvent.click(trigger);
 
     const menu = screen.getByRole("listbox");
     expect(menu).toBeInTheDocument();
@@ -63,7 +66,29 @@ describe("SearchableSelect", () => {
     expect(onClear).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: /vikram sharma/i }));
-    expect(screen.getByRole("group", { name: "Dropdown actions" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /add new executive name/i })).toBeInTheDocument();
+    const footerBtn = screen.getByRole("button", { name: /add new executive name/i });
+    expect(footerBtn).toBeInTheDocument();
+    expect(footerBtn).toHaveTextContent("Add New Name");
+    expect(footerBtn.textContent).not.toContain("+ +");
+  });
+
+  it("renders Add Vendor footer action with plus icon and primary style", () => {
+    const onFooterPick = vi.fn();
+    render(
+      <SearchableSelect
+        value=""
+        onChange={vi.fn()}
+        options={[]}
+        footerOptions={[{ value: "__create_vendor", label: "Add Vendor" }]}
+        onFooterPick={onFooterPick}
+        placeholder="Select vendor"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /select vendor/i }));
+    const footerBtn = screen.getByRole("button", { name: "Add Vendor" });
+    expect(footerBtn).toBeInTheDocument();
+    expect(footerBtn).toHaveTextContent("Add Vendor");
+    expect(footerBtn.querySelector("svg")).toBeInTheDocument();
   });
 });

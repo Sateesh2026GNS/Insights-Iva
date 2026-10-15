@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operation Error Dialog Preview</title>
+    <link rel="stylesheet" href="../../src/index.css" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #f8fafc;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      .demo-page {
+        padding: 2rem;
+        color: #64748b;
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-page">Insights Iva ERP — operation error dialog preview</div>
+    <div class="operation-error-dialog" role="alertdialog" aria-modal="true">
+      <div class="operation-error-dialog__backdrop" aria-hidden></div>
+      <div class="operation-error-dialog__card">
+        <button type="button" class="operation-error-dialog__close" aria-label="Close">
+          <svg
+            class="operation-error-dialog__close-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        <div class="operation-error-dialog__title-row">
+          <svg
+            class="operation-error-dialog__icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <h2 class="operation-error-dialog__title">Unable to save</h2>
+        </div>
+        <p class="operation-error-dialog__message">
+          This record already exists. Please check and try again.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

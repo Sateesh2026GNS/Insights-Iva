@@ -172,3 +172,35 @@ def test_customer_credit_limit_and_outstanding_validation():
     assert u2.credit_limit is None
     assert u2.outstanding is None
 
+
+def test_customer_company_name_and_display_name_can_be_different():
+    customer = CustomerCreate(
+        tenant_id=1,
+        name="Tata Motors",
+        company_name="Tata Motors Limited",
+    )
+    assert customer.name == "Tata Motors"
+    assert customer.company_name == "Tata Motors Limited"
+
+    update = CustomerUpdate(
+        name="Tata Motors Pune",
+        company_name="Tata Motors Limited",
+    )
+    assert update.name == "Tata Motors Pune"
+    assert update.company_name == "Tata Motors Limited"
+
+
+def test_customer_company_name_with_empty_name():
+    customer = CustomerCreate(
+        tenant_id=1,
+        company_name="Codevia Software Pvt Ltd",
+    )
+    assert customer.name is None
+    assert customer.company_name == "Codevia Software Pvt Ltd"
+
+    # Both empty should raise error
+    with pytest.raises(ValidationError, match="Company Name is required"):
+        CustomerCreate(tenant_id=1)
+
+
+

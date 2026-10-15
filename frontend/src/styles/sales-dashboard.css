@@ -236,7 +236,7 @@
 
 .sales-dash-card__title {
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sales-dash-heading);
 }
 
@@ -314,7 +314,7 @@
 
 .sales-dash-pipeline__count {
   font-size: 1.35rem;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.1;
   color: inherit;
   margin-top: 0.15rem;
@@ -375,7 +375,7 @@
 .sales-dash-quote-tile strong {
   display: block;
   font-size: 1.15rem;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.2;
 }
 
@@ -416,7 +416,7 @@
   background: #e6f4f4;
   color: #036f71;
   font-size: 0.6rem;
-  font-weight: 700;
+  font-weight: 600;
   margin-right: 0.35rem;
 }
 
@@ -624,7 +624,7 @@
   display: block;
   margin-top: 0.15rem;
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sales-dash-heading);
   line-height: 1.2;
 }

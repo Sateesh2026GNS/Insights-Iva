@@ -7,18 +7,19 @@ import {
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart, ComposedChart,
 } from "recharts";
 
-import Loader from "../../components/common/Loader";
-import SkeletonCard, { SkeletonChart } from "../../components/common/SkeletonCard";
 import AnalyticsAlertsBanner from "../../components/analytics/AnalyticsAlertsBanner";
 import AnalyticsChartCard from "../../components/analytics/AnalyticsChartCard";
 import AnalyticsDashboardHeader from "../../components/analytics/AnalyticsDashboardHeader";
 import AnalyticsFilterBar from "../../components/analytics/AnalyticsFilterBar";
 import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
+import AnalyticsPageShell from "../../components/analytics/AnalyticsPageShell";
 import DrillDownBreadcrumb from "../../components/analytics/DrillDownBreadcrumb";
+import { ANALYTICS_AXIS, ANALYTICS_GRID, ANALYTICS_LEGEND, ANALYTICS_TOOLTIP } from "../../components/analytics/analyticsChartTheme";
 import { useToast } from "../../context/ToastContext";
 import { getFinanceAnalytics } from "../../api/analyticsApi";
-import { CHART_COLORS, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
+import { CHART_COLORS, currentFiscalYearLabel, fiscalYearToYear, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const KPI_ICONS = {
   revenue: IndianRupee, expenses: TrendingDown, profit: TrendingUp, margin: Percent,
@@ -61,18 +62,20 @@ const normalizeChartData = (rows = []) => {
 export default function FinanceAnalytics() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [drillTrail, setDrillTrail] = useState([]);
   const [filters, setFilters] = useState({
-    fiscalYear: "2025-26", month: "All Months", quarter: "All Quarters",
+    fiscalYear: currentFiscalYearLabel(), month: "All Months", quarter: "All Quarters",
     plant: "All Plants", dateFrom: "", dateTo: "",
   });
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
-      const res = await getFinanceAnalytics();
+      const res = await getFinanceAnalytics(fiscalYearToYear(filters.fiscalYear));
       if (res.data) {
         setData({ ...emptyData, ...res.data });
         setDrillTrail(res.data.drill_revenue || []);
@@ -84,11 +87,13 @@ export default function FinanceAnalytics() {
       if (isRefresh) throw err;
       setData(emptyData);
       setDrillTrail([]);
-      addToast("Failed to load finance analytics", "error");
+      const message = apiErrorMessage(err, "Failed to load finance analytics");
+      setError(message);
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, filters.fiscalYear]);
 
   useEffect(() => { load(); }, [load]);
   useManufacturingRefresh(() => load(true));
@@ -99,17 +104,10 @@ export default function FinanceAnalytics() {
   }, [autoRefresh, load]);
 
   if (loading && !data.kpis?.length) {
-    return (
-      <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
-        <div className="h-16 animate-pulse rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (<SkeletonCard key={index} />))}
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, index) => (<SkeletonChart key={index} />))}
-        </div>
-      </div>
-    );
+    return <AnalyticsPageShell loading kpiCount={4} chartCount={6} />;
+  }
+  if (error && !data.kpis?.length) {
+    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
   }
   const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
 
@@ -121,10 +119,10 @@ export default function FinanceAnalytics() {
   const monthlyMargin = normalizeChartData(data.monthly_margin);
 
   return (
-    <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
+    <AnalyticsPageShell>
       <AnalyticsDashboardHeader
-        title="Finance Analytics"
-        subtitle="Revenue, expenses, cash flow, receivables, margins — integrated with Finance module."
+        title="Finance KPI"
+        subtitle="Revenue, expenses, cash flow, receivables, and margins from live finance data."
         lastUpdated={data.last_updated}
         onRefresh={load}
         autoRefresh={autoRefresh}
@@ -145,7 +143,7 @@ export default function FinanceAnalytics() {
         showAll={false}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="ui-kpi-strip">
         {(data.kpis || []).map((kpi) => (
           <AnalyticsKpiCard
             key={kpi.key}
@@ -156,15 +154,15 @@ export default function FinanceAnalytics() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard id="chart-rev-exp" title="Revenue vs Expense" data={data.revenue_vs_expense} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={revenueVsExpense}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} tickFormatter={(v) => formatInr(v)} />
-              <Tooltip formatter={(v) => formatInr(v)} />
-              <Legend />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => formatInr(v)} />
+              <Legend {...ANALYTICS_LEGEND} />
               <Bar dataKey="value" name="Revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
               <Bar dataKey="value2" name="Expense" fill={CHART_COLORS[5]} radius={[4, 4, 0, 0]} />
             </ComposedChart>
@@ -174,11 +172,11 @@ export default function FinanceAnalytics() {
         <AnalyticsChartCard id="chart-cashflow" title="Cash Flow" data={data.cash_flow} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={cashFlow}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis tickFormatter={(v) => formatInr(v)} fontSize={11} />
-              <Tooltip formatter={(v, n) => [formatInr(v), n]} />
-              <Legend />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v, n) => [formatInr(v), n]} />
+              <Legend {...ANALYTICS_LEGEND} />
               <Area type="monotone" dataKey="value" name="Inflow" stroke="#0d9488" fill="#0d9488" fillOpacity={0.2} />
               <Area type="monotone" dataKey="value2" name="Outflow" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} />
             </AreaChart>
@@ -188,10 +186,10 @@ export default function FinanceAnalytics() {
         <AnalyticsChartCard id="chart-profit" title="Profit Trend" data={data.profit_trend} sourceLink="/accounts/profit-loss" sourceLabel="P&L">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={profitTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis tickFormatter={(v) => formatInr(v)} fontSize={11} />
-              <Tooltip formatter={(v) => [formatInr(v), "Profit"]} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [formatInr(v), "Profit"]} />
               <Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -203,8 +201,8 @@ export default function FinanceAnalytics() {
               <Pie data={expenseCategory || []} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={100} label>
                 {(expenseCategory || []).map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(v) => [`${v}%`, "Share"]} />
-              <Legend />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v}%`, "Share"]} />
+              <Legend {...ANALYTICS_LEGEND} />
             </PieChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
@@ -212,10 +210,10 @@ export default function FinanceAnalytics() {
         <AnalyticsChartCard id="chart-recv-aging" title="Receivable Aging" data={data.receivable_aging} sourceLink="/finance/accounts-receivable" sourceLabel="AR">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={receivableAging}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={10} />
-              <YAxis tickFormatter={(v) => formatInr(v)} fontSize={11} />
-              <Tooltip formatter={(v) => [formatInr(v), "Amount"]} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [formatInr(v), "Amount"]} />
               <Bar dataKey="value" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -224,15 +222,15 @@ export default function FinanceAnalytics() {
         <AnalyticsChartCard id="chart-margin" title="Monthly Margin" data={data.monthly_margin} sourceLink="/accounts/profit-loss" sourceLabel="P&L">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyMargin}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} tickFormatter={(v) => `${v}%`} />
-              <Tooltip formatter={(v) => [`${v}%`, "Margin"]} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => `${v}%`} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v}%`, "Margin"]} />
               <Line type="monotone" dataKey="value" stroke={CHART_COLORS[4]} strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
       </div>
-    </div>
+    </AnalyticsPageShell>
   );
 }

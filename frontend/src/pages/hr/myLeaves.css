@@ -161,7 +161,7 @@
   display: block;
   margin-top: 2px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ml-title);
 }
 
@@ -293,7 +293,7 @@
 .hr-my-leaves__drawer-title {
   margin: 0 0 16px;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ml-title);
 }
 

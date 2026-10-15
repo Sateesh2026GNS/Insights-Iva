@@ -623,7 +623,7 @@ def act_on_purchase_order(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase order not found")
     if (po.status or "").lower() != expected_status.lower():
         raise _concurrency_conflict()
-    new_status = "approved" if approved else "cancelled"
+    new_status = "approved" if approved else "rejected"
     updated = update_purchase_order_status(db, po_id, user.tenant_id, new_status)
     if not updated:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase order not found")

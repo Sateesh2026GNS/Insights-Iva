@@ -1,61 +1,53 @@
-/** Inventory quantity / UOM display helpers for stock list pages. */
+const UOM_FIELDS = ["unit", "uom", "base_unit", "unit_of_measure"];
 
-function uomFromRow(row) {
-  const u =
-    row?.uom ||
-    row?.unit_of_measure ||
-    row?.unit ||
-    row?.stock_uom ||
-    row?.primary_uom ||
-    "";
-  return String(u).trim();
+function normalizeUom(row) {
+  const value = UOM_FIELDS.map((field) => row?.[field]).find(
+    (candidate) => candidate != null && String(candidate).trim(),
+  );
+  return value == null ? "" : String(value).trim();
 }
 
 export function formatInventoryQuantity(value, unit) {
-  const n = Number(value);
-  const qty = Number.isFinite(n) ? n : 0;
-  const u = String(unit || "").trim();
-  const formatted = qty.toLocaleString("en-IN", { maximumFractionDigits: 3 });
-  return u ? `${formatted} ${u}` : formatted;
+  const amount = Number(value);
+  const formatted = Number.isFinite(amount)
+    ? amount.toLocaleString("en-IN", { maximumFractionDigits: 3 })
+    : "0";
+  const normalizedUnit = unit == null ? "" : String(unit).trim();
+  return normalizedUnit ? `${formatted} ${normalizedUnit}` : formatted;
 }
 
 export function singleUomInRows(rows = []) {
-  const units = new Set();
-  rows.forEach((r) => {
-    const u = uomFromRow(r);
-    if (u) units.add(u);
-  });
-  if (units.size === 1) return [...units][0];
-  return "";
+  const units = new Set((Array.isArray(rows) ? rows : []).map(normalizeUom).filter(Boolean));
+  return units.size === 1 ? [...units][0] : "";
 }
 
-export function summarizeQuantitiesByUom(rows = [], field = "available") {
+export function summarizeQuantitiesByUom(rows = [], quantityField = "quantity") {
   const totals = new Map();
-  rows.forEach((r) => {
-    const u = uomFromRow(r) || "units";
-    const n = Number(r[field] ?? r.quantity ?? 0) || 0;
-    totals.set(u, (totals.get(u) || 0) + n);
-  });
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const unit = normalizeUom(row) || "Units";
+    const quantity = Number(row?.[quantityField] ?? row?.quantity ?? row?.available ?? 0);
+    totals.set(unit, (totals.get(unit) || 0) + (Number.isFinite(quantity) ? quantity : 0));
+  }
   if (!totals.size) return "0";
   return [...totals.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([u, n]) => formatInventoryQuantity(n, u))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([unit, quantity]) => formatInventoryQuantity(quantity, unit))
     .join(" · ");
 }
 
 export function pickDefaultWarehouse(warehouses = [], { preferTypes = [], nameIncludes = [] } = {}) {
-  const list = Array.isArray(warehouses) ? warehouses : [];
-  if (!list.length) return null;
-  const norm = (s) => String(s || "").toLowerCase();
-  const typeMatch = list.find((w) => {
-    const t = norm(w.type || w.warehouse_type);
-    return preferTypes.some((p) => t.includes(norm(p)));
+  if (!Array.isArray(warehouses) || warehouses.length === 0) return "";
+  const types = (preferTypes || []).map((value) => String(value).toLowerCase());
+  const preferredByType = warehouses.find((warehouse) => {
+    const type = String(warehouse?.type || warehouse?.warehouse_type || "").toLowerCase();
+    return types.includes(type);
   });
-  if (typeMatch) return typeMatch;
-  const nameMatch = list.find((w) => {
-    const name = norm(w.name);
-    return nameIncludes.some((frag) => name.includes(norm(frag)));
+  if (preferredByType) return String(preferredByType.id);
+
+  const names = (nameIncludes || []).map((value) => String(value).toLowerCase());
+  const preferredByName = warehouses.find((warehouse) => {
+    const name = String(warehouse?.name || "").toLowerCase();
+    return names.some((candidate) => name.includes(candidate));
   });
-  if (nameMatch) return nameMatch;
-  return list[0];
+  return String((preferredByName || warehouses[0])?.id ?? "");
 }

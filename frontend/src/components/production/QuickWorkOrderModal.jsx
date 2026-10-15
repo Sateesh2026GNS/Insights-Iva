@@ -37,7 +37,7 @@ function DateTimeField({ name, value, onChange, label }) {
           name={name}
           value={value}
           onChange={onChange}
-          className="ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none"
+          className="ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
         />
         <button
           type="button"
@@ -98,7 +98,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
     setLoadingOptions(true);
     Promise.all([
       getMachines().catch(() => ({ data: [] })),
-      fetchFinishedGoodsWithFallback().catch(() => []),
+      fetchFinishedGoodsWithFallback({ force: true }).catch(() => []),
       fetchCustomersWithFallback().catch(() => []),
       getOperators().catch(() => ({ data: [] })),
       getProductionOrders().catch(() => ({ data: [] })),
@@ -652,7 +652,7 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
         onSaved={async (line, product) => {
           setShowAddProductModal(false);
           try {
-            const refreshed = await fetchFinishedGoodsWithFallback();
+            const refreshed = await fetchFinishedGoodsWithFallback({ force: true });
             setProducts(Array.isArray(refreshed) ? refreshed : []);
             const newId = String(product?.id || line?.product_id || "");
             if (newId) {

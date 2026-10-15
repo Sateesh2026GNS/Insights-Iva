@@ -16,7 +16,7 @@ import {
 import "../../styles/sales-job-card-document.css";
 
 function display(value) {
-  if (value == null || value === "") return "—";
+  if (value == null || value === "" || value === "—") return "";
   return String(value);
 }
 
@@ -293,27 +293,26 @@ export default function SalesJobCardDocument({
                     </td>
                     {showPricing ? (
                       <>
-                        <td className="num">{formatInr(row.unit_price)}</td>
-                        <td className="num">{formatInr(row.line_amount ?? row.total_amount)}</td>
+                        <td className="num text-right">{formatInr(row.unit_price)}</td>
+                        <td className="num text-right">{formatInr(row.line_amount ?? row.total_amount)}</td>
                       </>
                     ) : null}
                   </tr>
                 ))
               )}
             </tbody>
+            {showPricing && lineTotals && lines.length > 0 ? (
+              <tfoot>
+                <tr className="border-t-2 border-[var(--color-primary,#1b5e20)] bg-[#ecfdf3] font-semibold text-[var(--color-text,#1e293b)]">
+                  <td colSpan={editable ? 3 : 2} className="text-right py-2 px-3">Total</td>
+                  <td className="num text-center py-2 px-3">{lineTotals.totalQuantity}</td>
+                  <td className="py-2 px-3"></td>
+                  <td className="text-right py-2 px-3 font-bold">Total Amount</td>
+                  <td className="num text-right py-2 px-3 font-bold">{formatInr(lineTotals.totalAmount)}</td>
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
-          {showPricing && lineTotals ? (
-            <div className="manual-sjc__line-summary">
-              <div className="manual-sjc__line-summary-row">
-                <span>Total Quantity</span>
-                <span>{lineTotals.totalQuantity}</span>
-              </div>
-              <div className="manual-sjc__line-summary-row manual-sjc__line-summary-row--total">
-                <span>Total Amount</span>
-                <span>{formatInr(lineTotals.totalAmount)}</span>
-              </div>
-            </div>
-          ) : null}
           {editable && lines.length === 1 ? (
             <div className="px-2 py-2 border-t border-[#d1d5db]">
               <div className="sjc-doc__field-row">

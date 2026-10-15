@@ -102,7 +102,7 @@
 
 .production-pipeline__count {
   font-size: 1.35rem;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.1;
   color: inherit;
   margin-top: 0.15rem;
@@ -111,7 +111,7 @@
 
 .production-pipeline__count--muted {
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 600;
   opacity: 0.85;
 }
 

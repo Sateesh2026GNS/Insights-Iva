@@ -100,7 +100,7 @@ function StatusDot({ status }) {
 function ViewTabs({ view, onChange }) {
   return (
     <div
-      className="inline-flex w-max shrink-0 flex-nowrap rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1"
+      className="inline-flex w-max max-w-full shrink-0 flex-nowrap overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1"
       role="tablist"
       aria-label="Schedule views"
     >
@@ -1088,7 +1088,7 @@ export default function ProductionSchedule() {
       <ListPageCard>
         <ListPageCardBody>
         <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
             <ViewTabs view={view} onChange={setView} />
             <p className="min-w-0 text-xs leading-5 text-[var(--color-text-muted)]">
               Today · {formatScheduleDate(dashboard.today)}

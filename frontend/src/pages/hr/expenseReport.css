@@ -211,7 +211,7 @@
 .hr-expense-report__drawer-header h2 {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--er-title);
 }
 

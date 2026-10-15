@@ -1000,7 +1000,7 @@ export default function ExportInvoiceForm() {
                   size="compact"
                   value={consigneeSearch}
                   onChange={setConsigneeSearch}
-                  placeholder="Search Consignee..."
+                  placeholder="Search"
                   className="mb-2 w-full"
                 />
                 <div className="max-h-44 overflow-y-auto">

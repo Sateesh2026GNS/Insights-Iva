@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { Info, Send } from "lucide-react";
+
+import "../../styles/workflow-next-step.css";
 
 import AdminModal from "../admin/AdminModal";
 import Button from "../common/Button";
@@ -286,46 +288,60 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
 
   return (
     <>
-      <AdminModal open={open} onClose={onClose} title="Send Job Card" maxWidth="max-w-md">
-        <div className="flex max-h-[70vh] flex-col gap-4">
-          <p className="send-job-card-modal__hint" role="note">
-            Sending routes this job card to the selected user. This is separate from Save — only click Send when you are ready to forward the job card.
-          </p>
-          <div className="shrink-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Job Card No.</p>
-            <p className="mt-1 text-base font-semibold text-slate-900">{jobCard?.job_card_no || "—"}</p>
+      <AdminModal
+        open={open}
+        onClose={onClose}
+        title="Send Job Card"
+        maxWidth="max-w-md"
+        headerTone="accent"
+        dialogClassName="send-job-card-modal__shell"
+        bodyClassName="send-job-card-modal__body"
+      >
+        <div className="send-job-card-modal">
+          <div className="send-job-card-modal__info" role="note">
+            <Info className="send-job-card-modal__info-icon" aria-hidden />
+            <p>
+              Sending routes this job card to the selected user. This is separate from Save — only click Send when you are ready to forward the job card.
+            </p>
+          </div>
+          <div className="send-job-card-modal__jc">
+            <span className="send-job-card-modal__jc-label">Job Card No.</span>
+            <span className="send-job-card-modal__jc-value">{jobCard?.job_card_no || "—"}</span>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+          <div className="send-job-card-modal__scroll">
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-800">Send To</p>
+              <p className="send-job-card-modal__section-title">Send To</p>
               {rolesLoading ? (
-                <p className="text-sm text-slate-500">Loading roles…</p>
+                <p className="text-sm text-[var(--color-text-muted)]">Loading roles…</p>
               ) : rolesError ? (
                 <p className="text-sm text-[var(--color-danger)]">{rolesError}</p>
               ) : (
-                <div className="space-y-1.5">
-                  {roles.map((role) => (
-                    <label
-                      key={role}
-                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50"
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                        checked={selectedRoles.includes(role)}
-                        onChange={() => toggleRole(role)}
-                      />
-                      <span className="text-sm text-slate-800">{role}</span>
-                    </label>
-                  ))}
+                <div className="send-job-card-modal__roles">
+                  {roles.map((role) => {
+                    const selected = selectedRoles.includes(role);
+                    return (
+                      <label
+                        key={role}
+                        className={`send-job-card-modal__role-row${selected ? " is-selected" : ""}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="send-job-card-modal__role-checkbox"
+                          checked={selected}
+                          onChange={() => toggleRole(role)}
+                        />
+                        <span className="send-job-card-modal__role-label">{role}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
             {selectedRoles.map((role) => (
-              <div key={role} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-                <p className="mb-2 text-sm font-semibold text-slate-800">Select User — {role}</p>
+              <div key={role} className="send-job-card-modal__user-panel">
+                <p className="send-job-card-modal__user-panel-title">Select User — {role}</p>
                 {renderRoleUserPicker(role)}
               </div>
             ))}
@@ -343,20 +359,27 @@ export default function SendJobCardModal({ open, onClose, jobCard, onSent }) {
           ) : null}
 
           {validationError ? (
-            <p className="shrink-0 text-sm font-medium text-[var(--color-danger)]">{validationError}</p>
+            <p className="send-job-card-modal__validation">{validationError}</p>
           ) : null}
 
-          <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 pt-4">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={sending}>
+          <div className="send-job-card-modal__footer">
+            <Button
+              variant="outline"
+              size="sm"
+              className="send-job-card-modal__btn-cancel"
+              onClick={onClose}
+              disabled={sending}
+            >
               Cancel
             </Button>
             <Button
               variant="primary"
               size="sm"
+              className="send-job-card-modal__btn-send"
               onClick={handleSendClick}
               loading={sending}
               disabled={!canSend && !sending}
-              leftIcon={<Send className="h-4 w-4" />}
+              leftIcon={<Send className="h-4 w-4" aria-hidden />}
             >
               {primarySendLabel}
             </Button>

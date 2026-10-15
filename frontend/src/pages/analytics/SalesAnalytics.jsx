@@ -8,19 +8,20 @@ import {
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart,
 } from "recharts";
 
-import Loader from "../../components/common/Loader";
-import SkeletonCard, { SkeletonChart } from "../../components/common/SkeletonCard";
 import AnalyticsAlertsBanner from "../../components/analytics/AnalyticsAlertsBanner";
 import AnalyticsChartCard from "../../components/analytics/AnalyticsChartCard";
 import AnalyticsDashboardHeader from "../../components/analytics/AnalyticsDashboardHeader";
 import AnalyticsFilterBar from "../../components/analytics/AnalyticsFilterBar";
 import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
+import AnalyticsPageShell from "../../components/analytics/AnalyticsPageShell";
 import DrillDownBreadcrumb from "../../components/analytics/DrillDownBreadcrumb";
+import { ANALYTICS_AXIS, ANALYTICS_GRID, ANALYTICS_LEGEND, ANALYTICS_TOOLTIP } from "../../components/analytics/analyticsChartTheme";
 import { useToast } from "../../context/ToastContext";
 import { getSalesAnalytics } from "../../api/analyticsApi";
 import { getSalesReportsSummary } from "../../api/salesApi";
-import { CHART_COLORS, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
+import { CHART_COLORS, currentFiscalYearLabel, fiscalYearToYear, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const KPI_ICONS = {
   revenue: IndianRupee, orders: ShoppingCart, customers: Users, conversion: Percent,
@@ -68,11 +69,12 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [drillTrail, setDrillTrail] = useState([]);
   const [filters, setFilters] = useState({
-    fiscalYear: "2025-26", month: "All Months", quarter: "All Quarters",
+    fiscalYear: currentFiscalYearLabel(), month: "All Months", quarter: "All Quarters",
     plant: "All Plants", customer: "All Customers", dateFrom: "", dateTo: "",
   });
 
@@ -89,9 +91,11 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
+      const year = fiscalYearToYear(filters.fiscalYear);
       const fetchSummary = useSalesModuleApi ? getSalesReportsSummary : getSalesAnalytics;
-      const res = await fetchSummary();
+      const res = useSalesModuleApi ? await fetchSummary() : await fetchSummary(year);
       if (res.data) {
         setData({ ...emptyData, ...res.data });
         setDrillTrail(res.data.drill_revenue || []);
@@ -103,11 +107,13 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
       if (isRefresh) throw err;
       setData(emptyData);
       setDrillTrail([]);
-      addToast("Failed to load sales analytics", "error");
+      const message = apiErrorMessage(err, "Failed to load sales analytics");
+      setError(message);
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [addToast, useSalesModuleApi]);
+  }, [addToast, useSalesModuleApi, filters.fiscalYear]);
 
   useEffect(() => { load(); }, [load]);
   useManufacturingRefresh(() => load(true));
@@ -118,17 +124,10 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
   }, [autoRefresh, load]);
 
   if (loading && !data.kpis?.length) {
-    return (
-      <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
-        <div className="h-16 animate-pulse rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (<SkeletonCard key={index} />))}
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, index) => (<SkeletonChart key={index} />))}
-        </div>
-      </div>
-    );
+    return <AnalyticsPageShell loading kpiCount={4} chartCount={6} />;
+  }
+  if (error && !data.kpis?.length) {
+    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
   }
   const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
 
@@ -144,13 +143,13 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
   };
 
   return (
-    <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
+    <AnalyticsPageShell>
       <AnalyticsDashboardHeader
-        title={useSalesModuleApi ? "Sales Report" : "Sales Analytics"}
+        title={useSalesModuleApi ? "Sales Report" : "Sales KPI"}
         subtitle={
           useSalesModuleApi
-            ? "Revenue, funnel, and customer insights — sales module reporting."
-            : "Revenue, orders, funnel, top customers/products — integrated with Sales module."
+            ? "Revenue, funnel, and customer insights from the sales module."
+            : "Revenue, orders, funnel, and top customers or products from live sales data."
         }
         lastUpdated={data.last_updated}
         onRefresh={load}
@@ -172,18 +171,20 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
         dateTo={filters.dateTo} onDateToChange={setF("dateTo")}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="ui-kpi-strip">
         {(data.kpis || []).map((kpi) => (
           <AnalyticsKpiCard key={kpi.key} kpi={kpi} icon={KPI_ICONS[kpi.key] || BarChart3} onClick={() => handleKpiClick(kpi)} />
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard id="chart-monthly-rev" title="Monthly Revenue" data={data.monthly_revenue} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={monthlyRevenue}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" /><YAxis /><Tooltip formatter={(v) => formatInr(v)} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => formatInr(v)} />
               <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.2} name="Revenue" />
             </AreaChart>
           </ResponsiveContainer>
@@ -192,8 +193,10 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
         <AnalyticsChartCard id="chart-top-cust" title="Top Customers" data={data.top_customers} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topCustomers}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" /><YAxis /><Tooltip />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
               <Bar dataKey="value" name="Orders" fill={CHART_COLORS[1]} />
             </BarChart>
           </ResponsiveContainer>
@@ -202,8 +205,10 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
         <AnalyticsChartCard id="chart-top-prod" title="Top Products" data={data.top_products} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topProducts}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" /><YAxis /><Tooltip />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
               <Bar dataKey="value" name="Qty" fill={CHART_COLORS[2]} />
             </BarChart>
           </ResponsiveContainer>
@@ -212,8 +217,10 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
         <AnalyticsChartCard id="chart-funnel" title="Sales Funnel" data={data.sales_funnel} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={salesFunnel} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" /><YAxis dataKey="label" type="category" width={100} /><Tooltip />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis type="number" {...ANALYTICS_AXIS} />
+              <YAxis dataKey="label" type="category" width={100} {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
               <Bar dataKey="value" fill={CHART_COLORS[3]} />
             </BarChart>
           </ResponsiveContainer>
@@ -227,7 +234,8 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip /><Legend />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
+              <Legend {...ANALYTICS_LEGEND} />
             </PieChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
@@ -235,13 +243,15 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
         <AnalyticsChartCard id="chart-quote-conv" title="Quotation Conversion" data={data.quotation_conversion} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={quotationConversion}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" /><YAxis /><Tooltip />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
               <Line type="monotone" dataKey="value" stroke={CHART_COLORS[4]} name="Conversion %" />
             </LineChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
       </div>
-    </div>
+    </AnalyticsPageShell>
   );
 }

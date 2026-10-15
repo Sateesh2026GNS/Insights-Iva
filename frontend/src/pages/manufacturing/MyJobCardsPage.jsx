@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Plus, Search, X } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -48,6 +48,7 @@ import {
   myJobCardsManualViewUrl,
   myJobCardsViewUrl,
 } from "../../utils/jobCardRoutes";
+import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 import { resolveManualJobCardId, scrollToJobCardDocumentPanel } from "../../utils/manualSalesJobCard";
 import "../../styles/my-job-cards-page.css";
 import "../../styles/workflow-next-step.css";
@@ -79,6 +80,17 @@ function normalizeItem(item) {
     sales_order_id: item.sales_order_id ?? null,
     job_card_id: item.job_card_id ?? null,
   };
+}
+
+function canDeleteUnsentJobCard(row) {
+  const workflowStatus = String(row?.workflow_status || "").trim().toUpperCase();
+  const displayStatus = String(
+    row?.queue_status_label || row?.status_label || row?.status || ""
+  ).trim().toLowerCase();
+  return (
+    ["DRAFT", "SAVED", "MANUAL_DRAFT"].includes(workflowStatus) ||
+    ["draft", "saved"].includes(displayStatus)
+  );
 }
 
 function matchesStockFilter(row, stockStatus) {
@@ -140,11 +152,13 @@ export default function MyJobCardsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState("");
+  const deleteTargetCanBeDeleted = deleteTarget ? canDeleteUnsentJobCard(deleteTarget) : false;
   const [deleting, setDeleting] = useState(false);
   const [searching, setSearching] = useState(false);
   const [serverSearchActive, setServerSearchActive] = useState(false);
   const [customerSelectOptions, setCustomerSelectOptions] = useState([]);
   const [sendTarget, setSendTarget] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const deleteInFlight = useRef(false);
 
   const canCreate = userCanCreateSalesJobCard(user);
@@ -169,6 +183,7 @@ export default function MyJobCardsPage() {
   const billingMode = effectiveTeam === "billing";
   const operatorMode = effectiveTeam === "operator" || (isOperator(user) && effectiveTeam === "production");
   const qualityMode = effectiveTeam === "quality";
+  const productionQueueMode = effectiveTeam === "production" && !operatorMode;
   const showStockFilter = storeMode;
   const storeKpiCounts = queueMeta?.counts || {};
   const storePendingCount = Number(storeKpiCounts.store_pending || 0);
@@ -473,6 +488,11 @@ export default function MyJobCardsPage() {
     (row) => {
       if (!row) return;
       const manualId = resolveManualJobCardId(row);
+      if (productionQueueMode) {
+        const orderId = row.sales_order_id ?? row.id;
+        if (orderId) navigate(stageJobCardUrl(orderId, row.workflow_status));
+        return;
+      }
       if (isSalesListMode) {
         if (manualId != null) {
           navigate(jobCardManualViewUrl(manualId));
@@ -492,14 +512,7 @@ export default function MyJobCardsPage() {
           },
           { replace: false }
         );
-        scrollToJobCardDocumentPanel({
-          storeMode,
-          panelId: qualityMode || operatorMode
-            ? "sales-job-card-panel"
-            : billingMode
-              ? "accountant-job-card-panel"
-              : undefined,
-        });
+        scrollToJobCardDocumentPanel({ storeMode });
         return;
       }
       const orderId = row.sales_order_id ?? row.id;
@@ -513,18 +526,9 @@ export default function MyJobCardsPage() {
         },
         { replace: false }
       );
-      scrollToJobCardDocumentPanel({
-        storeMode,
-        panelId: operatorMode
-          ? "operator-job-card-panel"
-          : qualityMode
-            ? "quality-control-job-card-panel"
-            : billingMode
-              ? "accountant-job-card-panel"
-              : undefined,
-      });
+      scrollToJobCardDocumentPanel({ storeMode });
     },
-    [billingMode, isSalesListMode, navigate, operatorMode, qualityMode, setSearchParams, storeMode]
+    [isSalesListMode, navigate, productionQueueMode, setSearchParams, storeMode]
   );
 
   const handleEditRow = (row) => {
@@ -548,9 +552,10 @@ export default function MyJobCardsPage() {
       }
       const orderId = row?.sales_order_id ?? row?.id;
       if (!orderId) return null;
+      if (productionQueueMode) return stageJobCardUrl(orderId, row?.workflow_status);
       return isSalesListMode ? jobCardDetailsUrl(orderId) : myJobCardsViewUrl(orderId, searchParams);
     },
-    [isSalesListMode, searchParams]
+    [isSalesListMode, productionQueueMode, searchParams]
   );
 
   const manualDocumentView = Boolean(activeJobCardId) && !activeOrderId;
@@ -617,7 +622,7 @@ export default function MyJobCardsPage() {
           : qualityMode
             ? "Completed production jobs appear here when ready for quality inspection."
             : canCreate
-              ? "Create your first Sales Job Card using the button below."
+              ? "No Sales Job Cards have been created yet."
               : "Job cards appear here when they are created in the manufacturing workflow.";
   const sectionTitle = storeMode
     ? "Sales Orders / Job Cards from Sales"
@@ -627,7 +632,7 @@ export default function MyJobCardsPage() {
         ? "Production Assignments"
         : qualityMode
           ? "Quality Inspection Queue"
-          : "My Job Cards";
+          : "";
   const sectionHint = storeMode
     ? "Review customer order details, acknowledge receipt, and continue material planning."
     : billingMode
@@ -731,13 +736,41 @@ export default function MyJobCardsPage() {
       ) : null}
 
       <div className="ui-card my-job-cards-page__section">
-        <div className="erp-section-header erp-section-header--row">
-          <div>
-            <h2 className="erp-section-header__title">{sectionTitle}</h2>
-            {sectionHint ? <p className="my-job-cards-page__section-hint">{sectionHint}</p> : null}
-          </div>
-          <div className="my-job-cards-page__section-actions">
+        <div
+          className={`erp-section-header erp-section-header--row ${
+            !sectionTitle ? "erp-section-header--no-title" : ""
+          }`}
+        >
+          {sectionTitle ? (
+            <div>
+              <h2 className="erp-section-header__title">{sectionTitle}</h2>
+              {sectionHint ? <p className="my-job-cards-page__section-hint">{sectionHint}</p> : null}
+            </div>
+          ) : (
             <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
+          )}
+          <div className="my-job-cards-page__section-actions">
+            {sectionTitle ? (
+              <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSearchOpen((v) => !v)}
+              aria-expanded={searchOpen}
+              aria-controls="my-job-cards-filters-panel"
+              className={searchOpen ? "my-job-cards-search-toggle--open" : ""}
+              leftIcon={
+                searchOpen ? (
+                  <X className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Search className="h-4 w-4" aria-hidden />
+                )
+              }
+            >
+              {searchOpen ? "Close Search" : "Search"}
+            </Button>
             {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
               <Button
                 variant="add"
@@ -751,23 +784,25 @@ export default function MyJobCardsPage() {
           </div>
         </div>
 
-        <div id="my-job-cards-filters-panel" className="my-job-cards-page__filters-panel">
-          <JobCardQueueFilters
-            search={draftFilters.search}
-            onSearchChange={(v) => patchDraft("search", v)}
-            customer={draftFilters.customer}
-            onCustomerChange={(v) => patchDraft("customer", v)}
-            salesOrderNo={draftFilters.salesOrderNo}
-            onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
-            customerSelectOptions={customerSelectOptions}
-            salesOrderSelectOptions={salesOrderSelectOptions}
-            erpLayout
-            searching={searching}
-            onClear={clearFilters}
-            onApply={handleApplyFilters}
-            onSearchKeyDown={handleSearchKeyDown}
-          />
-        </div>
+        {searchOpen ? (
+          <div id="my-job-cards-filters-panel" className="my-job-cards-page__filters-panel">
+            <JobCardQueueFilters
+              search={draftFilters.search}
+              onSearchChange={(v) => patchDraft("search", v)}
+              customer={draftFilters.customer}
+              onCustomerChange={(v) => patchDraft("customer", v)}
+              salesOrderNo={draftFilters.salesOrderNo}
+              onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
+              customerSelectOptions={customerSelectOptions}
+              salesOrderSelectOptions={salesOrderSelectOptions}
+              erpLayout
+              searching={searching}
+              onClear={clearFilters}
+              onApply={handleApplyFilters}
+              onSearchKeyDown={handleSearchKeyDown}
+            />
+          </div>
+        ) : null}
 
         {partialWarning ? (
           <div className="px-4 pt-4">
@@ -803,12 +838,6 @@ export default function MyJobCardsPage() {
             jobCardLinkForRow={jobCardLinkForRow}
             emptyTitle={emptyTitle}
             emptyDescription={emptyDescription}
-            emptyAction={
-              canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode
-                ? { label: "Create Job Card", onClick: () => navigate(jobCardCreateUrl()) }
-                : undefined
-            }
-            onRefresh={reloadQueue}
             snoOffset={from}
             storeMode={storeMode}
             erpLayout
@@ -856,16 +885,17 @@ export default function MyJobCardsPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete Job Card?"
-        message={`Are you sure you want to delete Job Card ${
-          deleteTarget?.job_card_no || deleteTarget?.order_number || ""
-        }? This action cannot be undone.`}
+        title={deleteTargetCanBeDeleted ? "Delete saved job card?" : "Job card can't be deleted"}
+        message={deleteTargetCanBeDeleted
+          ? `Delete ${deleteTarget?.job_card_no || deleteTarget?.order_number || "this job card"}? This can't be undone.`
+          : "This job card has already been sent and can't be deleted."}
         error={deleteError}
-        confirmLabel={deleting ? "Deleting Job Card…" : "Delete Job Card"}
-        cancelLabel="Cancel"
-        destructive
+        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        cancelLabel={deleteTargetCanBeDeleted ? "Cancel" : "Close"}
+        destructive={deleteTargetCanBeDeleted}
         loading={deleting}
-        loadingLabel="Deleting Job Card…"
+        loadingLabel="Deleting…"
+        showConfirm={deleteTargetCanBeDeleted}
         onConfirm={handleDeleteConfirm}
         onClose={() => {
           if (!deleting) {

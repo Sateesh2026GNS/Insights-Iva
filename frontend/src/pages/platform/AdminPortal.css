@@ -235,7 +235,7 @@ body:has(.ap-root) {
 }
 .ap-header__title {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
   line-height: 1.2;
 }
@@ -288,7 +288,7 @@ body:has(.ap-root) {
 }
 .ap-title-row h2 {
   font-size: 1.375rem;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 .ap-title-row p {

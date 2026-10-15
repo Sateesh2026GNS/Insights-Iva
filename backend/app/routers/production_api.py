@@ -519,6 +519,8 @@ def quick_work_order(
 ):
     try:
         payload.tenant_id = user.tenant_id
+        payload.plant_code = user.plant_code
+        payload.department = user.department
         wo = quick_create_work_order(db, payload)
         return success_response("Work order created", _dump(wo))
     except HTTPException:

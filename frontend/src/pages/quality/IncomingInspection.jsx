@@ -377,7 +377,7 @@ export default function IncomingInspection() {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Search by inspection no, vendor, material..."
+            placeholder="Search"
             aria-label="Search incoming inspections"
           />
           <div className="flex flex-wrap items-center gap-2.5">

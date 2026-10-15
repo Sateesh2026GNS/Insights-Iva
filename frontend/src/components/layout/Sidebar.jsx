@@ -34,13 +34,15 @@ import useAuth from "../../hooks/useAuth";
 import { getSidebarMenus } from "../../api/authApi";
 import {
   userCanAccess,
+  userCanAccessMyJobCards,
   userCanAccessApprovalQueue,
+  userCanAccessPath,
+  userCanViewBom,
   isStoreManager,
   isProductionManager,
   isOperator,
   isHRManager,
   isAccountant,
-  isAdmin,
   isSalesManager,
   isQualityTeam,
   storeManagerPathAllowed,
@@ -297,6 +299,10 @@ export function filterStaticNav(user) {
     if (isAcct && !ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
     if (isOp && OPERATOR_BLOCKED_SECTIONS.has(section.key)) return null;
     if (section.to) {
+      if (section.key === "myJobCards") {
+        if (!userCanAccessMyJobCards(user)) return null;
+        return section;
+      }
       if (!isOp && section.operatorOnly) return null;
       if (!userCanAccess(user, section.module)) return null;
       if (storeMgr && !storeManagerPathAllowed(section.to)) return null;
@@ -307,8 +313,11 @@ export function filterStaticNav(user) {
       if (isPM && node.to && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(node.to) && !PRODUCTION_MANAGER_ALLOWED_CHILDREN.has(pathOnly)) {
         return false;
       }
-      if (isAcct && (section.key === "alerts" || section.key === "analytics") && node.to) {
+      if (isAcct && section.key === "alerts" && node.to) {
         if (!ACCOUNTANT_ALLOWED_CHILDREN.has(node.to) && !ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly)) return false;
+      }
+      if (section.key === "analytics" && node.to) {
+        if (!userCanAccessPath(user, pathOnly || node.to)) return false;
       }
       if (isOp) {
         if (node.managerOnly) return false;
@@ -318,6 +327,11 @@ export function filterStaticNav(user) {
         }
       }
       if (!isOp && node.operatorOnly) return false;
+      if (node.bomViewOnly && !userCanViewBom(user)) return false;
+      if (isAcct && section.key === "production" && node.to) {
+        const pathOnly = (node.to || "").split("?")[0];
+        if (!ACCOUNTANT_ALLOWED_CHILDREN.has(node.to) && !ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly)) return false;
+      }
       if (node.approvalQueue) {
         if (!userCanAccessApprovalQueue(user)) return false;
       } else if (!userCanAccess(user, node.module)) return false;
@@ -435,9 +449,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
             if (!ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
             if (!section.children) return section;
             let children = section.children.filter((c) => {
-              if (section.key === "alerts" || section.key === "analytics") {
-                const pathOnly = (c.to || "").split("?")[0];
+              const pathOnly = (c.to || "").split("?")[0];
+              if (section.key === "alerts") {
                 return ACCOUNTANT_ALLOWED_CHILDREN.has(c.to) || ACCOUNTANT_ALLOWED_CHILDREN.has(pathOnly);
+              }
+              if (section.key === "analytics") {
+                return userCanAccessPath(user, pathOnly || c.to);
               }
               return true;
             });
@@ -469,7 +486,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           to: roleJobCardUrl,
         };
       }
-      if (section.key === "dashboard" && (isAccountant(user) || isAdmin(user)) && section.to) {
+      if (section.key === "dashboard" && isAccountant(user) && section.to) {
         return {
           ...section,
           to: ACCOUNTS_DASHBOARD_PATH,
@@ -522,17 +539,17 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const navItemPad = collapsed ? "justify-center px-2" : "px-3";
 
   const topLinkClass = ({ isActive }) =>
-    `relative flex items-center gap-2.5 rounded-lg py-2.5 min-h-[42px] text-sm transition-all ${navItemPad} ${
+    `relative flex items-center gap-2.5 rounded-lg py-2.5 min-h-[42px] text-sm font-normal transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${navItemPad} ${
       isActive
         ? "bg-[var(--color-nav-active)] font-medium text-white"
         : "text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
   const childLinkClass = ({ isActive }) =>
-    `group relative flex w-full items-center rounded-lg px-3 py-2.5 min-h-[40px] text-[13px] transition-colors ${
+    `group relative flex w-full items-center rounded-md px-2.5 py-2 min-h-[36px] text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
       isActive
-        ? "bg-white/15 font-semibold text-white"
-        : "text-slate-300 hover:bg-white/10 hover:text-white"
+        ? "bg-[var(--color-nav-active)] font-medium text-white"
+        : "font-normal text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
   const renderChildLabel = (child, isActive = false) => {
@@ -560,39 +577,39 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     );
   };
 
-  const nestedLinkClass = ({ isActive }, opts = {}) => {
-    return `group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 min-h-[38px] text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+  const nestedLinkClass = ({ isActive }) => {
+    return `group relative flex w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 min-h-[36px] text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
       collapsed ? "justify-center px-2" : ""
     } ${
       isActive
-        ? "bg-white/15 font-semibold text-white"
-        : "text-slate-300 hover:bg-white/10 hover:text-white"
+        ? "bg-[var(--color-nav-active)] font-medium text-white"
+        : "font-normal text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
   };
 
-  const submenuContainerClass = (sectionKey, depth) => {
-    return "mb-1.5 space-y-0.5 rounded-b-lg border border-t-0 border-white/12 bg-black/15 p-1.5 pt-1";
+  const submenuContainerClass = () => {
+    return "mb-1 space-y-0.5 overflow-x-hidden rounded-b-lg border border-t-0 border-white/12 bg-black/15 p-1 pt-1";
   };
 
   const nestedGroupClass = (isOpen, hasActive) =>
-    `relative flex w-full items-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-      collapsed ? "justify-center px-2 py-2 rounded-lg" : "justify-between gap-2 px-3 py-2.5 min-h-[40px]"
+    `relative flex w-full min-w-0 items-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
+      collapsed ? "justify-center px-2 py-2 rounded-lg" : "justify-between gap-2 px-3 py-2 min-h-[38px]"
     } ${
       isOpen
-        ? "rounded-t-lg rounded-b-none bg-white/15 text-white font-semibold"
+        ? "rounded-t-lg rounded-b-none bg-white/12 text-white"
         : hasActive
-        ? "rounded-lg bg-white/15 text-white"
+        ? "rounded-lg bg-[var(--color-nav-active)] text-white"
         : "rounded-lg text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
   const sectionButtonClass = (isOpen, hasActive) =>
-    `relative flex w-full items-center text-sm font-medium transition-all ${navItemPad} ${
+    `relative flex w-full min-w-0 items-center text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${navItemPad} ${
       collapsed ? "justify-center rounded-xl py-2.5" : "justify-between gap-2 py-2.5 min-h-[42px]"
     } ${
       isOpen
-        ? "rounded-t-xl rounded-b-none bg-white/15 text-white font-semibold"
+        ? "rounded-t-xl rounded-b-none bg-white/12 text-white"
         : hasActive
-        ? "rounded-xl bg-[var(--color-nav-active)] text-white font-semibold"
+        ? "rounded-xl bg-[var(--color-nav-active)] text-white"
         : "rounded-xl text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
@@ -618,7 +635,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
             <button
               type="button"
               onClick={() => toggleSection(itemKey)}
-              className={nestedGroupClass(hasActive)}
+              className={nestedGroupClass(isOpen, hasActive)}
               aria-expanded={isOpen}
               title={collapsed ? label : undefined}
             >
@@ -626,12 +643,15 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
                 {!collapsed && <span className="truncate text-left">{label}</span>}
               </span>
-              {!collapsed &&
-                (isOpen ? (
-                  <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                ))}
+              {!collapsed && (
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4 opacity-70" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 opacity-70" />
+                  )}
+                </span>
+              )}
             </button>
             {!collapsed && isOpen ? (
               <div className={submenuContainerClass(sectionKey, depth)}>
@@ -678,7 +698,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       if (node.children?.length) {
         return (
           <div key={itemKey} className="pt-2 pb-0.5">
-            <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
               {label}
             </div>
             <div className="space-y-0.5">
@@ -699,9 +719,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
           className={({ isActive }) =>
-            `flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+            `flex items-center justify-between rounded-lg px-3 py-2 text-sm font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30 ${
               isActive
-                ? "bg-slate-100 font-semibold text-[var(--color-primary,#3157d5)] dark:bg-slate-800 dark:text-indigo-400"
+                ? "bg-slate-100 font-medium text-[var(--color-primary,#3157d5)] dark:bg-slate-800 dark:text-indigo-400"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white"
             }`
           }
@@ -776,7 +796,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         ) : null}
       </div>
 
-      <nav className={`sidebar-scroll flex-1 space-y-0.5 py-4 ${collapsed ? "px-2 overflow-visible" : "px-3 overflow-y-auto"}`}>
+      <nav className={`sidebar-scroll flex-1 space-y-0.5 py-4 ${collapsed ? "px-2 overflow-visible" : "overflow-x-hidden overflow-y-auto px-3"}`}>
         {visibleNav.map((section, sectionIdx) => {
           const isLowerHalf = sectionIdx > 4;
 
@@ -885,11 +905,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                   {!collapsed && <span className="truncate text-left">{label}</span>}
                 </span>
                 {!collapsed && (
-                  isOpen ? <ChevronDown className="h-4 w-4 shrink-0 opacity-70" /> : <ChevronRight className="h-4 w-4 shrink-0 opacity-70" />
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+                    {isOpen ? <ChevronDown className="h-4 w-4 opacity-70" /> : <ChevronRight className="h-4 w-4 opacity-70" />}
+                  </span>
                 )}
               </button>
               {!collapsed && isOpen && (
-                <div className="mb-2 space-y-0.5 rounded-b-xl border border-t-0 border-white/15 bg-black/20 p-1.5 pt-1">
+                <div className="mb-1.5 space-y-0.5 overflow-x-hidden rounded-b-xl border border-t-0 border-white/15 bg-black/20 p-1 pt-1">
                   {section.nestedNav
                     ? renderNestedNav(section.children, section.key)
                     : section.children.map((child) => (
@@ -917,7 +939,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                   <div className="w-60 min-w-[210px] max-w-[280px] max-h-[calc(100vh-3rem)] overflow-y-auto rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200/90 p-2.5 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800">
                     <div className="px-3 py-2 mb-1.5 border-b border-slate-100 dark:border-slate-800/80 flex items-center gap-2">
                       <Icon className="h-4 w-4 shrink-0 text-[var(--color-primary,#3157d5)]" strokeWidth={2} />
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <span className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         {label}
                       </span>
                     </div>
@@ -936,9 +958,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                                 onFocus={() => prefetchRouteChunk(child.to)}
                                 onClick={() => onClose?.()}
                                 className={({ isActive }) =>
-                                  `group/flyout-item flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                  `group/flyout-item flex items-center justify-between rounded-lg px-3 py-2 text-sm font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30 ${
                                     isActive
-                                      ? "bg-slate-100 font-semibold text-[var(--color-primary,#3157d5)] dark:bg-slate-800/90 dark:text-indigo-400"
+                                      ? "bg-slate-100 font-medium text-[var(--color-primary,#3157d5)] dark:bg-slate-800/90 dark:text-indigo-400"
                                       : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white"
                                   }`
                                 }

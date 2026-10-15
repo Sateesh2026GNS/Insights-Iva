@@ -402,7 +402,7 @@ export default function InventoryDashboard() {
                 <tr>
                   <th className={`${thClass} w-[26%]`}>Request No.</th>
                   <th className={`${thClass} w-[24%]`}>Department</th>
-                  <th className={`${thClass} w-[18%] text-right`}>Items</th>
+                  <th className={`${thClass} w-[18%] !text-right`}>Items</th>
                   <th className={`${thClass} w-[32%]`}>Status</th>
                 </tr>
               </thead>
@@ -418,7 +418,7 @@ export default function InventoryDashboard() {
                       </Link>
                     </td>
                     <td className={`${tdClass} truncate text-[var(--color-text-secondary)]`}>{row.department || "—"}</td>
-                    <td className={`${tdClass} text-right tabular-nums`}>{row.items_count}</td>
+                    <td className={`${tdClass} !text-right tabular-nums`}>{row.items_count}</td>
                     <td className={tdClass}>
                       <StatusBadge tone="warning">{String(row.status || "pending").replace(/_/g, " ")}</StatusBadge>
                     </td>

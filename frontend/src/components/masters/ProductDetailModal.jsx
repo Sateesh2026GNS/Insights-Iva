@@ -220,7 +220,7 @@ export default function ProductDetailModal({
                     { label: "Line Cost", render: (row) => formatPrice(row.total_cost) },
                   ]} rows={rows} />
                 </RelatedStatus>
-                <Link to="/masters/bom" className="text-sm font-semibold text-[#2563EB] hover:underline">Open Bill of Materials (BOM) Master →</Link>
+                <Link to="/production/bom" className="text-sm font-semibold text-[#2563EB] hover:underline">Open Bill of Materials (BOM) →</Link>
               </div>
             );
           })()}

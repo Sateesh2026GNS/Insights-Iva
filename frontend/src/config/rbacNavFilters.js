@@ -2,6 +2,7 @@
 export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
   "production",
+  "productionTools",
   "materials",
   "masters",
   "quality",
@@ -22,9 +23,13 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/production/work-orders",
   "/production/schedule",
   "/production/tasks",
+  "/production/my-entry",
+  "/production/batch-tracking",
   "/production/reports",
   "/my-job-cards",
   "/masters/bom",
+  "/production/bom",
+  "/production/bom/new",
 
   "/inventory/raw-materials",
   "/inventory/finished-goods",
@@ -145,6 +150,7 @@ export const ACCOUNTANT_ALLOWED_SECTIONS = new Set([
   "myJobCards",
   "finance",
   "masters",
+  "production",
   "documents",
   "alerts",
   "analytics",
@@ -157,6 +163,7 @@ export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
   "/my-job-cards",
   "/alerts",
   "/alerts/general",
+  "/analytics",
   "/analytics/finance",
   "/analytics/executive",
   "/hr/attendance",
@@ -174,7 +181,18 @@ export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
   "/hr/leave/plans/create",
   "/hr/leave/create",
   "/leave",
+  "/production/bom",
 ]);
+
+/** Accountant may open Executive + Finance KPI only (not Live / Production / Inventory / Sales). */
+export function accountantAnalyticsPathAllowed(pathname) {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/$/, "") || "/";
+  if (path === "/analytics" || path === "/analytics/executive") return true;
+  if (path.startsWith("/analytics/executive/")) return true;
+  if (path === "/analytics/finance" || path.startsWith("/analytics/finance/")) return true;
+  return false;
+}
 
 /** Sidebar sections hidden for Operator regardless of module grant. */
 export const OPERATOR_BLOCKED_SECTIONS = new Set([

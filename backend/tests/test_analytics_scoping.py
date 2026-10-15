@@ -15,7 +15,12 @@ def test_operator_sees_only_their_own_production_data(client, register_admin):
     db = SessionLocal()
     try:
         tenant = db.query(Tenant).filter(Tenant.id == admin_ctx["user"]["tenant_id"]).one()
-        role = Role(tenant_id=tenant.id, name="Operator", permissions=["analytics"], description="Operator")
+        role = Role(
+            tenant_id=tenant.id,
+            name="Operator",
+            permissions=["analytics", "production"],
+            description="Operator",
+        )
         db.add(role)
         db.flush()
         user = User(

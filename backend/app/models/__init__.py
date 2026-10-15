@@ -36,6 +36,7 @@ import app.models.permission  # noqa: F401
 import app.models.platform  # noqa: F401
 import app.models.procurement  # noqa: F401
 import app.models.product  # noqa: F401
+import app.models.product_bom_structure  # noqa: F401
 import app.models.product_vendor_pricing  # noqa: F401
 import app.models.production  # noqa: F401
 import app.models.quality  # noqa: F401

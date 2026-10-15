@@ -213,7 +213,7 @@
 .customers-empty__title {
   margin: 0;
   font-size: clamp(1.25rem, 2vw, 1.5rem);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text, #1e293b);
 }
 

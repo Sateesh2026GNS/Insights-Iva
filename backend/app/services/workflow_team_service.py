@@ -34,7 +34,10 @@ from app.models.quality import QualityInspection
 from app.models.sales import DispatchShipment, Invoice, SalesOrder, SalesOrderLine
 from app.models.user import User
 from app.services.inventory_service import get_total_stock
-from app.services.procurement_service import next_material_request_number
+from app.services.procurement_service import (
+    emit_purchase_requisition_received_alert,
+    next_material_request_number,
+)
 from app.services.manufacturing_workflow_service import (
     create_gst_invoice_from_sales_order,
     ensure_work_order_for_production_order,
@@ -898,6 +901,7 @@ def raise_material_request(
             .order_by(MaterialRequest.id.desc())
         ).first()
     warehouse = get_default_warehouse(db, tenant_id)
+    created_new = not existing
     if not existing:
         mr_number = next_material_request_number(db, tenant_id)
         existing = MaterialRequest(
@@ -934,6 +938,8 @@ def raise_material_request(
         already.add(item_id)
         added += 1
     db.commit()
+    if created_new:
+        emit_purchase_requisition_received_alert(db, existing)
     return {
         "sales_order_id": so.id,
         "material_request_number": mr_number,
@@ -1170,6 +1176,9 @@ def _create_production_for_order(
             )
             db.add(po)
             db.flush()
+            from app.services.bom.bom_requirements import snapshot_bom_version_on_order
+
+            snapshot_bom_version_on_order(db, po)
         wo = ensure_work_order_for_production_order(db, tenant_id, po)
         wo.materials_issued = True
         created.append(

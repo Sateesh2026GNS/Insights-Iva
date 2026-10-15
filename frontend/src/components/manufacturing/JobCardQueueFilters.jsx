@@ -1,4 +1,4 @@
-import { ChevronDown, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { useState } from "react";
 
 import Button from "../common/Button";
@@ -43,6 +43,7 @@ function FilterLabel({ children, erp = false }) {
 }
 
 export default function JobCardQueueFilters({
+  open = true,
   search = "",
   onSearchChange,
   priority = "",
@@ -107,10 +108,10 @@ export default function JobCardQueueFilters({
   };
 
   if (erpLayout) {
+    if (!open) return null;
     return (
-      <div className="my-job-cards-filters my-job-cards-filters--simple">
-        <h2 className="my-job-cards-filters__title">Search Job Cards</h2>
-        <div className="my-job-cards-filters__simple-grid">
+      <div className="my-job-cards-filters--erp-fields">
+        <div className="my-job-cards-filters--erp-fields-grid">
           <div>
             <FilterLabel erp>Job Card No.</FilterLabel>
             <Input
@@ -144,7 +145,7 @@ export default function JobCardQueueFilters({
               aria-label="Sales Order No."
             />
           </div>
-          <div className="my-job-cards-filters__simple-actions">
+          <div className="my-job-cards-filters--erp-actions">
             <Button
               type="button"
               variant="primary"
@@ -156,13 +157,11 @@ export default function JobCardQueueFilters({
             </Button>
             <Button
               type="button"
-              variant="outline"
-              className="my-job-cards-filters__reset-btn"
+              variant="secondary"
               onClick={onClear}
               disabled={searching}
-              leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
             >
-              Reset
+              Clear
             </Button>
           </div>
         </div>

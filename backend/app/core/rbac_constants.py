@@ -317,6 +317,7 @@ SIDEBAR_MENU_CATALOG = [
         "module": "production",
         "children": [
             {"label": "Production Planning", "path": "/production/planning", "module": "production"},
+            {"label": "Bill of Materials (BOM)", "path": "/production/bom", "module": "production"},
             {"label": "Work Orders", "path": "/production/work-orders", "module": "production"},
             {"label": "My Job Cards", "path": "/my-job-cards", "module": "production"},
             {"label": "Production Schedule", "path": "/production/schedule", "module": "production"},

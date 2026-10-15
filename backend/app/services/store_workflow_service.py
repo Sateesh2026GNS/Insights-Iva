@@ -41,7 +41,10 @@ from app.schemas.store_workflow import (
     StoreStockInRead,
 )
 from app.services.inventory_service import get_total_stock, record_stock_movement
-from app.services.procurement_service import next_material_request_number
+from app.services.procurement_service import (
+    emit_purchase_requisition_received_alert,
+    next_material_request_number,
+)
 
 _PENDING_TRANSFER_STATUSES = ("draft", "pending", "pending_approval", "in_transit")
 _STOCK_IN_TYPES = ("in", "return", "purchase")
@@ -977,6 +980,7 @@ def create_pr_from_low_stock(
     )
     db.commit()
     db.refresh(mr)
+    emit_purchase_requisition_received_alert(db, mr)
     return PurchaseRequisitionCreated(
         id=mr.id,
         mr_number=mr.mr_number,

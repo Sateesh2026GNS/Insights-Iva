@@ -14,12 +14,29 @@ export function enrichApiCustomer(row, index = 0) {
   const code = row.customer_code || `CUS${String(row.id).padStart(3, "0")}`;
   const city = row.city || row.district || (row.address_line2 ? row.address_line2.split(",")[0]?.trim() : "") || undefined;
   const state = row.state || (row.address_line2 ? row.address_line2.split(",")[1]?.trim() : "") || undefined;
+  const metaFields = row._party_custom_fields || row.party_custom_fields || [];
+  const metaCompanyName = metaFields.find?.((f) => f.label === "_company_name")?.value || "";
+  const rawCompanyName = row.company_name || metaCompanyName || row.company || "";
+  const rawContact = String(row.contact_name || row.contact_person || "").replace(/^—$/, "").trim();
+  const rawName = String(row.name || row.display_name || "").trim();
+  const companyName = rawCompanyName || "";
+  const customerName =
+    rawName && rawName.toLowerCase() !== companyName.toLowerCase()
+      ? rawName
+      : (!companyName ? rawName : "");
+
   return {
     id: row.id || code,
     customer_code: code,
-    company: row.name || row.company || "",
-    name: row.name || row.company || "",
-    contact_person: row.contact_person || row.contact_name || "—",
+    company: companyName || customerName,
+    company_name: companyName,
+    name: customerName,
+    display_name: customerName,
+    customer_name: customerName,
+    _party_custom_fields: metaFields,
+    party_custom_fields: metaFields,
+    contact_person: rawContact || "—",
+    contact_name: rawContact || "—",
     phone: row.phone || "—",
     email: row.email || "—",
     gstin: row.gstin || "—",
@@ -35,7 +52,10 @@ export function enrichApiCustomer(row, index = 0) {
     industry: "Manufacturing",
     pan: row.gstin ? row.gstin.slice(2, 12) : "—",
     website: null,
-    alternate_phone: null,
+    alternate_phone:
+      (row._party_custom_fields || row.party_custom_fields || []).find?.((f) => f.label === "_alternate_phone")?.value ||
+      row.alternate_phone ||
+      null,
     designation: "Contact",
     billing_address: row.address_line1 || "",
     shipping_address: row.address_line1 || "",

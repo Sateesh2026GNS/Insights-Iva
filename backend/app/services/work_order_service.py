@@ -225,7 +225,11 @@ def _materials_for_wo(db: Session, tenant_id: int, wo: WorkOrder, po: Production
     from app.services.manufacturing_workflow_service import get_bom_requirements
 
     requirements = get_bom_requirements(
-        db, tenant_id, po.product_id, float(wo.planned_quantity or 0)
+        db,
+        tenant_id,
+        po.product_id,
+        float(wo.planned_quantity or 0),
+        bom_version_id=po.bom_version_id,
     )
     issued_flag = bool(getattr(wo, "materials_issued", False)) or store_materials_issued_for_work_order(
         db, tenant_id, wo, po
@@ -236,8 +240,11 @@ def _materials_for_wo(db: Session, tenant_id: int, wo: WorkOrder, po: Production
         issued = required if issued_flag else 0.0
         materials.append(
             WorkOrderMaterialRead(
+                item_id=req["item_id"],
+                sku=req.get("sku"),
                 component_name=req["component_name"],
                 required_qty=round(required, 2),
+                available_qty=round(float(req["available_qty"]), 2),
                 issued_qty=round(issued, 2),
                 balance_qty=round(max(required - issued, 0), 2),
                 unit=req["unit"],

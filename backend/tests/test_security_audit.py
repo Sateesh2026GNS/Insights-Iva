@@ -65,10 +65,43 @@ class TestProductionConfig:
                 allow_local_storage_in_production=False,
             )
 
+    def test_production_allows_local_storage_when_configured(self, monkeypatch):
+        monkeypatch.setenv("STORAGE_PROVIDER", "local")
+        monkeypatch.setenv("ALLOW_LOCAL_STORAGE_IN_PRODUCTION", "true")
+        s = Settings(
+            _env_file=None,
+            database_url="postgresql+psycopg://u:p@localhost:5432/db",
+            environment="production",
+            jwt_secret_key="a" * 32,
+            cors_origins="https://app.example.com",
+            allowed_hosts="app.example.com",
+            storage_provider="local",
+            allow_local_storage_in_production=True,
+        )
+        assert s.storage_provider == "local"
+
+    def test_production_allows_local_storage_on_render(self, monkeypatch):
+        monkeypatch.setenv("STORAGE_PROVIDER", "local")
+        monkeypatch.setenv("RENDER", "true")
+        monkeypatch.setenv("RENDER_EXTERNAL_HOSTNAME", "insights-iva-api.onrender.com")
+        s = Settings(
+            _env_file=None,
+            database_url="postgresql+psycopg://u:p@localhost:5432/db",
+            environment="production",
+            jwt_secret_key="a" * 32,
+            cors_origins="https://app.example.com",
+            allowed_hosts="app.example.com",
+            storage_provider="local",
+        )
+        assert s.storage_provider == "local"
+        assert "insights-iva-api.onrender.com" in s.allowed_hosts
+        assert "*.onrender.com" in s.allowed_hosts
+
     def test_google_oauth_empty_without_env(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
         monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
         s = Settings(
+            _env_file=None,
             database_url="postgresql+psycopg://u:p@localhost:5432/db",
             environment="development",
             jwt_secret_key="a" * 32,
@@ -81,6 +114,7 @@ class TestProductionConfig:
 
     def test_google_oauth_rejects_partial_config(self, monkeypatch):
         base = {
+            "_env_file": None,
             "database_url": "postgresql+psycopg://u:p@localhost:5432/db",
             "environment": "development",
             "jwt_secret_key": "a" * 32,

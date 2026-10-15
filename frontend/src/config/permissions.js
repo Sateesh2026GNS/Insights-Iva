@@ -4,6 +4,7 @@
  */
 
 import {
+  accountantAnalyticsPathAllowed,
   operatorPathAllowed,
   productionManagerPathAllowed,
   qualityControlPathAllowed,
@@ -314,6 +315,7 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/purchases/debit-notes",
   "/masters/vendors",
   "/masters/products",
+  "/production/bom",
   "/sales/customers",
   "/settings",
   "/settings/my-account",
@@ -342,6 +344,23 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
 
 export function isProductionManager(user) {
   return hasRole(user, "Production Manager");
+}
+
+export function userCanViewBom(user) {
+  if (!user) return false;
+  if (isOperator(user) || isSalesManager(user)) return false;
+  if (isAdmin(user) || isProductionManager(user) || isStoreManager(user) || isAccountant(user)) return true;
+  return false;
+}
+
+export function userCanEditBom(user) {
+  if (!user) return false;
+  return isAdmin(user) || isProductionManager(user);
+}
+
+export function userCanViewBomCost(user) {
+  if (!user) return false;
+  return isAdmin(user) || isProductionManager(user) || isAccountant(user);
 }
 
 export function isStoreManager(user) {
@@ -526,6 +545,7 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/chat")) return true;
   if (path.startsWith("/meetings")) return true;
   if (path.startsWith("/sales/customers")) return true;
+  if (path.startsWith("/production/bom")) return true;
   return false;
 }
 
@@ -565,6 +585,49 @@ export function userCanAccessApprovalQueue(user) {
     userCanAccess(user, "production") ||
     userCanAccess(user, "inventory")
   );
+}
+
+/**
+ * Extra domain module required in addition to `analytics` for each Analytics child route.
+ * `null` means analytics-module access is sufficient (Executive Dashboard / alias).
+ */
+export const ANALYTICS_CHILD_DOMAIN_MODULE = {
+  "/analytics": null,
+  "/analytics/executive": null,
+  "/analytics/forecasting": null,
+  "/analytics/live": "production",
+  "/analytics/production": "production",
+  "/analytics/machine-efficiency": "production",
+  "/analytics/inventory": "inventory",
+  "/analytics/sales": "sales",
+  "/analytics/finance": "accounts",
+  "/analytics/profit": "accounts",
+};
+
+export function getAnalyticsDomainModule(pathname) {
+  const path = (pathname || "").replace(/\/$/, "") || "/";
+  if (path !== "/analytics" && !path.startsWith("/analytics/")) return undefined;
+  const keys = Object.keys(ANALYTICS_CHILD_DOMAIN_MODULE).sort((a, b) => b.length - a.length);
+  for (const prefix of keys) {
+    if (path === prefix || path.startsWith(`${prefix}/`)) {
+      return ANALYTICS_CHILD_DOMAIN_MODULE[prefix];
+    }
+  }
+  return null;
+}
+
+/**
+ * Analytics child routes require the analytics module plus the mapped domain module.
+ * Accountant is further limited to Executive + Finance KPI (they also have `sales`).
+ */
+export function userCanAccessAnalyticsPath(user, pathname) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  if (!userCanAccess(user, "analytics")) return false;
+  const domain = getAnalyticsDomainModule(pathname);
+  if (domain && !userCanAccess(user, domain)) return false;
+  if (isAccountant(user)) return accountantAnalyticsPathAllowed(pathname);
+  return true;
 }
 
 export function userCanAccessPath(user, pathname) {
@@ -610,8 +673,12 @@ export function userCanAccessPath(user, pathname) {
   // BOM maintenance is available to members explicitly granted production access,
   // even though its route sits under Masters.
   if (path === "/masters/bom" && userCanAccess(user, "production")) return true;
+  if (path.startsWith("/production/bom") && userCanViewBom(user)) return true;
   const module = getModuleForPath(pathname);
   if (!userCanAccess(user, module)) return false;
+  if (path === "/analytics" || path.startsWith("/analytics/")) {
+    if (!userCanAccessAnalyticsPath(user, path)) return false;
+  }
   const settingsSection = getSettingsSectionIdFromPath(path);
   if (settingsSection && !userCanAccessSettingsSection(user, settingsSection)) return false;
   if (isStoreManager(user) && !storeManagerPathAllowed(pathname)) return false;

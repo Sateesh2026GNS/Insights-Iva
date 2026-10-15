@@ -215,38 +215,32 @@ def get_bom_requirements(
     tenant_id: int,
     product_id: int,
     quantity: float,
+    *,
+    bom_version_id: int | None = None,
 ) -> list[dict[str, Any]]:
     """Explode BOM for a finished product into inventory requirements."""
-    bom_rows = list(
-        db.scalars(
-            select(BillOfMaterial).where(
-                BillOfMaterial.tenant_id == tenant_id,
-                BillOfMaterial.product_id == product_id,
-            )
-        ).all()
+    from app.services.bom.bom_requirements import explode_product_bom
+
+    rows = explode_product_bom(
+        db,
+        tenant_id,
+        product_id,
+        quantity,
+        bom_version_id=bom_version_id,
     )
     requirements: list[dict[str, Any]] = []
-    for row in bom_rows:
-        component = db.get(Product, row.component_product_id)
-        if not component:
-            continue
-        item = find_or_create_inventory_item_for_product(
-            db, tenant_id, component, item_type="raw_material"
-        )
-        required = float(row.quantity) * float(quantity or 0)
-        available = float(get_total_stock(db, item.id))
-        shortage = max(required - available, 0.0)
+    for row in rows:
         requirements.append(
             {
-                "component_product_id": component.id,
-                "component_name": component.name,
-                "sku": component.sku,
-                "item_id": item.id,
-                "unit": row.unit,
-                "required_qty": round(required, 4),
-                "available_qty": available,
-                "shortage_qty": round(shortage, 4),
-                "enough": shortage <= 0,
+                "component_product_id": row["component_product_id"],
+                "component_name": row["component_name"],
+                "sku": row.get("sku"),
+                "item_id": row["item_id"],
+                "unit": row["unit"],
+                "required_qty": float(row["required_qty"]),
+                "available_qty": float(row["available_qty"]),
+                "shortage_qty": float(row["shortage_qty"]),
+                "enough": row["enough"],
             }
         )
     return requirements
@@ -436,7 +430,11 @@ def issue_materials_for_work_order(
         )
 
     requirements = get_bom_requirements(
-        db, tenant_id, po.product_id, float(wo.planned_quantity or 0)
+        db,
+        tenant_id,
+        po.product_id,
+        float(wo.planned_quantity or 0),
+        bom_version_id=po.bom_version_id,
     )
     if not requirements:
         wo.materials_issued = True
@@ -658,11 +656,15 @@ def complete_work_order_integrated(
     if not wo:
         return WorkOrderActionResponse(success=False, message="Work order not found")
     if wo.status in {"completed", "closed", "done"}:
+        qty = float(wo.actual_quantity or wo.planned_quantity or 0)
+        batch = _ensure_production_batch(db, tenant_id, wo, qty) if qty > 0 else None
+        if batch:
+            db.commit()
         return WorkOrderActionResponse(
             success=True,
             work_order=_to_list_read(db, tenant_id, wo),
             message="Work order already completed",
-            steps=["Already completed"],
+            steps=["Already completed"] + ([f"Batch available: {batch.batch_code}"] if batch else []),
         )
     if wo.status not in {"running", "in_progress", "paused", "quality_check"}:
         return WorkOrderActionResponse(
@@ -693,6 +695,7 @@ def complete_work_order_integrated(
             qi.packing_status = "ready_for_pack"
             steps.append("Packing released (ready_for_pack)")
 
+        finished_good_item_id = None
         if product:
             fg = receive_finished_goods(
                 db,
@@ -706,14 +709,19 @@ def complete_work_order_integrated(
                 steps.append(
                     f"Finished goods posted: {fg['sku']} +{fg['quantity']} to warehouse #{fg['warehouse_id']}"
                 )
-                batch = _ensure_production_batch(db, tenant_id, wo, qty)
-                if batch:
-                    steps.append(f"Batch generated: {batch.batch_code}")
-                    _ensure_item_barcode(db, fg.get("item_id"), batch.batch_code)
+                finished_good_item_id = fg.get("item_id")
             else:
                 steps.append("Finished goods: nothing to post")
         else:
             steps.append("Finished goods skipped (product missing)")
+
+        # Batch traceability represents completed production. It must not rely
+        # on inventory receiving succeeding, because that is a separate step.
+        if qty > 0:
+            batch = _ensure_production_batch(db, tenant_id, wo, qty)
+            if batch:
+                steps.append(f"Batch generated: {batch.batch_code}")
+                _ensure_item_barcode(db, finished_good_item_id, batch.batch_code)
 
         wo.actual_quantity = qty
         wo.status = "completed"
@@ -997,6 +1005,9 @@ def confirm_sales_order_workflow(
                     )
                     db.add(po)
                     db.flush()
+                    from app.services.bom.bom_requirements import snapshot_bom_version_on_order
+
+                    snapshot_bom_version_on_order(db, po)
                 wo = ensure_work_order_for_production_order(db, tenant_id, po)
                 production_orders.append(
                     {

@@ -386,7 +386,7 @@
   border: 0;
   border-radius: 9999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -515,7 +515,7 @@
 .hr-monthly-shifts__history-header h2 {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ms-title);
 }
 

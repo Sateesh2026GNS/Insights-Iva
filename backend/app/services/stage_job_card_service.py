@@ -201,6 +201,13 @@ def _ensure_store_issue_lines(
             prod = db.get(Product, ln.product_id)
             material_code = prod.sku if prod else None
         required = float(ln.required_qty or 0)
+        if store_card.work_order_id and ln.product_id:
+            from app.services.bom.bom_requirements import expected_consumption
+
+            for exp in expected_consumption(db, store_card.work_order_id):
+                if int(exp.get("component_product_id") or 0) == int(ln.product_id):
+                    required = float(exp["expected_gross_qty"])
+                    break
         available = float(ln.available_qty or 0)
         store_card.issue_lines.append(
             WorkflowMaterialIssueLine(
@@ -298,6 +305,7 @@ def build_stage_job_card(
     sales_order_id: int,
     stage: str,
     user: User | None = None,
+    production_order_id: int | None = None,
 ) -> dict[str, Any]:
     """Build full stage job card payload (mirrors sales job card shape)."""
     ctx = _order_context(db, tenant_id, sales_order_id)
@@ -334,7 +342,13 @@ def build_stage_job_card(
     if stage == "store":
         return {**base, **_build_store_card(db, tenant_id, sales_order_id, stage_card, ctx)}
     if stage == "production_manager":
-        return {**base, **_build_production_manager_card(db, tenant_id, sales_order_id, stage_card, ctx)}
+        return {
+            **base,
+            **_build_production_manager_card(
+                db, tenant_id, sales_order_id, stage_card, ctx,
+                production_order_id=production_order_id,
+            ),
+        }
     if stage == "operator":
         return {**base, **_build_operator_card(db, tenant_id, sales_order_id, stage_card, ctx, user)}
     if stage == "quality":
@@ -387,9 +401,13 @@ def _stage_allowed_actions(stage: str, ws: str, user: User | None) -> list[str]:
             "MATERIAL_AVAILABLE": ["issue_materials", "partial_issue", "hold", "send_to_production"],
         },
         "production_manager": {
-            "READY_FOR_PRODUCTION": ["send_to_operator", "hold"],
-            "PRODUCTION_REWORK": ["send_to_operator", "hold"],
-            "QUALITY_REJECTED": ["send_to_operator", "hold"],
+            # Store handoff creates the production order and work order. The
+            # Production Manager's next action is to assign that work order.
+            # An assigned order can still be reassigned until production starts.
+            "READY_FOR_PRODUCTION": ["assign_operator", "hold"],
+            "PRODUCTION_ASSIGNED": ["assign_operator", "hold"],
+            "PRODUCTION_REWORK": ["assign_operator", "hold"],
+            "QUALITY_REJECTED": ["assign_operator", "hold"],
         },
         "operator": {
             "PRODUCTION_ASSIGNED": ["start_work"],
@@ -442,7 +460,8 @@ def _build_inventory_check(
     if mc:
         from app.services.workflow_team_service import refresh_pending_material_check_stock
 
-        refresh_pending_material_check_stock(db, tenant_id, mc, force=True)
+        if not mc.verified_at:
+            refresh_pending_material_check_stock(db, tenant_id, mc, force=True)
         for ln in mc.lines or []:
             req = float(ln.required_qty or 0)
             avail = float(ln.available_qty or 0)
@@ -535,8 +554,26 @@ def _build_production_manager_card(
     sales_order_id: int,
     stage_card: WorkflowStageJobCard | None,
     ctx: dict,
+    production_order_id: int | None = None,
 ) -> dict[str, Any]:
-    wo = _primary_work_order(db, tenant_id, sales_order_id)
+    if production_order_id is not None:
+        production_order = db.scalars(
+            select(ProductionOrder).where(
+                ProductionOrder.id == production_order_id,
+                ProductionOrder.tenant_id == tenant_id,
+                ProductionOrder.sales_order_id == sales_order_id,
+            )
+        ).first()
+        if not production_order:
+            raise HTTPException(status_code=404, detail="Production order not found for this sales order")
+        wo = db.scalars(
+            select(WorkOrder).where(
+                WorkOrder.production_order_id == production_order.id,
+                WorkOrder.tenant_id == tenant_id,
+            ).order_by(WorkOrder.id.desc())
+        ).first()
+    else:
+        wo = _primary_work_order(db, tenant_id, sales_order_id)
     if wo and not stage_card:
         stage_card = ensure_stage_card(
             db, tenant_id, sales_order_id, "production_manager",

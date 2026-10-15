@@ -42,13 +42,16 @@ export function buildStoreManagerJobCardDocument({
   storeContext = null,
   materialCheck = null,
   companyProfile = null,
+  productLines: suppliedProductLines = null,
 }) {
   const card = manualCard || soCard || {};
   const sd = card.sales_document || {};
   const manualDoc = card.manual_document || {};
   const header = sd.header || manualDoc.header || {};
   const order = sd.order_details || manualDoc.order || {};
-  const productLines = sd.product_lines || manualDoc.product_lines || [];
+  const productLines = Array.isArray(suppliedProductLines)
+    ? suppliedProductLines
+    : sd.product_lines || manualDoc.product_lines || [];
   const specs = sd.technical_specifications || manualDoc.technical_specifications || [];
   const storeWf = card.store_workflow || {};
   const productionInstructions = card.details?.production?.production_instructions || "";
@@ -70,7 +73,27 @@ export function buildStoreManagerJobCardDocument({
 
   const materials = mapMaterialLines(materialsSource);
   const firstProduct = productLines[0] || {};
-  const totalQty = productLines.reduce((sum, ln) => sum + (Number(ln.quantity) || 0), 0);
+  const products = productLines.map((line) => ({
+    product_code: line.product_code || line.code || "",
+    product_name: line.product_name || line.item_description || line.name || "",
+    quantity: line.quantity,
+    uom: line.uom || line.unit || "Nos",
+  }));
+  const quantitiesByUom = new Map();
+  products.forEach((line) => {
+    const unit = line.uom || "Nos";
+    quantitiesByUom.set(unit, (quantitiesByUom.get(unit) || 0) + (Number(line.quantity) || 0));
+  });
+  const plannedQuantity = quantitiesByUom.size > 1
+    ? Array.from(quantitiesByUom, ([unit, quantity]) => `${quantity} ${unit}`).join(", ")
+    : quantitiesByUom.size === 1
+      ? Array.from(quantitiesByUom.values())[0]
+      : row?.quantity;
+  const plannedUom = quantitiesByUom.size === 1
+    ? Array.from(quantitiesByUom.keys())[0]
+    : quantitiesByUom.size > 1
+      ? ""
+      : firstProduct.uom || firstProduct.unit || row?.unit || "Nos";
 
   const storeComments = (storeWf.store_comments || [])
     .map((c) => c.text)
@@ -100,12 +123,13 @@ export function buildStoreManagerJobCardDocument({
     department: {
       department: "Production",
       job_card_no: salesJcNo || row?.order_number,
+      products,
       product_code: firstProduct.product_code || row?.product_code,
       product_name: firstProduct.product_name || row?.product_name,
       process: order.product_category || "",
       machine: "—",
-      planned_quantity: totalQty || row?.quantity,
-      uom: firstProduct.uom || firstProduct.unit || row?.unit || "Nos",
+      planned_quantity: plannedQuantity,
+      uom: plannedUom,
     },
     materials,
     instructions: String(productionInstructions)

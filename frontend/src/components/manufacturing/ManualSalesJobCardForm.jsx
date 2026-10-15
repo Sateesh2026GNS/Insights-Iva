@@ -151,16 +151,25 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
 
   const customerOptions = useMemo(
     () =>
-      customers.map((c) => ({
-        value: String(c.id),
-        label: c.name || c.company || c.customer_name || `Customer #${c.id}`,
-      })),
+      customers
+        .map((c) => {
+          const compName = (c.company_name || c.company || "").trim();
+          if (!compName) return null;
+          return {
+            value: String(c.id),
+            label: compName,
+          };
+        })
+        .filter(Boolean),
     [customers]
   );
 
-  const customerFooterOptions = useMemo(
-    () => (canAddCustomer ? [{ value: ADD_CUSTOMER_VALUE, label: "Add Company" }] : []),
-    [canAddCustomer]
+  const customerSelectOptions = useMemo(
+    () => [
+      ...(canAddCustomer ? [{ value: ADD_CUSTOMER_VALUE, label: "+ Add Company" }] : []),
+      ...customerOptions,
+    ],
+    [canAddCustomer, customerOptions]
   );
 
   const productOptions = useMemo(
@@ -210,7 +219,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     if (!customer) return salesOrders;
     const customerId = String(customer.id);
     const customerNames = new Set(
-      [customer.name, customer.company, customer.customer_name]
+      [customer.company_name, customer.company, customer.name, customer.customer_name, customer.contact_name, customer.contact_person]
         .map((name) => String(name || "").trim().replace(/\s+/g, " ").toLowerCase())
         .filter(Boolean)
     );
@@ -242,7 +251,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     const name = form.customer.customer_name?.trim();
     if (!name) return "";
     const match = customers.find(
-      (c) => String(c.name || c.company || "").toLowerCase() === name.toLowerCase()
+      (c) =>
+        String(c.company_name || c.company || "").toLowerCase() === name.toLowerCase() ||
+        String(c.name || "").toLowerCase() === name.toLowerCase()
     );
     return match ? String(match.id) : name;
   }, [selectedCustomerId, form.customer.customer_name, customers]);
@@ -289,15 +300,17 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     if (!customer) return;
     setDirty(true);
     setSelectedCustomerId(String(customer.id));
+    const compName = (customer.company_name || customer.company || "").trim();
     setForm((prev) => ({
       ...prev,
       customer: {
         ...prev.customer,
-        customer_name: customer.name || customer.company || customer.customer_name || "",
+        customer_name: compName || customer.name || customer.customer_name || "",
         contact_person: customer.contact_name || customer.contact_person || prev.customer.contact_person,
         phone: customer.phone || prev.customer.phone,
         email: customer.email || prev.customer.email,
         billing_address: formatCustomerAddress(customer) || prev.customer.billing_address,
+        company_address: formatCustomerAddress(customer) || prev.customer.company_address,
         dispatch_address:
           customer.shipping_address || customer.dispatch_address || prev.customer.dispatch_address,
       },
@@ -336,7 +349,9 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       const name = String(order?.customer_name || detail?.customer_name || "").trim().toLowerCase();
       if (!name) return null;
       return customers.find(
-        (c) => String(c.name || c.company || "").toLowerCase() === name
+        (c) =>
+          String(c.company_name || c.company || "").toLowerCase() === name ||
+          String(c.name || "").toLowerCase() === name
       );
     },
     [customers]
@@ -721,11 +736,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       />
 
       <div className="ui-card manual-sjc-page__card">
-        <header className="manual-sjc-page__toolbar">
+        <header className="manual-sjc-page__toolbar" aria-label="Job card header">
           <div className="manual-sjc-page__toolbar-text">
-            <h1 className="manual-sjc-page__toolbar-title">
-              {isEdit ? "Edit Sales Job Card" : "Create Sales Job Card"}
-            </h1>
             {!isEdit ? (
               <div className="manual-sjc-page__company">
                 {companyName || companyAddress || logoUrl ? (
@@ -736,20 +748,22 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       {companyAddress ? <span className="manual-sjc-page__company-address">{companyAddress}</span> : null}
                     </div>
                   </>
-                ) : null}
+                ) : (
+                  <span className="manual-sjc-page__company-name">Company Details</span>
+                )}
                 <button
                   type="button"
                   className="manual-sjc-page__company-edit"
                   onClick={() => setEditCompanyOpen(true)}
                 >
                   <PenLine className="h-3.5 w-3.5" aria-hidden />
-                  Edit Company Details
+                  Edit
                 </button>
               </div>
             ) : null}
-            {isEdit && form.job_card_no ? (
+            {isEdit ? (
               <p className="manual-sjc-page__toolbar-meta">
-                {form.job_card_no}
+                {form.job_card_no || "Job Card"}
                 <span className="manual-sjc__status-pill">{statusDisplay}</span>
               </p>
             ) : null}
@@ -786,9 +800,14 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                     ) : null}
                     {tagline ? <span className="manual-sjc__company-strip-tagline">{tagline}</span> : null}
                   </div>
-                  {form.job_card_no ? (
-                    <span className="manual-sjc__company-strip-jc">{form.job_card_no}</span>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="manual-sjc-page__company-edit"
+                    onClick={() => setEditCompanyOpen(true)}
+                  >
+                    <PenLine className="h-3.5 w-3.5" aria-hidden />
+                    Edit
+                  </button>
                 </div>
               ) : null}
 
@@ -822,8 +841,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       <SearchableSelect
                         value={customerSelectValue}
                         onChange={handleCustomerSelect}
-                        options={customerOptions}
-                        footerOptions={customerFooterOptions}
+                        options={customerSelectOptions}
                         placeholder={mastersLoading ? "Loading companies…" : customerEmptyLabel}
                         searchPlaceholder="Search companies…"
                         allowCustom
@@ -1085,9 +1103,15 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                     />
                   </FormGridField>
                   <FormGridField label="Company Address">
-                    <div className="sjc-doc__input manual-sjc__company-address-value">
-                      {companyAddress || "Company address from settings"}
-                    </div>
+                    <Textarea
+                      rows={2}
+                      wrap="soft"
+                      value={form.customer.company_address}
+                      onChange={(e) => patch("customer.company_address", e.target.value)}
+                      className="sjc-doc__input manual-sjc__textarea"
+                      placeholder="Customer company address"
+                      disabled={!canEditCard}
+                    />
                   </FormGridField>
                 </div>
               </section>
@@ -1321,7 +1345,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       <th>Prepared By</th>
                       <th>Checked By</th>
                       <th>Approved By</th>
-                      <th>Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1345,13 +1368,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                           value={form.approval.approved_by}
                           onChange={(e) => patch("approval.approved_by", e.target.value)}
                           className="sjc-doc__input"
-                        />
-                      </td>
-                      <td>
-                        <DatePicker
-                          compact
-                          value={form.approval.prepared_date}
-                          onChange={(v) => patch("approval.prepared_date", v)}
                         />
                       </td>
                     </tr>
@@ -1381,7 +1397,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                         ? "Saving…"
                         : "Creating…"
                       : isEdit
-                        ? "Save Job Card"
+                        ? "Save"
                         : "Create Job Card"}
                   </Button>
                 </div>

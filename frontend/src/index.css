@@ -3,6 +3,21 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* Map Tailwind font-bold / extra-bold to loaded IBM Plex Sans 600 (avoid 700+). */
+@theme {
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
+  --font-weight-black: 600;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* ========== Insights Iva Design System ==========
  * Single source of truth for typography, spacing, color, and shared UI.
  * Apply these tokens/classes across pages — avoid page-specific one-offs.
@@ -160,10 +175,16 @@
   --space-10: 2.5rem;   /* 40 */
   --space-12: 3rem;     /* 48 */
 
-  /* Typography — matches index.html webfonts (avoid Arial-first jagged figures) */
+  /* Typography — matches index.html webfonts (IBM Plex Sans 400/500/600/700) */
   --font-sans: "IBM Plex Sans", Inter, "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
   /* Digits / money / KPIs — Inter tabular figures read cleaner at card sizes */
   --font-numeric: Inter, "IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --heading-font-weight: 600;
+  --button-font-weight: 600;
+  --table-header-font-weight: 600;
   --text-xs: 0.75rem;      /* 12 */
   --text-sm: 0.8125rem;    /* 13 */
   --text-md: 0.875rem;     /* 14 */
@@ -179,10 +200,19 @@
   --tracking-wide: 0.04em;
   --tracking-label: 0.06em;
 
-  /* Controls */
+  /* Form labels — shared by .ui-label, DatePicker, FormField */
+  --label-font-size: var(--text-xs);
+  --label-font-weight: 500;
+  --label-color: var(--color-text-muted);
+  --label-line-height: var(--leading-snug);
+
+  /* Controls — standard ERP fields (~40–44px tall) */
   --control-h-sm: 2rem;
-  --control-h: 2.5rem;
-  --control-h-lg: 2.75rem;
+  --control-h: 2.625rem;
+  --control-h-lg: 2.625rem;
+  --control-padding-y: 0.5rem;
+  --control-padding-x: 0.875rem;
+  --control-radius: 0.5625rem;
   --icon-sm: 1rem;
   --icon-md: 1.125rem;
   --icon-lg: 1.25rem;
@@ -303,7 +333,7 @@
 }
 
 .dark .ui-label {
-  color: #f1f5f9;
+  color: var(--color-text-secondary);
 }
 
 /* Hide native number input spinner arrows */
@@ -410,8 +440,14 @@ body,
   overscroll-behavior-y: none !important;
 }
 
+b,
+strong {
+  font-weight: var(--font-weight-semibold);
+}
+
 body {
   font-family: var(--font-sans);
+  font-weight: var(--font-weight-regular);
   font-size: var(--text-md);
   line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
@@ -530,7 +566,7 @@ textarea {
   padding: 0.5rem 0.875rem;
   border-radius: var(--radius-md);
   font-family: inherit;
-  font-weight: 600;
+  font-weight: var(--button-font-weight);
   font-size: var(--text-sm);
   line-height: 1;
   text-decoration: none;
@@ -998,16 +1034,107 @@ textarea {
 .ui-select,
 .ui-textarea {
   width: 100%;
-  min-height: var(--control-h-lg);
-  border-radius: var(--radius-md);
+  min-height: var(--control-h);
+  border-radius: var(--control-radius);
   border: 1px solid var(--color-border-soft);
   background: var(--color-surface-muted);
-  padding: 0.625rem 0.875rem;
-  font-family: inherit;
+  padding: var(--control-padding-y) var(--control-padding-x);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
   color: var(--color-text);
   transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ui-select,
+select.ui-input {
+  min-height: var(--control-h);
+  padding-right: 2.25rem;
+}
+
+/* SearchableSelect trigger — match .ui-input height */
+.ui-searchable-select {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: var(--control-h);
+  height: var(--control-h);
+  padding: 0 var(--control-padding-x);
+  border-radius: var(--control-radius);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  text-align: left;
+  box-shadow: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.ui-searchable-select:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border-soft));
+}
+
+.ui-searchable-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.ui-searchable-select:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.ui-searchable-select.is-error {
+  border-color: var(--color-danger);
+}
+
+.ui-searchable-select.is-error:focus,
+.ui-searchable-select.is-error:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
+}
+
+.ui-searchable-select:disabled {
+  cursor: not-allowed;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+/* Compact date field (DatePicker compact) */
+.ui-date-compact {
+  box-sizing: border-box;
+  min-height: var(--control-h);
+  height: var(--control-h);
+  border-radius: var(--control-radius);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+}
+
+.ui-date-compact > span {
+  padding-left: var(--control-padding-x);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.ui-date-compact--error {
+  border-color: var(--color-danger);
+}
+
+.ui-date-compact--disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.ui-date-compact__error {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-danger);
 }
 .ui-select,
 select {
@@ -1085,45 +1212,27 @@ input[type="datetime-local"],
 input[type="month"],
 input[type="time"],
 .ui-date-input {
+  position: relative;
   color-scheme: light dark;
+  font-family: var(--font-sans);
 }
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-input[type="month"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.65;
-  filter: opacity(0.85);
-}
-input[type="date"]::-webkit-calendar-picker-indicator:hover,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
-input[type="month"]::-webkit-calendar-picker-indicator:hover,
-input[type="time"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-/* Avoid duplicate chrome on native date controls (Edge / Chrome) */
-input[type="date"]::-webkit-inner-spin-button,
-input[type="datetime-local"]::-webkit-inner-spin-button,
-input[type="time"]::-webkit-inner-spin-button {
-  display: none;
-}
-input[type="date"]::-webkit-clear-button,
-input[type="datetime-local"]::-webkit-clear-button {
-  display: none;
-}
-/* Custom calendar button (FormField / DatePicker) — single icon only */
+
+/* Custom calendar button (FormField / DatePicker) — single icon only, anchored at calendar button */
 .ui-date-input::-webkit-calendar-picker-indicator,
 .relative > input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .relative > input[type="date"]::-webkit-calendar-picker-indicator {
-  display: none !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  width: 0 !important;
-  height: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  width: 2.5rem !important;
+  height: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  display: block !important;
+  background: transparent !important;
+  color: transparent !important;
 }
 .ui-date-range-popover {
   z-index: 80;
@@ -1222,11 +1331,17 @@ input.pl-8 {
 .ui-label {
   display: block;
   margin-bottom: 0.375rem;
-  font-size: 1rem;
-  font-weight: 700;
+  font-family: var(--font-sans);
+  font-size: var(--label-font-size);
+  font-weight: var(--label-font-weight);
+  line-height: var(--label-line-height);
   letter-spacing: 0;
   text-transform: none;
-  color: #111827;
+  color: var(--label-color);
+}
+
+.ui-label--accent {
+  color: var(--color-primary);
 }
 
 /* Inventory page header — compact date / warehouse controls */
@@ -1251,6 +1366,7 @@ input.pl-8 {
 .inventory-header-control__label {
   display: block;
   margin-bottom: 0.25rem;
+  font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -1353,6 +1469,10 @@ input.pl-8 {
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
+}
+.analytics-page {
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 /* List pages — Ledger-quality shell & toolbar */
@@ -1657,7 +1777,7 @@ input.pl-8 {
   margin: 0;
   color: var(--color-text);
   font-size: 0.9375rem;
-  font-weight: 700;
+  font-weight: var(--heading-font-weight);
   letter-spacing: -0.01em;
   line-height: 1.35;
 }
@@ -2285,7 +2405,7 @@ table > tbody > tr:first-child:has(th) {
   background: var(--color-primary) !important;
   border-color: var(--color-primary) !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
+  font-weight: var(--font-weight-semibold) !important;
   box-shadow: 0 1px 3px rgba(3, 111, 113, 0.25) !important;
 }
 .ui-pagination .ui-num,
@@ -2524,7 +2644,7 @@ table > tbody > tr:first-child:has(th) {
   border-radius: 9999px;
   background: var(--color-primary);
   font-size: var(--text-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
   color: #fff;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--color-border-soft);
@@ -3359,7 +3479,7 @@ html.has-sticky-page-footer .app-shell-fab-stack {
 
   table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) th {
     background-color: #f8fafc !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     white-space: nowrap !important;
     text-transform: uppercase !important;
     letter-spacing: 0.03em !important;
@@ -3564,7 +3684,7 @@ html.has-sticky-page-footer .app-shell-fab-stack {
 .login-success-overlay__title {
   margin: 0;
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: var(--heading-font-weight);
   letter-spacing: -0.01em;
   color: #15803d;
 }
@@ -3573,6 +3693,124 @@ html.has-sticky-page-footer .app-shell-fab-stack {
   margin: 0.45rem 0 0;
   font-size: 0.9375rem;
   color: #64748b;
+}
+
+/* ── Centered operation error dialog (ToastContext / OperationErrorDialog.jsx) ── */
+@keyframes operationErrorFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes operationErrorCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.operation-error-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  margin: 0;
+  animation: operationErrorFadeIn 0.14s ease-out forwards;
+  pointer-events: auto;
+}
+
+.operation-error-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(2px);
+}
+
+.operation-error-dialog__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 21.25rem);
+  max-width: calc(100vw - 2rem);
+  border-radius: var(--radius-lg, 0.625rem);
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: #ffffff;
+  padding: 1rem 1rem 0.95rem;
+  box-shadow:
+    0 10px 28px -8px rgba(15, 23, 42, 0.14),
+    0 4px 10px -4px rgba(15, 23, 42, 0.08);
+  animation: operationErrorCardIn 0.16s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  font-family: inherit;
+}
+
+.operation-error-dialog__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md, 0.5rem);
+  background: transparent;
+  color: var(--color-text-muted, #94a3b8);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.operation-error-dialog__close:hover {
+  background: var(--color-surface-muted, #f1f5f9);
+  color: var(--color-text, #334155);
+}
+
+.operation-error-dialog__close-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.operation-error-dialog__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-right: 1.75rem;
+}
+
+.operation-error-dialog__icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  color: #ef4444;
+}
+
+.operation-error-dialog__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-text, #1e293b);
+  letter-spacing: -0.01em;
+}
+
+.operation-error-dialog__message {
+  margin: 0.45rem 0 0;
+  padding-left: 1.5rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--color-text-muted, #64748b);
 }
 
 /* ========== Smooth Page Transition (Anti-Blink) ========== */

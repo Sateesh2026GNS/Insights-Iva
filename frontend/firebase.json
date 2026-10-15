@@ -2,6 +2,7 @@
   "hosting": {
     "site": "insights-734ee",
     "public": "dist",
+    "predeploy": "npm run build",
     "ignore": [
       "firebase.json",
       "**/.*",

@@ -39,6 +39,27 @@ def next_material_request_number(db: Session, tenant_id: int) -> str:
     return f"PR-{date.today().year}-{request_count + 1:04d}"
 
 
+def emit_purchase_requisition_received_alert(db: Session, mr: MaterialRequest) -> None:
+    """Notify procurement approvers when a requisition enters the queue."""
+    try:
+        from app.services.alert_event_service import emit_alert
+
+        emit_alert(
+            db,
+            tenant_id=mr.tenant_id,
+            alert_type="purchase_requisition_received",
+            title=f"Purchase requisition awaiting approval: {mr.mr_number}",
+            message=f"Purchase requisition {mr.mr_number} is awaiting Purchase Manager approval.",
+            severity="medium",
+            link=f"/procurement/material-requests?id={mr.id}",
+            reference_type="material_request",
+            reference_id=mr.id,
+            created_by=mr.requested_by or "Procurement",
+        )
+    except Exception:
+        pass
+
+
 def update_purchase_order_status(
     db: Session, po_id: int, tenant_id: int, status: str
 ) -> PurchaseOrder | None:
@@ -295,23 +316,7 @@ def create_material_request(
     if commit:
         db.commit()
         db.refresh(mr)
-        try:
-            from app.services.alert_event_service import emit_alert
-
-            emit_alert(
-                db,
-                tenant_id=mr.tenant_id,
-                alert_type="material_request",
-                title=f"Purchase request: {mr.mr_number}",
-                message=f"Material request {mr.mr_number} created",
-                severity="medium",
-                link=f"/procurement/material-requests?id={mr.id}",
-                reference_type="material_request",
-                reference_id=mr.id,
-                created_by=mr.requested_by or "Procurement",
-            )
-        except Exception:
-            pass
+        emit_purchase_requisition_received_alert(db, mr)
     else:
         db.flush()
         db.refresh(mr)
@@ -379,7 +384,7 @@ def convert_material_request_to_purchase_order(
     po_payload = PurchaseOrderCreate(
         tenant_id=tenant_id,
         supplier_id=payload.supplier_id,
-        po_number=payload.po_number or f"PO-MR-{mr.mr_number}-{int(date.today().strftime('%Y%m%d'))}",
+        po_number=payload.po_number or f"PO-{mr.mr_number}-{int(date.today().strftime('%Y%m%d'))}",
         order_date=date.today(),
         expected_date=payload.expected_date or mr.required_date,
         status=payload.status or "draft",

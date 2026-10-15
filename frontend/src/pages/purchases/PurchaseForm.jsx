@@ -7,6 +7,8 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import AddCustomFieldModal from "../../components/sales/AddCustomFieldModal";
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
+import ItemPickerDropdown from "../../components/sales/ItemPickerDropdown";
+import ItemSelectionModal from "../../components/sales/ItemSelectionModal";
 import AddNewPartyModal from "../../components/sales/AddNewPartyModal";
 import AddOtherChargesModal, {
   computeOtherChargeTotal,
@@ -22,6 +24,7 @@ import TermsAndConditionsPicker, {
 import { createBizDocument, getBizDocument, updateBizDocument } from "../../api/bizDocumentsApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { getVendors } from "../../api/procurementApi";
+import { getProducts } from "../../api/productsApi";
 import { getCompanySettings } from "../../api/settingsApi";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -232,6 +235,12 @@ export default function PurchaseForm() {
     reverse_charge: false,
   });
   const [items, setItems] = useState([emptyItem(), emptyItem(), emptyItem()]);
+  const [products, setProducts] = useState([]);
+  const [itemPickerIdx, setItemPickerIdx] = useState(null);
+  const [itemSearch, setItemSearch] = useState("");
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
+  const [itemToEdit, setItemToEdit] = useState(null);
+  const [itemModalTargetIdx, setItemModalTargetIdx] = useState(null);
   const [dragRowIdx, setDragRowIdx] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -240,11 +249,24 @@ export default function PurchaseForm() {
     (async () => {
       setLoading(true);
       try {
-        const [vendorRes, companyRes] = await Promise.allSettled([getVendors(), getCompanySettings()]);
+        const [vendorRes, companyRes, productsRes] = await Promise.allSettled([
+          getVendors(),
+          getCompanySettings(),
+          getProducts(),
+        ]);
         if (cancelled) return;
         setVendors(vendorRes.status === "fulfilled" ? vendorRes.value?.data || [] : []);
         const co = companyRes.status === "fulfilled" ? companyRes.value?.data || null : null;
         setCompany(co);
+        const pList =
+          productsRes.status === "fulfilled"
+            ? Array.isArray(productsRes.value?.data)
+              ? productsRes.value.data
+              : Array.isArray(productsRes.value)
+              ? productsRes.value
+              : []
+            : [];
+        setProducts(pList);
 
         if (editId) {
           const doc =
@@ -327,6 +349,74 @@ export default function PurchaseForm() {
       next[idx].amount = lineTotals(next[idx]).total;
       return next;
     });
+  };
+
+  const selectProductForRow = (idx, product) => {
+    if (!product) return;
+    const gstPct =
+      Number(
+        product.gst_percent ??
+          product.gst_pct ??
+          company?.default_gst_pct ??
+          18
+      ) || 0;
+    const price =
+      product.purchase_price ??
+      product.unit_cost ??
+      product.cost_price ??
+      product.unit_price ??
+      product.price ??
+      product.rate ??
+      "";
+
+    setItems((prev) => {
+      const next = [...prev];
+      const row = {
+        ...next[idx],
+        item_id: product.id || product.item_id || null,
+        item_description:
+          product.name || product.item_name || product.product_name || product.sku || "",
+        hsn: product.hsn_code || product.hsn || product.hsn_sac || next[idx]?.hsn || "",
+        qty: next[idx]?.qty && Number(next[idx]?.qty) > 0 ? next[idx].qty : 1,
+        unit: product.unit || product.unit_of_measure || next[idx]?.unit || "pcs",
+        rate: price !== "" && price !== null && price !== undefined ? price : next[idx]?.rate || 0,
+        tax_type: next[idx]?.tax_type || "Exclusive",
+        gst_pct: gstPct !== undefined && gstPct !== null ? gstPct : next[idx]?.gst_pct,
+      };
+      row.amount = lineTotals(row).total;
+      next[idx] = row;
+      return next;
+    });
+
+    setItemPickerIdx(null);
+    setItemSearch("");
+    setHighlightedIdx(0);
+  };
+
+  const filteredProducts = useMemo(() => {
+    const q = itemSearch.trim().toLowerCase();
+    const curDesc = (items[itemPickerIdx]?.item_description || "").trim().toLowerCase();
+    if (!q || (itemPickerIdx !== null && q === curDesc)) {
+      return products.slice(0, 40);
+    }
+    return products
+      .filter((p) =>
+        [p.name, p.sku, p.hsn_code, p.product_code, p.category, p.description]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q))
+      )
+      .slice(0, 40);
+  }, [products, itemSearch, itemPickerIdx, items]);
+
+  const syncCatalogItem = (idx, label) => {
+    const name = String(label || "").trim().toLowerCase();
+    if (!name) return;
+    const match = products.find(
+      (i) =>
+        String(i.name || i.item_name || i.product_name || i.sku || "").trim().toLowerCase() === name
+    );
+    if (!match) return;
+    selectProductForRow(idx, match);
   };
 
   const removeItem = (idx) => {
@@ -712,22 +802,100 @@ export default function PurchaseForm() {
                         </div>
                       </td>
                       <td className={cell}>
-                        <div className="relative min-w-[160px]">
-                          <SearchBar
-                            size="compact"
-                            value={row.item_description}
-                            onChange={(v) => updateItem(idx, "item_description", v)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                e.stopPropagation();
+                        <div className="relative min-w-[200px] flex items-center gap-1">
+                          <div className="relative flex-1">
+                            <SearchBar
+                              size="compact"
+                              value={
+                                itemPickerIdx === idx
+                                  ? itemSearch
+                                  : row.item_description
                               }
+                              onFocus={(e) => {
+                                setItemPickerIdx(idx);
+                                setItemSearch(row.item_description || "");
+                                setHighlightedIdx(0);
+                                e?.target?.select?.();
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (filteredProducts.length > 0) {
+                                    const selected =
+                                      filteredProducts[highlightedIdx] || filteredProducts[0];
+                                    if (selected) {
+                                      selectProductForRow(idx, selected);
+                                    }
+                                  }
+                                } else if (e.key === "ArrowDown") {
+                                  e.preventDefault();
+                                  setHighlightedIdx((prev) =>
+                                    Math.min(prev + 1, Math.max(0, filteredProducts.length - 1))
+                                  );
+                                } else if (e.key === "ArrowUp") {
+                                  e.preventDefault();
+                                  setHighlightedIdx((prev) => Math.max(prev - 1, 0));
+                                } else if (e.key === "Escape") {
+                                  setItemPickerIdx(null);
+                                }
+                              }}
+                              onChange={(v) => {
+                                setItemPickerIdx(idx);
+                                setItemSearch(v);
+                                setHighlightedIdx(0);
+                                updateItem(idx, "item_description", v);
+                              }}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  setItemPickerIdx((cur) => (cur === idx ? null : cur));
+                                }, 200);
+                              }}
+                              placeholder="Select Item"
+                              clearable={false}
+                              className="w-full"
+                              inputClassName="pending-inventory-search-input"
+                            />
+                            {itemPickerIdx === idx ? (
+                              <ItemPickerDropdown
+                                products={filteredProducts}
+                                selectedIndex={highlightedIdx}
+                                onSelectProduct={(p) => selectProductForRow(idx, p)}
+                                onAddNewItem={() => {
+                                  setItemToEdit(null);
+                                  setAddItemOpen(true);
+                                }}
+                                onEditItem={(p) => {
+                                  setItemToEdit(p);
+                                  setAddItemOpen(true);
+                                }}
+                                onToggleInactive={(p) => {
+                                  setProducts((prev) =>
+                                    prev.map((item) =>
+                                      item.id === p.id
+                                        ? { ...item, status: item.status === "inactive" ? "active" : "inactive" }
+                                        : item
+                                    )
+                                  );
+                                }}
+                                onDeleteItem={(p) => {
+                                  setProducts((prev) => prev.filter((item) => item.id !== p.id));
+                                }}
+                              />
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setItemPickerIdx(null);
+                              setItemModalTargetIdx(idx);
                             }}
-                            placeholder="Select Item"
-                            clearable={false}
-                            className="w-full"
-                            inputClassName="pending-inventory-search-input"
-                          />
+                            title="Browse & select all items in popup modal"
+                            className="shrink-0 p-1 text-blue-500 hover:text-blue-700 transition-colors cursor-pointer"
+                          >
+                            <Grid2x2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                       <td className={cell}>
@@ -1308,23 +1476,58 @@ export default function PurchaseForm() {
       />
       <AddNewItemModal
         open={addItemOpen}
-        onClose={() => setAddItemOpen(false)}
-        onSaved={(line) => {
-          if (!line) return;
-          const withAmount = {
-            ...emptyItem(),
-            ...line,
-            amount: lineTotals(line).total,
-          };
-          setItems((prev) => {
-            const blankIdx = prev.findIndex((r) => !r.item_description?.trim());
-            if (blankIdx >= 0) {
-              const next = [...prev];
-              next[blankIdx] = withAmount;
-              return next;
-            }
-            return [...prev, withAmount];
-          });
+        onClose={() => {
+          setAddItemOpen(false);
+          setItemToEdit(null);
+        }}
+        initialData={itemToEdit}
+        onSaved={(line, product) => {
+          if (!line && !product) return;
+          const pObj = product || line;
+          if (pObj && pObj.id) {
+            setProducts((prev) => {
+              const existingIdx = prev.findIndex((p) => p.id === pObj.id);
+              if (existingIdx >= 0) {
+                const next = [...prev];
+                next[existingIdx] = { ...next[existingIdx], ...pObj };
+                return next;
+              }
+              return [pObj, ...prev];
+            });
+          }
+          if (line) {
+            const withAmount = {
+              ...emptyItem(),
+              ...line,
+              item_id: product?.id || line?.item_id || null,
+              amount: lineTotals(line).total,
+            };
+            setItems((prev) => {
+              const blankIdx = prev.findIndex((r) => !r.item_description?.trim());
+              if (blankIdx >= 0) {
+                const next = [...prev];
+                next[blankIdx] = withAmount;
+                return next;
+              }
+              return [...prev, withAmount];
+            });
+          }
+          setItemToEdit(null);
+        }}
+      />
+      <ItemSelectionModal
+        isOpen={itemModalTargetIdx !== null}
+        products={products}
+        onClose={() => setItemModalTargetIdx(null)}
+        onSelect={(product) => {
+          if (itemModalTargetIdx !== null) {
+            selectProductForRow(itemModalTargetIdx, product);
+          }
+          setItemModalTargetIdx(null);
+        }}
+        onAddNew={() => {
+          setItemToEdit(null);
+          setAddItemOpen(true);
         }}
       />
       <AddOtherChargesModal

@@ -37,13 +37,13 @@ function CalendarTriggerButton({ onClick, disabled, label = "Open calendar", com
       disabled={disabled}
       className={
         compact
-          ? "relative z-10 mr-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:opacity-50"
+          ? "relative z-10 mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:opacity-50"
           : "absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[var(--color-text-icon)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:opacity-50"
       }
       aria-label={label}
       tabIndex={-1}
     >
-      <Calendar className={compact ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 shrink-0"} aria-hidden />
+      <Calendar className={compact ? "h-4 w-4 shrink-0" : "h-4 w-4 shrink-0"} aria-hidden />
     </button>
   );
 }
@@ -177,12 +177,13 @@ export function DatePicker({
     return (
       <div className={className}>
         <div
-          className={`ui-date-compact relative flex w-full items-center ${
+          onClick={openPicker}
+          className={`ui-date-compact relative flex w-full items-center cursor-pointer ${
             error ? "ui-date-compact--error" : ""
           } ${disabled ? "ui-date-compact--disabled" : ""} ${inputClassName}`.trim()}
         >
           <span
-            className={`min-w-0 flex-1 truncate px-[0.35rem] text-[11px] leading-[1.35] ${
+            className={`min-w-0 flex-1 truncate ${
               value ? "text-[var(--color-text)]" : "text-[var(--color-text-placeholder)]"
             }`}
           >

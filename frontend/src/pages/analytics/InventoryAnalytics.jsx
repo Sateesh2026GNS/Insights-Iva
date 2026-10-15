@@ -7,18 +7,19 @@ import {
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart,
 } from "recharts";
 
-import Loader from "../../components/common/Loader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
-import SkeletonCard, { SkeletonChart } from "../../components/common/SkeletonCard";
 import AnalyticsAlertsBanner from "../../components/analytics/AnalyticsAlertsBanner";
 import AnalyticsChartCard from "../../components/analytics/AnalyticsChartCard";
 import AnalyticsDashboardHeader from "../../components/analytics/AnalyticsDashboardHeader";
 import AnalyticsFilterBar from "../../components/analytics/AnalyticsFilterBar";
 import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
+import AnalyticsPageShell from "../../components/analytics/AnalyticsPageShell";
+import { ANALYTICS_AXIS, ANALYTICS_GRID, ANALYTICS_LEGEND, ANALYTICS_TOOLTIP } from "../../components/analytics/analyticsChartTheme";
 import { useToast } from "../../context/ToastContext";
 import { getInventoryAnalytics } from "../../api/analyticsApi";
-import { CHART_COLORS, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
+import { CHART_COLORS, currentFiscalYearLabel, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const KPI_ICONS = {
   turnover: TrendingUp, outflow: Package, avg_inv: Box, value: IndianRupee,
@@ -57,10 +58,11 @@ const normalizeChartData = (rows = []) => {
 export default function InventoryAnalytics() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [filters, setFilters] = useState({
-    fiscalYear: "2025-26", month: "All Months", quarter: "All Quarters",
+    fiscalYear: currentFiscalYearLabel(), month: "All Months", quarter: "All Quarters",
     plant: "All Plants", department: "All Departments", warehouse: "All Warehouses",
     product: "All Products", customer: "All Customers", machine: "All Machines",
     dateFrom: "", dateTo: "",
@@ -68,6 +70,7 @@ export default function InventoryAnalytics() {
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
       const res = await getInventoryAnalytics();
       if (res.data) setData({ ...emptyData, ...res.data });
@@ -75,7 +78,9 @@ export default function InventoryAnalytics() {
     } catch (err) {
       if (isRefresh) throw err;
       setData(emptyData);
-      addToast("Failed to load inventory analytics", "error");
+      const message = apiErrorMessage(err, "Failed to load inventory analytics");
+      setError(message);
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -90,17 +95,10 @@ export default function InventoryAnalytics() {
   }, [autoRefresh, load]);
 
   if (loading && !data.kpis?.length) {
-    return (
-      <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
-        <div className="h-16 animate-pulse rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, index) => (<SkeletonCard key={index} />))}
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, index) => (<SkeletonChart key={index} />))}
-        </div>
-      </div>
-    );
+    return <AnalyticsPageShell loading kpiCount={5} chartCount={6} />;
+  }
+  if (error && !data.kpis?.length) {
+    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
   }
   const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
 
@@ -112,10 +110,10 @@ export default function InventoryAnalytics() {
   const valueTrend = normalizeChartData(data.value_trend);
 
   return (
-    <div className="space-y-6 bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
+    <AnalyticsPageShell>
       <AnalyticsDashboardHeader
         title="Inventory KPI"
-        subtitle="Turnover, stock value, ABC analysis, aging, warehouse occupancy."
+        subtitle="Turnover, stock value, ABC analysis, aging, and warehouse occupancy."
         lastUpdated={data.last_updated}
         onRefresh={load}
         autoRefresh={autoRefresh}
@@ -135,21 +133,21 @@ export default function InventoryAnalytics() {
         dateTo={filters.dateTo} onDateToChange={setF("dateTo")}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="ui-kpi-strip ui-kpi-strip--5">
         {(data.kpis || []).map((kpi) => (
           <AnalyticsKpiCard key={kpi.key} kpi={kpi} icon={KPI_ICONS[kpi.key] || Box} />
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard id="chart-stock-io" title="Stock In vs Stock Out" data={data.stock_in_vs_out} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.inventory} sourceLabel="Inventory">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stockInVsOut}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} />
-              <Tooltip />
-              <Legend />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
+              <Legend {...ANALYTICS_LEGEND} />
               <Bar dataKey="value" name="Stock In" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
               <Bar dataKey="value2" name="Stock Out" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -159,10 +157,10 @@ export default function InventoryAnalytics() {
         <AnalyticsChartCard id="chart-warehouse" title="Warehouse Occupancy" data={data.warehouse_occupancy} sourceLink={SOURCE_LINKS.inventory} sourceLabel="Inventory">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={warehouseOccupancy}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} domain={[0, 100]} />
-              <Tooltip formatter={(v) => [`${v}%`, "Occupancy"]} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} domain={[0, 100]} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v}%`, "Occupancy"]} />
               <Bar dataKey="value" fill={CHART_COLORS[2]} name="%" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -174,8 +172,8 @@ export default function InventoryAnalytics() {
               <Pie data={abcAnalysis} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius={60} outerRadius={100} label>
                 {abcAnalysis.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
               </Pie>
-              <Tooltip formatter={(v) => [`${v}%`, "Share"]} />
-              <Legend />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v}%`, "Share"]} />
+              <Legend {...ANALYTICS_LEGEND} />
             </PieChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
@@ -183,10 +181,10 @@ export default function InventoryAnalytics() {
         <AnalyticsChartCard id="chart-aging" title="Inventory Aging" data={data.inventory_aging} sourceLink={SOURCE_LINKS.inventory} sourceLabel="Inventory">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={inventoryAging}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={10} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={(v) => [`${v}%`, "Share"]} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v}%`, "Share"]} />
               <Bar dataKey="value" fill={CHART_COLORS[3]} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -195,10 +193,10 @@ export default function InventoryAnalytics() {
         <AnalyticsChartCard id="chart-consumption" title="Monthly Consumption" data={data.monthly_consumption} sourceLink={SOURCE_LINKS.inventory} sourceLabel="Inventory">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyConsumption}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} />
-              <Tooltip />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} />
+              <Tooltip {...ANALYTICS_TOOLTIP} />
               <Line type="monotone" dataKey="value" stroke={CHART_COLORS[4]} strokeWidth={2} name="Units" />
             </LineChart>
           </ResponsiveContainer>
@@ -207,50 +205,54 @@ export default function InventoryAnalytics() {
         <AnalyticsChartCard id="chart-value-trend" title="Inventory Value Trend" data={data.value_trend} sourceLink={SOURCE_LINKS.inventory} sourceLabel="Inventory">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={valueTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} tickFormatter={(v) => formatInr(v)} />
-              <Tooltip formatter={(v) => [formatInr(v), "Value"]} />
+              <CartesianGrid {...ANALYTICS_GRID} />
+              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
+              <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
+              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [formatInr(v), "Value"]} />
               <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.15} name="Value" />
             </AreaChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {[
-          { title: "Fast Moving Items", rows: data.fast_moving, cols: ["item", "qty", "turns"] },
-          { title: "Slow Moving Items", rows: data.slow_moving, cols: ["item", "qty", "days_idle"] },
-          { title: "Dead Stock", rows: data.dead_stock, cols: ["item", "qty", "value"] },
-          { title: "Reorder Alerts", rows: data.reorder_alerts, cols: ["item", "current", "reorder", "warehouse"] },
+          { title: "Fast moving items", rows: data.fast_moving, cols: ["item", "qty", "turns"] },
+          { title: "Slow moving items", rows: data.slow_moving, cols: ["item", "qty", "days_idle"] },
+          { title: "Dead stock", rows: data.dead_stock, cols: ["item", "qty", "value"] },
+          { title: "Reorder alerts", rows: data.reorder_alerts, cols: ["item", "current", "reorder", "warehouse"] },
         ].map(({ title, rows, cols }) => (
-          <div key={title} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
-            <h3 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+          <section key={title} className="ui-card ui-card--padded min-w-0">
+            <h3 className="mb-3 text-sm font-medium text-[var(--color-text)]">{title}</h3>
             {rows?.length ? (
               <div className="overflow-x-auto">
                 <table className="ui-table w-full text-left text-xs">
                   <thead className="ui-table-head">
                     <tr>
                       <SerialNumberHeader className="pb-2" />
-                      {cols.map((c) => <th key={c} className="pb-2 pr-3 capitalize">{c.replace("_", " ")}</th>)}
+                      {cols.map((c) => <th key={c} className="pb-2 pr-3 font-medium capitalize">{c.replace("_", " ")}</th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r, i) => (
-                      <tr key={i} className="border-b border-slate-100 dark:border-slate-700">
+                      <tr key={`${title}-${i}`} className="border-b border-[var(--color-border)]">
                         <SerialNumberCell rowIndex={i} className="py-2" />
-                        {cols.map((c) => <td key={c} className="py-2 pr-3">{c === "value" ? formatInr(r[c]) : r[c]}</td>)}
+                        {cols.map((c) => (
+                          <td key={c} className={`py-2 pr-3 ${c === "value" || c === "qty" || c === "current" || c === "reorder" || c === "turns" || c === "days_idle" ? "font-numeric text-right" : ""}`}>
+                            {c === "value" ? formatInr(r[c]) : r[c]}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <p className="text-xs text-slate-400">No items</p>
+              <p className="ui-caption">No items in this period.</p>
             )}
-          </div>
+          </section>
         ))}
       </div>
-    </div>
+    </AnalyticsPageShell>
   );
 }
