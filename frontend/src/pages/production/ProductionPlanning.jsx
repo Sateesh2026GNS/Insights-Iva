@@ -81,7 +81,7 @@ import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
 import QuickWorkOrderModal from "../../components/production/QuickWorkOrderModal";
 import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
-import { jobCardDetailsUrl } from "../../utils/jobCardRoutes";
+import { productionStageJobCardUrl } from "../../utils/jobCardRoutes";
 
 const PLANNING_EXPORT_COLUMNS = [
   { key: "order_number", label: "Order Number" },
@@ -850,7 +850,7 @@ export default function ProductionPlanning() {
       }
     }
     if (salesOrderId) {
-      navigate(jobCardDetailsUrl(salesOrderId), {
+      navigate(productionStageJobCardUrl(salesOrderId), {
         state: { from: "/production/planning", productionOrderId: order.id },
       });
       return;
@@ -1273,10 +1273,6 @@ export default function ProductionPlanning() {
                 <Button variant="secondary" to="/production/work-orders">
                   <ClipboardList className="h-4 w-4" />
                   Work Orders
-                </Button>
-                <Button variant="secondary" to="/procurement/material-requests">
-                  <FileText className="h-4 w-4" />
-                  Material Requests
                 </Button>
               </div>
             }

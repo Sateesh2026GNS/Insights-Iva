@@ -372,7 +372,11 @@ export default function StageJobCardPage() {
           addToast("Order placed on hold by Store Manager", "success");
         }
       } else if (stage === "production_manager" && woId) {
-        if (action === "assign_operator" || action === "send_to_operator") {
+        if (action === "send_to_operator") {
+          if (!assignForm.operator_user_id) {
+            addToast("Select an operator before assigning this work order.", "error");
+            return;
+          }
           await assignOperator(woId, {
             operator_user_id: Number(assignForm.operator_user_id),
             machine_id: assignForm.machine_id ? Number(assignForm.machine_id) : undefined,
@@ -631,7 +635,13 @@ export default function StageJobCardPage() {
               </Select>
             </FormField>
           </div>
-          <JobCardActions actions={card?.allowed_actions} loading={submitting} onAction={runAction} />
+          <JobCardActions
+            actions={card?.allowed_actions}
+            loading={submitting}
+            onAction={runAction}
+            labels={{ send_to_operator: "Assign & Send to Operator" }}
+            disabledActions={assignForm.operator_user_id ? [] : ["send_to_operator"]}
+          />
         </article>
       );
     }

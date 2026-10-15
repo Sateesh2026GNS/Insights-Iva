@@ -62,10 +62,16 @@ def get_schedule_dashboard(
         )
     ) or 0
 
-    # Production target = sum of planned_quantity for active orders
+    # The schedule target is the planned quantity still in active work orders.
+    # Completed/cancelled orders no longer contribute to the outstanding target.
     target = _safe_float(db.scalar(
         select(func.sum(WorkOrder.planned_quantity))
-        .where(WorkOrder.tenant_id == tenant_id)
+        .where(
+            WorkOrder.tenant_id == tenant_id,
+            func.lower(WorkOrder.status).notin_(
+                ("completed", "closed", "done", "cancelled", "canceled")
+            ),
+        )
     ))
 
     # Total produced today
@@ -94,7 +100,7 @@ def get_schedule_dashboard(
 
     return {
         "today": today.isoformat(),
-        "production_target": int(target),
+        "production_target": round(target, 2),
         "completed": completed,
         "pending": planned + in_progress,
         "overall_progress_pct": overall_pct,

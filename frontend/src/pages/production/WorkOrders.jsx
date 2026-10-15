@@ -893,6 +893,7 @@ export default function WorkOrders() {
     {
       key: "work_order_number",
       label: "Work Order",
+      minWidth: "12rem",
       render: (r) => (
         <div className="min-w-[7.5rem]">
           <p className="text-[13px] font-semibold tabular-nums text-[var(--color-text)]">{r.work_order_number || "—"}</p>
@@ -914,6 +915,7 @@ export default function WorkOrders() {
     {
       key: "product_name",
       label: "Product",
+      minWidth: "14rem",
       render: (r) => {
         const product = cleanProductLabel(r.product_name);
         const machine =
@@ -936,14 +938,16 @@ export default function WorkOrders() {
     {
       key: "planned_quantity",
       label: "Qty",
+      align: "center",
+      minWidth: "9rem",
       render: (r) => {
         const planned = Number(r.planned_quantity || 0);
         const produced = Number(r.produced_quantity ?? r.actual_quantity ?? 0);
         const remaining = r.remaining_quantity ?? Math.max(planned - produced, 0);
         return (
-          <div className="tabular-nums">
+          <div className="tabular-nums whitespace-nowrap text-center">
             <p className="text-[13px] font-semibold text-[var(--color-text)]">{planned}</p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
+            <p className="text-[11px] text-[var(--color-text-muted)] whitespace-nowrap">
               {produced} done · {remaining} left
             </p>
           </div>
@@ -953,19 +957,22 @@ export default function WorkOrders() {
     {
       key: "priority",
       label: "Priority",
+      minWidth: "7rem",
       render: (r) => <PriorityPill priority={r.priority} />,
     },
     {
       key: "progress",
       label: "Progress",
+      minWidth: "9rem",
       sortable: false,
       render: (r) => <ProgressCell row={r} />,
     },
     {
       key: "status",
       label: "Status",
+      minWidth: "9rem",
       render: (r) => (
-        <div className="flex flex-col items-start gap-1">
+        <div className="flex min-w-[8rem] flex-col items-start gap-1">
           <StatusBadge tone={woStatusTone(r)}>
             {r.is_delayed ? "Delayed" : woStatusLabel(r.status)}
           </StatusBadge>
@@ -1379,7 +1386,7 @@ export default function WorkOrders() {
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-hidden rounded-lg border border-[#ececf0] print:border-none print:shadow-none">
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-[#ececf0] print:border-none print:shadow-none">
             <DataTable
               columns={columns}
               data={paginatedWorkOrders}

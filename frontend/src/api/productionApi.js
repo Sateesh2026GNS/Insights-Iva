@@ -186,7 +186,7 @@ export const quickCreateWorkOrder = (payload) =>
 export const updateWorkOrder = (workOrderId, _tenantId, payload) =>
   apiPatch(`/api/production/work-orders/${workOrderId}`, payload);
 
-export const updateMachineStatus = (machineId, _tenantId, status, idleReason) =>
+export const updateMachineStatus = (machineId, status, idleReason) =>
   apiPatch(`/api/masters/machines/${machineId}/status`, {
     status,
     ...(idleReason ? { idle_reason: idleReason } : {}),

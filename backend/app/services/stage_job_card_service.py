@@ -359,9 +359,9 @@ def _stage_editable(stage: str, ws: str, user: User | None) -> bool:
         "inventory_check": "inventory",
         "store": "inventory",
         "production_manager": "production",
-        # Production managers supervise shop-floor execution and need to be
-        # able to start/update the assigned work order from the workflow page.
-        "operator": ("operator", "production"),
+        # Shop-floor production entry is owned by the assigned Operator.
+        # Production Managers can review the card but should not edit or start it.
+        "operator": "operator",
         "quality": "quality",
         "packing": "packing",
         "billing": "billing",
@@ -387,9 +387,9 @@ def _stage_allowed_actions(stage: str, ws: str, user: User | None) -> list[str]:
             "MATERIAL_AVAILABLE": ["issue_materials", "partial_issue", "hold", "send_to_production"],
         },
         "production_manager": {
-            "READY_FOR_PRODUCTION": ["create_production_plan", "assign_operator", "hold", "send_to_operator"],
-            "PRODUCTION_REWORK": ["assign_operator", "hold", "send_to_operator"],
-            "QUALITY_REJECTED": ["assign_operator", "hold", "send_to_operator"],
+            "READY_FOR_PRODUCTION": ["send_to_operator", "hold"],
+            "PRODUCTION_REWORK": ["send_to_operator", "hold"],
+            "QUALITY_REJECTED": ["send_to_operator", "hold"],
         },
         "operator": {
             "PRODUCTION_ASSIGNED": ["start_work"],

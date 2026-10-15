@@ -72,18 +72,20 @@ export default function OperatorMyMachine() {
                       Current job: <span className="font-semibold">{m.active_work_order.work_order_number}</span>
                     </p>
                   )}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    to={`/alerts/machine-failure?machine=${m.id}`}
-                    leftIcon={<AlertTriangle className="h-4 w-4" />}
-                  >
-                    Report issue
-                  </Button>
-                  <Link to="/alerts/machine-failure" className="text-xs text-[var(--color-primary)] hover:underline">
-                    Open machine alerts
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      to={`/alerts/machine-failure?machine=${m.id}&machine_name=${encodeURIComponent(m.name || m.code || `Machine #${m.id}`)}`}
+                      leftIcon={<AlertTriangle className="h-4 w-4" />}
+                    >
+                      Report issue
+                    </Button>
+                    <Link to="/alerts/machine-failure" className="text-sm leading-5 text-[var(--color-primary)] hover:underline">
+                      Open machine alerts
+                    </Link>
+                  </div>
                 </ListPageCardBody>
               </ListPageCard>
             ))}

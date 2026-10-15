@@ -678,6 +678,7 @@ export default function MyJobCardsPage() {
             key={activeOrderId || activeJobCardId || "empty-operator"}
             orderId={activeOrderId || null}
             row={activeRow}
+            onQueueRefresh={() => load(true)}
             showEmptyShell={!activeOrderId && !activeJobCardId}
             emptyMessage={
               filtered.length === 0

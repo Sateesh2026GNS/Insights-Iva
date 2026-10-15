@@ -432,6 +432,7 @@ export default function DailyReports() {
       {
         key: "report_date",
         label: "Date",
+        minWidth: "9rem",
         render: (r) => (
           <div className="min-w-[5.5rem]">
             <p className="text-[13px] font-semibold tabular-nums text-[var(--color-text)]">{formatDate(r.report_date)}</p>
@@ -442,12 +443,13 @@ export default function DailyReports() {
       {
         key: "work_order_number",
         label: "Work order",
+        minWidth: "16rem",
         render: (r) => {
           const product = cleanProductLabel(r.product_name);
           return (
-            <div className="max-w-[220px]">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[13px] font-semibold tabular-nums text-[var(--color-text)]">
+            <div className="min-w-[14rem] max-w-[18rem]">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="max-w-full truncate whitespace-nowrap text-[13px] font-semibold tabular-nums text-[var(--color-text)]" title={r.work_order_number || undefined}>
                   {r.work_order_number || "—"}
                 </p>
                 {isSyncedRow(r) ? <StatusBadge tone="pending">Synced</StatusBadge> : null}
@@ -462,6 +464,7 @@ export default function DailyReports() {
       {
         key: "machine_name",
         label: "Machine",
+        minWidth: "11rem",
         render: (r) => (
           <div className="max-w-[160px]">
             <p className="truncate text-[13px] font-medium text-[var(--color-text)]">{r.machine_name || "—"}</p>
@@ -472,8 +475,10 @@ export default function DailyReports() {
       {
         key: "planned_quantity",
         label: "Plan",
+        align: "center",
+        minWidth: "6rem",
         render: (r) => (
-          <span className="tabular-nums text-[13px] text-[var(--color-text-secondary)]">
+          <span className="whitespace-nowrap tabular-nums text-[13px] text-[var(--color-text-secondary)]">
             {r.planned_quantity != null ? num(r.planned_quantity).toLocaleString() : "—"}
           </span>
         ),
@@ -481,11 +486,13 @@ export default function DailyReports() {
       {
         key: "produced_quantity",
         label: "Output",
+        align: "center",
+        minWidth: "7rem",
         render: (r) => {
           const produced = producedOf(r);
           const scrap = scrapOf(r);
           return (
-            <div>
+            <div className="whitespace-nowrap text-center">
               <p className="tabular-nums text-[13px] font-semibold text-[var(--color-text)]">{produced.toLocaleString()}</p>
               <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">Scrap {scrap.toLocaleString()}</p>
             </div>
@@ -495,6 +502,8 @@ export default function DailyReports() {
       {
         key: "yield",
         label: "Yield",
+        align: "center",
+        minWidth: "6rem",
         render: (r) => {
           const produced = producedOf(r);
           const good = goodOf(r);
@@ -506,10 +515,12 @@ export default function DailyReports() {
       {
         key: "downtime_minutes",
         label: "Downtime",
+        align: "center",
+        minWidth: "8rem",
         render: (r) => {
           const mins = num(r.downtime_minutes);
           return (
-            <span className={`tabular-nums text-[13px] font-medium ${mins > 0 ? "text-[var(--color-warning)]" : "text-[var(--color-text-muted)]"}`}>
+            <span className={`whitespace-nowrap tabular-nums text-[13px] font-medium ${mins > 0 ? "text-[var(--color-warning)]" : "text-[var(--color-text-muted)]"}`}>
               {mins} min
             </span>
           );
@@ -654,7 +665,7 @@ export default function DailyReports() {
           <Loader label="Refreshing…" />
         ) : (
           <>
-            <div className="overflow-hidden rounded-lg border border-[var(--color-border-soft)]">
+            <div className="overflow-x-auto rounded-lg border border-[var(--color-border-soft)]">
               <DataTable
                 columns={columns}
                 data={paginated}
