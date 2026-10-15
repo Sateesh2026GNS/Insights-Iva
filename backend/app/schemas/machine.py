@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-VALID_MACHINE_STATUSES = {"idle", "running", "maintenance", "breakdown", "offline"}
+VALID_MACHINE_STATUSES = {"idle", "running", "maintenance", "breakdown", "offline", "stopped"}
 
 
 class MachineExtendedBase(BaseModel):

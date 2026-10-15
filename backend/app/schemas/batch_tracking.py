@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 VALID_TRACEABILITY_STATUSES = {
-    "completed", "running", "passed", "failed", "pending", "dispatched", "in_process", "on_hold", "skipped"
+    "completed", "running", "passed", "failed", "pending", "confirmed", "dispatched", "in_process", "on_hold", "skipped"
 }
 
 VALID_BATCH_STATUSES = {"in_process", "running", "completed", "hold", "on_hold", "rejected", "expired"}

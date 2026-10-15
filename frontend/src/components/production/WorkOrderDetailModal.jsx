@@ -591,11 +591,6 @@ export default function WorkOrderDetailModal({
 
         {/* Sticky footer actions */}
         <footer className="wo-drawer-footer">
-          <div className="mb-3 grid gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-muted)] sm:grid-cols-3">
-            <p><strong className="text-[var(--color-text)]">Pause:</strong> Use for a temporary interruption; resume the work later.</p>
-            <p><strong className="text-[var(--color-text)]">Stop:</strong> End this run and return the work order to Planned so it can be restarted.</p>
-            <p><strong className="text-[var(--color-text)]">Complete:</strong> Use after production is recorded and finished; final QC must pass before finished goods are posted.</p>
-          </div>
           <div className="flex flex-wrap items-center gap-2">
             {onIssueMaterials && canWoIssueMaterials(w.status, w.materials_issued) ? (
               <Button variant="secondary" type="button" disabled={issuing || detailLoading} onClick={() => onIssueMaterials(w)}>

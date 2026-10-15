@@ -120,7 +120,7 @@ def get_production_hub(db: Session, tenant_id: int) -> ProductionHubRead:
             }
         )
 
-    machine_status = [{"name": m.name, "status": m.status, "code": m.code} for m in machines[:8]]
+    machine_status = [{"name": m.name, "status": m.status, "code": m.code} for m in machines]
 
     from app.models.inventory import InventoryItem, StockLevel, Warehouse
     from app.models.quality import QualityInspection

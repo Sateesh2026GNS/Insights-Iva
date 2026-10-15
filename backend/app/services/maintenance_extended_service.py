@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.inventory import InventoryItem
 from app.models.machine import Machine
 from app.models.maintenance import BreakdownReport, MaintenanceRecord, PreventiveMaintenance
+from app.models.production import WorkOrder
 from app.schemas.maintenance_extended import (
     BreakdownEnrichedRead,
     BreakdownSummaryRead,

@@ -347,9 +347,11 @@ export default function MachineAllocation() {
       {
         key: "work_order_number",
         label: "Work Order",
+        width: "15rem",
+        className: "whitespace-nowrap",
         render: (r) => (
-          <div className="min-w-[7rem]">
-            <p className="text-[13px] font-semibold tabular-nums text-[var(--color-text)]">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-semibold tabular-nums text-[var(--color-text)]" title={r.work_order_number || "—"}>
               {r.work_order_number || "—"}
             </p>
             <p className="mt-0.5 text-[11px] capitalize text-[var(--color-text-muted)]">
@@ -361,11 +363,12 @@ export default function MachineAllocation() {
       {
         key: "product_name",
         label: "Product",
+        width: "18rem",
         render: (r) => {
           const product = cleanProductLabel(r.product_name);
           const p = priorityStyle(r.priority);
           return (
-            <div className="max-w-[220px]">
+            <div className="min-w-0">
               <p className="truncate text-[13px] font-medium text-[var(--color-text)]" title={product}>
                 {product}
               </p>
@@ -380,9 +383,10 @@ export default function MachineAllocation() {
       {
         key: "machine_name",
         label: "Machine",
+        width: "12rem",
         render: (r) =>
           r.machine_name ? (
-            <span className="text-[13px] font-medium text-[var(--color-text)]">{r.machine_name}</span>
+            <span className="block truncate text-[13px] font-medium text-[var(--color-text)]" title={r.machine_name}>{r.machine_name}</span>
           ) : (
             <span className="text-[12px] font-semibold text-[var(--color-warning)]">Unassigned</span>
           ),
@@ -390,8 +394,9 @@ export default function MachineAllocation() {
       {
         key: "operator_name",
         label: "Operator",
+        width: "9rem",
         render: (r) => (
-          <span className="text-[13px] text-[var(--color-text-secondary)]">
+          <span className="block truncate text-[13px] text-[var(--color-text-secondary)]" title={r.operator_name || r.assigned_operator || r.operator || "—"}>
             {r.operator_name || r.assigned_operator || r.operator || "—"}
           </span>
         ),
@@ -399,6 +404,8 @@ export default function MachineAllocation() {
       {
         key: "capacity_pct",
         label: "Load",
+        width: "8rem",
+        align: "left",
         render: (r) => {
           const pct = Number(r.capacity_pct || 0);
           return (
@@ -417,6 +424,8 @@ export default function MachineAllocation() {
       {
         key: "status",
         label: "Status",
+        width: "10rem",
+        className: "whitespace-nowrap",
         render: (r) => (
           <StatusBadge tone={statusTone(isUnassigned(r) ? "unassigned" : r.status)}>
             {isUnassigned(r) ? "unassigned" : r.status || "—"}
@@ -531,6 +540,7 @@ export default function MachineAllocation() {
                 data={filtered}
                 searchKeys={["work_order_number", "product_name", "machine_name"]}
                 showSearch={false}
+                tableClassName="table-fixed min-w-[75rem]"
               />
             )}
           </div>

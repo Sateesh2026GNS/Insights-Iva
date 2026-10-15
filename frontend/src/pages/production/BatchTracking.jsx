@@ -111,16 +111,33 @@ export default function BatchTracking() {
   };
 
   const columns = [
-    { key: "batch_code", label: "Batch" },
-    { key: "product_name", label: "Product" },
-    { key: "work_order_number", label: "Work Order", render: (r) => r.work_order_number || "—" },
-    { key: "production_date", label: "Production Date", render: (r) => formatDate(r.production_date) },
-    { key: "quantity", label: "Quantity" },
-    { key: "good_qty", label: "Good Quantity" },
-    { key: "scrap_qty", label: "Scrap" },
+    {
+      key: "batch_code",
+      label: "Batch",
+      width: "13rem",
+      render: (r) => <span className="block truncate font-medium" title={r.batch_code || "—"}>{r.batch_code || "—"}</span>,
+    },
+    {
+      key: "product_name",
+      label: "Product",
+      width: "12rem",
+      render: (r) => <span className="block truncate" title={r.product_name || "—"}>{r.product_name || "—"}</span>,
+    },
+    {
+      key: "work_order_number",
+      label: "Work Order",
+      width: "13rem",
+      render: (r) => <span className="block truncate" title={r.work_order_number || "—"}>{r.work_order_number || "—"}</span>,
+    },
+    { key: "production_date", label: "Production Date", width: "10rem", className: "whitespace-nowrap", render: (r) => formatDate(r.production_date) },
+    { key: "quantity", label: "Quantity", width: "7rem", align: "center" },
+    { key: "good_qty", label: "Good Quantity", width: "9rem", align: "center" },
+    { key: "scrap_qty", label: "Scrap", width: "7rem", align: "center" },
     {
       key: "status",
       label: "Status",
+      width: "9rem",
+      className: "whitespace-nowrap",
       render: (r) => (
         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${batchStatusColor(r.status)}`}>
           {r.status}
@@ -130,6 +147,8 @@ export default function BatchTracking() {
     {
       key: "actions",
       label: "Action",
+      width: "6rem",
+      align: "center",
       render: (r) => (
         <button type="button" onClick={() => openDetail(r)} className="text-xs font-semibold text-[var(--color-action-blue)] hover:underline">
           View
@@ -185,6 +204,7 @@ export default function BatchTracking() {
             data={filtered}
             searchKeys={["batch_code", "product_name", "work_order_number"]}
             showSearch={false}
+            tableClassName="table-fixed min-w-[89rem]"
           />
         </ListPageCardBody>
       </ListPageCard>

@@ -2267,14 +2267,75 @@ table > tbody > tr:first-child:has(th) {
 .planning-table-panel {
   min-width: 0;
   width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-table-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-table-bg);
+  box-shadow: var(--shadow-sm);
 }
 .planning-table-panel .ui-table-wrap {
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  border: 0;
+  border-radius: inherit;
+}
+.planning-table-panel .ui-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+.planning-table-panel .ui-table-wrap tbody td {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+}
+.planning-table-panel .ui-table-wrap tbody tr {
+  transition: background-color 0.15s ease;
+}
+.planning-table-panel .production-planning-table thead th:last-child,
+.planning-table-panel .production-planning-table tbody td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  box-shadow: -8px 0 10px -10px rgb(15 23 42 / 45%);
+}
+.planning-table-panel .production-planning-table thead th:last-child {
+  z-index: 3;
+  background-color: var(--color-table-header);
+}
+.planning-table-panel .production-planning-table tbody td:last-child {
+  background-color: var(--color-table-bg);
+}
+.planning-table-panel .production-planning-table tbody tr:nth-child(even) td:last-child {
+  background-color: var(--color-table-row-alt);
+}
+.planning-table-panel .production-planning-table tbody tr:hover td:last-child {
+  background-color: var(--color-table-row-hover);
 }
 .planning-table-panel .ui-table-wrap table {
   min-width: 960px;
+}
+.planning-table-panel .ui-table-wrap .production-planning-table {
+  min-width: 78rem;
+  table-layout: fixed;
+}
+.planning-table-panel .ui-table-wrap .work-orders-table {
+  min-width: 88rem;
+}
+.planning-table-panel .ui-table-wrap .work-orders-table th.work-orders-qty-column,
+.planning-table-panel .ui-table-wrap .work-orders-table td.work-orders-qty-column {
+  width: 9rem !important;
+  min-width: 9rem !important;
+  text-align: center !important;
+}
+.planning-table-panel .work-orders-table thead th:last-child,
+.planning-table-panel .work-orders-table tbody td:last-child {
+  position: static;
+  right: auto;
+  z-index: auto;
+  box-shadow: none;
 }
 .ui-empty {
   padding: var(--space-12) var(--space-4);
