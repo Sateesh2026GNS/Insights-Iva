@@ -12,8 +12,7 @@ def client():
 
 def test_public_contact_inquiry_submission(client):
     """Verify that any unauthenticated user can submit the contact form."""
-    with patch("app.services.email_service.send_email_async", new_callable=AsyncMock) as mock_send:
-        mock_send.return_value = None
+    with patch("app.api.settings._deliver_contact_inquiry_sync") as mock_deliver:
         payload = {
             "name": "Jane Visitor",
             "email": "jane@example.com",
@@ -25,10 +24,10 @@ def test_public_contact_inquiry_submission(client):
         data = res.json()
         assert data.get("success") is True
         assert "message" in data
-        assert mock_send.call_count >= 1
-        # Check that recipient includes info@codeviasoftware.com
-        called_args = [call.kwargs.get("to") for call in mock_send.call_args_list]
-        assert "info@codeviasoftware.com" in called_args
+        assert mock_deliver.call_count == 1
+        call_args = mock_deliver.call_args[0]
+        assert call_args[0] == "Jane Visitor"
+        assert call_args[1] == "jane@example.com"
 
 
 def test_contact_inquiry_validation(client):

@@ -149,22 +149,29 @@ def contact_sales_endpoint(
     return success_response(data.get("message") or "Inquiry submitted", data)
 
 
-async def _deliver_contact_inquiry(
+def _deliver_contact_inquiry_sync(
     name: str,
     email: str,
     phone: str | None,
-    account_info: str,
     message: str,
 ) -> None:
-    from app.services.email_service import send_email_async
+    import smtplib
+    from email.message import EmailMessage
+    from app.core.config import get_settings
+
+    cfg = get_settings()
+    host = (cfg.smtp_host or "smtp.gmail.com").strip()
+    port = int(cfg.smtp_port or 465)
+    username = (cfg.smtp_user or "admin@codeviasoftware.com").strip()
+    password = (cfg.smtp_password or "ynmv punh shyh arij").replace(" ", "").strip()
+    from_email = (cfg.smtp_from_email or username).strip()
 
     subject = f"Insights Iva contact message from {name}"
     body = (
         "A new message was sent from the Insights Iva Contact Us page.\n\n"
         f"Name: {name}\n"
         f"Email: {email}\n"
-        f"Phone: {phone or 'Not provided'}\n"
-        f"User Status: {account_info}\n\n"
+        f"Phone: {phone or 'Not provided'}\n\n"
         "Message:\n"
         f"{message}\n"
     )
@@ -172,7 +179,6 @@ async def _deliver_contact_inquiry(
         "name": name,
         "email": email,
         "phone": phone or "Not provided",
-        "account_info": account_info,
         "message": message,
     }.items()}
     html_body = (
@@ -183,7 +189,6 @@ async def _deliver_contact_inquiry(
         f'<p style="margin:8px 0;"><b>Name:</b> {safe["name"]}</p>'
         f'<p style="margin:8px 0;"><b>Email:</b> <a href="mailto:{safe["email"]}">{safe["email"]}</a></p>'
         f'<p style="margin:8px 0;"><b>Phone:</b> {safe["phone"]}</p>'
-        f'<p style="margin:8px 0;"><b>User Status:</b> {safe["account_info"]}</p>'
         '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />'
         f'<p style="margin:8px 0;"><b>Message:</b></p>'
         f'<div style="background:#f8fafc;padding:12px 16px;border-radius:8px;border:1px solid #e2e8f0;white-space:pre-wrap;">{safe["message"]}</div>'
@@ -193,42 +198,42 @@ async def _deliver_contact_inquiry(
     )
 
     recipients = ["info@codeviasoftware.com", "admin@codeviasoftware.com"]
-    delivered = False
-    for recipient in recipients:
-        try:
-            await send_email_async(
-                to=recipient,
-                subject=subject,
-                body=body,
-                html=html_body,
-                require_smtp=False,
-            )
-            delivered = True
-        except Exception as exc:
-            logger.warning("Failed sending contact message to %s: %s", recipient, exc)
 
-    if not delivered:
-        logger.error(
-            "Contact form inquiry could not be sent via SMTP. Name=%s Email=%s Phone=%s Message=%s",
-            name, email, phone, message
-        )
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"Insights Iva <{from_email}>"
+    msg["To"] = ", ".join(recipients)
+    msg.set_content(body)
+    msg.add_alternative(html_body, subtype="html")
+
+    try:
+        if port == 465 or "gmail.com" in host.lower():
+            with smtplib.SMTP_SSL(host, 465, timeout=10) as server:
+                server.login(username, password)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(host, port, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(username, password)
+                server.send_message(msg)
+        logger.info("Delivered contact inquiry from %s (%s) to %s", name, email, recipients)
+    except Exception as exc:
+        logger.exception("Failed delivering contact inquiry via SMTP: %s", exc)
 
 
 @router.post("/contact")
-async def send_contact_inquiry_endpoint(
+def send_contact_inquiry_endpoint(
     payload: ContactInquiryRequest,
     background_tasks: BackgroundTasks,
-    user: User | None = Depends(get_optional_current_user),
 ) -> dict:
-    """Deliver contact form submissions to the Codevia support inboxes."""
-    account_info = f"{user.email} (ID: {user.id})" if user else "Public / Website Visitor"
-
+    """Deliver contact form submissions to Codevia support inboxes asynchronously."""
     background_tasks.add_task(
-        _deliver_contact_inquiry,
+        _deliver_contact_inquiry_sync,
         payload.name,
         payload.email,
         payload.phone,
-        account_info,
         payload.message,
     )
 
