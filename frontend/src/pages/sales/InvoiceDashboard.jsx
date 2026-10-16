@@ -246,7 +246,7 @@ export default function InvoiceDashboard() {
   return (
     <div className="min-h-full bg-[var(--color-bg)] px-3 py-4 sm:px-6 sm:py-5">
       {/* Date range and create action aligned like the Quotations toolbar */}
-      <div className="mb-3 flex flex-col items-start gap-3 sm:ml-4 sm:flex-row sm:items-center">
+      <div className="mb-3 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
         <InlineNativeDateRange
           from={dateFrom}
           to={dateTo}

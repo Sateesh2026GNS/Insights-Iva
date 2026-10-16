@@ -679,35 +679,40 @@ export function InlineNativeDateRange({
   return (
     <div
       className={`ui-date-range-control ${className}`.trim()}
-      style={{ display: "inline-flex", flexDirection: "row", boxSizing: "border-box", width: "fit-content", maxWidth: "100%", height: 42, justifyContent: "flex-start", alignItems: "center", gap: 4, padding: "4px 4px", marginInlineStart: 0, overflow: "hidden" }}
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        flex: "0 0 auto",
+        flexDirection: "row",
+        boxSizing: "border-box",
+        width: "fit-content",
+        maxWidth: "100%",
+        height: 42,
+        justifyContent: "flex-start",
+        alignItems: "center",
+        gap: 4,
+        padding: "0 10px",
+        margin: 0,
+        alignSelf: "flex-start",
+        overflow: "hidden",
+      }}
       role="group"
       aria-label="Date range"
     >
-      <label htmlFor={fromId} className="sr-only">{fromLabel}</label>
-      <label htmlFor={toId} className="sr-only">{toLabel}</label>
-      <input
-        id={fromId}
-        ref={fromRef}
-        type="date"
-        value={from}
-        min={min}
-        max={to || max || undefined}
-        onChange={(e) => onFromChange?.(e.target.value)}
-        className="sr-only"
-        tabIndex={-1}
-      />
-      <input
-        id={toId}
-        ref={toRef}
-        type="date"
-        value={to}
-        min={from || min || undefined}
-        max={max}
-        onChange={(e) => onToChange?.(e.target.value)}
-        className="sr-only"
-        tabIndex={-1}
-      />
-      <div className="ui-date-range-control__content" style={{ display: "inline-flex", flex: "0 0 auto", alignItems: "center", justifyContent: "flex-start", gap: 4, width: "fit-content", marginInlineStart: 0, whiteSpace: "nowrap" }}>
+      <div
+        className="ui-date-range-control__content"
+        style={{
+          display: "inline-flex",
+          flex: "0 0 auto",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          gap: 4,
+          width: "fit-content",
+          margin: 0,
+          padding: 0,
+          whiteSpace: "nowrap",
+        }}
+      >
         <button
           type="button"
           onClick={openFrom}
@@ -732,6 +737,59 @@ export function InlineNativeDateRange({
           </span>
         </button>
       </div>
+
+      <label htmlFor={fromId} className="sr-only" style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", border: 0 }}>{fromLabel}</label>
+      <label htmlFor={toId} className="sr-only" style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", border: 0 }}>{toLabel}</label>
+      <input
+        id={fromId}
+        ref={fromRef}
+        type="date"
+        value={from}
+        min={min}
+        max={to || max || undefined}
+        onChange={(e) => onFromChange?.(e.target.value)}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          minHeight: 0,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          border: 0,
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      />
+      <input
+        id={toId}
+        ref={toRef}
+        type="date"
+        value={to}
+        min={from || min || undefined}
+        max={max}
+        onChange={(e) => onToChange?.(e.target.value)}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          minHeight: 0,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          border: 0,
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      />
     </div>
   );
 }
