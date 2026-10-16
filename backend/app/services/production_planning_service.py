@@ -14,6 +14,7 @@ from app.models.production import (
     ProductionOrder,
     WorkOrder,
 )
+from app.models.quality import QualityInspection
 from app.models.sales import SalesOrder
 from app.models.user import User
 from app.schemas.production_planning import (
@@ -40,6 +41,27 @@ def _effective_workflow_status(
     workflow_status: str | None, work_order_statuses: list[str]
 ) -> str | None:
     """Resolve stale sales workflow state from the production work orders."""
+    normalized_workflow_status = str(workflow_status or "").strip().upper()
+    downstream_statuses = {
+        "QUALITY_CHECK_PENDING",
+        "QUALITY_ON_HOLD",
+        "QUALITY_APPROVED",
+        "QUALITY_REJECTED",
+        "PRODUCTION_REWORK",
+        "PACKING_PENDING",
+        "PACKING_IN_PROGRESS",
+        "PACKING_ISSUE",
+        "PACKED",
+        "BILLING_PENDING",
+        "BILLING_HOLD",
+        "INVOICED",
+        "COMPLETED",
+        "CANCELLED",
+        "CANCELED",
+    }
+    if normalized_workflow_status in downstream_statuses:
+        return normalized_workflow_status
+
     if work_order_statuses:
         normalized = [str(status or "").strip().lower() for status in work_order_statuses]
         if all(status in COMPLETED_STATUSES for status in normalized):
@@ -158,6 +180,36 @@ def _to_list_read(db: Session, tenant_id: int, order: ProductionOrder) -> Produc
         sales_order.workflow_status if sales_order else None,
         [child.status for child in ctx["work_orders"]],
     )
+    if sales_order and workflow_status in {
+        None,
+        "SALES_CONFIRMED",
+        "READY_FOR_PRODUCTION",
+        "PRODUCTION_ASSIGNED",
+        "PRODUCTION_IN_PROGRESS",
+        "PRODUCTION_COMPLETED",
+        "QUALITY_CHECK_PENDING",
+    }:
+        latest_final_qc = db.scalars(
+            select(QualityInspection)
+            .where(
+                QualityInspection.tenant_id == tenant_id,
+                QualityInspection.sales_order_number == sales_order.order_number,
+                QualityInspection.inspection_type == "final",
+            )
+            .order_by(QualityInspection.inspection_date.desc(), QualityInspection.id.desc())
+            .limit(1)
+        ).first()
+        if latest_final_qc:
+            qc_result = str(latest_final_qc.result or "").strip().lower()
+            qc_status = str(latest_final_qc.status or "").strip().lower()
+            if qc_result in {"pass", "passed", "approved"} or qc_status in {"pass", "passed", "approved"}:
+                workflow_status = "QUALITY_APPROVED"
+            elif qc_result in {"fail", "failed", "rejected"} or qc_status in {"fail", "failed", "rejected"}:
+                workflow_status = "PRODUCTION_REWORK"
+            elif qc_result in {"hold", "conditional"} or qc_status in {"hold", "on_hold"}:
+                workflow_status = "QUALITY_ON_HOLD"
+            elif qc_status in {"pending", "in_progress"} or qc_result == "pending":
+                workflow_status = "QUALITY_CHECK_PENDING"
 
     op_name = getattr(order, "operator_name", None) or (wo.operator_name if wo else None)
     if not op_name and wo and wo.assigned_user_id:

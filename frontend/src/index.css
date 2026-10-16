@@ -1553,6 +1553,21 @@ input.pl-8 {
 .ui-list-toolbar__start {
   flex: 1;
 }
+.ui-list-toolbar__start > .ui-search-wrap,
+.ui-list-toolbar__start > .flex.items-center.gap-2,
+.ui-list-toolbar__start > .ui-caption {
+  align-self: center;
+}
+.ui-list-toolbar__start > .ui-search-wrap .erp-list-search-input,
+.ui-list-toolbar__start > .flex.items-center.gap-2 .ui-select {
+  height: var(--control-h);
+  min-height: var(--control-h);
+  box-sizing: border-box;
+}
+.ui-list-toolbar__start > .flex.items-center.gap-2,
+.ui-list-toolbar__start > .ui-caption {
+  line-height: var(--control-h);
+}
 .ui-list-toolbar__end {
   display: flex;
   flex-wrap: wrap;
@@ -1560,6 +1575,14 @@ input.pl-8 {
   gap: var(--space-2);
   flex-shrink: 0;
   margin-left: auto;
+}
+.quality-inspection-toolbar .ui-list-toolbar__start > .flex.items-center.gap-2 {
+  margin-left: auto;
+}
+@media (max-width: 639px) {
+  .quality-inspection-toolbar .ui-list-toolbar__start > .flex.items-center.gap-2 {
+    margin-left: 0;
+  }
 }
 .ui-link-clear {
   font-size: var(--text-sm);
@@ -2139,6 +2162,26 @@ table:has(thead.ui-table-head) tbody tr:hover td {
 .ui-table tbody tr:last-child td,
 table:has(thead.ui-table-head) tbody tr:last-child td {
   border-bottom: none;
+}
+.ui-table-head th.batch-quality-action-col {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background-color: var(--color-table-header);
+  box-shadow: -8px 0 12px -12px rgba(15, 23, 42, 0.75);
+}
+table:has(thead.ui-table-head) tbody td.batch-quality-action-col {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background-color: var(--color-table-bg);
+  box-shadow: -8px 0 12px -12px rgba(15, 23, 42, 0.55);
+}
+table:has(thead.ui-table-head) tbody tr:nth-child(even) td.batch-quality-action-col {
+  background-color: var(--color-table-row-alt);
+}
+table:has(thead.ui-table-head) tbody tr:hover td.batch-quality-action-col {
+  background-color: var(--color-table-row-hover);
 }
 .ui-table-text-secondary {
   color: var(--color-table-text-secondary);

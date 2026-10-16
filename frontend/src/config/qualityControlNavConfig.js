@@ -36,10 +36,10 @@ export const QUALITY_CONTROL_NAV_ITEMS = [
     icon: CheckCircle2,
     module: "quality",
     children: [
-      { key: "qualityDashboard", label: "Quality Dashboard", to: "/quality", module: "quality", end: true },
       { key: "incoming", label: "Incoming Inspection", to: "/quality/incoming", module: "quality", end: true },
       { key: "inProcess", label: "In-Process QC", to: "/quality/in-process", module: "quality", end: true },
       { key: "final", label: "Final QC", to: "/quality/final", module: "quality", end: true },
+      { key: "qualityQueue", label: "Quality Check Queue", to: "/my-job-cards?dept=quality", module: "quality" },
       { key: "batchReports", label: "Batch Reports", to: "/quality/batch-reports", module: "quality", end: true },
       { key: "inspections", label: "Quality Inspections", to: "/quality/inspection", module: "quality", end: true },
       {

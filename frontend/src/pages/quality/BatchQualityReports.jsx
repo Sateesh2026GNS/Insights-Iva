@@ -253,6 +253,8 @@ export default function BatchQualityReports() {
   const [selectedResults, setSelectedResults] = useState([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -362,12 +364,31 @@ export default function BatchQualityReports() {
   if (loading) return <Loader label="Loading batch quality reports..." />;
 
   const handleExport = (format) => {
+    const rowsToExport = exportRows.length
+      ? exportRows
+      : [{
+          batch_no: "No batch reports found",
+          product: "",
+          work_order: "",
+          process: "",
+          quantity: "",
+          start_date: "",
+          end_date: "",
+          status: "",
+          result: "",
+          pass_rate: "",
+        }];
     if (format === "pdf") {
-      exportToPdf(exportRows, BATCH_EXPORT_COLUMNS, "Batch Quality Reports", "batch-quality-reports");
+      exportToPdf(rowsToExport, BATCH_EXPORT_COLUMNS, "Batch Quality Reports", "batch-quality-reports");
     } else {
-      exportToExcel(exportRows, BATCH_EXPORT_COLUMNS, "batch-quality-reports");
+      exportToExcel(rowsToExport, BATCH_EXPORT_COLUMNS, "batch-quality-reports");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    addToast(
+      exportRows.length
+        ? (format === "pdf" ? "Exported to PDF" : "Exported to Excel")
+        : `Exported an empty report: no batch records match the current filters`,
+      exportRows.length ? "success" : "info",
+    );
   };
 
   return (
@@ -377,11 +398,10 @@ export default function BatchQualityReports() {
         subtitle="View and analyze quality results by batch"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <Button
               type="button"
               variant="primary"
-              disabled={!exportRows.length}
               onClick={() => handleExport("pdf")}
             >
               <LineChart className="h-4 w-4" /> Generate Report
@@ -446,24 +466,19 @@ export default function BatchQualityReports() {
             placeholder="Search"
             aria-label="Search batch quality reports"
           />
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
-              <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
-                aria-label="Date from"
-              />
-              <span className="text-[var(--color-text-muted)]">to</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
-                aria-label="Date to"
-              />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <button type="button" aria-label="Open start date picker" onClick={() => { const input = dateFromRef.current; if (!input) return; if (input.showPicker) input.showPicker(); else { input.focus(); input.click(); } }} className="shrink-0 text-[var(--color-text-muted)]">
+                <CalendarDays className="h-4 w-4" />
+              </button>
+              <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date from" />
+            </div>
+            <span className="text-sm text-[var(--color-text-muted)]">to</span>
+            <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <button type="button" aria-label="Open end date picker" onClick={() => { const input = dateToRef.current; if (!input) return; if (input.showPicker) input.showPicker(); else { input.focus(); input.click(); } }} className="shrink-0 text-[var(--color-text-muted)]">
+                <CalendarDays className="h-4 w-4" />
+              </button>
+              <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date to" />
             </div>
             <Button
               type="button"
@@ -559,7 +574,7 @@ export default function BatchQualityReports() {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Result</th>
                 <th className="px-4 py-3">Pass Rate</th>
-                <th className="w-[4.5rem] px-3 py-3 text-right">Action</th>
+                <th className="batch-quality-action-col w-[4.5rem] px-3 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border-muted)]">
@@ -610,7 +625,7 @@ export default function BatchQualityReports() {
                     <td className="px-4 py-3.5 tabular-nums font-medium text-[var(--color-text)]">
                       {row.pass_rate != null ? `${row.pass_rate}%` : "—"}
                     </td>
-                    <td className="px-3 py-3.5 text-right">
+                    <td className="batch-quality-action-col px-3 py-3.5 text-right">
                       <InventoryRowActionsMenu
                         rowId={row.id ?? row.batch_code}
                         isOpen={openMenuId === (row.id ?? row.batch_code)}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import {
   Calendar,
@@ -26,7 +26,8 @@ import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
-import { getFinalEnriched, getFinalSummary } from "../../api/qualityApi";
+import { createFinalQC, getFinalEnriched, getFinalSummary } from "../../api/qualityApi";
+import { submitQualityCheck } from "../../api/workflowApi";
 import {
   EMPTY_FINAL_SUMMARY,
   formatInspectionDate,
@@ -109,6 +110,20 @@ export default function FinalQC() {
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewRow, setViewRow] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creatingFinalQC, setCreatingFinalQC] = useState(false);
+  const [newFinalQC, setNewFinalQC] = useState({
+    inspection_number: "",
+    inspection_date: new Date().toISOString().slice(0, 10),
+    customer_name: "",
+    sales_order_number: "",
+    product_name: "",
+    batch_code: "",
+    inspector: "",
+    notes: "",
+  });
+  const [savingPassId, setSavingPassId] = useState(null);
+  const dateInputRef = useRef(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -182,24 +197,60 @@ export default function FinalQC() {
   const failedPct = summary.total ? Math.round((summary.failed / summary.total) * 100) : 0;
   const inProgressPct = summary.total ? Math.round((summary.in_progress / summary.total) * 100) : 0;
 
-  const handleMarkPassed = (row) => {
+  const handleMarkPassed = async (row) => {
+    if (!row?.id || normalizeProcessStatus(row) !== "in_progress" || savingPassId !== null) return;
     const key = row.id ?? row.qc_number ?? row.inspection_number;
-    setRows((prev) =>
-      prev.map((r) =>
+    setSavingPassId(row.id);
+    try {
+      await submitQualityCheck(row.id, { result: "pass" });
+      const updatedRows = rows.map((r) =>
         (r.id ?? r.qc_number ?? r.inspection_number) === key
-          ? {
-              ...r,
-              status: "passed",
-              result: "conforming",
-              approval: "approved",
-              packing_status: "packed",
-              certificate_ref: r.certificate_ref || `COA-FQC-${r.id || ""}`,
-            }
+          ? { ...r, status: "passed", result: "pass", approval: "approved" }
           : r
-      )
-    );
-    addToast(`QC ${row.qc_number || row.inspection_number || ""} marked as passed`, "success");
-    setViewRow(null);
+      );
+      setRows(updatedRows);
+      setSummary((prev) => mergeFinalSummary(prev, updatedRows));
+      addToast(`QC ${row.qc_number || row.inspection_number || ""} marked as passed`, "success");
+      setViewRow(null);
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Could not update this Final QC inspection", "error");
+    } finally {
+      setSavingPassId(null);
+    }
+  };
+
+  const openNewFinalQCForm = () => {
+    setNewFinalQC({
+      inspection_number: `FQC-${Date.now()}`,
+      inspection_date: new Date().toISOString().slice(0, 10),
+      customer_name: "",
+      sales_order_number: "",
+      product_name: "",
+      batch_code: "",
+      inspector: "",
+      notes: "",
+    });
+    setShowCreateForm(true);
+  };
+
+  const handleCreateFinalQC = async (event) => {
+    event.preventDefault();
+    if (creatingFinalQC) return;
+    setCreatingFinalQC(true);
+    try {
+      const response = await createFinalQC(newFinalQC);
+      const createdRow = mapFinalRow(response.data);
+      const nextRows = [createdRow, ...rows];
+      setRows(nextRows);
+      setSummary((prev) => mergeFinalSummary(prev, nextRows));
+      setPage(1);
+      setShowCreateForm(false);
+      addToast("Final QC created successfully", "success");
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Could not create Final QC", "error");
+    } finally {
+      setCreatingFinalQC(false);
+    }
   };
 
   const exportRows = filtered.map((r) => ({
@@ -234,7 +285,7 @@ export default function FinalQC() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            <Button variant="add" onClick={openNewFinalQCForm} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New Final QC
             </Button>
           </div>
@@ -249,14 +300,30 @@ export default function FinalQC() {
             placeholder="Search"
             aria-label="Search final QC records"
           />
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex min-w-[10.5rem] items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
-              <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <button
+                type="button"
+                aria-label="Open date picker"
+                onClick={() => {
+                  const input = dateInputRef.current;
+                  if (!input) return;
+                  if (typeof input.showPicker === "function") input.showPicker();
+                  else {
+                    input.focus();
+                    input.click();
+                  }
+                }}
+                className="shrink-0 text-[var(--color-text-muted)]"
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
               <input
+                ref={dateInputRef}
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="min-w-[8.5rem] flex-1 border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none"
                 aria-label="Select date"
               />
             </div>
@@ -347,19 +414,31 @@ export default function FinalQC() {
 
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
+          <table className="w-full min-w-[1440px] table-fixed border-collapse text-left text-[13px]">
+            <colgroup>
+              <col className="w-[4.5rem]" />
+              <col className="w-[11rem]" />
+              <col className="w-[8.5rem]" />
+              <col className="w-[14rem]" />
+              <col className="w-[12rem]" />
+              <col className="w-[12rem]" />
+              <col className="w-[9rem]" />
+              <col className="w-[9rem]" />
+              <col className="w-[8rem]" />
+              <col className="w-[4.5rem]" />
+            </colgroup>
             <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">
-                <SerialNumberHeader className="px-3 py-3" />
-                <th className="px-4 py-3">QC No.</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Sales Order</th>
-                <th className="px-4 py-3">Item</th>
-                <th className="px-4 py-3">Checked By</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Result</th>
-                <th className="w-[4.5rem] px-3 py-3 text-right">Action</th>
+                <SerialNumberHeader className="!text-center whitespace-nowrap px-3 py-3" />
+                <th className="whitespace-nowrap px-4 py-3">QC No.</th>
+                <th className="whitespace-nowrap px-4 py-3">Date</th>
+                <th className="whitespace-nowrap px-4 py-3">Customer</th>
+                <th className="whitespace-nowrap px-4 py-3">Sales Order</th>
+                <th className="whitespace-nowrap px-4 py-3">Item</th>
+                <th className="whitespace-nowrap px-4 py-3">Checked By</th>
+                <th className="whitespace-nowrap px-4 py-3">Status</th>
+                <th className="whitespace-nowrap px-4 py-3">Result</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border-muted)]">
@@ -378,18 +457,28 @@ export default function FinalQC() {
                 pageRows.map((row, rowIndex) => (
                   <tr key={row.id ?? row.qc_number ?? row.inspection_number} className="hover:bg-[var(--color-surface-muted)]/50">
                     <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} className="px-3 py-3.5" />
-                    <td className="px-4 py-3.5 font-semibold text-[var(--color-text)]">
+                    <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-[var(--color-text)]">
                       {row.qc_number || row.inspection_number}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 text-[var(--color-text-secondary)]">
                       {formatInspectionDate(row.inspection_date)}
                     </td>
-                    <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">{row.customer_name || "—"}</td>
-                    <td className="px-4 py-3.5 font-medium text-[var(--color-text-secondary)]">
+                    <td
+                      className="truncate px-4 py-3.5 text-[var(--color-text-secondary)]"
+                      title={row.customer_name || "—"}
+                    >
+                      {row.customer_name || "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 font-medium text-[var(--color-text-secondary)]">
                       {row.sales_order_number || "—"}
                     </td>
-                    <td className="px-4 py-3.5 text-[var(--color-text)]">{row.product_name || "—"}</td>
-                    <td className="px-4 py-3.5 text-[var(--color-text-secondary)]">
+                    <td
+                      className="truncate px-4 py-3.5 text-[var(--color-text)]"
+                      title={row.product_name || "—"}
+                    >
+                      {row.product_name || "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-[var(--color-text-secondary)]">
                       {row.checked_by || row.inspector || "—"}
                     </td>
                     <td className="px-4 py-3.5">
@@ -405,6 +494,9 @@ export default function FinalQC() {
                         onOpen={setOpenMenuId}
                         onClose={() => setOpenMenuId(null)}
                         showAdd={false}
+                        showEdit={normalizeProcessStatus(row) === "in_progress"}
+                        editLabel="Mark as Passed"
+                        editIcon={CheckCircle}
                         showDelete={false}
                         onView={() => setViewRow(row)}
                         onEdit={() => handleMarkPassed(row)}
@@ -473,20 +565,20 @@ export default function FinalQC() {
       </div>
 
       {viewRow ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="ui-modal max-h-[90vh] w-full max-w-lg overflow-y-auto">
-            <div className="flex items-start justify-between border-b px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/45 p-4">
+          <div className="ui-modal !p-0 flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden">
+            <div className="flex shrink-0 items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">
                   {viewRow.qc_number || viewRow.inspection_number}
                 </h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Final quality check</p>
+                <p className="mt-1 text-sm text-[var(--color-text-muted)]">Final quality check details</p>
               </div>
-              <button type="button" onClick={() => setViewRow(null)} className="rounded-lg p-2 hover:bg-[var(--color-surface-muted)]" aria-label="Close">
+              <button type="button" onClick={() => setViewRow(null)} className="rounded-lg p-2 text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]" aria-label="Close">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <dl className="grid gap-3 p-6 sm:grid-cols-2">
+            <dl className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto p-5 sm:grid-cols-2">
               {[
                 ["Date", formatInspectionDate(viewRow.inspection_date)],
                 ["Customer", viewRow.customer_name || "—"],
@@ -499,29 +591,87 @@ export default function FinalQC() {
                 ["Checked By", viewRow.checked_by || viewRow.inspector || "—"],
                 ["Remarks", viewRow.remarks || "—"],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
-                  <dt className="text-xs text-[var(--color-text-muted)]">{label}</dt>
-                  <dd className="mt-1 font-semibold text-[var(--color-text)]">{value}</dd>
+                <div key={label} className="min-h-[4.25rem] rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{label}</dt>
+                  <dd className="mt-1 break-words text-sm font-semibold text-[var(--color-text)]">{value}</dd>
                 </div>
               ))}
-              <div className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
-                <dt className="text-xs text-[var(--color-text-muted)]">Status</dt>
+              <div className="min-h-[4.25rem] rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Status</dt>
                 <dd className="mt-1"><FinalStatusBadge row={viewRow} /></dd>
               </div>
-              <div className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
-                <dt className="text-xs text-[var(--color-text-muted)]">Result</dt>
+              <div className="min-h-[4.25rem] rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 p-3">
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Result</dt>
                 <dd className="mt-1"><FinalResultBadge row={viewRow} /></dd>
               </div>
             </dl>
-            <div className="flex justify-end gap-2 border-t px-6 py-4">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--color-border-soft)] bg-[var(--color-surface)] px-6 py-4">
               {normalizeProcessStatus(viewRow) === "in_progress" ? (
-                <Button type="button" variant="primary" onClick={() => handleMarkPassed(viewRow)}>
-                  Mark as Passed
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => handleMarkPassed(viewRow)}
+                  disabled={savingPassId !== null}
+                >
+                  {savingPassId === viewRow.id ? "Saving…" : "Mark as Passed"}
                 </Button>
               ) : null}
               <Button type="button" variant="secondary" onClick={() => setViewRow(null)}>Close</Button>
             </div>
           </div>
+        </div>
+      ) : null}
+      {showCreateForm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/45 p-4">
+          <form onSubmit={handleCreateFinalQC} className="ui-modal !p-0 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden">
+            <div className="flex shrink-0 items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--color-text)]">New Final QC</h2>
+                <p className="mt-1 text-sm text-[var(--color-text-muted)]">Create a final quality check record.</p>
+              </div>
+              <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]" aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-6 sm:grid-cols-2">
+              {[
+                ["inspection_number", "QC Number", "text", true],
+                ["inspection_date", "Date", "date", true],
+                ["customer_name", "Customer", "text", false],
+                ["sales_order_number", "Sales Order", "text", false],
+                ["product_name", "Item", "text", false],
+                ["batch_code", "Batch", "text", false],
+                ["inspector", "Checked By", "text", false],
+              ].map(([name, label, type, required]) => (
+                <label key={name} className="flex min-w-0 flex-col gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
+                  {label}{required ? " *" : ""}
+                  <input
+                    type={type}
+                    required={required}
+                    maxLength={name === "inspection_number" ? 64 : undefined}
+                    value={newFinalQC[name]}
+                    onChange={(event) => setNewFinalQC((prev) => ({ ...prev, [name]: event.target.value }))}
+                    className="ui-input w-full"
+                  />
+                </label>
+              ))}
+              <label className="flex min-w-0 flex-col gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] sm:col-span-2">
+                Remarks
+                <textarea
+                  rows={3}
+                  value={newFinalQC.notes}
+                  onChange={(event) => setNewFinalQC((prev) => ({ ...prev, notes: event.target.value }))}
+                  className="ui-input w-full resize-y"
+                />
+              </label>
+            </div>
+            <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--color-border-soft)] bg-[var(--color-surface)] px-6 py-4">
+              <Button type="button" variant="secondary" onClick={() => setShowCreateForm(false)} disabled={creatingFinalQC}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={creatingFinalQC}>
+                {creatingFinalQC ? "Creating…" : "Create Final QC"}
+              </Button>
+            </div>
+          </form>
         </div>
       ) : null}
     </div>

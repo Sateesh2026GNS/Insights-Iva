@@ -27,7 +27,7 @@ import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
-import { getProcessEnriched, getProcessSummary } from "../../api/qualityApi";
+import { createProcessQC, getProcessEnriched, getProcessSummary, updateProcessQCStatus } from "../../api/qualityApi";
 import {
   EMPTY_PROCESS_SUMMARY,
   formatInspectionDate,
@@ -248,6 +248,21 @@ export default function InProcessQC() {
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewRow, setViewRow] = useState(null);
+  const dateInputRef = useRef(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newQC, setNewQC] = useState({
+    inspection_date: new Date().toLocaleDateString("en-CA"),
+    work_order_number: "",
+    machine_name: "",
+    shift: "",
+    operator_name: "",
+    inspection_time_minutes: "",
+    product_name: "",
+    batch_code: "",
+    qc_status: "in_progress",
+    remarks: "",
+  });
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -341,17 +356,34 @@ export default function InProcessQC() {
   const failedPct = summary.total ? Math.round((summary.failed / summary.total) * 100) : 0;
   const inProgressPct = summary.total ? Math.round((summary.in_progress / summary.total) * 100) : 0;
 
-  const handleMarkPassed = (row) => {
-    const key = row.id ?? row.qc_number;
-    setRows((prev) =>
-      prev.map((r) =>
-        (r.id ?? r.qc_number) === key
-          ? { ...r, status: "passed", qc_status: "passed", result: "conforming" }
-          : r
-      )
-    );
-    addToast(`QC ${row.qc_number || ""} marked as passed`, "success");
-    setViewRow(null);
+  const handleMarkPassed = async (row) => {
+    try {
+      await updateProcessQCStatus(row.id, "passed");
+      await load(true);
+      addToast(`QC ${row.qc_number || ""} marked as passed`, "success");
+      setViewRow(null);
+      setOpenMenuId(null);
+    } catch (error) {
+      addToast(error?.response?.data?.detail || "Could not update the QC status", "error");
+    }
+  };
+
+  const handleCreateQC = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      await createProcessQC({
+        ...newQC,
+        inspection_time_minutes: newQC.inspection_time_minutes === "" ? null : Number(newQC.inspection_time_minutes),
+      });
+      await load(true);
+      setShowCreate(false);
+      addToast("In-process QC record created", "success");
+    } catch (error) {
+      addToast(error?.response?.data?.detail || "Could not create the in-process QC record", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const exportRows = filtered.map((r) => ({
@@ -384,7 +416,7 @@ export default function InProcessQC() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            <Button variant="add" onClick={() => setShowCreate(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New In-Process QC
             </Button>
           </div>
@@ -399,14 +431,27 @@ export default function InProcessQC() {
             placeholder="Search"
             aria-label="Search in-process QC records"
           />
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex min-w-[10.5rem] items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
-              <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <button
+                type="button"
+                aria-label="Open date picker"
+                onClick={() => {
+                  const input = dateInputRef.current;
+                  if (!input) return;
+                  if (typeof input.showPicker === "function") input.showPicker();
+                  else { input.focus(); input.click(); }
+                }}
+                className="shrink-0 text-[var(--color-text-muted)]"
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
               <input
+                ref={dateInputRef}
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="min-w-[8.5rem] flex-1 border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none"
                 aria-label="Select date"
               />
             </div>
@@ -514,7 +559,7 @@ export default function InProcessQC() {
                     <EmptyState
                       icon="document"
                       title="No records found."
-                      description="There is nothing to show here yet."
+                      description="No production checks match these filters. Create an in-process QC record to start tracking checks."
                       className="border-none bg-transparent py-12"
                     />
                   </td>
@@ -560,7 +605,7 @@ export default function InProcessQC() {
                         showAdd={false}
                         showDelete={false}
                         onView={() => setViewRow(row)}
-                        onEdit={() => handleMarkPassed(row)}
+                        showEdit={false}
                         menuWidth={176}
                       />
                     </td>
@@ -671,6 +716,41 @@ export default function InProcessQC() {
               <Button type="button" variant="secondary" onClick={() => setViewRow(null)}>Close</Button>
             </div>
           </div>
+        </div>
+      ) : null}
+      {showCreate ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreate(false); }}>
+          <form onSubmit={handleCreateQC} className="ui-modal max-h-[90vh] w-full max-w-2xl overflow-y-auto">
+            <div className="flex items-start justify-between border-b px-6 py-4">
+              <div><h2 className="text-lg font-bold text-[var(--color-text)]">New In-Process QC</h2><p className="text-sm text-[var(--color-text-muted)]">Record a quality check for a production operation.</p></div>
+              <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg p-2 hover:bg-[var(--color-surface-muted)]" aria-label="Close"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2">
+              {[
+                ["Inspection date", "inspection_date", "date", true],
+                ["Work order", "work_order_number", "text", true],
+                ["Machine / operation", "machine_name", "text"],
+                ["Product", "product_name", "text"],
+                ["Batch", "batch_code", "text"],
+                ["Operator", "operator_name", "text"],
+                ["Shift", "shift", "text"],
+                ["Inspection time (minutes)", "inspection_time_minutes", "number"],
+              ].map(([label, name, type, required]) => (
+                <label key={name} className="grid gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">{label}
+                  <input type={type} min={type === "number" ? "0" : undefined} step={type === "number" ? "0.1" : undefined} required={Boolean(required)} value={newQC[name]} onChange={(event) => setNewQC((prev) => ({ ...prev, [name]: event.target.value }))} className="w-full rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]" />
+                </label>
+              ))}
+              <label className="grid gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">QC status
+                <select value={newQC.qc_status} onChange={(event) => setNewQC((prev) => ({ ...prev, qc_status: event.target.value }))} className="w-full rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text)]">
+                  <option value="in_progress">In progress</option><option value="pending">Pending</option><option value="passed">Passed</option><option value="failed">Failed</option>
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] sm:col-span-2">Remarks
+                <textarea rows={3} value={newQC.remarks} onChange={(event) => setNewQC((prev) => ({ ...prev, remarks: event.target.value }))} className="w-full rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]" />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 border-t px-6 py-4"><Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button><Button type="submit" variant="primary" disabled={saving}>{saving ? "Saving…" : "Save QC"}</Button></div>
+          </form>
         </div>
       ) : null}
     </div>

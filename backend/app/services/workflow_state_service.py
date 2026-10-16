@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
@@ -351,7 +351,10 @@ def infer_workflow_status_from_legacy(db: Session, tenant_id: int, so: SalesOrde
     from app.models.sales import DispatchShipment, Invoice
 
     ws = (so.workflow_status or "").upper()
-    if ws in WORKFLOW_STATUSES:
+    # A legacy Final QC action could update the inspection row while leaving the
+    # sales order at its previous production/quality-pending status. Reconcile
+    # those two states before treating a valid but potentially stale status as final.
+    if ws in WORKFLOW_STATUSES and ws not in {"PRODUCTION_COMPLETED", "QUALITY_CHECK_PENDING"}:
         return ws
     st = (so.status or "").lower()
     if st in {"draft", "pending"}:
@@ -389,14 +392,23 @@ def infer_workflow_status_from_legacy(db: Session, tenant_id: int, so: SalesOrde
         ).all()
     )
     if final_qc:
-        latest = final_qc[-1]
+        latest = max(
+            final_qc,
+            key=lambda inspection: (
+                inspection.inspection_date or date.min,
+                inspection.id or 0,
+            ),
+        )
         result = (latest.result or "").lower()
         if result == "fail":
             return "QUALITY_REJECTED"
         if result in {"pass", "partial", "conditional"}:
             return "QUALITY_APPROVED"
-        if (latest.status or "").lower() == "pending":
+        if (latest.status or "").lower() in {"pending", "in_progress"} or result == "pending":
             return "QUALITY_CHECK_PENDING"
+
+    if ws in WORKFLOW_STATUSES:
+        return ws
 
     pos = list(
         db.scalars(

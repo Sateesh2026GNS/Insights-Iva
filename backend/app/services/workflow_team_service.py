@@ -1624,15 +1624,36 @@ def submit_quality_check(
             )
         ).first()
 
-    if so and (so.workflow_status or "").upper() not in {"QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD"}:
+    result_norm = (result or "").strip().lower()
+    if result_norm not in {"pass", "fail", "partial", "hold", "conditional"}:
+        raise HTTPException(status_code=400, detail="result must be pass, fail, partial, or hold")
+
+    if so and (so.workflow_status or "").upper() == "PRODUCTION_COMPLETED":
+        # Older Final QC actions updated the inspection row without opening the quality stage.
+        # Backfill the missing transition before applying the QC result.
+        transition_workflow_status(
+            db,
+            tenant_id=tenant_id,
+            sales_order=so,
+            new_status="QUALITY_CHECK_PENDING",
+            user=user,
+            action="QUALITY_CHECK_BACKFILLED",
+            team=TEAM_OPERATOR,
+            quality_inspection_id=qi.id,
+            details="Quality inspection submitted from a legacy completed production order.",
+            skip_permission_check=True,
+            notify=False,
+            commit=False,
+        )
+
+    if so and (so.workflow_status or "").upper() not in {
+        "QUALITY_CHECK_PENDING",
+        "QUALITY_ON_HOLD",
+    }:
         raise HTTPException(
             status_code=409,
             detail=f"Order not awaiting quality check ({so.workflow_status})",
         )
-
-    result_norm = (result or "").strip().lower()
-    if result_norm not in {"pass", "fail", "partial", "hold", "conditional"}:
-        raise HTTPException(status_code=400, detail="result must be pass, fail, partial, or hold")
 
     qi.result = result_norm if result_norm != "conditional" else "hold"
     qi.status = "completed"

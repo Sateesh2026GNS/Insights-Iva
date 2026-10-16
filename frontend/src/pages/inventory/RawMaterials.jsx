@@ -29,7 +29,7 @@ import MaterialDetailModal from "../../components/inventory/MaterialDetailModal"
 import { useToast } from "../../context/ToastContext";
 import useTenantId from "../../hooks/useTenantId";
 import useAuth from "../../hooks/useAuth";
-import { userCanDeleteInventoryItem } from "../../config/permissions";
+import { isQualityTeam, userCanDeleteInventoryItem } from "../../config/permissions";
 import {
   formatInventoryQuantity,
   pickDefaultWarehouse,
@@ -128,6 +128,7 @@ export default function RawMaterials() {
   const tenantId = useTenantId();
   const { user } = useAuth();
   const canDeleteInventory = userCanDeleteInventoryItem(user);
+  const canAddRawMaterial = !isQualityTeam(user);
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [initialLoading, setInitialLoading] = useState(true);
@@ -447,6 +448,7 @@ export default function RawMaterials() {
             onView={() => handleView(r)}
             onEdit={() => handleEdit(r)}
             onAdd={handleAdd}
+            showAdd={canAddRawMaterial}
             onDelete={() => handleDeleteRequest(r)}
             showDelete={canDeleteInventory}
           />
@@ -577,9 +579,11 @@ export default function RawMaterials() {
                 </span>
               ) : null}
             </Button>
-            <Button type="button" variant="add" onClick={handleAdd} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Add Raw Material
-            </Button>
+            {canAddRawMaterial ? (
+              <Button type="button" variant="add" onClick={handleAdd} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                Add Raw Material
+              </Button>
+            ) : null}
           </div>
         </div>
 

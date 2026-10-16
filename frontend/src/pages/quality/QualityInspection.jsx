@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import ResourcePage from "../../components/common/ResourcePage";
 import { StatusBadge } from "../../components/common/Table";
 import { getInspections, createInspection } from "../../api/qualityApi";
@@ -7,16 +8,25 @@ export default function QualityInspection() {
     <ResourcePage
       title="Quality Inspection"
       subtitle="Perform and record quality inspections."
+      headerAction={(
+        <Link
+          to="/my-job-cards?dept=quality"
+          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/70 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          Open Quality Check Queue
+        </Link>
+      )}
       fetcher={getInspections}
       createFn={createInspection}
       createLabel="+ New Inspection"
       emptyTitle="No inspections yet"
       emptyDescription="Record your first quality inspection."
+      tableToolbarClassName="quality-inspection-toolbar"
       searchKeys={["inspection_number", "inspector", "result"]}
       filters={[
         {
           key: "result",
-          label: "Result",
+          label: "",
           placeholder: "All results",
           options: [
             { value: "pass", label: "Pass" },

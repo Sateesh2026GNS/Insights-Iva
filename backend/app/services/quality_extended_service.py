@@ -1,10 +1,12 @@
 """Quality extended — incoming, process, final QC, batch, defects, hub."""
 
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.inventory import Supplier
+from app.models.procurement import GoodsReceipt, PurchaseOrder
 from app.models.quality import BatchQualityReport, Defect, QualityInspection
 from app.schemas.quality_extended import (
     BatchReportRead,
@@ -53,12 +55,15 @@ def _inspection_to_process(i: QualityInspection) -> ProcessQCRead:
 
     return ProcessQCRead(
         id=i.id,
+        qc_number=i.inspection_number,
+        inspection_date=i.inspection_date.isoformat() if i.inspection_date else None,
         work_order_number=i.work_order_number,
         machine_name=i.machine_name,
         shift=i.shift,
         operator_name=i.operator_name,
         inspection_time=insp_time,
         qc_status=i.status or i.result,
+        result=i.result,
         remarks=i.notes,
         product_name=i.product_name,
         batch_code=i.batch_code,
@@ -79,6 +84,8 @@ def _inspection_to_final(i: QualityInspection) -> FinalQCRead:
         result=i.result,
         status=i.status or i.result,
         inspector=i.inspector,
+        checked_by=i.operator_name or i.inspector,
+        remarks=i.notes,
         inspection_date=i.inspection_date.isoformat() if i.inspection_date else None,
     )
 
@@ -127,7 +134,64 @@ def list_incoming_enriched(db: Session, tenant_id: int) -> list[IncomingInspecti
             .order_by(QualityInspection.inspection_date.desc())
         ).all()
     )
-    return [_inspection_to_incoming(r) for r in rows]
+    # Materialize missing inspections for GRNs created before the incoming-QC link existed.
+    inspection_by_grn = {row.po_reference: row for row in rows if row.po_reference}
+    receipts = list(
+        db.scalars(
+            select(GoodsReceipt).where(GoodsReceipt.tenant_id == tenant_id)
+        ).all()
+    )
+    out_of_sync_receipts = []
+    for receipt in receipts:
+        inspection = inspection_by_grn.get(receipt.grn_number)
+        qc_status = (receipt.qc_status or "pending").strip().lower()
+        if qc_status in {"pass", "passed", "approved"}:
+            target_result, target_status = "pass", "approved"
+        elif qc_status in {"fail", "failed", "reject", "rejected"}:
+            target_result, target_status = "fail", "rejected"
+        else:
+            target_result, target_status = "pending", "pending"
+        if (
+            inspection is None
+            or inspection.result != target_result
+            or inspection.status != target_status
+            or not inspection.vendor_name
+        ):
+            out_of_sync_receipts.append(receipt)
+
+    if out_of_sync_receipts:
+        from app.services.manufacturing_workflow_service import link_grn_to_incoming_quality_inspection
+
+        for receipt in out_of_sync_receipts:
+            link_grn_to_incoming_quality_inspection(db, tenant_id, receipt, commit=False)
+        db.commit()
+        rows = list(
+            db.scalars(
+                select(QualityInspection)
+                .where(QualityInspection.tenant_id == tenant_id, QualityInspection.inspection_type == "incoming")
+                .order_by(QualityInspection.inspection_date.desc())
+            ).all()
+        )
+
+    supplier_by_reference = {}
+    for grn_number, po_number, supplier_name in db.execute(
+        select(GoodsReceipt.grn_number, PurchaseOrder.po_number, Supplier.name)
+        .join(PurchaseOrder, GoodsReceipt.purchase_order_id == PurchaseOrder.id)
+        .join(Supplier, PurchaseOrder.supplier_id == Supplier.id)
+        .where(GoodsReceipt.tenant_id == tenant_id)
+    ).all():
+        if supplier_name:
+            if grn_number:
+                supplier_by_reference[grn_number] = supplier_name
+            if po_number:
+                supplier_by_reference[po_number] = supplier_name
+
+    return [
+        _inspection_to_incoming(row).model_copy(
+            update={"vendor_name": row.vendor_name or supplier_by_reference.get(row.po_reference)}
+        )
+        for row in rows
+    ]
 
 
 def get_process_summary(db: Session, tenant_id: int) -> ProcessQCSummaryRead:
@@ -135,7 +199,7 @@ def get_process_summary(db: Session, tenant_id: int) -> ProcessQCSummaryRead:
         db.scalars(
             select(QualityInspection).where(
                 QualityInspection.tenant_id == tenant_id,
-                QualityInspection.inspection_type == "in_process",
+                QualityInspection.inspection_type.in_(["in_process", "process"]),
             )
         ).all()
     )
@@ -156,7 +220,7 @@ def list_process_enriched(db: Session, tenant_id: int) -> list[ProcessQCRead]:
     rows = list(
         db.scalars(
             select(QualityInspection)
-            .where(QualityInspection.tenant_id == tenant_id, QualityInspection.inspection_type == "in_process")
+            .where(QualityInspection.tenant_id == tenant_id, QualityInspection.inspection_type.in_(["in_process", "process"]))
             .order_by(QualityInspection.inspection_date.desc())
         ).all()
     )
@@ -335,6 +399,40 @@ def get_quality_hub(db: Session, tenant_id: int) -> QualityHubRead:
     open_critical = sum(1 for d in defects if d.severity == "critical" and d.status not in ("closed", "resolved"))
     pending_insp = sum(1 for i in insp if (i.status or i.result) == "pending")
 
+    # Dashboard charts use the same inspection records as the KPI totals.
+    inspection_trend_map = {}
+    inspection_type_map = {}
+    for inspection in insp:
+        day = inspection.inspection_date.isoformat() if inspection.inspection_date else "Unknown"
+        day_counts = inspection_trend_map.setdefault(
+            day, {"date": day, "passed": 0, "failed": 0, "in_process": 0}
+        )
+        result = (inspection.result or "").strip().lower()
+        status = (inspection.status or "").strip().lower()
+        if result == "pass" or status in {"passed", "pass", "approved"}:
+            day_counts["passed"] += 1
+        elif result in {"fail", "failed", "rejected"} or status in {"failed", "rejected"}:
+            day_counts["failed"] += 1
+        else:
+            day_counts["in_process"] += 1
+
+        raw_type = (inspection.inspection_type or "other").strip().lower().replace("-", "_")
+        type_name = {
+            "incoming": "Incoming Inspection",
+            "in_process": "In-Process QC",
+            "process": "In-Process QC",
+            "final": "Final QC",
+            "final_qc": "Final QC",
+        }.get(raw_type, raw_type.replace("_", " ").title())
+        inspection_type_map[type_name] = inspection_type_map.get(type_name, 0) + 1
+
+    inspection_trend = [inspection_trend_map[key] for key in sorted(inspection_trend_map)]
+    type_colors = ["#2563eb", "#8b5cf6", "#14b8a6", "#f97316", "#64748b"]
+    inspection_by_type = [
+        {"name": name, "count": count, "color": type_colors[index % len(type_colors)]}
+        for index, (name, count) in enumerate(sorted(inspection_type_map.items()))
+    ]
+
     reports = list(
         db.scalars(select(BatchQualityReport).where(BatchQualityReport.tenant_id == tenant_id)).all()
     )
@@ -451,6 +549,8 @@ def get_quality_hub(db: Session, tenant_id: int) -> QualityHubRead:
             {"name": "Fail", "count": failed},
             {"name": "Pending", "count": pending},
         ],
+        inspection_trend=inspection_trend,
+        inspection_by_type=inspection_by_type,
         defect_trend=defect_trend,
         monthly_yield=monthly_yield,
         supplier_quality=supplier_quality,

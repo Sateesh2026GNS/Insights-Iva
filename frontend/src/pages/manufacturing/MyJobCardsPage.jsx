@@ -124,8 +124,6 @@ const TEAM_STATUS_MAP = {
   quality: new Set([
     "QUALITY_CHECK_PENDING",
     "QUALITY_ON_HOLD",
-    "QUALITY_APPROVED",
-    "QUALITY_REJECTED",
   ]),
   billing: new Set(["BILLING_PENDING", "BILLING_HOLD", "PACKED", "INVOICED"]),
 };
