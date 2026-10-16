@@ -39,6 +39,73 @@ export const getProductionOrders = async () => {
 
 export const getProductionPlanningSummary = () => apiGet("/api/production/planning/summary");
 
+export const getProductionPlannerDashboard = (planDate) =>
+  apiGet("/api/production/planner", {
+    params: planDate ? { plan_date: planDate } : undefined,
+  });
+
+export const getProductionProductCostDashboard = (params = {}) =>
+  apiGet("/api/production/toolkit/product-cost", { params });
+
+export const getManufacturingToolkitDashboard = (toolkitId, params = {}) =>
+  apiGet("/api/production/toolkit/dashboard", {
+    params: { toolkit_id: toolkitId, ...params },
+  });
+
+export const listManufacturingIssues = (params = {}) =>
+  apiGet("/api/production/toolkit/issues", { params });
+
+export const createManufacturingIssue = (payload) =>
+  apiPost("/api/production/toolkit/issues", payload);
+
+export const updateManufacturingIssue = (issueId, payload) =>
+  apiPatch(`/api/production/toolkit/issues/${issueId}`, payload);
+
+export const assignManufacturingIssue = (issueId, payload) =>
+  apiPost(`/api/production/toolkit/issues/${issueId}/assign`, payload);
+
+export const transitionManufacturingIssueStatus = (issueId, payload) =>
+  apiPost(`/api/production/toolkit/issues/${issueId}/status`, payload);
+
+export const listSafetyIncidents = (params = {}) =>
+  apiGet("/api/production/toolkit/safety-incidents", { params });
+
+export const createSafetyIncidentToolkit = (payload) =>
+  apiPost("/api/production/toolkit/safety-incidents", payload);
+
+export const updateSafetyIncidentToolkit = (incidentId, payload) =>
+  apiPatch(`/api/production/toolkit/safety-incidents/${incidentId}`, payload);
+
+export const assignSafetyIncidentInvestigation = (incidentId, payload) =>
+  apiPost(`/api/production/toolkit/safety-incidents/${incidentId}/assign`, payload);
+
+export const recordSafetyIncidentInvestigation = (incidentId, payload) =>
+  apiPost(`/api/production/toolkit/safety-incidents/${incidentId}/investigation`, payload);
+
+export const transitionSafetyIncidentStatus = (incidentId, payload) =>
+  apiPost(`/api/production/toolkit/safety-incidents/${incidentId}/status`, payload);
+
+export const listProcessChecklistItems = (params = {}) =>
+  apiGet("/api/production/toolkit/process-checklist/items", { params });
+
+export const createProcessChecklistItem = (payload) =>
+  apiPost("/api/production/toolkit/process-checklist/items", payload);
+
+export const updateProcessChecklistItem = (itemId, payload) =>
+  apiPatch(`/api/production/toolkit/process-checklist/items/${itemId}`, payload);
+
+export const assignProcessChecklistItem = (itemId, payload) =>
+  apiPost(`/api/production/toolkit/process-checklist/items/${itemId}/assign`, payload);
+
+export const verifyProcessChecklistItem = (itemId, payload) =>
+  apiPost(`/api/production/toolkit/process-checklist/items/${itemId}/verify`, payload);
+
+export const approveProcessChecklistItem = (itemId, payload) =>
+  apiPost(`/api/production/toolkit/process-checklist/items/${itemId}/approve`, payload);
+
+export const transitionProcessChecklistStatus = (itemId, payload) =>
+  apiPost(`/api/production/toolkit/process-checklist/items/${itemId}/status`, payload);
+
 export const getProductionOrderDetail = (orderId) =>
   apiGet(`/api/production/planning/${orderId}`);
 

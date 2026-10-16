@@ -178,6 +178,20 @@ class SafetyIncident(Base, TimestampMixin):
     severity: Mapped[str] = mapped_column(String(32), default="Low", nullable=False)
     status: Mapped[str] = mapped_column(String(64), default="Open", nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    department: Mapped[str | None] = mapped_column(String(128))
+    investigation_owner_name: Mapped[str | None] = mapped_column(String(255))
+    immediate_action: Mapped[str | None] = mapped_column(Text)
+    investigation_findings: Mapped[str | None] = mapped_column(Text)
+    corrective_action: Mapped[str | None] = mapped_column(Text)
+    closure_evidence: Mapped[str | None] = mapped_column(Text)
+    corrective_action_status: Mapped[str | None] = mapped_column(String(32))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reported_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
 
 
 class PerformanceReview(Base, TimestampMixin):

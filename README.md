@@ -26,6 +26,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 - [Development](#development)
 - [Project structure](#project-structure)
 - [Manufacturing workflow](#manufacturing-workflow)
+- [Manufacturing Production Toolkit](#manufacturing-production-toolkit)
 - [Role-based access control](#role-based-access-control)
 - [API overview](#api-overview)
 - [UI design system](#ui-design-system)
@@ -408,6 +409,21 @@ Sales Order (confirmed)
 **Tables:** `sales_job_cards`, `sales_order_material_checks`, `manufacturing_workflow_transitions`, `sales_orders.workflow_status`.
 
 **RBAC teams:** sales, inventory, production, operator, quality, packing, billing, admin (`workflow_constants.py`).
+
+---
+
+## Manufacturing Production Toolkit
+
+Nine tenant-scoped dashboards (quality plan, equipment, utilization, labour productivity, timesheets, work log, process checklist, incident report, issue log) with live KPI APIs and workflows for **issues**, **process checklist**, and **safety incidents**.
+
+| Item | Location |
+|------|----------|
+| Docs index | [backend/docs/README.md](./backend/docs/README.md) |
+| Staging migrate & smoke | [backend/docs/manufacturing_toolkit_staging_runbook.md](./backend/docs/manufacturing_toolkit_staging_runbook.md) |
+| Disposable PostgreSQL tests | [backend/tests/POSTGRES_TESTS.md](./backend/tests/POSTGRES_TESTS.md) |
+| API | `GET /api/production/toolkit/dashboard?toolkit_id=…` |
+
+Alembic head for toolkit migrations: `i9j0k1l2m3n4`. Do not migrate production `insights_iva` on port **5432** without staging sign-off.
 
 ---
 

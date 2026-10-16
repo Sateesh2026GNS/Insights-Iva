@@ -34,6 +34,65 @@ from app.services.allocation_service import (
 )
 from app.services.batch_tracking_service import get_batch_detail, get_batch_summary, list_batches_enriched
 from app.services.production_hub_service import get_production_hub
+from app.services.production_planner_service import get_production_planner_dashboard
+from app.services.production_product_cost_service import get_product_cost_dashboard
+from app.schemas.manufacturing_issue import (
+    ManufacturingIssueAssign,
+    ManufacturingIssueCreate,
+    ManufacturingIssueListResponse,
+    ManufacturingIssueRead,
+    ManufacturingIssueStatusChange,
+    ManufacturingIssueUpdate,
+)
+from app.schemas.safety_incident import (
+    SafetyIncidentAssign,
+    SafetyIncidentCreate as ToolkitSafetyIncidentCreate,
+    SafetyIncidentInvestigationUpdate,
+    SafetyIncidentListResponse,
+    SafetyIncidentRead as ToolkitSafetyIncidentRead,
+    SafetyIncidentStatusChange,
+    SafetyIncidentUpdate as ToolkitSafetyIncidentUpdate,
+)
+from app.services.safety_incident_service import (
+    assign_investigation,
+    assert_can_view,
+    create_incident,
+    get_incident,
+    list_incidents,
+    transition_incident_status,
+    update_incident,
+    update_investigation,
+)
+from app.services.manufacturing_issue_service import (
+    assign_issue,
+    create_issue,
+    get_issue,
+    list_issues,
+    transition_issue_status,
+    update_issue,
+)
+from app.schemas.process_checklist import (
+    ProcessChecklistItemApproval,
+    ProcessChecklistItemAssign,
+    ProcessChecklistItemCreate,
+    ProcessChecklistItemListResponse,
+    ProcessChecklistItemStatusChange,
+    ProcessChecklistItemUpdate,
+    ProcessChecklistItemVerify,
+)
+from app.services.process_checklist_service import (
+    approve_item,
+    assign_item,
+    create_item,
+    get_item,
+    list_items,
+    to_read_schema,
+    transition_item_status,
+    update_item,
+    verify_item,
+)
+from app.services.manufacturing_toolkit_service import TOOLKIT_IDS, get_toolkit_dashboard
+from app.services.bom.bom_permissions import user_can_view_bom_cost
 from app.services.production_planning_service import (
     complete_production_order,
     delete_production_order,
@@ -154,6 +213,458 @@ def production_planning_summary(
 ):
     _, tenant_id = user_tenant
     return success_response("Production planning summary retrieved", _dump(get_production_planning_summary(db, tenant_id)))
+
+
+@router.get("/toolkit/product-cost")
+def production_product_cost_dashboard(
+    limit: int = Query(100, ge=1, le=100),
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    include_cost = user_can_view_bom_cost(user)
+    dashboard = get_product_cost_dashboard(
+        db, tenant_id, include_cost=include_cost, limit=limit
+    )
+    return success_response("Product cost dashboard retrieved", _dump(dashboard))
+
+
+@router.get("/toolkit/dashboard")
+def manufacturing_toolkit_dashboard(
+    toolkit_id: str = Query(..., description="Manufacturing toolkit dashboard id"),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    if toolkit_id not in TOOLKIT_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid toolkit_id. Allowed: {', '.join(sorted(TOOLKIT_IDS))}",
+        )
+    try:
+        dashboard = get_toolkit_dashboard(
+            db, tenant_id, toolkit_id, date_from, date_to, user=user, limit=limit
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return success_response(
+        "Manufacturing toolkit dashboard retrieved",
+        _dump(dashboard),
+    )
+
+
+@router.get("/toolkit/issues")
+def manufacturing_issues_list(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=500),
+    sort_by: str = Query("raised_date"),
+    sort_dir: str = Query("desc"),
+    search: str | None = Query(None),
+    department: str | None = Query(None),
+    priority: str | None = Query(None),
+    status: str | None = Query(None),
+    owner_name: str | None = Query(None),
+    raised_from: date | None = Query(None),
+    raised_to: date | None = Query(None),
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    rows, total = list_issues(
+        db,
+        tenant_id,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        search=search,
+        department=department,
+        priority=priority,
+        status=status,
+        owner_name=owner_name,
+        raised_from=raised_from,
+        raised_to=raised_to,
+    )
+    payload = ManufacturingIssueListResponse(
+        items=[ManufacturingIssueRead.model_validate(r) for r in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+    return success_response("Manufacturing issues retrieved", _dump(payload))
+
+
+@router.post("/toolkit/issues", status_code=201)
+def manufacturing_issue_create(
+    payload: ManufacturingIssueCreate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "create")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = create_issue(db, tenant_id, user, payload)
+    return success_response("Manufacturing issue created", _dump(ManufacturingIssueRead.model_validate(row)))
+
+
+@router.get("/toolkit/issues/{issue_id}")
+def manufacturing_issue_get(
+    issue_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = get_issue(db, tenant_id, issue_id)
+    if not row:
+        raise HTTPException(404, "Issue not found")
+    return success_response("Manufacturing issue retrieved", _dump(ManufacturingIssueRead.model_validate(row)))
+
+
+@router.patch("/toolkit/issues/{issue_id}")
+def manufacturing_issue_update(
+    issue_id: int,
+    payload: ManufacturingIssueUpdate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = update_issue(db, tenant_id, user, issue_id, payload)
+    return success_response("Manufacturing issue updated", _dump(ManufacturingIssueRead.model_validate(row)))
+
+
+@router.post("/toolkit/issues/{issue_id}/assign")
+def manufacturing_issue_assign(
+    issue_id: int,
+    payload: ManufacturingIssueAssign,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = assign_issue(db, tenant_id, user, issue_id, payload)
+    return success_response("Manufacturing issue assigned", _dump(ManufacturingIssueRead.model_validate(row)))
+
+
+@router.post("/toolkit/issues/{issue_id}/status")
+def manufacturing_issue_status(
+    issue_id: int,
+    payload: ManufacturingIssueStatusChange,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = transition_issue_status(db, tenant_id, user, issue_id, payload)
+    return success_response("Manufacturing issue status updated", _dump(ManufacturingIssueRead.model_validate(row)))
+
+
+@router.get("/toolkit/safety-incidents")
+def safety_incidents_list(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=500),
+    sort_by: str = Query("incident_date"),
+    sort_dir: str = Query("desc"),
+    search: str | None = Query(None),
+    department: str | None = Query(None),
+    severity: str | None = Query(None),
+    status: str | None = Query(None),
+    incident_type: str | None = Query(None),
+    investigation_owner: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    open_only: bool = Query(False),
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    rows, total = list_incidents(
+        db,
+        tenant_id,
+        user,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        search=search,
+        department=department,
+        severity=severity,
+        status=status,
+        incident_type=incident_type,
+        investigation_owner=investigation_owner,
+        date_from=date_from,
+        date_to=date_to,
+        open_only=open_only,
+    )
+    payload = SafetyIncidentListResponse(
+        items=[ToolkitSafetyIncidentRead.model_validate(r) for r in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+    return success_response("Safety incidents retrieved", _dump(payload))
+
+
+@router.post("/toolkit/safety-incidents", status_code=201)
+def safety_incident_create(
+    payload: ToolkitSafetyIncidentCreate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "create")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = create_incident(db, tenant_id, user, payload)
+    return success_response(
+        "Safety incident created", _dump(ToolkitSafetyIncidentRead.model_validate(row))
+    )
+
+
+@router.get("/toolkit/safety-incidents/{incident_id}")
+def safety_incident_get(
+    incident_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    user, tenant_id = user_tenant
+    row = get_incident(db, tenant_id, incident_id)
+    if not row:
+        raise HTTPException(404, "Incident not found")
+    assert_can_view(db, user, row)
+    return success_response(
+        "Safety incident retrieved", _dump(ToolkitSafetyIncidentRead.model_validate(row))
+    )
+
+
+@router.patch("/toolkit/safety-incidents/{incident_id}")
+def safety_incident_update(
+    incident_id: int,
+    payload: ToolkitSafetyIncidentUpdate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = update_incident(db, tenant_id, user, incident_id, payload)
+    return success_response(
+        "Safety incident updated", _dump(ToolkitSafetyIncidentRead.model_validate(row))
+    )
+
+
+@router.post("/toolkit/safety-incidents/{incident_id}/assign")
+def safety_incident_assign(
+    incident_id: int,
+    payload: SafetyIncidentAssign,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = assign_investigation(db, tenant_id, user, incident_id, payload)
+    return success_response(
+        "Investigation owner assigned", _dump(ToolkitSafetyIncidentRead.model_validate(row))
+    )
+
+
+@router.post("/toolkit/safety-incidents/{incident_id}/investigation")
+def safety_incident_investigation(
+    incident_id: int,
+    payload: SafetyIncidentInvestigationUpdate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = update_investigation(db, tenant_id, user, incident_id, payload)
+    return success_response(
+        "Investigation details recorded", _dump(ToolkitSafetyIncidentRead.model_validate(row))
+    )
+
+
+@router.post("/toolkit/safety-incidents/{incident_id}/status")
+def safety_incident_status(
+    incident_id: int,
+    payload: SafetyIncidentStatusChange,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = transition_incident_status(db, tenant_id, user, incident_id, payload)
+    return success_response(
+        "Safety incident status updated", _dump(ToolkitSafetyIncidentRead.model_validate(row))
+    )
+
+
+@router.get("/toolkit/process-checklist/items")
+def process_checklist_list(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=500),
+    sort_by: str = Query("due_date"),
+    sort_dir: str = Query("asc"),
+    search: str | None = Query(None),
+    process_stage: str | None = Query(None),
+    owner_name: str | None = Query(None),
+    frequency: str | None = Query(None),
+    status: str | None = Query(None),
+    due_from: date | None = Query(None),
+    due_to: date | None = Query(None),
+    overdue_only: bool = Query(False),
+    pending_only: bool = Query(False),
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    rows, total = list_items(
+        db,
+        tenant_id,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        search=search,
+        process_stage=process_stage,
+        owner_name=owner_name,
+        frequency=frequency,
+        status=status,
+        due_from=due_from,
+        due_to=due_to,
+        overdue_only=overdue_only,
+        pending_only=pending_only,
+    )
+    payload = ProcessChecklistItemListResponse(
+        items=[to_read_schema(r) for r in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+    return success_response("Process checklist items retrieved", _dump(payload))
+
+
+@router.post("/toolkit/process-checklist/items", status_code=201)
+def process_checklist_create(
+    payload: ProcessChecklistItemCreate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "create")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = create_item(db, tenant_id, user, payload)
+    return success_response("Process checklist item created", _dump(to_read_schema(row)))
+
+
+@router.get("/toolkit/process-checklist/items/{item_id}")
+def process_checklist_get(
+    item_id: int,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = get_item(db, tenant_id, item_id)
+    if not row:
+        raise HTTPException(404, "Checklist item not found")
+    return success_response("Process checklist item retrieved", _dump(to_read_schema(row)))
+
+
+@router.patch("/toolkit/process-checklist/items/{item_id}")
+def process_checklist_update(
+    item_id: int,
+    payload: ProcessChecklistItemUpdate,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = update_item(db, tenant_id, user, item_id, payload)
+    return success_response("Process checklist item updated", _dump(to_read_schema(row)))
+
+
+@router.post("/toolkit/process-checklist/items/{item_id}/assign")
+def process_checklist_assign(
+    item_id: int,
+    payload: ProcessChecklistItemAssign,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = assign_item(db, tenant_id, user, item_id, payload)
+    return success_response("Process checklist item assigned", _dump(to_read_schema(row)))
+
+
+@router.post("/toolkit/process-checklist/items/{item_id}/verify")
+def process_checklist_verify(
+    item_id: int,
+    payload: ProcessChecklistItemVerify,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = verify_item(db, tenant_id, user, item_id, payload)
+    return success_response("Process checklist verification recorded", _dump(to_read_schema(row)))
+
+
+@router.post("/toolkit/process-checklist/items/{item_id}/approve")
+def process_checklist_approve(
+    item_id: int,
+    payload: ProcessChecklistItemApproval,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = approve_item(db, tenant_id, user, item_id, payload)
+    return success_response("Process checklist approval recorded", _dump(to_read_schema(row)))
+
+
+@router.post("/toolkit/process-checklist/items/{item_id}/status")
+def process_checklist_status(
+    item_id: int,
+    payload: ProcessChecklistItemStatusChange,
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    user: User = Depends(require_action("production", "update")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    row = transition_item_status(db, tenant_id, user, item_id, payload)
+    return success_response("Process checklist status updated", _dump(to_read_schema(row)))
+
+
+@router.get("/planner")
+def production_planner_dashboard(
+    plan_date: date | None = Query(None, description="Plan date (ISO). Defaults to today."),
+    user_tenant: tuple[User, int] = Depends(require_tenant("production")),
+    _: User = Depends(deny_operator_production_planning),
+    db: Session = Depends(get_db),
+):
+    _, tenant_id = user_tenant
+    dashboard = get_production_planner_dashboard(db, tenant_id, plan_date)
+    return success_response("Production planner dashboard retrieved", _dump(dashboard))
 
 
 @router.get("/planning/{plan_id}")

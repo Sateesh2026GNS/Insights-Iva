@@ -70,10 +70,8 @@ from app.services.hr_service import (
     create_leave_request,
     create_payroll_record,
     create_performance_review,
-    create_safety_incident,
     create_shift,
     delete_hr_asset,
-    delete_safety_incident,
     get_hr_dashboard,
     list_attendance,
     list_employees,
@@ -81,14 +79,12 @@ from app.services.hr_service import (
     list_leave_requests,
     list_payroll,
     list_performance_reviews,
-    list_safety_incidents,
     list_shifts,
     record_clock_in,
     record_clock_out,
     update_hr_asset,
     update_leave_request,
     update_payroll_status,
-    update_safety_incident,
 )
 from app.schemas.hr_extended import (
     AttendanceListRead,
@@ -558,10 +554,33 @@ def delete_asset_endpoint(
 
 @router.get("/incidents", response_model=list[SafetyIncidentRead])
 def list_incidents_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(500, ge=1, le=500),
+    search: str | None = Query(None),
+    department: str | None = Query(None),
+    severity: str | None = Query(None),
+    status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
-    return list_safety_incidents(db, tenant_id)
+    from app.services.safety_incident_service import list_incidents
+
+    rows, _total = list_incidents(
+        db,
+        user.tenant_id,
+        user,
+        page=page,
+        page_size=page_size,
+        search=search,
+        department=department,
+        severity=severity,
+        status=status,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return rows
 
 
 @router.post("/incidents", response_model=SafetyIncidentRead, status_code=201)
@@ -570,30 +589,39 @@ def create_incident_endpoint(
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
-    return create_safety_incident(db, user.tenant_id, payload)
+    from app.schemas.safety_incident import SafetyIncidentCreate as ServiceCreate
+    from app.services.safety_incident_service import create_incident
+
+    row = create_incident(db, user.tenant_id, user, ServiceCreate(**payload.model_dump()))
+    return row
 
 
 @router.put("/incidents/{incident_id}", response_model=SafetyIncidentRead)
 def update_incident_endpoint(
     incident_id: int,
     payload: SafetyIncidentUpdate,
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
-    row = update_safety_incident(db, tenant_id, incident_id, payload)
-    if not row:
-        raise HTTPException(404, "Incident not found")
+    from app.schemas.safety_incident import SafetyIncidentUpdate as ServiceUpdate
+    from app.services.safety_incident_service import update_incident
+
+    data = payload.model_dump(exclude_unset=True)
+    row = update_incident(
+        db, user.tenant_id, user, incident_id, ServiceUpdate(**data)
+    )
     return row
 
 
 @router.delete("/incidents/{incident_id}", status_code=204)
 def delete_incident_endpoint(
     incident_id: int,
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
-    if not delete_safety_incident(db, tenant_id, incident_id):
-        raise HTTPException(404, "Incident not found")
+    from app.services.safety_incident_service import delete_incident
+
+    delete_incident(db, user.tenant_id, user, incident_id)
     return None
 
 

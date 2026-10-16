@@ -249,6 +249,40 @@ def list_boms(
     return {"items": items, "total": int(total), "page": page, "page_size": page_size}
 
 
+def standard_unit_cost_for_product(
+    db: Session,
+    tenant_id: int,
+    product_id: int,
+    *,
+    include_cost: bool,
+) -> dict:
+    """Standard unit cost from the active BOM version (material rollup via landed pricing)."""
+    version = resolve_active_bom_version(db, tenant_id, product_id)
+    if not version:
+        return {
+            "has_active_bom": False,
+            "standard_unit_cost": None,
+            "material_cost": None,
+            "cost_incomplete": True,
+        }
+    if not include_cost:
+        return {
+            "has_active_bom": True,
+            "standard_unit_cost": None,
+            "material_cost": None,
+            "cost_incomplete": False,
+        }
+    cost = _cost_for_version(db, tenant_id, version, True)
+    per_unit = cost.get("cost_per_unit") if cost else None
+    incomplete = bool(cost.get("incomplete")) if cost else True
+    return {
+        "has_active_bom": True,
+        "standard_unit_cost": per_unit,
+        "material_cost": per_unit if per_unit is not None and not incomplete else None,
+        "cost_incomplete": incomplete,
+    }
+
+
 def bom_summary(db: Session, tenant_id: int) -> dict:
     total_boms = db.scalar(
         select(func.count(BomHeader.id)).where(

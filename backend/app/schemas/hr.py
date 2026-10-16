@@ -467,6 +467,16 @@ class SafetyIncidentUpdate(BaseModel):
 class SafetyIncidentRead(SafetyIncidentBase):
     id: int
     tenant_id: int
+    department: str | None = None
+    investigation_owner_name: str | None = None
+    immediate_action: str | None = None
+    investigation_findings: str | None = None
+    corrective_action: str | None = None
+    closure_evidence: str | None = None
+    corrective_action_status: str | None = None
+    closed_at: datetime | None = None
+    reported_by_user_id: int | None = None
+    created_by_user_id: int | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

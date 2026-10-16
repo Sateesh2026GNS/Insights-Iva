@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.core.permissions import require_permission
 from app.models.user import User
-from app.schemas.hr import SafetyIncidentCreate
 from app.schemas.operator_execution import ProductionEntryCreate, SafetyIncidentOperatorCreate
-from app.services.hr_service import create_safety_incident, list_safety_incidents
+from app.schemas.safety_incident import SafetyIncidentCreate as ServiceSafetyCreate
+from app.services.safety_incident_service import create_incident, list_incidents
 from app.core.idempotency import get_idempotency_key_header
 from app.services.operator_execution_service import (
     create_production_entry,
@@ -106,7 +106,7 @@ def operator_safety_incident(
         m = get_tenant_row(db, Machine, body.machine_id, user.tenant_id)
         if m:
             loc = loc or m.name or m.code
-    payload = SafetyIncidentCreate(
+    payload = ServiceSafetyCreate(
         incident_code=code,
         title=title,
         type=body.incident_type,
@@ -116,13 +116,11 @@ def operator_safety_incident(
         status="open",
         description=(body.description or "").strip() or None,
     )
-    row = create_safety_incident(db, user.tenant_id, payload)
+    row = create_incident(db, user.tenant_id, user, payload, allow_self_report=True)
     return row
 
 
 @router.get("/safety-incidents/my")
 def my_safety_incidents(user: User = Depends(_production_user), db: Session = Depends(get_db)):
-    reporter = user.full_name or user.email
-    rows = list_safety_incidents(db, user.tenant_id)
-    mine = [r for r in rows if (r.reporter or "").strip() == (reporter or "").strip()]
-    return {"items": mine}
+    rows, _ = list_incidents(db, user.tenant_id, user, page=1, page_size=200)
+    return {"items": rows}

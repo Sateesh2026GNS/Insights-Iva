@@ -28,6 +28,7 @@ import app.models.hr_module  # noqa: F401
 import app.models.inventory  # noqa: F401
 import app.models.material_pricing  # noqa: F401
 import app.models.manufacturing_workflow  # noqa: F401
+import app.models.manufacturing_toolkit  # noqa: F401
 import app.models.machine  # noqa: F401
 import app.models.maintenance  # noqa: F401
 import app.models.meeting  # noqa: F401

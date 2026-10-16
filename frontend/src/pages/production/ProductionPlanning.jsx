@@ -79,6 +79,7 @@ import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
 import QuickWorkOrderModal from "../../components/production/QuickWorkOrderModal";
 import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
+import ManufacturingProductionToolkitHost from "../../components/production/ManufacturingProductionToolkitHost";
 import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 
 function planningPdfDate(value) {
@@ -475,6 +476,7 @@ export default function ProductionPlanning() {
   const [quickWoOrder, setQuickWoOrder] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [plannerTab, setPlannerTab] = useState("dashboard");
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -518,6 +520,7 @@ export default function ProductionPlanning() {
   }, [location.state]);
 
   const [machines, setMachines] = useState([]);
+  const [plannerRefreshKey, setPlannerRefreshKey] = useState(0);
   const [printDetailOrder, setPrintDetailOrder] = useState(null);
   const fileInputRef = useRef(null);
   const startDateRef = useRef(null);
@@ -549,6 +552,7 @@ export default function ProductionPlanning() {
         return String(dateB).localeCompare(String(dateA));
       });
       setOrders(apiOrders);
+      setPlannerRefreshKey((k) => k + 1);
       setApiSummary(sRes.data || null);
       if (isRefresh) addToast("Production planning updated.", "success");
     } catch (err) {
@@ -1286,6 +1290,16 @@ export default function ProductionPlanning() {
 
   return (
     <>
+      <ManufacturingProductionToolkitHost
+        orders={filteredOrders}
+        machines={machines}
+        summary={summary}
+        plannerTab={plannerTab}
+        onPlannerTabChange={setPlannerTab}
+        plannerRefreshKey={plannerRefreshKey}
+      />
+
+      {plannerTab === "production_data" ? (
       <ListPageShell
         className="print:bg-transparent"
         stackClassName={`min-w-0 w-full space-y-5 pb-4 print:p-0 print:space-y-4 ${
@@ -1581,6 +1595,7 @@ export default function ProductionPlanning() {
             </ListPageCardBody>
           </ListPageCard>
       </ListPageShell>
+      ) : null}
 
       {/* Single Item Print View */}
       {printDetailOrder && (
