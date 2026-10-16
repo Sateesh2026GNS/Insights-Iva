@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, Receipt, Settings } from "lucide-react";
+import { ChevronRight, Receipt, Scale, Settings } from "lucide-react";
 
 import {
   AccountsCard,
@@ -15,6 +15,12 @@ const LINKS = [
     description: "Manage expense categories used in vouchers and the expense module.",
     to: "/accounts/expenses/settings",
     icon: Receipt,
+  },
+  {
+    title: "Opening Balances",
+    description: "Set the organization start date and configure account opening balances.",
+    to: "/settings/opening-balances",
+    icon: Scale,
   },
 ];
 

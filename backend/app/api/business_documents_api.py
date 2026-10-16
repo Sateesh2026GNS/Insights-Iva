@@ -10,7 +10,13 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.core.permissions import require_any_permission, require_permission
+from app.core.permissions import (
+    MODULE_FORBIDDEN_MESSAGE,
+    require_any_permission,
+    require_permission,
+    user_has_any_permission,
+    user_has_permission,
+)
 from app.models.business_documents import (
     AppFeatureSetting,
     BusinessDocument,
@@ -469,12 +475,22 @@ def digital_signature_setup(
     )
 
 
+def _require_feature_setting_access(user: User, key: str) -> None:
+    if key == "opening_balance_date":
+        if not user_has_any_permission(user, "settings", "accounts"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MODULE_FORBIDDEN_MESSAGE)
+        return
+    if not user_has_permission(user, "settings"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MODULE_FORBIDDEN_MESSAGE)
+
+
 @router.get("/feature-settings/{key}", response_model=FeatureSettingRead)
 def get_feature_setting(
     key: str,
-    user: User = Depends(require_permission("settings")),
+    user: User = Depends(require_any_permission("settings", "accounts")),
     db: Session = Depends(get_db),
 ):
+    _require_feature_setting_access(user, key)
     row = db.scalars(
         select(AppFeatureSetting).where(
             AppFeatureSetting.tenant_id == user.tenant_id,
@@ -494,9 +510,10 @@ def get_feature_setting(
 def put_feature_setting(
     key: str,
     payload: FeatureSettingUpdate,
-    user: User = Depends(require_permission("settings")),
+    user: User = Depends(require_any_permission("settings", "accounts")),
     db: Session = Depends(get_db),
 ):
+    _require_feature_setting_access(user, key)
     row = db.scalars(
         select(AppFeatureSetting).where(
             AppFeatureSetting.tenant_id == user.tenant_id,

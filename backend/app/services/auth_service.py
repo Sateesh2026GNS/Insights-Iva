@@ -65,7 +65,9 @@ ROLE_MISMATCH_MESSAGE = (
 )
 
 
-def build_access_token_for_user(user: User, *, role_name: str | None = None) -> str:
+def build_access_token_for_user(
+    user: User, *, role_name: str | None = None, session_id: str | None = None
+) -> str:
     """JWT claims: user_id, company_id, role, subscription_plan, license_status."""
     roles = list(getattr(user, "roles", None) or [])
     role = None
@@ -84,22 +86,23 @@ def build_access_token_for_user(user: User, *, role_name: str | None = None) -> 
         company_name = tenant.name
         subscription_plan = getattr(tenant, "subscription", None)
         license_status = getattr(tenant, "license_status", None)
-    return create_access_token(
-        {
-            "sub": str(user.id),
-            "user_id": user.id,
-            "email": user.email,
-            "full_name": user.full_name,
-            "company_id": user.tenant_id,
-            "tenant_id": user.tenant_id,
-            "company_name": company_name,
-            "role": resolved_role,
-            "role_id": role.id if role else None,
-            "role_name": resolved_role,
-            "subscription_plan": subscription_plan,
-            "license_status": license_status,
-        }
-    )
+    claims = {
+        "sub": str(user.id),
+        "user_id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "company_id": user.tenant_id,
+        "tenant_id": user.tenant_id,
+        "company_name": company_name,
+        "role": resolved_role,
+        "role_id": role.id if role else None,
+        "role_name": resolved_role,
+        "subscription_plan": subscription_plan,
+        "license_status": license_status,
+    }
+    if session_id:
+        claims["sid"] = session_id
+    return create_access_token(claims)
 
 
 def assert_user_has_role(user: User, selected_role: str | None = None) -> str:
@@ -270,18 +273,27 @@ def issue_auth_response_data(
     role_name: str | None = None,
     commit: bool = True,
 ) -> dict:
-    from app.services.security_service import clear_login_failures, create_refresh_token
+    from app.services.security_service import (
+        clear_login_failures,
+        create_refresh_token,
+        get_refresh_token_row,
+    )
+    from app.services.session_service import bind_access_jti
 
     clear_login_failures(db, user, commit=commit)
     now = datetime.now(timezone.utc)
     user.last_login_at = now
-    user.tokens_revoked_at = now
+    # Do not set tokens_revoked_at here — that would invalidate other devices.
     if commit:
         db.commit()
     else:
         db.flush()
-    access = build_access_token_for_user(user, role_name=role_name)
     refresh = create_refresh_token(db, user, ip_address=ip_address, user_agent=user_agent, commit=commit)
+    row = get_refresh_token_row(db, refresh)
+    access = build_access_token_for_user(
+        user, role_name=role_name, session_id=row.session_uuid if row else None
+    )
+    bind_access_jti(db, refresh, access)
     user_data = get_user_with_role(db, user, preferred_role=role_name)
     return {
         "access_token": access,

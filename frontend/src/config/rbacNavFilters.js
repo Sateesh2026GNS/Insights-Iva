@@ -125,6 +125,7 @@ export const OPERATOR_ALLOWED_PATHS = new Set([
   "/leave",
   "/settings",
   "/settings/my-account",
+  "/settings/my-account/devices",
   "/settings/notifications",
   "/settings/appearance",
   "/settings/help",
@@ -182,6 +183,7 @@ export const ACCOUNTANT_ALLOWED_CHILDREN = new Set([
   "/hr/leave/create",
   "/leave",
   "/production/bom",
+  "/settings/opening-balances",
 ]);
 
 /** Accountant may open Executive + Finance KPI only (not Live / Production / Inventory / Sales). */

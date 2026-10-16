@@ -210,6 +210,7 @@ OPERATOR_SIDEBAR_CHILDREN = frozenset({
     "/documents/production",
     "/settings",
     "/settings/my-account",
+    "/settings/my-account/devices",
     "/settings/appearance",
     "/settings/notifications",
 })
@@ -217,6 +218,7 @@ OPERATOR_SIDEBAR_CHILDREN = frozenset({
 OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset({
     "/settings",
     "/settings/my-account",
+    "/settings/my-account/devices",
     "/settings/appearance",
     "/settings/notifications",
 })
@@ -247,6 +249,7 @@ STORE_MANAGER_ALLOWED_PATHS = frozenset({
     "/analytics/inventory",
     "/settings",
     "/settings/my-account",
+    "/settings/my-account/devices",
     "/settings/notifications",
     "/settings/appearance",
     "/settings/security",

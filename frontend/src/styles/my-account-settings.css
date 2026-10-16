@@ -282,3 +282,121 @@
 .my-account-more__toggle:hover {
   text-decoration: underline;
 }
+
+.manage-devices-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 720px) {
+  .manage-devices-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.manage-devices-lead {
+  margin: 0.35rem 0 0;
+  font-size: var(--text-sm, 0.8125rem);
+  color: var(--color-text-muted, #64748b);
+  max-width: 36rem;
+}
+
+.manage-devices-section {
+  margin: 0 0 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.manage-devices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.manage-devices-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border-soft, #e2e8f0);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.dark .manage-devices-card {
+  background: var(--color-surface, #0f172a);
+  border-color: var(--color-border, #1e293b);
+}
+
+@media (min-width: 720px) {
+  .manage-devices-card {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.manage-devices-card--current {
+  border-color: var(--color-primary, #0f766e);
+  box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.12);
+}
+
+.manage-devices-card__icon {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--color-primary-soft, rgba(13, 148, 136, 0.12));
+  color: var(--color-primary, #0f766e);
+}
+
+.manage-devices-card__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.manage-devices-card__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manage-devices-card__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text, #1e293b);
+}
+
+.manage-devices-badge {
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--color-primary, #0f766e);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.5rem;
+  text-transform: uppercase;
+}
+
+.manage-devices-card__meta,
+.manage-devices-card__times,
+.manage-devices-empty-others {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.manage-devices-card__action {
+  flex-shrink: 0;
+}

@@ -23,6 +23,7 @@ import {
   Receipt,
   ReceiptText,
   RotateCcw,
+  Scale,
   ScrollText,
   Search,
   Settings as SettingsIcon,
@@ -76,6 +77,7 @@ const ICON_MAP = {
   Receipt,
   ReceiptText,
   RotateCcw,
+  Scale,
   Settings: SettingsIcon,
 };
 
