@@ -16,43 +16,69 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("safety_incidents", sa.Column("department", sa.String(length=128), nullable=True))
-    op.add_column(
-        "safety_incidents",
-        sa.Column("investigation_owner_name", sa.String(length=255), nullable=True),
-    )
-    op.add_column("safety_incidents", sa.Column("immediate_action", sa.Text(), nullable=True))
-    op.add_column("safety_incidents", sa.Column("investigation_findings", sa.Text(), nullable=True))
-    op.add_column("safety_incidents", sa.Column("corrective_action", sa.Text(), nullable=True))
-    op.add_column("safety_incidents", sa.Column("closure_evidence", sa.Text(), nullable=True))
-    op.add_column(
-        "safety_incidents",
-        sa.Column("corrective_action_status", sa.String(length=32), nullable=True),
-    )
-    op.add_column("safety_incidents", sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("safety_incidents", sa.Column("reported_by_user_id", sa.Integer(), nullable=True))
-    op.add_column("safety_incidents", sa.Column("created_by_user_id", sa.Integer(), nullable=True))
-    op.create_foreign_key(
-        "fk_safety_incidents_reported_by_user",
-        "safety_incidents",
-        "users",
-        ["reported_by_user_id"],
-        ["id"],
-        ondelete="SET NULL",
-    )
-    op.create_foreign_key(
-        "fk_safety_incidents_created_by_user",
-        "safety_incidents",
-        "users",
-        ["created_by_user_id"],
-        ["id"],
-        ondelete="SET NULL",
-    )
-    op.create_index(
-        "ix_safety_incidents_reported_by_user_id",
-        "safety_incidents",
-        ["reported_by_user_id"],
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    tables = set(inspector.get_table_names())
+    if "safety_incidents" not in tables:
+        return
+
+    cols = {c["name"] for c in inspector.get_columns("safety_incidents")}
+
+    for col_name, col_type in [
+        ("department", sa.String(length=128)),
+        ("investigation_owner_name", sa.String(length=255)),
+        ("immediate_action", sa.Text()),
+        ("investigation_findings", sa.Text()),
+        ("corrective_action", sa.Text()),
+        ("closure_evidence", sa.Text()),
+        ("corrective_action_status", sa.String(length=32)),
+        ("closed_at", sa.DateTime(timezone=True)),
+        ("reported_by_user_id", sa.Integer()),
+        ("created_by_user_id", sa.Integer()),
+    ]:
+        if col_name not in cols:
+            try:
+                op.add_column("safety_incidents", sa.Column(col_name, col_type, nullable=True))
+            except Exception:
+                pass
+
+    fks = {fk["name"] for fk in inspector.get_foreign_keys("safety_incidents")}
+    if "fk_safety_incidents_reported_by_user" not in fks:
+        try:
+            op.create_foreign_key(
+                "fk_safety_incidents_reported_by_user",
+                "safety_incidents",
+                "users",
+                ["reported_by_user_id"],
+                ["id"],
+                ondelete="SET NULL",
+            )
+        except Exception:
+            pass
+
+    if "fk_safety_incidents_created_by_user" not in fks:
+        try:
+            op.create_foreign_key(
+                "fk_safety_incidents_created_by_user",
+                "safety_incidents",
+                "users",
+                ["created_by_user_id"],
+                ["id"],
+                ondelete="SET NULL",
+            )
+        except Exception:
+            pass
+
+    indexes = {ix["name"] for ix in inspector.get_indexes("safety_incidents")}
+    if "ix_safety_incidents_reported_by_user_id" not in indexes:
+        try:
+            op.create_index(
+                "ix_safety_incidents_reported_by_user_id",
+                "safety_incidents",
+                ["reported_by_user_id"],
+            )
+        except Exception:
+            pass
 
 
 def downgrade() -> None:

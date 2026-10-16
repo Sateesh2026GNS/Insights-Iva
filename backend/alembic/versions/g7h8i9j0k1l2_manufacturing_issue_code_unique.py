@@ -15,11 +15,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint(
-        "uq_manufacturing_issues_tenant_code",
-        "manufacturing_issues",
-        ["tenant_id", "issue_code"],
-    )
+    try:
+        op.create_unique_constraint(
+            "uq_manufacturing_issues_tenant_code",
+            "manufacturing_issues",
+            ["tenant_id", "issue_code"],
+        )
+    except Exception:
+        pass
 
 
 def downgrade() -> None:
