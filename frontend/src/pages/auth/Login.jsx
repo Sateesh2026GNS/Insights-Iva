@@ -209,7 +209,7 @@ export default function Login() {
                     required
                     disabled={loading}
                     aria-label="Role"
-                    className={`${fieldClass} cursor-pointer pr-10`}
+                    className={`${fieldClass} appearance-none cursor-pointer pr-10`}
                   >
                     <option value="" disabled>
                       Select Role *

@@ -404,6 +404,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const [createOpen, setCreateOpen] = useState(false);
   const createButtonRef = useRef(null);
   const createCloseTimerRef = useRef(null);
+  const createPinnedRef = useRef(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const storeMode = isStoreManager(user);
   const salesMode = isSalesManager(user);
@@ -418,10 +419,17 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   };
   const scheduleCreateClose = () => {
     cancelCreateClose();
-    createCloseTimerRef.current = setTimeout(() => setCreateOpen(false), 160);
+    createCloseTimerRef.current = setTimeout(() => {
+      if (!createPinnedRef.current) setCreateOpen(false);
+    }, 160);
+  };
+  const handleCreateOpenChange = (open) => {
+    createPinnedRef.current = false;
+    setCreateOpen(open);
   };
 
   useEffect(() => {
+    createPinnedRef.current = false;
     setCreateOpen(false);
   }, [location.pathname]);
 
@@ -845,10 +853,19 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           <button
             ref={createButtonRef}
             type="button"
-            onClick={() => setCreateOpen((open) => !open)}
+            onClick={() => {
+              cancelCreateClose();
+              if (createPinnedRef.current) {
+                createPinnedRef.current = false;
+                setCreateOpen(false);
+              } else {
+                createPinnedRef.current = true;
+                setCreateOpen(true);
+              }
+            }}
             onMouseEnter={() => {
               cancelCreateClose();
-              if (collapsed) setCreateOpen(true);
+              if (collapsed && !createPinnedRef.current) setCreateOpen(true);
             }}
             onMouseLeave={scheduleCreateClose}
             className={`mb-3 flex min-h-11 w-full items-center rounded-xl bg-[var(--color-nav-active)] px-3 text-sm font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)] ${collapsed ? "justify-center" : "justify-center gap-2.5"}`}
@@ -1055,13 +1072,16 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
 
       <GlobalCreateMenu
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={handleCreateOpenChange}
         onPointerEnter={cancelCreateClose}
         onPointerLeave={scheduleCreateClose}
         anchorRef={createButtonRef}
         palette
         navSections={visibleNav}
-        onSelect={() => onClose?.()}
+        onSelect={() => {
+          createPinnedRef.current = false;
+          onClose?.();
+        }}
       />
 
       {!collapsed && !storeMode && (

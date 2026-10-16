@@ -679,7 +679,7 @@ export function InlineNativeDateRange({
   return (
     <div
       className={`ui-date-range-control ${className}`.trim()}
-      style={{ display: "inline-flex", flexDirection: "row", boxSizing: "border-box", width: "max-content", maxWidth: "100%", height: 42, justifyContent: "flex-start", alignItems: "center", gap: 4, padding: "4px 8px", overflow: "hidden" }}
+      style={{ display: "inline-flex", flexDirection: "row", boxSizing: "border-box", width: "fit-content", maxWidth: "100%", height: 42, justifyContent: "flex-start", alignItems: "center", gap: 4, padding: "4px 4px", marginInlineStart: 0, overflow: "hidden" }}
       role="group"
       aria-label="Date range"
     >
@@ -707,7 +707,7 @@ export function InlineNativeDateRange({
         className="sr-only"
         tabIndex={-1}
       />
-      <div className="ui-date-range-control__content" style={{ display: "inline-flex", flex: "0 0 auto", alignItems: "center", justifyContent: "flex-start", gap: 4, width: "max-content", whiteSpace: "nowrap" }}>
+      <div className="ui-date-range-control__content" style={{ display: "inline-flex", flex: "0 0 auto", alignItems: "center", justifyContent: "flex-start", gap: 4, width: "fit-content", marginInlineStart: 0, whiteSpace: "nowrap" }}>
         <button
           type="button"
           onClick={openFrom}

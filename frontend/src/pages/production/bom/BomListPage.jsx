@@ -233,9 +233,10 @@ export default function BomListPage() {
           </div>
           {showFilters ? (
             <div className="mb-3">
-              <label className="text-xs font-medium text-[var(--color-text-muted)]">Status</label>
+              <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">Status</label>
               <select
-                className="ui-input mt-1 w-40 max-w-full"
+                className="ui-input block max-w-full"
+                style={{ width: "15rem" }}
                 value={status}
                 onChange={(e) => setParams({ status: e.target.value, page: "1" })}
               >
