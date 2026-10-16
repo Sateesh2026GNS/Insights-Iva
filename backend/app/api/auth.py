@@ -69,12 +69,20 @@ from app.services.security_service import (
     is_account_locked,
     record_login_attempt,
     register_failed_login,
+    get_refresh_token_row,
     rotate_refresh_token,
     revoke_access_token,
     revoke_refresh_token,
     touch_user_activity,
     validate_refresh_token,
     verify_email,
+)
+from app.schemas.sessions import DeviceSessionListResponse, DeviceSessionRevokeResponse
+from app.services.session_service import (
+    bind_access_jti,
+    list_user_sessions,
+    revoke_all_user_sessions,
+    revoke_user_session,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -643,7 +651,18 @@ def refresh_tokens(
     new_refresh = rotate_refresh_token(
         db, refresh_raw, user, ip_address=ip_address, user_agent=user_agent
     )
-    access = build_access_token_for_user(user, role_name=role_from_token)
+    if not new_refresh:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=GENERIC_LOGIN_ERROR,
+        )
+    refresh_row = get_refresh_token_row(db, new_refresh)
+    access = build_access_token_for_user(
+        user,
+        role_name=role_from_token,
+        session_id=refresh_row.session_uuid if refresh_row else None,
+    )
+    bind_access_jti(db, new_refresh, access)
     user_data = get_user_with_role(db, user, preferred_role=role_from_token)
     user_data["email_verified"] = user.email_verified
     data = {
@@ -689,8 +708,9 @@ def logout(
             revoke_access_token(db, access_token, user_id=user.id if user else None)
 
         if user:
-            user.tokens_revoked_at = datetime.now(timezone.utc)
-            db.commit()
+            if req.all_devices:
+                user.tokens_revoked_at = datetime.now(timezone.utc)
+                db.commit()
             mark_logout(
                 db,
                 user_id=user.id,
@@ -716,3 +736,63 @@ def logout(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during logout.",
         )
+
+
+def _current_session_id(request: Request, creds: HTTPAuthorizationCredentials | None) -> str | None:
+    token = resolve_access_token(request, creds)
+    if not token:
+        return getattr(request.state, "session_id", None)
+    payload = decode_access_token(token) or {}
+    sid = payload.get("sid")
+    return str(sid) if sid else getattr(request.state, "session_id", None)
+
+
+@router.get("/sessions", response_model=DeviceSessionListResponse)
+def list_sessions(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return DeviceSessionListResponse(
+        **list_user_sessions(db, user, current_sid=_current_session_id(request, creds))
+    )
+
+
+@router.post("/sessions/revoke-all", response_model=DeviceSessionRevokeResponse)
+def revoke_all_sessions(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.middleware.security import check_rate_limit
+
+    check_rate_limit(request, email=user.email, scope="api_authenticated")
+    return DeviceSessionRevokeResponse(
+        **revoke_all_user_sessions(
+            db, user, current_sid=_current_session_id(request, creds), request=request
+        )
+    )
+
+
+@router.post("/sessions/{session_id}/revoke", response_model=DeviceSessionRevokeResponse)
+def revoke_one_session(
+    session_id: str,
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.middleware.security import check_rate_limit
+
+    check_rate_limit(request, email=user.email, scope="api_authenticated")
+    return DeviceSessionRevokeResponse(
+        **revoke_user_session(
+            db,
+            user,
+            session_id,
+            current_sid=_current_session_id(request, creds),
+            request=request,
+        )
+    )

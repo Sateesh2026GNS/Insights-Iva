@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 
 revision: str = "d4e5f6a7b8c9"
 down_revision: Union[str, Sequence[str], None] = "c9d0e1f2a3b5"
@@ -15,12 +16,26 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    existing_tables = set(inspector.get_table_names())
+def _tables() -> set[str]:
+    return set(inspect(op.get_bind()).get_table_names())
 
-    if "bom" not in existing_tables:
+
+def _columns(table: str) -> set[str]:
+    return {col["name"] for col in inspect(op.get_bind()).get_columns(table)}
+
+
+def _indexes(table: str) -> set[str]:
+    return {item["name"] for item in inspect(op.get_bind()).get_indexes(table)}
+
+
+def _fk_names(table: str) -> set[str]:
+    return {fk["name"] for fk in inspect(op.get_bind()).get_foreign_keys(table) if fk.get("name")}
+
+
+def upgrade() -> None:
+    tables = _tables()
+
+    if "bom" not in tables:
         op.create_table(
             "bom",
             sa.Column("id", sa.Integer(), nullable=False),
@@ -38,10 +53,13 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("tenant_id", "bom_code", name="uq_bom_tenant_code"),
         )
+    bom_indexes = _indexes("bom")
+    if "ix_bom_tenant_id" not in bom_indexes:
         op.create_index("ix_bom_tenant_id", "bom", ["tenant_id"])
+    if "ix_bom_tenant_product" not in bom_indexes:
         op.create_index("ix_bom_tenant_product", "bom", ["tenant_id", "product_id"])
 
-    if "bom_version" not in existing_tables:
+    if "bom_version" not in _tables():
         op.create_table(
             "bom_version",
             sa.Column("id", sa.Integer(), nullable=False),
@@ -65,9 +83,12 @@ def upgrade() -> None:
             sa.UniqueConstraint("bom_id", "version_number", name="uq_bom_version_number"),
             sa.CheckConstraint("base_quantity > 0", name="ck_bom_version_base_qty"),
         )
+    version_indexes = _indexes("bom_version")
+    if "ix_bom_version_bom_id" not in version_indexes:
         op.create_index("ix_bom_version_bom_id", "bom_version", ["bom_id"])
+    if "ix_bom_version_status" not in version_indexes:
         op.create_index("ix_bom_version_status", "bom_version", ["bom_id", "status"])
-
+    if "ix_bom_version_one_active" not in version_indexes:
         op.create_index(
             "ix_bom_version_one_active",
             "bom_version",
@@ -76,7 +97,7 @@ def upgrade() -> None:
             postgresql_where=sa.text("status = 'active'"),
         )
 
-    if "bom_component" not in existing_tables:
+    if "bom_component" not in _tables():
         op.create_table(
             "bom_component",
             sa.Column("id", sa.Integer(), nullable=False),
@@ -95,15 +116,16 @@ def upgrade() -> None:
             sa.CheckConstraint("quantity > 0", name="ck_bom_component_qty_positive"),
             sa.CheckConstraint("scrap_percent >= 0 AND scrap_percent < 100", name="ck_bom_component_scrap"),
         )
+    if "ix_bom_component_version" not in _indexes("bom_component"):
         op.create_index("ix_bom_component_version", "bom_component", ["bom_version_id"])
 
-    if "production_orders" in existing_tables:
-        po_columns = {c["name"] for c in inspector.get_columns("production_orders")}
-        if "bom_version_id" not in po_columns:
-            op.add_column(
-                "production_orders",
-                sa.Column("bom_version_id", sa.Integer(), nullable=True),
-            )
+    if "production_orders" in _tables() and "bom_version_id" not in _columns("production_orders"):
+        op.add_column(
+            "production_orders",
+            sa.Column("bom_version_id", sa.Integer(), nullable=True),
+        )
+    if "production_orders" in _tables():
+        if "fk_production_orders_bom_version_id" not in _fk_names("production_orders"):
             op.create_foreign_key(
                 "fk_production_orders_bom_version_id",
                 "production_orders",
@@ -112,32 +134,36 @@ def upgrade() -> None:
                 ["id"],
                 ondelete="SET NULL",
             )
+        if "ix_production_orders_bom_version_id" not in _indexes("production_orders"):
             op.create_index("ix_production_orders_bom_version_id", "production_orders", ["bom_version_id"])
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    existing_tables = set(inspector.get_table_names())
-
-    if "production_orders" in existing_tables:
-        po_columns = {c["name"] for c in inspector.get_columns("production_orders")}
-        if "bom_version_id" in po_columns:
-            try:
-                op.drop_index("ix_production_orders_bom_version_id", table_name="production_orders")
-            except Exception:
-                pass
-            try:
-                op.drop_constraint("fk_production_orders_bom_version_id", "production_orders", type_="foreignkey")
-            except Exception:
-                pass
+    tables = _tables()
+    if "production_orders" in tables:
+        if "ix_production_orders_bom_version_id" in _indexes("production_orders"):
+            op.drop_index("ix_production_orders_bom_version_id", table_name="production_orders")
+        if "fk_production_orders_bom_version_id" in _fk_names("production_orders"):
+            op.drop_constraint("fk_production_orders_bom_version_id", "production_orders", type_="foreignkey")
+        if "bom_version_id" in _columns("production_orders"):
             op.drop_column("production_orders", "bom_version_id")
-
-    if "bom_component" in existing_tables:
+    if "bom_component" in tables:
+        if "ix_bom_component_version" in _indexes("bom_component"):
+            op.drop_index("ix_bom_component_version", table_name="bom_component")
         op.drop_table("bom_component")
-
-    if "bom_version" in existing_tables:
+    if "bom_version" in _tables():
+        version_indexes = _indexes("bom_version")
+        if "ix_bom_version_one_active" in version_indexes:
+            op.drop_index("ix_bom_version_one_active", table_name="bom_version")
+        if "ix_bom_version_status" in version_indexes:
+            op.drop_index("ix_bom_version_status", table_name="bom_version")
+        if "ix_bom_version_bom_id" in version_indexes:
+            op.drop_index("ix_bom_version_bom_id", table_name="bom_version")
         op.drop_table("bom_version")
-
-    if "bom" in existing_tables:
+    if "bom" in _tables():
+        bom_indexes = _indexes("bom")
+        if "ix_bom_tenant_product" in bom_indexes:
+            op.drop_index("ix_bom_tenant_product", table_name="bom")
+        if "ix_bom_tenant_id" in bom_indexes:
+            op.drop_index("ix_bom_tenant_id", table_name="bom")
         op.drop_table("bom")

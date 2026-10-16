@@ -867,6 +867,7 @@ export default function AppRoutes() {
       <Route path="/settings/format-settings" element={<ProtectedRoute><P.FormatSettings /></ProtectedRoute>} />
       <Route path="/settings/inventory-settings" element={<ProtectedRoute><P.InventorySettingsV2 /></ProtectedRoute>} />
       <Route path="/settings/invoice-settings" element={<ProtectedRoute><P.InvoiceSettings /></ProtectedRoute>} />
+      <Route path="/settings/opening-balances" element={<ProtectedRoute><P.OpeningBalancesSettings /></ProtectedRoute>} />
       <Route path="/settings/sequence-reset" element={<ProtectedRoute><P.SequenceResetSettingV2 /></ProtectedRoute>} />
       <Route path="/settings/expense-settings" element={<ProtectedRoute><Navigate to="/accounts/expenses/settings" replace /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><P.SettingsLayout /></ProtectedRoute>}>
@@ -875,6 +876,7 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="profile" replace />} />
           <Route path="profile" element={<P.MyAccountProfileView />} />
           <Route path="two-factor" element={<P.MyAccountTwoFactorView />} />
+          <Route path="devices" element={<P.ManageDevicesPage />} />
         </Route>
         <Route path=":sectionId" element={<P.SettingsSectionPage />} />
         {/* Legacy deep links → section pages (must not target the same path or it loops) */}

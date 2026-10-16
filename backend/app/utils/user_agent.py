@@ -57,4 +57,24 @@ def parse_user_agent(user_agent: str | None) -> dict[str, str]:
         "browser": browser,
         "operating_system": operating_system,
         "device_type": device_type,
+        "device_name": f"{browser} on {operating_system}",
     }
+
+
+def approximate_location_from_ip(ip_address: str | None) -> str | None:
+    """Return a coarse location only when it can be derived reliably (no geo-IP guess)."""
+    ip = (ip_address or "").strip().lower()
+    if not ip:
+        return None
+    if ip in {"127.0.0.1", "::1", "localhost"}:
+        return "Local network"
+    if ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("172.16."):
+        return "Local network"
+    if ip.startswith("172."):
+        try:
+            second = int(ip.split(".")[1])
+        except (IndexError, ValueError):
+            return None
+        if 16 <= second <= 31:
+            return "Local network"
+    return None

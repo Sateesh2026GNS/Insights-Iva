@@ -122,6 +122,7 @@ export const SequenceResetSettingV2 = lazy(() => import("../pages/settings/Seque
 export const TemplateSettings = lazy(() => import("../pages/settings/TemplateSettingsV2"));
 export const FormatSettings = lazy(() => import("../pages/settings/FormatSettingsV2"));
 export const InvoiceSettings = lazy(() => import("../pages/settings/InvoiceSettingsV2"));
+export const OpeningBalancesSettings = lazy(() => import("../pages/settings/OpeningBalancesSettings"));
 export const AccountingReports = lazy(() => import("../pages/accounts/AccountingReportsV2"));
 export const ReportDetailV2 = lazy(() => import("../pages/accounts/ReportDetailV2"));
 export const LedgerV2 = lazy(() => import("../pages/accounts/LedgerV2"));
@@ -222,6 +223,7 @@ export const MyAccountProfileView = lazy(() =>
 export const MyAccountTwoFactorView = lazy(() =>
   import("../pages/settings/SettingsMyAccount").then((m) => ({ default: m.MyAccountTwoFactorView }))
 );
+export const ManageDevicesPage = lazy(() => import("../pages/settings/ManageDevicesPage"));
 export const SettingsCompanyProfile = lazy(() => import("../pages/settings/SettingsCompanyProfile"));
 export const SettingsBillingAddress = lazy(() => import("../pages/settings/SettingsBillingAddress"));
 export const SettingsDeliveryLocation = lazy(() => import("../pages/settings/SettingsDeliveryLocation"));

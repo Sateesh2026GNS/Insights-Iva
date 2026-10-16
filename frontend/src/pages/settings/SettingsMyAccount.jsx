@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, UserRound } from "lucide-react";
+import { Eye, EyeOff, Lock, MonitorSmartphone, UserRound } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
@@ -17,6 +17,7 @@ import "../../styles/my-account-settings.css";
 const ACCOUNT_NAV = [
   { to: "/settings/my-account/profile", label: "Your Profile", icon: UserRound, end: true },
   { to: "/settings/my-account/two-factor", label: "Two Factor Authentication", icon: Lock },
+  { to: "/settings/my-account/devices", label: "Manage Devices", icon: MonitorSmartphone },
 ];
 
 export function SettingsMyAccountLayout() {
