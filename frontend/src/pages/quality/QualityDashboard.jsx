@@ -196,25 +196,25 @@ export default function QualityDashboard() {
               <span className="h-2 w-2 rounded-full bg-orange-500" /> In-Process
             </span>
           </div>
-          <div className="h-56">
+          {trendData.length ? <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                <Line type="monotone" dataKey="passed" stroke="#22c55e" strokeWidth={2} dot={false} name="Passed" />
-                <Line type="monotone" dataKey="failed" stroke="#ef4444" strokeWidth={2} dot={false} name="Failed" />
-                <Line type="monotone" dataKey="in_process" stroke="#f97316" strokeWidth={2} dot={false} name="In-Process" />
+                <Line type="monotone" dataKey="passed" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Passed" />
+                <Line type="monotone" dataKey="failed" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Failed" />
+                <Line type="monotone" dataKey="in_process" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} name="In-Process" />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </div> : <div className="flex h-56 items-center justify-center text-sm text-[var(--color-text-muted)]">No inspection history available yet.</div>}
         </div>
 
         <div className="ui-card ui-card--padded">
           <h2 className="mb-4 text-sm font-semibold text-[var(--color-text)]">Inspection by Type</h2>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative h-52 w-52 shrink-0">
+            {typeData.length ? <><div className="relative h-52 w-52 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -252,7 +252,7 @@ export default function QualityDashboard() {
                   </span>
                 </li>
               ))}
-            </ul>
+            </ul></> : <div className="flex h-52 flex-1 items-center justify-center text-sm text-[var(--color-text-muted)]">No inspection type data available yet.</div>}
           </div>
         </div>
       </div>

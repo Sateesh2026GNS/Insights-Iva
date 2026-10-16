@@ -30,11 +30,13 @@ export default function ResourcePage({
   searchKeys = [],
   filters = [],
   createLabel = "+ New",
+  headerAction = null,
   emptyTitle = "Nothing here yet",
   emptyDescription = "Records will appear here once created.",
   emptyIcon = "clipboard",
   rowActions,
   transformPayload,
+  tableToolbarClassName = "",
 }) {
   const fields = fieldsProp || formFields || [];
   const { user } = useAuth();
@@ -185,10 +187,15 @@ export default function ResourcePage({
         title={title}
         subtitle={subtitle}
         action={
-          createFn && !isOperator ? (
-            <AddButton type="button" onClick={openModal}>
-              {createLabel.replace(/^\+\s*/, "")}
-            </AddButton>
+          headerAction || (createFn && !isOperator) ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {headerAction}
+              {createFn && !isOperator ? (
+                <AddButton type="button" onClick={openModal}>
+                  {createLabel.replace(/^\+\s*/, "")}
+                </AddButton>
+              ) : null}
+            </div>
           ) : null
         }
       />
@@ -207,6 +214,7 @@ export default function ResourcePage({
             searchPlaceholder="Search"
             searchKeys={searchKeys}
             filters={filters}
+            toolbarClassName={tableToolbarClassName}
             emptyState={
               <EmptyState
                 icon={emptyIcon}

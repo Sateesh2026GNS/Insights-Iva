@@ -32,6 +32,19 @@ from app.schemas.inventory_extended import (
 )
 from app.services.inventory_service import get_total_stock
 
+_NON_RAW_MATERIAL_CATEGORIES = {
+    "consumables",
+    "finished good",
+    "finished goods",
+    "finished product",
+    "finished products",
+}
+
+
+def _raw_material_category_filter():
+    category = func.lower(func.trim(func.coalesce(InventoryItem.category, "")))
+    return category.notin_(_NON_RAW_MATERIAL_CATEGORIES)
+
 
 def _item_status(qty: int, reorder: int) -> str:
     if qty <= 0:
@@ -108,6 +121,7 @@ def get_materials_summary(db: Session, tenant_id: int) -> InventorySummaryRead:
                 InventoryItem.tenant_id == tenant_id,
                 InventoryItem.is_active.is_(True),
                 InventoryItem.item_type == "raw_material",
+                _raw_material_category_filter(),
             )
         ).all()
     )
@@ -159,6 +173,7 @@ def list_materials_enriched(db: Session, tenant_id: int) -> list[MaterialListRea
                 InventoryItem.tenant_id == tenant_id,
                 InventoryItem.is_active.is_(True),
                 InventoryItem.item_type == "raw_material",
+                _raw_material_category_filter(),
             )
         ).all()
     )

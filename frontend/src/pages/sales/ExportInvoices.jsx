@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -19,7 +19,6 @@ import {
 
 import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
-import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -33,6 +32,7 @@ import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { runListExport } from "../../utils/listExport";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
 const EXPORT_INVOICE_COLUMNS = [
   { key: "invoice_number", label: "Invoice No." },
@@ -133,7 +133,8 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-[125px] sm:min-w-0 flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 255, minWidth: 255, flex: "0 0 255px" }}
+      className={`min-w-[125px] shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
         active
           ? `bg-[var(--color-surface)] ${currentTone.active}`
           : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
@@ -168,26 +169,6 @@ export default function ExportInvoices() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
-
-  const openDateFrom = () => {
-    if (typeof dateFromRef.current?.showPicker === "function") {
-      dateFromRef.current.showPicker();
-    } else {
-      dateFromRef.current?.focus();
-      dateFromRef.current?.click();
-    }
-  };
-
-  const openDateTo = () => {
-    if (typeof dateToRef.current?.showPicker === "function") {
-      dateToRef.current.showPicker();
-    } else {
-      dateToRef.current?.focus();
-      dateToRef.current?.click();
-    }
-  };
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -305,21 +286,34 @@ export default function ExportInvoices() {
   }
 
   return (
-    <ListPageShell stackClassName="space-y-4">
-      <PageHeader
-        title="Export Invoices"
-        subtitle="Track export sales invoices, payment status, and compliance."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />
-            <Button variant="add" to="/sales/export-invoices/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Export Invoice
-            </Button>
-          </div>
-        }
-      />
-      <div className="mb-4 overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
-        <div className="flex overflow-x-auto scrollbar-none sm:flex-wrap">
+    <ListPageShell stackClassName="!gap-0 space-y-0">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="export-invoices-from-date"
+            toId="export-invoices-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <Button
+            variant="add"
+            to="/sales/export-invoices/create"
+            className="h-[42px] w-full justify-center sm:w-auto"
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+          >
+            Export Invoice
+          </Button>
+        </div>
+        <div className="w-full max-w-[1020px] overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Export invoice payment status">
           <SummaryTab
             label="Total Sales"
             count={kpis.all.count}
@@ -354,71 +348,13 @@ export default function ExportInvoices() {
           />
         </div>
       </div>
-
-      {/* Toolbar row 1: search | date + create */}
-      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search" />
-        <div className="flex w-full sm:w-auto flex-wrap items-center gap-2.5">
-          <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
-            <button
-              type="button"
-              onClick={openDateFrom}
-              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-              aria-label="Open start date picker"
-            >
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-            <input
-              ref={dateFromRef}
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="sr-only"
-            />
-            <button
-              type="button"
-              onClick={openDateFrom}
-              className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-              title="Click to select start date"
-            >
-              {fmtDisplayDate(dateFrom) || "Start Date"}
-            </button>
-            <span className="text-[var(--color-text-faint)] select-none">→</span>
-            <button
-              type="button"
-              onClick={openDateTo}
-              className="text-[14px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-              title="Click to select end date"
-            >
-              {fmtDisplayDate(dateTo) || "End Date"}
-            </button>
-            <input
-              ref={dateToRef}
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="sr-only"
-            />
-            <button
-              type="button"
-              onClick={openDateTo}
-              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-              aria-label="Open end date picker"
-            >
-              <Calendar className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Toolbar row 2: filters + sort (right) */}
-      <div className="relative mb-3 flex justify-end gap-2">
+      <section className="ui-list-card space-y-4 p-4 sm:p-5">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search" />
+        <div className="flex items-center gap-2 shrink-0">
+        <ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />
         <button
           type="button"
           onClick={openFilters}
@@ -469,8 +405,8 @@ export default function ExportInvoices() {
           )}
         </div>
       </div>
+      </div>
 
-      {/* Table card */}
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
         <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
           <table className="ui-table w-full min-w-[880px] border-collapse text-left">
@@ -630,6 +566,7 @@ export default function ExportInvoices() {
           </div>
         </div>
       </div>
+      </section>
 
       {/* Filters drawer — full sections from screenshot */}
       {showFilters && (

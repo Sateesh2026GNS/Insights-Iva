@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   AlertCircle,
-  Calendar,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -49,6 +48,7 @@ import {
 import { formatInr } from "../../data/salesMasterData";
 import { numberToWordsInr } from "../../utils/invoiceCopyData";
 import { exportToCsv, exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -99,43 +99,38 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-function fmtDisplayDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = String(iso).slice(0, 10).split("-");
-  if (!y || !m || !d) return String(iso).slice(0, 10);
-  return `${d}/${m}/${y}`;
-}
-
 function toInputDate(iso) {
   return String(iso || new Date().toISOString()).slice(0, 10);
 }
 
-function SummaryTab({ label, count, amount, active, onClick, badgeColor }) {
+function SummaryTab({ label, count, amount, active, tone = "blue", onClick }) {
+  const activeTone = {
+    blue: "border-blue-600 bg-blue-50 text-blue-700",
+    violet: "border-violet-600 bg-violet-50 text-violet-700",
+    amber: "border-amber-500 bg-amber-50 text-amber-700",
+  }[tone];
+  const amountTone = {
+    blue: "text-blue-800",
+    violet: "text-violet-800",
+    amber: "text-amber-800",
+  }[tone];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-[130px] sm:min-w-0 flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-4 sm:py-3 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 255, minWidth: 255, flex: "0 0 255px" }}
+      className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          ? activeTone
+          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <div className="flex items-center justify-between">
-        <p className={`text-[12px] font-medium transition-colors ${active ? "font-semibold" : "text-[var(--color-text-muted)]"}`}>
-          {label}
-        </p>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-            badgeColor || "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)]"
-          }`}
-        >
-          {count}
-        </span>
-      </div>
+      <p className={`whitespace-nowrap text-xs sm:text-[13px] font-medium ${active ? "font-semibold" : "text-[var(--color-text)]"}`}>
+        {label} <span className={active ? "opacity-70" : "text-[var(--color-text-muted)]"}>({count})</span>
+      </p>
       <p
-        className={`mt-1 text-[16px] font-bold tabular-nums transition-colors ${
-          active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
+        className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums transition-colors ${
+          active ? amountTone : "text-[var(--color-text)]"
         }`}
       >
         {amount}
@@ -1039,27 +1034,7 @@ export default function RefundVouchers() {
   const [dateTo, setDateTo] = useState("2027-03-31");
   const [modeFilter, setModeFilter] = useState("all");
   const [kpiFilter, setKpiFilter] = useState("all");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
-
-  const openDateFrom = () => {
-    if (typeof dateFromRef.current?.showPicker === "function") {
-      dateFromRef.current.showPicker();
-    } else {
-      dateFromRef.current?.focus();
-      dateFromRef.current?.click();
-    }
-  };
-
-  const openDateTo = () => {
-    if (typeof dateToRef.current?.showPicker === "function") {
-      dateToRef.current.showPicker();
-    } else {
-      dateToRef.current?.focus();
-      dateToRef.current?.click();
-    }
-  };
-
+  const [selectedKpi, setSelectedKpi] = useState(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [modalOpen, setModalOpen] = useState(false);
@@ -1320,97 +1295,24 @@ export default function RefundVouchers() {
   }
 
   return (
-    <div className="min-h-full space-y-4 bg-[var(--color-bg)] p-4 sm:p-6">
-      {/* Summary KPI Tabs */}
-      <div className="flex overflow-x-auto scrollbar-none sm:flex-wrap rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs">
-        <SummaryTab
-          label="All Refund Vouchers"
-          count={rows.length}
-          amount={formatInr(totalRefundAmount)}
-          active={kpiFilter === "all"}
-          onClick={() => setKpiFilter("all")}
-          badgeColor="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-        />
-        <SummaryTab
-          label="Bank & Online Refunds"
-          count={bankRefunds.length}
-          amount={formatInr(bankTotal)}
-          active={kpiFilter === "bank"}
-          onClick={() => setKpiFilter("bank")}
-          badgeColor="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-        />
-        <SummaryTab
-          label="Cash Refunds"
-          count={cashRefunds.length}
-          amount={formatInr(cashTotal)}
-          active={kpiFilter === "cash"}
-          onClick={() => setKpiFilter("cash")}
-          badgeColor="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-        />
-      </div>
-
-      {/* Row 1: Date Range & Action Buttons */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full sm:w-auto flex-wrap items-center gap-3">
-          {/* Date Picker Range Box */}
-          <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-xs border border-[var(--color-border-soft)]">
-            <button
-              type="button"
-              onClick={openDateFrom}
-              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
-              aria-label="Open start date picker"
-            >
-              <Calendar className="h-4 w-4" />
-            </button>
-            <input
-              ref={dateFromRef}
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="sr-only"
-            />
-            <button
-              type="button"
-              onClick={openDateFrom}
-              className="text-[13px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
-              title="Click to select start date"
-            >
-              {fmtDisplayDate(dateFrom) || "Start Date"}
-            </button>
-            <span className="text-[var(--color-text-faint)] select-none">→</span>
-            <button
-              type="button"
-              onClick={openDateTo}
-              className="text-[13px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
-              title="Click to select end date"
-            >
-              {fmtDisplayDate(dateTo) || "End Date"}
-            </button>
-            <input
-              ref={dateToRef}
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="sr-only"
-            />
-            <button
-              type="button"
-              onClick={openDateTo}
-              className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
-              aria-label="Open end date picker"
-            >
-              <Calendar className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Export Dropdown / Buttons */}
-          <div className="flex items-center gap-1.5">
+    <div className="min-h-full space-y-0 bg-[var(--color-bg)] p-4 sm:p-6">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="refund-vouchers-from-date"
+            toId="refund-vouchers-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="secondary"
@@ -1432,23 +1334,52 @@ export default function RefundVouchers() {
               CSV
             </Button>
           </div>
+          <Button
+            type="button"
+            variant="add"
+            className="h-[42px] w-full justify-center sm:w-auto"
+            onClick={() => {
+              setEditingVoucher(null);
+              setModalOpen(true);
+            }}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+          >
+            New Refund Voucher
+          </Button>
         </div>
 
-        <Button
-          type="button"
-          variant="add"
-          onClick={() => {
-            setEditingVoucher(null);
-            setModalOpen(true);
-          }}
-          leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-        >
-          New Refund Voucher
-        </Button>
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Refund voucher status">
+        <SummaryTab
+          label="All Refund Vouchers"
+          count={rows.length}
+          amount={formatInr(totalRefundAmount)}
+          tone="blue"
+          active={selectedKpi === "all"}
+          onClick={() => { setKpiFilter("all"); setSelectedKpi("all"); }}
+        />
+        <SummaryTab
+          label="Bank & Online Refunds"
+          count={bankRefunds.length}
+          amount={formatInr(bankTotal)}
+          tone="violet"
+          active={selectedKpi === "bank"}
+          onClick={() => { setKpiFilter("bank"); setSelectedKpi("bank"); }}
+        />
+        <SummaryTab
+          label="Cash Refunds"
+          count={cashRefunds.length}
+          amount={formatInr(cashTotal)}
+          tone="amber"
+          active={selectedKpi === "cash"}
+          onClick={() => { setKpiFilter("cash"); setSelectedKpi("cash"); }}
+        />
+          </div>
+        </div>
       </div>
 
-      {/* Row 2: Search & Mode Filter Tabs */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="ui-list-card space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar
           value={search}
           onChange={setSearch}
@@ -1457,7 +1388,7 @@ export default function RefundVouchers() {
         />
 
         {/* Mode Filter Chips */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {["all", "cash", "bank", "upi", "cheque"].map((m) => (
             <button
               key={m}
@@ -1473,9 +1404,8 @@ export default function RefundVouchers() {
             </button>
           ))}
         </div>
-      </div>
+        </div>
 
-      {/* Table */}
       <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)] shadow-xs">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-[13px]">
@@ -1653,6 +1583,7 @@ export default function RefundVouchers() {
           </div>
         </div>
       </div>
+      </section>
 
       {/* Create / Edit Modal */}
       <CreateEditRefundVoucherModal

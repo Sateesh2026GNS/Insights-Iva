@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRightCircle,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -27,6 +26,7 @@ import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr } from "../../data/salesMasterData";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
 const YELLOW = "var(--color-primary)";
 const PAGE_BG = "var(--color-bg)";
@@ -91,13 +91,6 @@ function dueMatch(dueDate, dueFilter, customDueDate) {
   return true;
 }
 
-function fmtDisplayDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = String(iso).slice(0, 10).split("-");
-  if (!y || !m || !d) return String(iso).slice(0, 10);
-  return `${d}/${m}/${y}`;
-}
-
 function fmtDate(iso) {
   if (!iso) return "—";
   const [y, m, d] = String(iso).slice(0, 10).split("-");
@@ -146,26 +139,6 @@ export default function ProformaInvoices() {
   const [openMenu, setOpenMenu] = useState(null);
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
-
-  const openDateFrom = () => {
-    if (typeof dateFromRef.current?.showPicker === "function") {
-      dateFromRef.current.showPicker();
-    } else {
-      dateFromRef.current?.focus();
-      dateFromRef.current?.click();
-    }
-  };
-
-  const openDateTo = () => {
-    if (typeof dateToRef.current?.showPicker === "function") {
-      dateToRef.current.showPicker();
-    } else {
-      dateToRef.current?.focus();
-      dateToRef.current?.click();
-    }
-  };
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -266,63 +239,22 @@ export default function ProformaInvoices() {
     <div className="min-h-full" style={{ background: PAGE_BG }}>
       <div className="space-y-4 p-4 sm:p-6">
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
           <div className="flex w-full sm:w-auto flex-wrap items-center gap-2.5">
-            <div className="inline-flex w-full sm:w-auto justify-between sm:justify-start items-center gap-3 rounded-full bg-[var(--color-surface)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
-              <button
-                type="button"
-                onClick={openDateFrom}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
-                aria-label="Open start date picker"
-              >
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-              <input
-                ref={dateFromRef}
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setPage(1);
-                }}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={openDateFrom}
-                className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
-                title="Click to select start date"
-              >
-                {fmtDisplayDate(dateFrom) || "Start Date"}
-              </button>
-              <span className="text-[var(--color-text-faint)] select-none">→</span>
-              <button
-                type="button"
-                onClick={openDateTo}
-                className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
-                title="Click to select end date"
-              >
-                {fmtDisplayDate(dateTo) || "End Date"}
-              </button>
-              <input
-                ref={dateToRef}
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setPage(1);
-                }}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={openDateTo}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
-                aria-label="Open end date picker"
-              >
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-            </div>
+            <InlineNativeDateRange
+              from={dateFrom}
+              to={dateTo}
+              fromId="proforma-invoices-from-date"
+              toId="proforma-invoices-to-date"
+              onFromChange={(value) => {
+                setDateFrom(value);
+                setPage(1);
+              }}
+              onToChange={(value) => {
+                setDateTo(value);
+                setPage(1);
+              }}
+            />
             <div className="w-full sm:w-auto">
               <Button variant="add" to={createTo} className="w-full sm:w-auto justify-center" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                 {exportOnly ? "Export Proforma Invoice" : "Proforma Invoice"}

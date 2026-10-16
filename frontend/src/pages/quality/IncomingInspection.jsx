@@ -27,7 +27,7 @@ import EmptyState from "../../components/common/EmptyState";
 import PageHeader from "../../components/common/PageHeader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
-import { getIncomingEnriched, getIncomingSummary } from "../../api/qualityApi";
+import { createIncomingInspection, getIncomingEnriched, getIncomingSummary, updateIncomingInspection } from "../../api/qualityApi";
 import {
   EMPTY_INCOMING_SUMMARY,
   formatInspectionDate,
@@ -244,6 +244,23 @@ export default function IncomingInspection() {
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [viewRow, setViewRow] = useState(null);
+  const [editRow, setEditRow] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creatingInspection, setCreatingInspection] = useState(false);
+  const [newInspection, setNewInspection] = useState({
+    inspection_number: "",
+    inspection_date: new Date().toISOString().slice(0, 10),
+    vendor_name: "",
+    material_name: "",
+    batch_code: "",
+    quantity: "",
+    inspector: "",
+    inspection_time_minutes: "",
+    notes: "",
+  });
+  const dateInputRef = useRef(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -321,17 +338,84 @@ export default function IncomingInspection() {
   const rejectedPct = summary.total ? Math.round((summary.rejected / summary.total) * 100) : 0;
   const inProgressPct = summary.total ? Math.round((summary.in_progress / summary.total) * 100) : 0;
 
-  const handleInspect = (row) => {
+  const handleInspect = async (row, decision = "approved") => {
     const key = row.id ?? row.inspection_number;
-    setRows((prev) =>
-      prev.map((r) =>
-        (r.id ?? r.inspection_number) === key
-          ? { ...r, status: "approved", result: "pass" }
-          : r
-      )
-    );
-    addToast(`Inspection ${row.inspection_number || ""} marked as approved`, "success");
-    setViewRow(null);
+    try {
+      await updateIncomingInspection(key, { status: decision });
+      await load(true);
+      addToast(`Inspection ${row.inspection_number || ""} marked as ${decision}`, "success");
+      setViewRow(null);
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Could not approve this inspection", "error");
+    }
+  };
+
+  const openEdit = (row) => {
+    setEditRow(row);
+    setEditForm({
+      inspection_date: String(row.inspection_date || "").slice(0, 10),
+      vendor_name: row.vendor_name || "",
+      material_name: row.material_name || "",
+      batch_code: row.batch_code || "",
+      quantity: row.quantity ?? "",
+      inspector: row.inspector || "",
+      inspection_time_minutes: row.inspection_time_minutes ?? "",
+      status: normalizeIncomingStatus(row),
+      notes: row.notes || "",
+    });
+    setOpenMenuId(null);
+  };
+
+  const saveEdit = async (event) => {
+    event.preventDefault();
+    if (!editRow) return;
+    setSavingEdit(true);
+    try {
+      const payload = {
+        ...editForm,
+        quantity: editForm.quantity === "" ? null : Number(editForm.quantity),
+        inspection_time_minutes: editForm.inspection_time_minutes === "" ? null : Number(editForm.inspection_time_minutes),
+        status: editForm.status === "in_progress" ? "pending" : editForm.status,
+      };
+      await updateIncomingInspection(editRow.id, payload);
+      await load(true);
+      addToast(`Inspection ${editRow.inspection_number || ""} updated`, "success");
+      setEditRow(null);
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Could not update this inspection", "error");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const createInspection = async (event) => {
+    event.preventDefault();
+    setCreatingInspection(true);
+    try {
+      await createIncomingInspection({
+        ...newInspection,
+        quantity: newInspection.quantity === "" ? 0 : Number(newInspection.quantity),
+        inspection_time_minutes: newInspection.inspection_time_minutes === "" ? null : Number(newInspection.inspection_time_minutes),
+      });
+      await load(true);
+      addToast("Incoming inspection created", "success");
+      setShowCreateForm(false);
+      setNewInspection({
+        inspection_number: "",
+        inspection_date: new Date().toISOString().slice(0, 10),
+        vendor_name: "",
+        material_name: "",
+        batch_code: "",
+        quantity: "",
+        inspector: "",
+        inspection_time_minutes: "",
+        notes: "",
+      });
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Could not create this inspection", "error");
+    } finally {
+      setCreatingInspection(false);
+    }
   };
 
   const exportRows = filtered.map((r) => ({
@@ -364,7 +448,7 @@ export default function IncomingInspection() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            <Button variant="add" to="/quality/inspection" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            <Button variant="add" onClick={() => setShowCreateForm(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New Inspection
             </Button>
           </div>
@@ -380,14 +464,30 @@ export default function IncomingInspection() {
             placeholder="Search"
             aria-label="Search incoming inspections"
           />
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
-              <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <button
+                type="button"
+                aria-label="Open date picker"
+                onClick={() => {
+                  const input = dateInputRef.current;
+                  if (!input) return;
+                  if (typeof input.showPicker === "function") input.showPicker();
+                  else {
+                    input.focus();
+                    input.click();
+                  }
+                }}
+                className="shrink-0 text-[var(--color-text-muted)]"
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
               <input
+                ref={dateInputRef}
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
+                className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none"
                 aria-label="Select date"
               />
             </div>
@@ -483,7 +583,19 @@ export default function IncomingInspection() {
       {/* Table */}
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-[1040px] w-full border-collapse text-left text-[13px]">
+          <table className="min-w-[1200px] w-full table-fixed border-collapse text-left text-[13px] [&_th]:align-middle [&_td]:align-middle">
+            <colgroup>
+              <col className="w-[5%]" />
+              <col className="w-[15%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
+              <col className="w-[8%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
+              <col className="w-[5%]" />
+            </colgroup>
             <thead className="ui-table-head">
               <tr className="border-b border-[#d0e5e0]">
                 <SerialNumberHeader className="px-3 py-3" />
@@ -543,7 +655,7 @@ export default function IncomingInspection() {
                         showAdd={false}
                         showDelete={false}
                         onView={() => setViewRow(row)}
-                        onEdit={() => handleInspect(row)}
+                        onEdit={() => openEdit(row)}
                         menuWidth={176}
                       />
                     </td>
@@ -645,13 +757,136 @@ export default function IncomingInspection() {
             </dl>
             <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] px-6 py-4">
               {normalizeIncomingStatus(viewRow) === "in_progress" ? (
-                <Button type="button" variant="primary" onClick={() => handleInspect(viewRow)}>
-                  Approve Inspection
-                </Button>
+                <>
+                  <Button type="button" variant="danger" onClick={() => handleInspect(viewRow, "rejected")}>
+                    Reject Inspection
+                  </Button>
+                  <Button type="button" variant="primary" onClick={() => handleInspect(viewRow)}>
+                    Approve Inspection
+                  </Button>
+                </>
               ) : null}
               <Button type="button" variant="secondary" onClick={() => setViewRow(null)}>Close</Button>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {showCreateForm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs">
+          <form onSubmit={createInspection} className="ui-modal max-h-[90vh] w-full max-w-2xl overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--color-text)]">New Incoming Inspection</h2>
+                <p className="text-xs font-medium text-[var(--color-text-muted)]">Create a QC record for received materials</p>
+              </div>
+              <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]" aria-label="Close create form">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2">
+              {[
+                ["Inspection No.", "inspection_number", "text"],
+                ["Inspection Date", "inspection_date", "date"],
+                ["Supplier", "vendor_name", "text"],
+                ["Material", "material_name", "text"],
+                ["Batch / Lot No.", "batch_code", "text"],
+                ["Quantity", "quantity", "number"],
+                ["Inspector", "inspector", "text"],
+                ["Inspection Time (minutes)", "inspection_time_minutes", "number"],
+              ].map(([label, name, type]) => (
+                <label key={name} className="flex min-w-0 flex-col gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
+                  {label}
+                  <input
+                    type={type}
+                    required={name === "inspection_number" || name === "inspection_date"}
+                    min={type === "number" ? 0 : undefined}
+                    step={name === "quantity" ? "0.01" : "1"}
+                    value={newInspection[name] ?? ""}
+                    onChange={(event) => setNewInspection((prev) => ({ ...prev, [name]: event.target.value }))}
+                    className="ui-input w-full"
+                  />
+                </label>
+              ))}
+              <label className="flex min-w-0 flex-col gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] sm:col-span-2">
+                Notes
+                <textarea
+                  rows={3}
+                  value={newInspection.notes}
+                  onChange={(event) => setNewInspection((prev) => ({ ...prev, notes: event.target.value }))}
+                  className="ui-input w-full resize-y"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] px-6 py-4">
+              <Button type="button" variant="secondary" onClick={() => setShowCreateForm(false)} disabled={creatingInspection}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={creatingInspection}>{creatingInspection ? "Creating…" : "Create Inspection"}</Button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {editRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs">
+          <form onSubmit={saveEdit} className="ui-modal max-h-[90vh] w-full max-w-2xl overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--color-text)]">Edit {editRow.inspection_number}</h2>
+                <p className="text-xs font-medium text-[var(--color-text-muted)]">Update inspection details and QC status</p>
+              </div>
+              <button type="button" onClick={() => setEditRow(null)} className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]" aria-label="Close edit form">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2">
+              {[
+                ["Inspection Date", "inspection_date", "date"],
+                ["Supplier", "vendor_name", "text"],
+                ["Material", "material_name", "text"],
+                ["Batch / Lot No.", "batch_code", "text"],
+                ["Quantity", "quantity", "number"],
+                ["Inspector", "inspector", "text"],
+                ["Inspection Time (minutes)", "inspection_time_minutes", "number"],
+              ].map(([label, name, type]) => (
+                <label key={name} className="flex min-w-0 flex-col gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
+                  {label}
+                  <input
+                    type={type}
+                    min={type === "number" ? 0 : undefined}
+                    step={name === "quantity" ? "0.01" : "1"}
+                    value={editForm[name] ?? ""}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, [name]: event.target.value }))}
+                    className="ui-input w-full"
+                  />
+                </label>
+              ))}
+              <label className="flex min-w-0 flex-col gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
+                QC Status
+                <select
+                  value={editForm.status || "in_progress"}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, status: event.target.value }))}
+                  className="ui-input w-full"
+                >
+                  <option value="in_progress">In Progress</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </label>
+              <label className="flex min-w-0 flex-col gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] sm:col-span-2">
+                Notes
+                <textarea
+                  rows={3}
+                  value={editForm.notes ?? ""}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, notes: event.target.value }))}
+                  className="ui-input w-full resize-y"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] px-6 py-4">
+              <Button type="button" variant="secondary" onClick={() => setEditRow(null)} disabled={savingEdit}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={savingEdit}>{savingEdit ? "Saving…" : "Save Changes"}</Button>
+            </div>
+          </form>
         </div>
       ) : null}
     </div>

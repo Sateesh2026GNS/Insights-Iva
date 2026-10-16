@@ -634,6 +634,8 @@ export function userCanAccessAnalyticsPath(user, pathname) {
 
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
+  // Contact Us is a shared support page available to every signed-in role.
+  if ((pathname || "").replace(/\/$/, "") === "/contact") return true;
   if (isMySubscriptionSettingsPath(pathname)) {
     return userCanAccessMySubscription(user);
   }

@@ -104,23 +104,31 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", surface: "bg-blue-100", label: "text-blue-700", count: "text-blue-500", value: "text-blue-900" },
+    amber: { border: "border-amber-500", surface: "bg-amber-100", label: "text-amber-700", count: "text-amber-600", value: "text-amber-900" },
+    emerald: { border: "border-emerald-600", surface: "bg-emerald-100", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-900" },
+    rose: { border: "border-rose-600", surface: "bg-rose-100", label: "text-rose-700", count: "text-rose-600", value: "text-rose-900" },
+  };
+  const colors = tones[tone];
   return (
     <button
       type="button"
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-w-[125px] flex-1 shrink-0 border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-3 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface,#ffffff)] text-[var(--color-text,#0f172a)] shadow-sm"
-          : "border-transparent bg-[var(--color-surface-muted,#f8fafc)] text-[var(--color-text-muted,#64748b)] hover:bg-[var(--color-surface,#ffffff)]"
+          ? `${colors.border} ${colors.surface} ${colors.label} shadow-sm`
+          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <p className={`text-xs sm:text-[13px] ${active ? "font-semibold text-indigo-900 dark:text-indigo-300" : "font-medium text-slate-600 dark:text-slate-400"}`}>
-        {label} <span className="text-slate-400 font-normal">({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
+        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
       </p>
-      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -157,7 +165,7 @@ export default function Quotations() {
   const [selected, setSelected] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [searchParams] = useSearchParams();
-  const [kpiFilter, setKpiFilter] = useState("all");
+  const [kpiFilter, setKpiFilter] = useState(null);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
@@ -349,42 +357,9 @@ export default function Quotations() {
   }
 
   return (
-    <ListPageShell stackClassName="space-y-4">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)] flex-1 max-w-2xl">
-          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Quotation status">
-            <SummaryTab
-              label="All Quotations"
-              count={tabStats.all.count}
-              amount={formatQuotationInr(tabStats.all.amount)}
-              active={kpiFilter === "all"}
-              onClick={() => setKpiFilter("all")}
-            />
-            <SummaryTab
-              label="Pending"
-              count={tabStats.pending.count}
-              amount={formatQuotationInr(tabStats.pending.amount)}
-              active={kpiFilter === "pending"}
-              onClick={() => setKpiFilter("pending")}
-            />
-            <SummaryTab
-              label="Accepted"
-              count={tabStats.accepted.count}
-              amount={formatQuotationInr(tabStats.accepted.amount)}
-              active={kpiFilter === "accepted"}
-              onClick={() => setKpiFilter("accepted")}
-            />
-            <SummaryTab
-              label="Cancelled"
-              count={tabStats.cancelled.count}
-              amount={formatQuotationInr(tabStats.cancelled.amount)}
-              active={kpiFilter === "cancelled"}
-              onClick={() => setKpiFilter("cancelled")}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+    <ListPageShell stackClassName="!gap-0 space-y-0">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           <InlineNativeDateRange
             from={dateFrom}
             to={dateTo}
@@ -401,14 +376,53 @@ export default function Quotations() {
           />
           <Link
             to="/sales/quotations/create"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary,#2563eb)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
+            className="inline-flex h-[42px] w-[143px] items-center justify-center gap-1 rounded-lg bg-[var(--color-primary,#2563eb)] px-1 py-0 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
           >
             <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
             Create Quotation
           </Link>
         </div>
+
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Quotation status">
+            <SummaryTab
+              label="All Quotations"
+              count={tabStats.all.count}
+              amount={formatQuotationInr(tabStats.all.amount)}
+              tone="blue"
+              active={kpiFilter === "all"}
+              onClick={() => setKpiFilter("all")}
+            />
+            <SummaryTab
+              label="Pending"
+              count={tabStats.pending.count}
+              amount={formatQuotationInr(tabStats.pending.amount)}
+              tone="amber"
+              active={kpiFilter === "pending"}
+              onClick={() => setKpiFilter("pending")}
+            />
+            <SummaryTab
+              label="Accepted"
+              count={tabStats.accepted.count}
+              amount={formatQuotationInr(tabStats.accepted.amount)}
+              tone="emerald"
+              active={kpiFilter === "accepted"}
+              onClick={() => setKpiFilter("accepted")}
+            />
+            <SummaryTab
+              label="Cancelled"
+              count={tabStats.cancelled.count}
+              amount={formatQuotationInr(tabStats.cancelled.amount)}
+              tone="rose"
+              active={kpiFilter === "cancelled"}
+              onClick={() => setKpiFilter("cancelled")}
+            />
+          </div>
+        </div>
+
       </div>
 
+      <section className="ui-list-card space-y-4 p-4 sm:p-5">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar value={search} onChange={setSearch} placeholder="Search" />
         <div className="flex items-center gap-2 shrink-0">
@@ -605,7 +619,16 @@ export default function Quotations() {
       {/* Desktop Table View */}
       <div className="hidden md:block overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
         <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-[13px]">
+          <table className="w-full table-fixed border-collapse text-left text-[13px]">
+            <colgroup>
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "12%" }} />
+            </colgroup>
               <thead className="ui-table-head">
               <tr>
                 <SerialNumberHeader className="border-b border-r border-[var(--color-table-border)]" />
@@ -782,6 +805,7 @@ export default function Quotations() {
             </button>
           </div>
       </div>
+      </section>
 
       {showFilters ? (
         <div

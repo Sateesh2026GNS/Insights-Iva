@@ -667,6 +667,10 @@ def create_goods_receipt(db: Session, payload: GoodsReceiptCreate) -> GoodsRecei
         db.add(grl)
     db.flush()
 
+    from app.services.manufacturing_workflow_service import link_grn_to_incoming_quality_inspection
+
+    link_grn_to_incoming_quality_inspection(db, payload.tenant_id, gr, commit=False)
+
     if post_stock_now:
         # Ensure line_items are loaded for stock posting
         db.refresh(gr)
@@ -736,6 +740,10 @@ def approve_goods_receipt_qc(
         if po and po.tenant_id == tenant_id:
             _refresh_purchase_order_receipt_status(db, po)
 
+    from app.services.manufacturing_workflow_service import link_grn_to_incoming_quality_inspection
+
+    link_grn_to_incoming_quality_inspection(db, tenant_id, gr, commit=False)
+
     db.commit()
     db.refresh(gr)
     try:
@@ -755,14 +763,6 @@ def approve_goods_receipt_qc(
                 reference_id=gr.id,
                 created_by="Quality",
             )
-            try:
-                from app.services.manufacturing_workflow_service import (
-                    link_grn_to_incoming_quality_inspection,
-                )
-
-                link_grn_to_incoming_quality_inspection(db, tenant_id, gr, commit=False)
-            except Exception:
-                pass
         else:
             emit_alert(
                 db,

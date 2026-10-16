@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Download, Edit2, Eye, FileText, Filter, ListFilter, Plus, Search, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Edit2, Eye, FileText, Filter, ListFilter, Plus, Search, Trash2, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
-import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
@@ -14,6 +13,7 @@ import { deleteBizDocument, downloadPurchasePdf, listBizDocuments } from "../../
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr } from "../../data/salesMasterData";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
 const ACCENT = "var(--color-action-teal)"; /* #0F6D84 */
 const PAGE_BG = "var(--color-bg)";
@@ -53,12 +53,6 @@ function fmtDate(iso) {
   const [y, m, d] = String(iso).slice(0, 10).split("-");
   if (!y || !m || !d) return String(iso).slice(0, 10);
   return `${d}/${m}/${y}`;
-}
-
-function displayDate(iso) {
-  if (!iso) return "";
-  const [year, month, day] = iso.split("-");
-  return `${day}-${month}-${year}`;
 }
 
 function settlementStatus(row) {
@@ -106,22 +100,58 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: {
+      border: "border-blue-600",
+      surface: "bg-blue-100",
+      label: "text-blue-700",
+      value: "text-blue-900",
+      hover: "hover:bg-blue-50",
+      hoverBorder: "hover:border-blue-600",
+    },
+    amber: {
+      border: "border-amber-500",
+      surface: "bg-amber-100",
+      label: "text-amber-700",
+      value: "text-amber-900",
+      hover: "hover:bg-amber-50",
+      hoverBorder: "hover:border-amber-500",
+    },
+    violet: {
+      border: "border-violet-600",
+      surface: "bg-violet-100",
+      label: "text-violet-700",
+      value: "text-violet-900",
+      hover: "hover:bg-violet-50",
+      hoverBorder: "hover:border-violet-600",
+    },
+    emerald: {
+      border: "border-emerald-600",
+      surface: "bg-emerald-100",
+      label: "text-emerald-700",
+      value: "text-emerald-900",
+      hover: "hover:bg-emerald-50",
+      hoverBorder: "hover:border-emerald-600",
+    },
+  };
+  const colors = tones[tone];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          ? `${colors.border} ${colors.surface} ${colors.label}`
+          : `border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80 ${colors.hoverBorder}`
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-xs sm:text-[13px] font-medium transition-colors ${active ? colors.label : "text-[var(--color-text)]"}`}>
         {label}{" "}
-        <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
+        <span className={active ? "opacity-60" : "text-[var(--color-text-muted)]"}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums transition-colors ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -138,9 +168,8 @@ export default function PurchaseDebitNotes() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
-  const [kpiFilter, setKpiFilter] = useState("all");
+  // Show all notes on entry without highlighting a card until the user selects one.
+  const [kpiFilter, setKpiFilter] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -288,13 +317,39 @@ export default function PurchaseDebitNotes() {
   }
 
   return (
-    <div className="min-h-full space-y-4 bg-[#F5F5F5] p-4 sm:p-6">
-      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-primary-soft)]">
-        <div className="flex flex-wrap">
+    <div className="min-h-full space-y-0 bg-[var(--color-bg)] p-4 sm:p-6">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="purchase-debit-note-from-date"
+            toId="purchase-debit-note-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <Link
+            to="/purchases/debit-notes/create"
+            className="inline-flex h-[42px] items-center justify-center gap-1 rounded-lg bg-[var(--color-primary,#2563eb)] px-4 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            Create Debit Note
+          </Link>
+        </div>
+
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Debit note status">
           <SummaryTab
             label="All Debit Notes"
             count={tabStats.all.count}
             amount={formatInr(tabStats.all.amount)}
+            tone="blue"
             active={kpiFilter === "all"}
             onClick={() => setKpiFilter("all")}
           />
@@ -302,6 +357,7 @@ export default function PurchaseDebitNotes() {
             label="Unsettled"
             count={tabStats.unsettled.count}
             amount={formatInr(tabStats.unsettled.amount)}
+            tone="amber"
             active={kpiFilter === "unsettled"}
             onClick={() => setKpiFilter("unsettled")}
           />
@@ -309,6 +365,7 @@ export default function PurchaseDebitNotes() {
             label="Partially Settled"
             count={tabStats.partial.count}
             amount={formatInr(tabStats.partial.amount)}
+            tone="violet"
             active={kpiFilter === "partial"}
             onClick={() => setKpiFilter("partial")}
           />
@@ -316,74 +373,24 @@ export default function PurchaseDebitNotes() {
             label="Settled"
             count={tabStats.settled.count}
             amount={formatInr(tabStats.settled.amount)}
+            tone="emerald"
             active={kpiFilter === "settled"}
             onClick={() => setKpiFilter("settled")}
           />
+          </div>
         </div>
       </div>
 
-      <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className="ui-list-card mt-0 space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <SearchBar
             value={search}
             onChange={setSearch}
             placeholder="Search"
-            className="w-full"
+            className="w-full sm:max-w-[420px]"
             inputClassName="pending-inventory-search-input"
           />
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)]">
-              <button
-                type="button"
-                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
-                aria-label="Open start date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-              <input
-                ref={dateFromRef}
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
-                title="Change start date"
-              >
-                {displayDate(dateFrom)}
-              </button>
-              <span className="text-[#697b78] select-none font-medium px-0.5">→</span>
-              <button
-                type="button"
-                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
-                title="Change end date"
-              >
-                {displayDate(dateTo)}
-              </button>
-              <input
-                ref={dateToRef}
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
-                aria-label="Open end date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-            </div>
-            <Button variant="add" to="/purchases/debit-notes/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Create Debit Note
-            </Button>
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -590,7 +597,7 @@ export default function PurchaseDebitNotes() {
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {showFilters ? (
         <div

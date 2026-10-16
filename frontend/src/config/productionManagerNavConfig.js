@@ -88,7 +88,6 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
     icon: CheckCircle2,
     module: "quality",
     children: [
-      { key: "qualityDashboard", label: "Quality Dashboard", to: "/quality", module: "quality" },
       { key: "inProcessQc", label: "In-Process QC", to: "/quality/in-process", module: "quality" },
       { key: "batchReports", label: "Batch Reports", to: "/quality/batch-reports", module: "quality" },
     ],

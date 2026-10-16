@@ -705,34 +705,21 @@ export default function JobCardQueueTable({
                         setOpenMenu={setOpenMenu}
                         allowOperator
                         ariaLabel={`Actions for ${row.job_card_no || row.order_number || "job card"}`}
-                        items={[
-                          {
-                            label: "View",
-                            icon: <Eye className="h-4 w-4" />,
-                            onClick: () => {
-                              if (onViewDetails) onViewDetails(row);
-                              else onSelect?.(orderId);
-                            },
-                          },
-                          {
-                            label: "Print",
-                            icon: <Printer className="h-4 w-4" />,
-                            onClick: () => printSalesJobCardLandscape(row, user),
-                          },
-                          {
-                            label: "Download PDF",
-                            icon: <Download className="h-4 w-4" />,
-                            onClick: () => downloadSalesJobCardPdf(row, user),
-                          },
-                          (Boolean(onDelete) && (row.is_manual ? manualJobCardCanDelete(row, { canDelete }) : Boolean(canDelete)))
-                            ? {
-                                label: "Delete",
-                                icon: <Trash2 className="h-4 w-4" />,
-                                danger: true,
-                                onClick: () => onDelete(row),
-                              }
-                            : null,
-                        ].filter(Boolean)}
+                        items={buildRowMenuItems({
+                          row,
+                          orderId,
+                          onViewDetails,
+                          onSelect,
+                          onEdit,
+                          onDelete,
+                          onSend,
+                          onIssueMaterials,
+                          canDelete,
+                          canEdit,
+                          canSend,
+                          storeMode,
+                          user,
+                        })}
                       />
                     </div>
                   </td>

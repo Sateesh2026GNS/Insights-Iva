@@ -5,6 +5,7 @@
 
 import { escapeHtml } from "./htmlEscape";
 import { formatCustomerAddress } from "./salesJobCardDocument";
+import { loadSalesJobCardPrintPayload } from "./salesJobCardPrintPayload";
 
 export function extractJobCardData(order, user) {
   if (!order) return {};
@@ -826,23 +827,93 @@ function extractSalesJobCardPrintData(order) {
     });
     tagline = hit?.value ? String(hit.value) : "";
   }
+
+  const h = doc.header || {};
+  const c = doc.customer_details || {};
+  const o = doc.order_details || {};
+  const lines = doc.product_lines || [];
+  const a = doc.approval || {};
+
+  const header = {
+    job_card_no:
+      h.job_card_no ||
+      order?.job_card_no ||
+      (order?.sales_order_id ? `JC-${order.sales_order_id}` : order?.id ? `JC-${order.id}` : ""),
+    job_card_date:
+      h.job_card_date || order?.job_card_date || order?.order_date || order?.received_at || "",
+    sales_order_no:
+      h.sales_order_no ||
+      order?.order_number ||
+      order?.sales_order_no ||
+      (order?.sales_order_id ? `SO-${order.sales_order_id}` : ""),
+    customer_po_no: h.customer_po_no || order?.customer_po_no || order?.customer_po || "",
+    status: h.status || order?.status_label || order?.status || "",
+    workflow_status: h.workflow_status || order?.workflow_status || "",
+    ...h,
+  };
+
+  const customer_details = {
+    customer_name: c.customer_name || order?.customer_name || order?.customer || "",
+    contact_person: c.contact_person || order?.contact_person || order?.contact_name || "",
+    phone: c.phone || order?.phone || "",
+    email: c.email || order?.email || "",
+    ...c,
+    billing_address: formatCustomerAddress({
+      billing_address: c.billing_address || order?.billing_address || order?.address_line1 || "",
+    }),
+  };
+
+  const order_details = {
+    sales_order_date: o.sales_order_date || order?.job_card_date || order?.order_date || "",
+    delivery_date: o.delivery_date || order?.delivery_date || "",
+    product_category: o.product_category || order?.product_category || order?.category || "",
+    end_use: o.end_use || order?.end_use || "",
+    payment_terms: o.payment_terms || order?.payment_terms || "",
+    priority: o.priority || (order?.priority ? String(order.priority).toUpperCase() : "MEDIUM"),
+    remarks: o.remarks || order?.notes || order?.remarks || "",
+    ...o,
+  };
+
+  const product_lines =
+    lines.length > 0
+      ? lines
+      : order?.product_name || order?.product
+      ? [
+          {
+            sl_no: 1,
+            product_code: order?.product_code || order?.sku || "",
+            product_name: order?.product_name || order?.product || "",
+            description: order?.description || "",
+            quantity: order?.quantity ?? order?.planned_quantity ?? "",
+            uom: order?.uom || order?.unit || "Pcs",
+            unit_price: order?.unit_price ?? null,
+            line_amount: order?.total_amount ?? order?.line_amount ?? null,
+            total_amount: order?.total_amount ?? null,
+          },
+        ]
+      : [];
+
+  const approval = {
+    prepared_by: a.prepared_by || order?.created_by || "",
+    checked_by: a.checked_by || "",
+    approved_by: a.approved_by || "",
+    prepared_date: a.prepared_date || header.job_card_date || "",
+    approved_date: a.approved_date || "",
+    ...a,
+  };
+
   return {
     companyName,
     companyAddress: addressParts.join(", "),
     logoUrl: company.logo_url,
     tagline,
     ...doc,
-    header: doc.header || {},
-    customer_details: {
-      ...(doc.customer_details || {}),
-      billing_address: formatCustomerAddress({
-        billing_address: doc.customer_details?.billing_address,
-      }),
-    },
-    order_details: doc.order_details || {},
-    product_lines: doc.product_lines || [],
+    header,
+    customer_details,
+    order_details,
+    product_lines,
     technical_specifications: doc.technical_specifications || [],
-    approval: doc.approval || {},
+    approval,
   };
 }
 
@@ -1021,15 +1092,65 @@ function buildSalesJobCardHtml(data) {
 </div></body></html>`;
 }
 
-export function printSalesJobCardLandscape(order, user) {
+export async function printSalesJobCardLandscape(order, user) {
   if (!order) return;
-  const data = extractSalesJobCardPrintData(order);
-  const html = buildSalesJobCardHtml(data);
+
+  const hasFullDoc = Boolean(
+    (order.salesDocument || order.card?.sales_document) && order.companyProfile
+  );
+
+  if (hasFullDoc) {
+    const data = extractSalesJobCardPrintData(order);
+    const html = buildSalesJobCardHtml(data);
+    const win = window.open("", "_blank", "width=1100,height=780");
+    if (!win) {
+      alert("Please allow popups to print the Job Card traveler.");
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+    return;
+  }
+
+  // Pre-open window synchronously to prevent popup blocker, then load full payload
   const win = window.open("", "_blank", "width=1100,height=780");
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => win.print(), 400);
+  if (win) {
+    win.document.write(`
+      <!DOCTYPE html><html><head><title>Loading Sales Job Card...</title></head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 80vh; margin: 0; color: #374151;">
+        <div style="text-align: center;">
+          <div style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Preparing Sales Job Card for print...</div>
+          <div style="font-size: 13px; color: #6b7280;">Please wait a moment.</div>
+        </div>
+      </body></html>
+    `);
+    win.document.close();
+  }
+
+  try {
+    const fullOrder = await loadSalesJobCardPrintPayload(order, user?.tenant_id);
+    const data = extractSalesJobCardPrintData(fullOrder || order);
+    const html = buildSalesJobCardHtml(data);
+    if (win && !win.closed) {
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 400);
+    }
+  } catch {
+    if (win && !win.closed) {
+      const data = extractSalesJobCardPrintData(order);
+      const html = buildSalesJobCardHtml(data);
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 400);
+    }
+  }
 }
 
 export async function downloadSalesJobCardPdf(order, user) {
@@ -1039,7 +1160,20 @@ export async function downloadSalesJobCardPdf(order, user) {
     import("jspdf-autotable"),
   ]);
   const autoTable = autoTableModule.default || autoTableModule;
-  const data = extractSalesJobCardPrintData(order);
+
+  let resolvedOrder = order;
+  const hasFullDoc = Boolean(
+    (order.salesDocument || order.card?.sales_document) && order.companyProfile
+  );
+  if (!hasFullDoc) {
+    try {
+      resolvedOrder = (await loadSalesJobCardPrintPayload(order, user?.tenant_id)) || order;
+    } catch {
+      resolvedOrder = order;
+    }
+  }
+
+  const data = extractSalesJobCardPrintData(resolvedOrder);
   const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
   const pageW = doc.internal.pageSize.width;
   let y = 28;

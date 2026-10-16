@@ -391,7 +391,6 @@ export default function Leads() {
     <ListPageShell stackClassName="sales-leads-page space-y-4 pb-4">
       <PageHeader
         className="erp-hero-header--compact inventory-hero-header--compact sales-leads-page__banner"
-        subtitle="Kanban and table views with lead profiles and quotation handoff."
         action={
           <div className="sales-leads-page__banner-actions flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />

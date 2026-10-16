@@ -7,12 +7,21 @@ export const getQualityHub = () => api.get("/quality/hub");
 
 export const getIncomingSummary = () => api.get("/quality/incoming/summary");
 export const getIncomingEnriched = () => api.get("/quality/incoming/enriched");
+export const createIncomingInspection = (payload) => api.post("/quality/incoming", payload);
+export const updateIncomingInspection = (inspectionId, payload) =>
+  api.patch(`/quality/incoming/${inspectionId}`, payload);
 
 export const getProcessSummary = () => api.get("/quality/process/summary");
 export const getProcessEnriched = () => api.get("/quality/process/enriched");
+export const createProcessQC = (payload) => api.post("/quality/process", payload);
+export const updateProcessQCStatus = (inspectionId, qcStatus) =>
+  api.patch(`/quality/process/${inspectionId}/status`, null, { params: { qc_status: qcStatus } });
 
 export const getFinalSummary = () => api.get("/quality/final/summary");
 export const getFinalEnriched = () => api.get("/quality/final/enriched");
+export const createFinalQC = (payload) => api.post("/quality/final", payload);
+export const markFinalInspectionPassed = (inspectionId) =>
+  api.patch(`/quality/final/${inspectionId}/passed`);
 
 export const getBatchSummary = () => api.get("/quality/batch-reports/summary");
 export const getBatchEnriched = () => api.get("/quality/batch-reports/enriched");

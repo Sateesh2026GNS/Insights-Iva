@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import {
   AlertTriangle,
@@ -87,6 +87,8 @@ export default function DefectTracking() {
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
   const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -213,12 +215,30 @@ export default function DefectTracking() {
   if (loading) return <Loader label="Loading rejections..." />;
 
   const handleExport = (format) => {
+    const rowsToExport = exportRows.length
+      ? exportRows
+      : [{
+          rejection_no: "No rejection records found",
+          date: "",
+          reference_type: "",
+          reference_no: "",
+          product: "",
+          quantity: "",
+          reason: "",
+          department: "",
+          status: "",
+        }];
     if (format === "pdf") {
-      exportToPdf(exportRows, REJECTION_EXPORT_COLUMNS, "Rejections", "rejections");
+      exportToPdf(rowsToExport, REJECTION_EXPORT_COLUMNS, "Rejections", "rejections");
     } else {
-      exportToExcel(exportRows, REJECTION_EXPORT_COLUMNS, "rejections");
+      exportToExcel(rowsToExport, REJECTION_EXPORT_COLUMNS, "rejections");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    addToast(
+      exportRows.length
+        ? (format === "pdf" ? "Exported to PDF" : "Exported to Excel")
+        : "Exported an empty report: no rejection records match the current filters",
+      exportRows.length ? "success" : "info",
+    );
   };
 
   return (
@@ -230,7 +250,7 @@ export default function DefectTracking() {
         subtitle="Track and manage all rejected materials and products"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <Button type="button" variant="primary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" /> Filters
             </Button>
@@ -286,24 +306,19 @@ export default function DefectTracking() {
               placeholder="Search"
               aria-label="Search defect tracking records"
             />
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] shadow-xs">
-                <CalendarDays className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
-                  aria-label="Date from"
-                />
-                <span className="text-[var(--color-text-muted)]">to</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="border-0 bg-transparent p-0 text-[13px] text-[var(--color-text)] focus:outline-none"
-                  aria-label="Date to"
-                />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+                <button type="button" aria-label="Open start date picker" onClick={() => { const input = dateFromRef.current; if (!input) return; if (input.showPicker) input.showPicker(); else { input.focus(); input.click(); } }} className="shrink-0 text-[var(--color-text-muted)]">
+                  <CalendarDays className="h-4 w-4" />
+                </button>
+                <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date from" />
+              </div>
+              <span className="text-sm text-[var(--color-text-muted)]">to</span>
+              <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+                <button type="button" aria-label="Open end date picker" onClick={() => { const input = dateToRef.current; if (!input) return; if (input.showPicker) input.showPicker(); else { input.focus(); input.click(); } }} className="shrink-0 text-[var(--color-text-muted)]">
+                  <CalendarDays className="h-4 w-4" />
+                </button>
+                <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date to" />
               </div>
               <Button type="button" variant="secondary" onClick={clearFilters}>
                 <RotateCcw className="h-4 w-4" /> Clear

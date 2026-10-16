@@ -1,18 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Download,
   Edit2,
   Eye,
   Filter,
   ListFilter,
   Plus,
-  Search,
   Trash2,
   X,
 } from "lucide-react";
@@ -38,6 +35,7 @@ import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { runListExport } from "../../utils/listExport";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -58,12 +56,6 @@ function fmtDate(iso) {
   const [y, m, d] = String(iso).slice(0, 10).split("-");
   if (!y || !m || !d) return String(iso).slice(0, 10);
   return `${d}/${m}/${y}`;
-}
-
-function displayDate(iso) {
-  if (!iso) return "";
-  const [year, month, day] = iso.split("-");
-  return `${day}-${month}-${year}`;
 }
 
 function isPendingPurchase(row) {
@@ -101,22 +93,30 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", surface: "bg-blue-100", label: "text-blue-700", count: "text-blue-500", value: "text-blue-900" },
+    amber: { border: "border-amber-500", surface: "bg-amber-100", label: "text-amber-700", count: "text-amber-600", value: "text-amber-900" },
+    emerald: { border: "border-emerald-600", surface: "bg-emerald-100", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-900" },
+  };
+  const colors = tones[tone];
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-2 sm:px-4 py-2 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:px-5 sm:py-2 ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          ? `${colors.border} ${colors.surface} ${colors.label} shadow-sm`
+          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <p className={`text-[11px] sm:text-[13px] font-medium whitespace-nowrap transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
-        {label}{" "}
-        <span className={active ? "opacity-70" : "text-[var(--color-text-muted)]"}>({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
+        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
       </p>
-      <p className={`mt-0.5 sm:mt-1 text-xs sm:text-[15px] lg:text-[17px] font-bold tabular-nums whitespace-nowrap transition-colors ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -133,9 +133,7 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
-  const [kpiFilter, setKpiFilter] = useState("all");
+  const [kpiFilter, setKpiFilter] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -308,14 +306,34 @@ export default function PurchaseOrders() {
   }
 
   return (
-    <ListPageShell className="space-y-4">
-      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-primary-soft)]">
-        <div className="flex flex-col xl:flex-row xl:items-stretch justify-between">
-          <div className="grid grid-cols-3 min-w-0 flex-1 divide-x divide-[var(--color-table-border)]">
+    <ListPageShell stackClassName="!gap-0 space-y-0">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="purchase-orders-from-date"
+            toId="purchase-orders-to-date"
+            onFromChange={setDateFrom}
+            onToChange={setDateTo}
+          />
+          <Button
+            variant="add"
+            to="/procurement/purchase-orders/create"
+            className="h-[42px] w-full justify-center sm:w-auto"
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+          >
+            Create Purchase Order
+          </Button>
+        </div>
+
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Purchase order status">
             <SummaryTab
               label="All"
               count={tabStats.all.count}
               amount={formatInr(tabStats.all.amount)}
+              tone="blue"
               active={kpiFilter === "all"}
               onClick={() => setKpiFilter("all")}
             />
@@ -323,6 +341,7 @@ export default function PurchaseOrders() {
               label="Pending"
               count={tabStats.pending.count}
               amount={formatInr(tabStats.pending.amount)}
+              tone="amber"
               active={kpiFilter === "pending"}
               onClick={() => setKpiFilter("pending")}
             />
@@ -330,70 +349,16 @@ export default function PurchaseOrders() {
               label="Purchased"
               count={tabStats.purchased.count}
               amount={formatInr(tabStats.purchased.amount)}
+              tone="emerald"
               active={kpiFilter === "purchased"}
               onClick={() => setKpiFilter("purchased")}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-3 sm:px-4 py-2.5 sm:py-3 xl:border-l xl:border-t-0 shrink-0">
-            <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-[13px] text-[var(--color-text-secondary)]">
-              <button
-                type="button"
-                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-                aria-label="Open start date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-              <input
-                ref={dateFromRef}
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-                title="Change start date"
-              >
-                {displayDate(dateFrom)}
-              </button>
-              <span className="text-[var(--color-text-muted)] select-none font-medium px-0.5">→</span>
-              <button
-                type="button"
-                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-                title="Change end date"
-              >
-                {displayDate(dateTo)}
-              </button>
-              <input
-                ref={dateToRef}
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-                aria-label="Open end date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-            </div>
-            <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
-            <Button variant="add" to="/procurement/purchase-orders/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Create Purchase Order
-            </Button>
-          </div>
         </div>
       </div>
 
-      <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className="ui-list-card space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <SearchBar
             value={search}
             onChange={setSearch}
@@ -401,7 +366,8 @@ export default function PurchaseOrders() {
             className="w-full"
             inputClassName="pending-inventory-search-input"
           />
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2 shrink-0">
+            <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
             <button
               type="button"
               onClick={() => {
@@ -544,7 +510,7 @@ export default function PurchaseOrders() {
           </div>
         </div>
 
-        <div className="mt-4 ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
+        <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] pt-4">
           <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
             <span>Rows per page:</span>
             <select
@@ -591,7 +557,7 @@ export default function PurchaseOrders() {
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {showFilters ? (
         <div

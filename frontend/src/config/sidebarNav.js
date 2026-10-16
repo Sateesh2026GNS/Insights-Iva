@@ -94,7 +94,7 @@ export const SIDEBAR_NAV = [
     icon: ShoppingCart,
     children: [
       { label: "Purchase Order", to: "/procurement/purchase-orders", module: "procurement" },
-      { label: "Purchase", to: "/purchases", module: "procurement" },
+      { label: "Purchase", to: "/purchases", module: "procurement", end: true },
       { label: "Debit Note", to: "/purchases/debit-notes", module: "procurement" },
       { label: "Payments Made", to: "/purchases/payments-made", module: "procurement" },
       {
@@ -166,10 +166,10 @@ export const SIDEBAR_NAV = [
     labelKey: "erpNav.quality",
     icon: CheckCircle2,
     children: [
-      { labelKey: "erpNav.qualityDashboard", to: "/quality", module: "quality" },
       { labelKey: "erpNav.incomingInspection", to: "/quality/incoming", module: "quality" },
       { labelKey: "erpNav.inProcessQc", to: "/quality/in-process", module: "quality" },
       { labelKey: "erpNav.finalQc", to: "/quality/final", module: "quality" },
+      { label: "Quality Check Queue", to: "/my-job-cards?dept=quality", module: "quality" },
       { labelKey: "erpNav.batchReports", to: "/quality/batch-reports", module: "quality" },
     ],
   },
@@ -224,10 +224,10 @@ export const SIDEBAR_NAV = [
   {
     key: "meetings",
     labelKey: "erpNav.meetings",
+    to: "/meetings",
     icon: CalendarDays,
-    children: [
-      { labelKey: "erpNav.allMeetings", to: "/meetings", module: "meetings", end: true },
-    ],
+    module: "meetings",
+    end: true,
   },
   {
     key: "chat",

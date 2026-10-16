@@ -42,3 +42,10 @@ export const contactSales = (payload = {}) =>
     data: unwrap(res),
     message: res?.data?.message,
   }));
+
+export const sendContactInquiry = (payload = {}) =>
+  api.post("/settings/contact", payload).then((res) => ({
+    ...res,
+    data: unwrap(res),
+    message: res?.data?.message,
+  }));

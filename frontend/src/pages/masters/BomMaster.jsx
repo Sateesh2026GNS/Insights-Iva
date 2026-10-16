@@ -543,7 +543,7 @@ export default function BomMaster() {
               setFilters((f) => ({ ...f, bom_number: v }));
               setAppliedFilters((f) => ({ ...f, bom_number: v }));
             }}
-            placeholder="Search BOM, product, or code"
+            placeholder="Search"
             className="min-w-0 w-full lg:max-w-md"
             onKeyDown={handleFilterKeyDown}
           />

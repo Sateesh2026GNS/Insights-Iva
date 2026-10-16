@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ClipboardList, Filter, Layers, Package } from "lucide-react";
+import { ClipboardList, Filter, Layers, Package, Plus } from "lucide-react";
 
 import { fetchBomList, fetchBomSummary, deleteBom } from "../../../api/bomModuleApi";
 import Button from "../../../components/common/Button";
@@ -166,7 +166,13 @@ export default function BomListPage() {
   if (!canView) {
     return (
       <ListPageShell>
-        <ManufacturingPageHeader title="Bill of Materials" />
+        <ManufacturingPageHeader
+          title="Bill of Materials (BOM)"
+          crumbs={[
+            { label: "Production", to: "/production" },
+            { label: "Bill of Materials (BOM)" },
+          ]}
+        />
         <PermissionDeniedState description="You do not have access to Bill of Materials." />
       </ListPageShell>
     );
@@ -176,11 +182,6 @@ export default function BomListPage() {
 
   return (
     <ListPageShell>
-      <ManufacturingPageHeader
-        title="Bill of Materials"
-        subtitle="Versioned recipes for finished goods"
-        actions={canEdit ? <Button to="/production/bom/new">New BOM</Button> : null}
-      />
       <div className="grid gap-3 sm:grid-cols-3 mb-4">
         <KpiTile label="Total BOMs" value={summary?.total_boms} icon={Layers} />
         <KpiTile
@@ -212,8 +213,8 @@ export default function BomListPage() {
               <SearchBar
                 value={search}
                 onChange={(v) => setParams({ q: v, page: "1" })}
-                placeholder="Search BOM or product"
-                aria-label="Search BOMs"
+                placeholder="Search"
+                aria-label="Search"
               />
               <Button
                 type="button"
@@ -227,14 +228,15 @@ export default function BomListPage() {
               </Button>
             </div>
             <div className="ui-list-toolbar__end">
-              {canEdit ? <Button to="/production/bom/new">New BOM</Button> : null}
+              {canEdit ? <Button to="/production/bom/new" variant="add" leftIcon={<Plus className="h-4 w-4" />}>Create BOM</Button> : null}
             </div>
           </div>
           {showFilters ? (
             <div className="mb-3">
-              <label className="text-xs font-medium text-[var(--color-text-muted)]">Status</label>
+              <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">Status</label>
               <select
-                className="ui-input mt-1 w-auto"
+                className="ui-input block max-w-full"
+                style={{ width: "15rem" }}
                 value={status}
                 onChange={(e) => setParams({ status: e.target.value, page: "1" })}
               >
@@ -250,7 +252,7 @@ export default function BomListPage() {
               <EmptyState
                 title="No BOMs yet"
                 description="Create your first bill of materials for a finished good."
-                action={canEdit ? <Button to="/production/bom/new">Create your first BOM</Button> : null}
+                action={canEdit ? <Button to="/production/bom/new" variant="add" leftIcon={<Plus className="h-4 w-4" />}>Create your first BOM</Button> : null}
               />
             ) : (
               <DataTable columns={columns} data={rows} />
