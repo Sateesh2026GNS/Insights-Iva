@@ -1,7 +1,7 @@
 import logging
 import html
 import re
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -149,32 +149,31 @@ def contact_sales_endpoint(
     return success_response(data.get("message") or "Inquiry submitted", data)
 
 
-@router.post("/contact")
-async def send_contact_inquiry_endpoint(
-    payload: ContactInquiryRequest,
-    user: User | None = Depends(get_optional_current_user),
-) -> dict:
-    """Deliver contact form submissions to the Codevia support inboxes."""
-    from app.services.email_service import EmailDeliveryError, send_email_async
+async def _deliver_contact_inquiry(
+    name: str,
+    email: str,
+    phone: str | None,
+    account_info: str,
+    message: str,
+) -> None:
+    from app.services.email_service import send_email_async
 
-    account_info = f"{user.email} (ID: {user.id})" if user else "Public / Website Visitor"
-
-    subject = f"Insights Iva contact message from {payload.name}"
+    subject = f"Insights Iva contact message from {name}"
     body = (
         "A new message was sent from the Insights Iva Contact Us page.\n\n"
-        f"Name: {payload.name}\n"
-        f"Email: {payload.email}\n"
-        f"Phone: {payload.phone or 'Not provided'}\n"
+        f"Name: {name}\n"
+        f"Email: {email}\n"
+        f"Phone: {phone or 'Not provided'}\n"
         f"User Status: {account_info}\n\n"
         "Message:\n"
-        f"{payload.message}\n"
+        f"{message}\n"
     )
     safe = {key: html.escape(value or "") for key, value in {
-        "name": payload.name,
-        "email": payload.email,
-        "phone": payload.phone or "Not provided",
+        "name": name,
+        "email": email,
+        "phone": phone or "Not provided",
         "account_info": account_info,
-        "message": payload.message,
+        "message": message,
     }.items()}
     html_body = (
         '<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:12px;">'
@@ -210,9 +209,28 @@ async def send_contact_inquiry_endpoint(
 
     if not delivered:
         logger.error(
-            "Contact form inquiry could not be sent to recipients. Name=%s Email=%s Phone=%s Message=%s",
-            payload.name, payload.email, payload.phone, payload.message
+            "Contact form inquiry could not be sent via SMTP. Name=%s Email=%s Phone=%s Message=%s",
+            name, email, phone, message
         )
+
+
+@router.post("/contact")
+async def send_contact_inquiry_endpoint(
+    payload: ContactInquiryRequest,
+    background_tasks: BackgroundTasks,
+    user: User | None = Depends(get_optional_current_user),
+) -> dict:
+    """Deliver contact form submissions to the Codevia support inboxes."""
+    account_info = f"{user.email} (ID: {user.id})" if user else "Public / Website Visitor"
+
+    background_tasks.add_task(
+        _deliver_contact_inquiry,
+        payload.name,
+        payload.email,
+        payload.phone,
+        account_info,
+        payload.message,
+    )
 
     return success_response("Your message was sent. We’ll be in touch soon.")
 
