@@ -1,16 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Edit2,
   Eye,
   ListFilter,
   Plus,
-  Receipt,
-  Search,
   Trash2,
 } from "lucide-react";
 
@@ -25,6 +22,7 @@ import { deleteBizDocument, listBizDocuments } from "../../api/bizDocumentsApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr } from "../../data/salesMasterData";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -71,29 +69,32 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-function displayDate(iso) {
-  if (!iso) return "";
-  const [year, month, day] = iso.split("-");
-  return `${day}-${month}-${year}`;
-}
-
-function SummaryTab({ label, count, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", surface: "bg-blue-100", label: "text-blue-700", count: "text-blue-500", value: "text-blue-900" },
+    emerald: { border: "border-emerald-600", surface: "bg-emerald-100", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-900" },
+    violet: { border: "border-violet-600", surface: "bg-violet-100", label: "text-violet-700", count: "text-violet-600", value: "text-violet-900" },
+    amber: { border: "border-amber-500", surface: "bg-amber-100", label: "text-amber-700", count: "text-amber-600", value: "text-amber-900" },
+    cyan: { border: "border-cyan-600", surface: "bg-cyan-100", label: "text-cyan-700", count: "text-cyan-600", value: "text-cyan-900" },
+  };
+  const colors = tones[tone];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-4 py-3.5 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer ${
         active
-          ? "border-[var(--color-success)] bg-[var(--color-surface)] text-[var(--color-success)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-success)] hover:text-[var(--color-success)]"
+          ? `${colors.border} ${colors.surface} ${colors.label}`
+          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
-        {label} <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
+      <p className={`text-xs sm:text-[13px] font-medium transition-colors ${active ? colors.label : "text-[var(--color-text)]"}`}>
+        {label} <span className={active ? `${colors.count} opacity-80` : "text-[var(--color-text-muted)]"}>({count})</span>
       </p>
       <p
         className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${
-          active ? "text-[var(--color-success)]" : "text-[var(--color-text)]"
+          active ? colors.value : "text-[var(--color-text)]"
         }`}
       >
         {amount}
@@ -108,12 +109,10 @@ export default function PaymentsMade() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [openMenu, setOpenMenu] = useState(null);
-  const [kpiFilter, setKpiFilter] = useState("all");
+  const [kpiFilter, setKpiFilter] = useState(null);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
   const [page, setPage] = useState(1);
@@ -190,7 +189,7 @@ export default function PaymentsMade() {
       const d = String(r.payment_date || "").slice(0, 10);
       if (dateFrom && d && d < dateFrom) return false;
       if (dateTo && d && d > dateTo) return false;
-      if (kpiFilter !== "all" && r.method !== kpiFilter) return false;
+      if (kpiFilter && kpiFilter !== "all" && r.method !== kpiFilter) return false;
       return true;
     });
     list = [...list].sort((a, b) => {
@@ -230,89 +229,60 @@ export default function PaymentsMade() {
   }
 
   return (
-    <div className="min-h-full space-y-4 bg-[#F5F5F5] p-4 sm:p-6">
+    <div className="min-h-full space-y-0 bg-[var(--color-bg)] p-4 sm:p-6">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="payments-made-from-date"
+            toId="payments-made-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <Button
+            variant="add"
+            to="/purchases/payments-made/create"
+            className="h-[42px] w-full justify-center sm:w-auto"
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+          >
+            Make Payment
+          </Button>
+        </div>
 
-      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-success-soft)]">
-        <div className="flex overflow-x-auto">
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Payment method">
           {MODE_TABS.map((t) => (
             <SummaryTab
               key={t.id}
               label={t.label}
               count={tabStats[t.id]?.count || 0}
               amount={formatInr(tabStats[t.id]?.amount || 0)}
+              tone={{ all: "blue", cash: "emerald", cheque: "violet", net_banking: "amber", upi: "cyan" }[t.id]}
               active={kpiFilter === t.id}
               onClick={() => setKpiFilter(t.id)}
             />
           ))}
         </div>
+        </div>
       </div>
 
-      <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className="ui-list-card space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <SearchBar
             value={search}
             onChange={setSearch}
             placeholder="Search"
-            className="w-full"
+            className="w-full sm:max-w-[420px]"
             inputClassName="pending-inventory-search-input"
           />
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
-              <button
-                type="button"
-                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
-                aria-label="Open start date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-              <input
-                ref={dateFromRef}
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
-                className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
-                title="Change start date"
-              >
-                {displayDate(dateFrom)}
-              </button>
-              <span className="text-[#697b78] select-none font-medium px-0.5">→</span>
-              <button
-                type="button"
-                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="font-medium text-[#1f3935] hover:text-black transition-colors cursor-pointer"
-                title="Change end date"
-              >
-                {displayDate(dateTo)}
-              </button>
-              <input
-                ref={dateToRef}
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                onClick={() => dateToRef.current?.showPicker?.() || dateToRef.current?.click()}
-                className="flex items-center justify-center text-[#697b78] hover:text-[#1f3935] transition-colors"
-                aria-label="Open end date picker"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-            </div>
-            <Button
-              variant="add"
-              to="/purchases/payments-made/create"
-              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-            >
-              Make Payment
-            </Button>
+          <div className="flex items-center gap-2 shrink-0">
             <div className="relative">
               <button
                 type="button"
@@ -504,7 +474,7 @@ export default function PaymentsMade() {
             </button>
           </div>
         </div>
-      </div>
+      </section>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete payment"

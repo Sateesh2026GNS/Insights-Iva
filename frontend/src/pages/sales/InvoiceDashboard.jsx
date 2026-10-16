@@ -97,7 +97,14 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", surface: "bg-blue-100", label: "text-blue-700", count: "text-blue-500", value: "text-blue-900" },
+    amber: { border: "border-amber-500", surface: "bg-amber-100", label: "text-amber-700", count: "text-amber-600", value: "text-amber-900" },
+    emerald: { border: "border-emerald-600", surface: "bg-emerald-100", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-900" },
+    violet: { border: "border-violet-600", surface: "bg-violet-100", label: "text-violet-700", count: "text-violet-600", value: "text-violet-900" },
+  };
+  const colors = tones[tone];
   return (
     <button
       type="button"
@@ -107,14 +114,14 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
       className={`border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:px-5 sm:py-2 ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface,#ffffff)] text-[var(--color-text,#0f172a)] shadow-sm"
-          : "border-transparent bg-[var(--color-surface-muted,#f8fafc)] text-[var(--color-text-muted,#64748b)] hover:bg-[var(--color-surface,#ffffff)]"
+          ? `${colors.border} ${colors.surface} ${colors.label} shadow-sm`
+          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <p className={`text-xs sm:text-[13px] ${active ? "font-semibold text-indigo-900 dark:text-indigo-300" : "font-medium text-slate-600 dark:text-slate-400"}`}>
-        {label} <span className="text-slate-400 font-normal">({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
+        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
       </p>
-      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -136,6 +143,7 @@ export default function InvoiceDashboard() {
   });
   const [searchParams] = useSearchParams();
   const [kpiFilter, setKpiFilter] = useState("all");
+  const [selectedKpi, setSelectedKpi] = useState(null);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
@@ -273,29 +281,33 @@ export default function InvoiceDashboard() {
             label="Total Sales"
             count={kpis.all.count}
             amount={formatInr(kpis.all.amount)}
-            active={kpiFilter === "all"}
-            onClick={() => setKpiFilter("all")}
+            tone="blue"
+            active={selectedKpi === "all"}
+            onClick={() => { setKpiFilter("all"); setSelectedKpi("all"); }}
           />
           <SummaryTab
             label="Unpaid"
             count={kpis.unpaid.count}
             amount={formatInr(kpis.unpaid.amount)}
-            active={kpiFilter === "unpaid"}
-            onClick={() => setKpiFilter("unpaid")}
+            tone="amber"
+            active={selectedKpi === "unpaid"}
+            onClick={() => { setKpiFilter("unpaid"); setSelectedKpi("unpaid"); }}
           />
           <SummaryTab
             label="Paid"
             count={kpis.paid.count}
             amount={formatInr(kpis.paid.amount)}
-            active={kpiFilter === "paid"}
-            onClick={() => setKpiFilter("paid")}
+            tone="emerald"
+            active={selectedKpi === "paid"}
+            onClick={() => { setKpiFilter("paid"); setSelectedKpi("paid"); }}
           />
           <SummaryTab
             label="Partially Paid"
             count={kpis.partial.count}
             amount={formatInr(kpis.partial.amount)}
-            active={kpiFilter === "partial"}
-            onClick={() => setKpiFilter("partial")}
+            tone="violet"
+            active={selectedKpi === "partial"}
+            onClick={() => { setKpiFilter("partial"); setSelectedKpi("partial"); }}
           />
         </div>
       </div>

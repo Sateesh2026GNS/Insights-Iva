@@ -1171,17 +1171,44 @@ select {
 .po-line-item-select {
   box-sizing: border-box;
   min-height: 2.5rem;
-  padding: 0.375rem 1.75rem 0.375rem 0.5rem;
+  padding: 0.375rem 2rem 0.375rem 0.75rem;
   background-position: right 0.5rem center;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.25rem;
-  color: var(--color-text);
+  color: var(--color-text) !important;
+  text-align: left;
+  white-space: nowrap;
 }
 .po-line-item-select--unit {
-  min-width: 6rem;
+  min-width: 8rem;
 }
 .po-line-item-select--tax {
+  min-width: 10rem;
+}
+.po-line-item-select--gst {
+  min-width: 7rem;
+}
+
+/* Keep Create Purchase line-item dropdown values readable in the compact table. */
+.purchase-line-select {
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  padding: 0.375rem 2rem 0.375rem 0.75rem;
+  background-position: right 0.5rem center;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: #1a1a1f !important;
+  text-align: left;
+  white-space: nowrap;
+}
+.purchase-line-select--unit {
   min-width: 8rem;
+}
+.purchase-line-select--tax {
+  min-width: 10rem;
+}
+.purchase-line-select--gst {
+  min-width: 7rem;
 }
 
 select::-ms-expand {

@@ -104,7 +104,14 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", surface: "bg-blue-100", label: "text-blue-700", count: "text-blue-500", value: "text-blue-900" },
+    amber: { border: "border-amber-500", surface: "bg-amber-100", label: "text-amber-700", count: "text-amber-600", value: "text-amber-900" },
+    emerald: { border: "border-emerald-600", surface: "bg-emerald-100", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-900" },
+    rose: { border: "border-rose-600", surface: "bg-rose-100", label: "text-rose-700", count: "text-rose-600", value: "text-rose-900" },
+  };
+  const colors = tones[tone];
   return (
     <button
       type="button"
@@ -114,14 +121,14 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
       className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface,#ffffff)] text-[var(--color-text,#0f172a)] shadow-sm"
-          : "border-transparent bg-[var(--color-surface-muted,#f8fafc)] text-[var(--color-text-muted,#64748b)] hover:bg-[var(--color-surface,#ffffff)]"
+          ? `${colors.border} ${colors.surface} ${colors.label} shadow-sm`
+          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <p className={`text-xs sm:text-[13px] ${active ? "font-semibold text-indigo-900 dark:text-indigo-300" : "font-medium text-slate-600 dark:text-slate-400"}`}>
-        {label} <span className="text-slate-400 font-normal">({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
+        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
       </p>
-      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -158,7 +165,7 @@ export default function Quotations() {
   const [selected, setSelected] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [searchParams] = useSearchParams();
-  const [kpiFilter, setKpiFilter] = useState("all");
+  const [kpiFilter, setKpiFilter] = useState(null);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
@@ -382,6 +389,7 @@ export default function Quotations() {
               label="All Quotations"
               count={tabStats.all.count}
               amount={formatQuotationInr(tabStats.all.amount)}
+              tone="blue"
               active={kpiFilter === "all"}
               onClick={() => setKpiFilter("all")}
             />
@@ -389,6 +397,7 @@ export default function Quotations() {
               label="Pending"
               count={tabStats.pending.count}
               amount={formatQuotationInr(tabStats.pending.amount)}
+              tone="amber"
               active={kpiFilter === "pending"}
               onClick={() => setKpiFilter("pending")}
             />
@@ -396,6 +405,7 @@ export default function Quotations() {
               label="Accepted"
               count={tabStats.accepted.count}
               amount={formatQuotationInr(tabStats.accepted.amount)}
+              tone="emerald"
               active={kpiFilter === "accepted"}
               onClick={() => setKpiFilter("accepted")}
             />
@@ -403,6 +413,7 @@ export default function Quotations() {
               label="Cancelled"
               count={tabStats.cancelled.count}
               amount={formatQuotationInr(tabStats.cancelled.amount)}
+              tone="rose"
               active={kpiFilter === "cancelled"}
               onClick={() => setKpiFilter("cancelled")}
             />

@@ -917,7 +917,7 @@ export default function PurchaseForm() {
                         <select
                           value={row.unit}
                           onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                          className="w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1 py-1.5"
+                          className="purchase-line-select purchase-line-select--unit w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9]"
                         >
                           <option value="">Unit</option>
                           <option value="pcs">pcs</option>
@@ -938,7 +938,7 @@ export default function PurchaseForm() {
                         <select
                           value={row.tax_type}
                           onChange={(e) => updateItem(idx, "tax_type", e.target.value)}
-                          className="w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          className="purchase-line-select purchase-line-select--tax w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9]"
                         >
                           <option>Exclusive</option>
                           <option>Inclusive</option>
@@ -969,7 +969,7 @@ export default function PurchaseForm() {
                         <select
                           value={row.gst_pct}
                           onChange={(e) => updateItem(idx, "gst_pct", e.target.value)}
-                          className="w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9] px-1.5 py-1.5"
+                          className="purchase-line-select purchase-line-select--gst w-full rounded-md border border-[#d0d0d8] bg-[#f7f7f9]"
                         >
                           <option value="">—</option>
                           <option value="0">0%</option>

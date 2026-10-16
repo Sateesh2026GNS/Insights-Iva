@@ -1137,7 +1137,7 @@ export default function CreatePurchaseOrder() {
                         <select
                           value={row.gst_pct}
                           onChange={(e) => updateItem(rowKey, "gst_pct", e.target.value)}
-                          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
+                          className="po-line-item-select po-line-item-select--gst w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)]"
                         >
                           <option value="">—</option>
                           <option value="0">0%</option>

@@ -94,7 +94,7 @@ export const SIDEBAR_NAV = [
     icon: ShoppingCart,
     children: [
       { label: "Purchase Order", to: "/procurement/purchase-orders", module: "procurement" },
-      { label: "Purchase", to: "/purchases", module: "procurement" },
+      { label: "Purchase", to: "/purchases", module: "procurement", end: true },
       { label: "Debit Note", to: "/purchases/debit-notes", module: "procurement" },
       { label: "Payments Made", to: "/purchases/payments-made", module: "procurement" },
       {
