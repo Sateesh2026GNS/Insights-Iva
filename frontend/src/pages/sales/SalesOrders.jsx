@@ -332,7 +332,7 @@ export default function SalesOrders() {
   return (
     <ListPageShell>
       <PageHeader
-        subtitle="Manage orders from quotation to dispatch with production and inventory integration."
+        subtitle="Confirm pending orders first, then track packing, shipment and delivery from the same list."
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ExportDownloadMenu
@@ -362,12 +362,13 @@ export default function SalesOrders() {
           value={summary.pending ?? 0}
           icon={ShoppingCart}
           tone="warning"
+          emphasized
+          title="Orders waiting for confirmation — primary next action"
           onClick={() => {
             const next = { ...defaultFilters, status: "pending" };
             setDraftFilters(next);
             setAppliedFilters(next);
           }}
-          title="Filter pending orders"
         />
         <KpiCard
           label="Confirmed"

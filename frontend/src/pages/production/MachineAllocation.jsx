@@ -14,7 +14,7 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import KpiCard from "../../components/common/KpiCard";
+import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -160,18 +160,6 @@ function FilterChips({ value, onChange, counts }) {
   );
 }
 
-function ClickableKpiCard({ onClick, title, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
-      title={title}
-    >
-      {children}
-    </button>
-  );
-}
 
 export default function MachineAllocation() {
   const { addToast } = useToast();
@@ -452,19 +440,19 @@ export default function MachineAllocation() {
   return (
     <ListPageShell>
       <div className="ui-grid-kpi">
-        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch(""); }} title="Show all machines" tone="primary">
+        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch(""); }} title="Show all machines">
           <KpiCard label="Machines" value={summary.total_machines ?? 0} icon={Cpu} tone="primary" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => setFilter("allocated")} title="Show allocated work orders" tone="info">
+        <ClickableKpiCard onClick={() => setFilter("allocated")} title="Show allocated work orders">
           <KpiCard label="Allocated" value={summary.allocated ?? counts.allocated} icon={Settings2} tone="info" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => setFilter("unassigned")} title="Show unassigned work orders" tone="success">
+        <ClickableKpiCard onClick={() => setFilter("unassigned")} title="Show unassigned work orders">
           <KpiCard label="Free" value={summary.free_machines ?? 0} icon={Cpu} tone="success" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch("maintenance"); }} title="Show maintenance machines" tone="danger">
+        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch("maintenance"); }} title="Show maintenance machines">
           <KpiCard label="Maintenance" value={summary.under_maintenance ?? 0} icon={Wrench} tone="danger" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch(""); }} title="View machine utilization" tone="warning">
+        <ClickableKpiCard onClick={() => { setFilter("all"); setSearch(""); }} title="View machine utilization">
           <KpiCard
             label="Utilization"
             value={`${summary.utilization_pct ?? 0}%`}

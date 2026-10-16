@@ -14,7 +14,7 @@ export default function ConfirmationDialog({
   onConfirm,
   onCancel,
 }) {
-  const headerTitle = title?.includes("?") ? "Delete" : title || "Delete";
+  const headerTitle = (typeof title === "string" && title.trim()) || "Confirm";
 
   return (
     <ConfirmDialog

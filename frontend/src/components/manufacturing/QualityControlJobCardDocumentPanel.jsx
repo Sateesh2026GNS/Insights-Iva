@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, Download, Printer } from "lucide-react";
 import Button from "../common/Button";
 import CommonStatusBadge from "../common/StatusBadge";
 import { ErrorState, LoadingState } from "../common/states";
-import { FormField, Select, Textarea } from "../common/FormField";
+import { Select, Textarea } from "../common/FormField";
 import QualityControlJobCardDocument from "./QualityControlJobCardDocument";
 import SalesJobCardDocument from "./SalesJobCardDocument";
 import JobCardActions from "./JobCardActions";
@@ -16,7 +16,9 @@ import { getCompanySettings } from "../../api/settingsApi";
 import { getStageJobCard, submitQualityCheck } from "../../api/workflowApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { erpListStatus } from "../../utils/jobCardListStatus";
+import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
 import { printSalesJobCardLandscape } from "../../utils/printUtils";
+import WorkflowNextStep from "./WorkflowNextStep";
 
 export default function QualityControlJobCardDocumentPanel({
   orderId = null,
@@ -111,6 +113,11 @@ export default function QualityControlJobCardDocumentPanel({
   const showDocument = Boolean(hasSelection && qualityContext && !loading && !error);
   const showEmptyLayout = showEmptyShell && !hasSelection;
   const workflowStatus = erpListStatus(qualityContext || row || {});
+  const guidance = getJobCardWorkflowGuidance({
+    card: qualityContext,
+    row,
+    qualityMode: true,
+  });
 
   const title =
     qualityContext?.card_number ||
@@ -230,6 +237,18 @@ export default function QualityControlJobCardDocumentPanel({
 
           {showDocument ? (
             <>
+              {guidance ? (
+                <WorkflowNextStep
+                  tone={guidance.tone}
+                  title={guidance.title}
+                  statusLabel={guidance.statusLabel}
+                  message={guidance.message}
+                  nextStep={guidance.nextStep}
+                  actionLabel={guidance.actionLabel}
+                  scrollToId={guidance.scrollToId}
+                  className="mb-4"
+                />
+              ) : null}
               <QualityControlJobCardDocument
                 qualityContext={qualityContext}
                 operatorContext={operatorContext}
@@ -239,7 +258,7 @@ export default function QualityControlJobCardDocumentPanel({
                 assignedUser={user}
               />
 
-              <section className="ui-card my-job-cards-page__execution-panel">
+              <section className="ui-card my-job-cards-page__execution-panel" id="quality-inspection-entry">
                 <button
                   type="button"
                   className="my-job-cards-page__sales-ref-toggle"
@@ -252,25 +271,26 @@ export default function QualityControlJobCardDocumentPanel({
                 {inspectionOpen ? (
                   <div className="my-job-cards-page__execution-body">
                     <div className="grid gap-4 p-4 sm:grid-cols-2">
-                      <FormField label="Result">
-                        <Select
-                          value={qualityForm.result}
-                          onChange={(e) => setQualityForm((f) => ({ ...f, result: e.target.value }))}
-                          disabled={!qualityContext?.editable}
-                        >
-                          <option value="pass">Pass</option>
-                          <option value="fail">Fail</option>
-                          <option value="hold">Hold</option>
-                        </Select>
-                      </FormField>
-                      <FormField label="Remarks" className="sm:col-span-2">
-                        <Textarea
-                          rows={3}
-                          value={qualityForm.notes}
-                          onChange={(e) => setQualityForm((f) => ({ ...f, notes: e.target.value }))}
-                          disabled={!qualityContext?.editable}
-                        />
-                      </FormField>
+                      <Select
+                        label="Result"
+                        required
+                        value={qualityForm.result}
+                        onChange={(e) => setQualityForm((f) => ({ ...f, result: e.target.value }))}
+                        disabled={!qualityContext?.editable}
+                      >
+                        <option value="pass">Pass</option>
+                        <option value="fail">Fail</option>
+                        <option value="hold">Hold</option>
+                      </Select>
+                      <Textarea
+                        label="Remarks"
+                        optional
+                        className="sm:col-span-2"
+                        rows={3}
+                        value={qualityForm.notes}
+                        onChange={(e) => setQualityForm((f) => ({ ...f, notes: e.target.value }))}
+                        disabled={!qualityContext?.editable}
+                      />
                     </div>
                     <JobCardActions
                       actions={qualityContext?.allowed_actions}

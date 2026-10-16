@@ -73,27 +73,26 @@ describe("SalesDashboard smoke", () => {
     expect(await screen.findByText("My Work")).toBeTruthy();
   });
 
-  it("shows Recent Transactions period control on the dashboard toolbar", async () => {
+  it("shows Recent Transactions period control in the header period bar", async () => {
     render(
       <MemoryRouter initialEntries={["/sales"]}>
         <SalesDashboard />
       </MemoryRouter>
     );
     await screen.findByText("My Work");
-    fireEvent.click(screen.getByTestId("sales-dash-more-btn"));
+    expect(screen.getByTestId("sales-dash-period-bar")).toBeTruthy();
     expect(screen.getByLabelText("Recent Transactions period")).toBeTruthy();
     expect(screen.getByRole("option", { name: "Custom Date" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Current Financial Year" })).toBeTruthy();
   });
 
-  it("opens reporting custom date modal from toolbar Custom Date", async () => {
+  it("opens reporting custom date modal from header Custom Date", async () => {
     render(
       <MemoryRouter initialEntries={["/sales"]}>
         <SalesDashboard />
       </MemoryRouter>
     );
     await screen.findByText("My Work");
-    fireEvent.click(screen.getByTestId("sales-dash-more-btn"));
     const periodSelect = screen.getByLabelText("Recent Transactions period");
     fireEvent.change(periodSelect, { target: { value: "custom_date" } });
     await waitFor(() => {
@@ -118,17 +117,16 @@ describe("SalesDashboard smoke", () => {
     });
   });
 
-  it("renders centered details in Sales Summary when sales total is 0", async () => {
+  it("renders period snapshot rows in Sales Summary", async () => {
     render(
       <MemoryRouter initialEntries={["/sales"]}>
         <SalesDashboard />
       </MemoryRouter>
     );
     await screen.findByText("Sales Summary");
-    expect(screen.getByText("Total Value")).toBeTruthy();
-    expect(screen.getAllByText("Quotations").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Sales Orders").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Job Cards").length).toBeGreaterThan(0);
+    expect(screen.getByText("Period revenue")).toBeTruthy();
+    expect(screen.getByText("Open quotation value")).toBeTruthy();
+    expect(screen.getByText("Quotations in period")).toBeTruthy();
   });
 
   it("routes New Lead to the create-lead page instead of opening the modal", async () => {

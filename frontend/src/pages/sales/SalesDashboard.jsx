@@ -1,36 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  Area,
-  AreaChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
-  BarChart3,
   Bell,
   ChevronDown,
   ClipboardList,
   FileText,
   IndianRupee,
-  MoreHorizontal,
   Percent,
   Plus,
   ShoppingCart,
   Target,
   Truck,
   UserPlus,
-  Users,
   X,
 } from "lucide-react";
 
 import KpiCard from "../../components/common/KpiCard";
 import Button from "../../components/common/Button";
+import PageHeader from "../../components/common/PageHeader";
+import StatusBadge from "../../components/common/StatusBadge";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import { AsyncPageBody, EmptyState } from "../../components/common/states";
 import RecentTransactionsPeriodSelect from "../../components/accounts/RecentTransactionsPeriodSelect";
@@ -44,14 +33,14 @@ import {
   getSalesHub,
   getSalesOrdersEnriched,
 } from "../../api/salesApi";
-import { formatInr, statusColor } from "../../data/salesMasterData";
+import { formatInr } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { classifyApiError } from "../../utils/apiError";
 import useAuth from "../../hooks/useAuth";
 import { userCanCreateSalesJobCard } from "../../config/permissions";
 import { jobCardCreateUrl } from "../../utils/jobCardRoutes";
-import { toIsoDate } from "../../utils/dateUtils";
+import { formatMediumDate, toIsoDate } from "../../utils/dateUtils";
 import {
   resolveSalesDashboardKpiLink,
   salesDashboardKpiNavLabel,
@@ -76,6 +65,8 @@ const emptyHub = {
   open_quotations_value: 0,
   conversion_rate: 0,
   period_label: "",
+  period_from: "",
+  period_to: "",
   pipeline_production: 0,
   pipeline_completed: 0,
   top_customers: [],
@@ -107,14 +98,14 @@ function parseIsoDay(iso) {
 
 function followupStatus(iso) {
   const d = parseIsoDay(iso);
-  if (!d) return { label: "Pending", badgeClass: statusColor("pending") };
+  if (!d) return { label: "Pending" };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const day = new Date(d);
   day.setHours(0, 0, 0, 0);
-  if (day < today) return { label: "Overdue", badgeClass: statusColor("overdue") };
-  if (day.getTime() === today.getTime()) return { label: "Today", badgeClass: "bg-amber-100 text-amber-800" };
-  return { label: "Pending", badgeClass: statusColor("pending") };
+  if (day < today) return { label: "Overdue" };
+  if (day.getTime() === today.getTime()) return { label: "Today" };
+  return { label: "Pending" };
 }
 
 function extractItemDate(item) {
@@ -136,7 +127,7 @@ function isItemCancelled(item) {
   return st === "cancelled" || st === "canceled" || st === "draft";
 }
 
-function buildDailyRevenueSeries(orders, invoices, rangeFrom, rangeTo, hubMonthlyRevenue = 0) {
+function buildDailyRevenueSeries(orders, invoices, rangeFrom, rangeTo) {
   const from = parseIsoDay(rangeFrom);
   const to = parseIsoDay(rangeTo);
   if (!from || !to) return [];
@@ -177,20 +168,30 @@ function buildDailyRevenueSeries(orders, invoices, rangeFrom, rangeTo, hubMonthl
     return { iso, label, value: cumulative };
   });
 
-  const maxSeriesValue = series.length > 0 ? series[series.length - 1].value : 0;
-  const hubRev = Number(hubMonthlyRevenue) || 0;
-
-  if (maxSeriesValue === 0 && hubRev > 0 && series.length > 0) {
-    const step = hubRev / series.length;
-    let running = 0;
-    return series.map((pt, idx) => {
-      running = idx === series.length - 1 ? hubRev : Math.round((idx + 1) * step);
-      return { ...pt, value: running };
-    });
-  }
-
   return series;
 }
+
+function revenueSeriesHasTransactionalData(series) {
+  if (!series?.length) return false;
+  return series[series.length - 1].value > 0;
+}
+
+function resolveSalesAlertLink(alert, kpiLinks) {
+  const type = String(alert?.type || "").toLowerCase();
+  if (type === "overdue_payment" || type === "outstanding_payment") return kpiLinks.outstandingPayments;
+  if (type === "pending_dispatch") return kpiLinks.dispatchPending;
+  if (type === "pending_invoice") return "/sales/invoices";
+  return null;
+}
+
+const PIPELINE_STAGE_LINK = {
+  leads: (links) => links.openLeads || "/sales/leads?open=1",
+  quotations: (links) => links.openQuotations || "/sales/quotations?kpi=pending",
+  sales_orders: (links) => links.totalOrders || "/sales/orders",
+  production: () => "/manufacturing/workflow",
+  dispatch: (links) => links.dispatchPending || "/sales/dispatch?status=pending_dispatch",
+  completed: (links) => links.totalOrders || "/sales/orders",
+};
 
 const PIPELINE_STAGES = [
   { key: "leads", label: "Leads", to: "/sales/leads" },
@@ -200,8 +201,6 @@ const PIPELINE_STAGES = [
   { key: "dispatch", label: "Dispatch", to: "/sales/dispatch" },
   { key: "completed", label: "Completed", to: "/sales/orders" },
 ];
-
-const SUMMARY_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#8b5cf6"];
 
 export default function SalesDashboard() {
   const { user } = useAuth();
@@ -215,7 +214,6 @@ export default function SalesDashboard() {
   const [leads, setLeads] = useState([]);
   const [orders, setOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [showLeadModal, setShowLeadModal] = useState(false);
   const [alertTab, setAlertTab] = useState("all");
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef(null);
@@ -257,7 +255,17 @@ export default function SalesDashboard() {
   const appliedFrom = rangeParams?.from_date ?? "";
   const appliedTo = rangeParams?.to_date ?? "";
 
-  const load = useCallback(
+  const loadFollowupLeads = useCallback(async () => {
+    try {
+      const res = await getLeadsEnriched({ followup_due: true });
+      const rows = pickData(res);
+      setLeads(Array.isArray(rows) ? rows : []);
+    } catch {
+      setLeads([]);
+    }
+  }, []);
+
+  const loadPeriodData = useCallback(
     async (isRefresh = false) => {
       const params = salesDashboardRangeParams(rangeFrom, rangeTo);
       if (!params) return;
@@ -268,10 +276,9 @@ export default function SalesDashboard() {
       setLoadErrorObj(null);
       markRequestStart();
       try {
-        const [hubRes, quoteRes, leadsRes, ordersRes, invoicesRes] = await Promise.allSettled([
+        const [hubRes, quoteRes, ordersRes, invoicesRes] = await Promise.allSettled([
           getSalesHub(params),
           getQuotationSummary(params),
-          getLeadsEnriched(),
           getSalesOrdersEnriched(params),
           getInvoicesEnriched(params),
         ]);
@@ -282,7 +289,6 @@ export default function SalesDashboard() {
           if (data) setHub({ ...emptyHub, ...data });
         } else throw hubRes.reason;
         setQuoteSummary(quoteRes.status === "fulfilled" ? pickData(quoteRes.value) : null);
-        setLeads(leadsRes.status === "fulfilled" && Array.isArray(pickData(leadsRes.value)) ? pickData(leadsRes.value) : []);
         setOrders(
           ordersRes.status === "fulfilled" && Array.isArray(pickData(ordersRes.value))
             ? pickData(ordersRes.value)
@@ -309,15 +315,27 @@ export default function SalesDashboard() {
     [markRequestStart, markRequestEnd, rangeFrom, rangeTo]
   );
 
-  loadRef.current = load;
+  const refreshDashboard = useCallback(
+    (isRefresh = false) => {
+      loadPeriodData(isRefresh);
+      loadFollowupLeads();
+    },
+    [loadPeriodData, loadFollowupLeads]
+  );
+
+  loadRef.current = loadPeriodData;
+
+  useEffect(() => {
+    loadFollowupLeads();
+  }, [loadFollowupLeads]);
 
   useEffect(() => {
     if (!appliedFrom || !appliedTo) return;
     loadRef.current();
   }, [appliedFrom, appliedTo]);
 
-  useManufacturingRefresh(() => load(true));
-  useEffect(() => registerRetry(() => load(true)), [registerRetry, load]);
+  useManufacturingRefresh(() => refreshDashboard(true));
+  useEffect(() => registerRetry(() => refreshDashboard(true)), [registerRetry, refreshDashboard]);
 
   const periodMeta = useMemo(
     () => periodOptionLabel(periodId, periodOptions, customRange),
@@ -347,47 +365,58 @@ export default function SalesDashboard() {
   const pipelineCounts = useMemo(
     () => ({
       leads: hub.open_leads,
-      quotations: quoteSummary?.total_quotations ?? hub.open_quotations,
+      quotations: hub.open_quotations,
       sales_orders: hub.total_orders,
       production: hub.pipeline_production ?? 0,
       dispatch: hub.dispatch_pending,
       completed: hub.pipeline_completed ?? 0,
     }),
-    [hub, quoteSummary]
+    [hub]
   );
 
   const revenueSeries = useMemo(
-    () => buildDailyRevenueSeries(orders, invoices, rangeFrom, rangeTo, hub.monthly_revenue),
-    [orders, invoices, rangeFrom, rangeTo, hub.monthly_revenue]
+    () => buildDailyRevenueSeries(orders, invoices, rangeFrom, rangeTo),
+    [orders, invoices, rangeFrom, rangeTo]
   );
 
-  const summaryDonut = useMemo(() => {
-    const quotations = Number(hub.open_quotations_value || 0);
-    const salesOrders = Number(hub.monthly_revenue || 0);
-    const jobCards = orders
-      .filter((o) => /job|jc/i.test(String(o.order_number || "")))
-      .reduce((s, o) => s + Number(o.total_amount || o.amount || 0), 0);
-    const other = Math.max(0, salesOrders - quotations - jobCards);
-    const allRows = [
-      { name: "Quotations", value: quotations },
-      { name: "Sales Orders", value: salesOrders },
-      { name: "Job Cards", value: jobCards },
-      ...(other > 0 ? [{ name: "Other", value: other }] : []),
-    ];
-    const nonZeroRows = allRows.filter((r) => r.value > 0);
-    const total = nonZeroRows.reduce((s, r) => s + r.value, 0);
-    return {
-      rows: total > 0 ? nonZeroRows : allRows,
-      total,
-    };
-  }, [hub, orders]);
+  const periodSummaryRows = useMemo(
+    () => [
+      {
+        key: "revenue",
+        label: "Period revenue",
+        value: formatInr(hub.monthly_revenue),
+        hint: "Recognized from orders and invoices in the selected range",
+      },
+      {
+        key: "open_quotes",
+        label: "Open quotation value",
+        value: formatInr(hub.open_quotations_value),
+        hint: "Draft and sent quotations in range",
+      },
+      {
+        key: "quotes_count",
+        label: "Quotations in period",
+        value: quoteSummary?.total_quotations ?? 0,
+        hint: "All quotation records dated in range",
+      },
+      {
+        key: "converted",
+        label: "Converted to sales orders",
+        value: quoteSummary?.converted_to_sales_orders ?? 0,
+        hint: "Quotations linked to a sales order",
+      },
+    ],
+    [hub.monthly_revenue, hub.open_quotations_value, quoteSummary]
+  );
 
-  const followups = useMemo(() => {
-    return (leads || [])
-      .filter((l) => l.next_followup)
-      .sort((a, b) => String(a.next_followup).localeCompare(String(b.next_followup)))
-      .slice(0, 6);
-  }, [leads]);
+  const followups = useMemo(
+    () =>
+      [...(leads || [])]
+        .filter((l) => l.next_followup)
+        .sort((a, b) => String(a.next_followup).localeCompare(String(b.next_followup)))
+        .slice(0, 6),
+    [leads]
+  );
 
   const recentOrders = useMemo(() => {
     return [...(orders || [])]
@@ -435,38 +464,48 @@ export default function SalesDashboard() {
   );
 
   const quoteTiles = [
-    { label: "Draft", value: quoteSummary?.draft ?? 0, bg: "#f1f5f9", color: "#475569" },
+    { label: "Draft", value: quoteSummary?.draft ?? 0, tone: "neutral" },
     {
-      label: "Pending",
-      value: Math.max(0, (quoteSummary?.total_quotations ?? 0) - (quoteSummary?.accepted ?? 0) - (quoteSummary?.rejected ?? 0) - (quoteSummary?.expired ?? 0) - (quoteSummary?.draft ?? 0) - (quoteSummary?.sent ?? 0)),
-      bg: "#fff7ed",
-      color: "#c2410c",
+      label: "Open",
+      value: quoteSummary?.open_quotations ?? hub.open_quotations ?? 0,
+      tone: "amber",
     },
-    { label: "Sent", value: quoteSummary?.sent ?? 0, bg: "#e0f2fe", color: "#0369a1" },
-    { label: "Accepted", value: quoteSummary?.accepted ?? 0, bg: "#ecfdf5", color: "#047857" },
-    { label: "Rejected", value: quoteSummary?.rejected ?? 0, bg: "#fef2f2", color: "#b91c1c" },
-    { label: "Expired", value: quoteSummary?.expired ?? 0, bg: "#f5f3ff", color: "#6d28d9" },
+    { label: "Sent", value: quoteSummary?.sent ?? 0, tone: "blue" },
+    { label: "Accepted", value: quoteSummary?.accepted ?? 0, tone: "green" },
+    { label: "Rejected", value: quoteSummary?.rejected ?? 0, tone: "red" },
+    { label: "Expired", value: quoteSummary?.expired ?? 0, tone: "purple" },
   ];
 
-  return (
-    <ListPageShell stackClassName="sales-dash space-y-4 sm:space-y-5 pb-8">
-      <div className="sales-dash__toolbar">
-        <div className="sales-dash__toolbar-actions flex flex-wrap items-center justify-between gap-2 w-full">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="add" to="/sales/leads/new" leftIcon={<UserPlus className="h-4 w-4" />}>
-              New Lead
-            </Button>
-            <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}>
-              New Quote
-            </Button>
-            {canCreateJobCard ? (
-              <Button variant="add" to={jobCardCreateUrl()} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} />}>
-                New Job Card
-              </Button>
-            ) : null}
-          </div>
+  const reportingPeriodControl = (
+    <RecentTransactionsPeriodSelect
+      id="sales-dashboard-recent-transactions"
+      className="sales-dash__period-select min-w-0 w-full sm:w-auto"
+      periodId={periodId}
+      customRange={customRange}
+      onPeriodIdChange={setPeriodId}
+      onCustomRangeChange={setCustomRange}
+      onRangeApplied={onReportingPeriodApplied}
+      hideLabel
+      label="Reporting period"
+    />
+  );
 
-          <div ref={moreRef} className="relative inline-block ml-auto">
+  const reportingLabel = hub.period_label || periodMeta;
+  const revenueChartReady = revenueSeriesHasTransactionalData(revenueSeries);
+  const headerActions = (
+    <>
+      <Button variant="add" to="/sales/leads/new" leftIcon={<UserPlus className="h-4 w-4" aria-hidden />}>
+        New Lead
+      </Button>
+      <Button variant="add" to="/sales/quotations/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+        New Quote
+      </Button>
+      {canCreateJobCard ? (
+        <Button variant="add" to={jobCardCreateUrl()} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+          New Job Card
+        </Button>
+      ) : null}
+      <div ref={moreRef} className="relative inline-block">
             <Button
               variant="secondary"
               type="button"
@@ -501,22 +540,6 @@ export default function SalesDashboard() {
                 <div className="space-y-4">
                   <div>
                     <span className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      Reporting Period
-                    </span>
-                    <RecentTransactionsPeriodSelect
-                      id="sales-dashboard-recent-transactions"
-                      className="w-full"
-                      periodId={periodId}
-                      customRange={customRange}
-                      onPeriodIdChange={setPeriodId}
-                      onCustomRangeChange={setCustomRange}
-                      onRangeApplied={onReportingPeriodApplied}
-                      hideLabel
-                    />
-                  </div>
-
-                  <div>
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
                       Export &amp; Share
                     </span>
                     <DashboardReportExport
@@ -531,9 +554,35 @@ export default function SalesDashboard() {
                 </div>
               </div>
             ) : null}
-          </div>
-        </div>
       </div>
+    </>
+  );
+
+  return (
+    <ListPageShell stackClassName="sales-dash sales-dash--surface space-y-4 sm:space-y-5 pb-8">
+      <PageHeader
+        title="Sales Dashboard"
+        showTitle
+        subtitle={`Revenue, pipeline, and quotations for ${reportingLabel}. Due follow-ups and outstanding receivables use live tenant snapshots.`}
+        action={headerActions}
+      />
+
+      <fieldset
+        className="sales-dash__period-bar"
+        data-testid="sales-dash-period-bar"
+        disabled={loading}
+        aria-busy={loading || undefined}
+      >
+        <span id="sales-dash-period-label" className="sales-dash__period-label">
+          Reporting period
+        </span>
+        <div className="sales-dash__period-control" aria-labelledby="sales-dash-period-label">
+          {reportingPeriodControl}
+        </div>
+        <span className="sales-dash__period-active" title="Active reporting range">
+          {periodMeta}
+        </span>
+      </fieldset>
 
       <SalesDashboardMyWork />
 
@@ -542,12 +591,23 @@ export default function SalesDashboard() {
         error={loadError}
         errorObj={loadErrorObj}
         online={online}
-        onRetry={() => load()}
+        onRetry={() => refreshDashboard()}
         loadingVariant="page"
         loadingLabel="Loading sales dashboard..."
         errorTitle="Could not load sales dashboard"
       >
         <div className="space-y-4 sm:space-y-5">
+          <p className="sales-dash__period-context" data-testid="sales-dash-period-context">
+            Hub KPIs, pipeline, charts, and summary use{" "}
+            <span className="font-semibold text-[var(--sales-text)]">{reportingLabel}</span>
+            {hub.period_from && hub.period_to ? (
+              <span className="text-[var(--sales-muted)]">
+                {" "}
+                ({hub.period_from} – {hub.period_to})
+              </span>
+            ) : null}
+            . Outstanding payments and alerts may include all-time receivables.
+          </p>
           <div className="sales-dash__kpi-grid">
             <KpiCard
               label="Revenue"
@@ -555,6 +615,7 @@ export default function SalesDashboard() {
               icon={IndianRupee}
               tone="teal"
               meta={periodMeta}
+              title="Total sales revenue in the selected reporting period"
               to={kpiLinks.monthlyRevenue}
               navAriaLabel={salesDashboardKpiNavLabel("monthlyRevenue")}
             />
@@ -572,6 +633,7 @@ export default function SalesDashboard() {
               value={hub.pending_orders}
               icon={ClipboardList}
               tone="warning"
+              emphasized
               meta={periodMeta}
               to={kpiLinks.pendingOrders}
               navAriaLabel={salesDashboardKpiNavLabel("pendingOrders")}
@@ -609,6 +671,7 @@ export default function SalesDashboard() {
               icon={Percent}
               tone="teal"
               meta={`Quotations in ${periodMeta}`}
+              title="Accepted or converted quotations divided by all quotations dated in the period"
               to={kpiLinks.conversionRate}
               navAriaLabel={salesDashboardKpiNavLabel("conversionRate")}
             />
@@ -623,77 +686,39 @@ export default function SalesDashboard() {
             />
           </div>
 
-          <div className="sales-dash__mid-grid">
-            <div className="sales-dash-card">
-              <div className="sales-dash-card__head">
+          <div className="sales-dash-card">
+            <div className="sales-dash-card__head">
+              <div className="min-w-0">
                 <h3 className="sales-dash-card__title">Sales Pipeline</h3>
-                <Link
-                  to={kpiLinks.openLeads || "/sales/leads?open=1"}
-                  className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
-                >
-                  View Pipeline →
-                </Link>
+                <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+                  Stage counts for {reportingLabel}. Open leads and quotations; order stages from sales hub.
+                </p>
               </div>
-              <div className="sales-dash-card__body overflow-x-auto">
-                <div className="sales-dash-pipeline">
-                  {PIPELINE_STAGES.map((stage) => (
+              <Link
+                to={kpiLinks.openLeads || "/sales/leads?open=1"}
+                className="shrink-0 text-xs font-semibold text-[var(--color-primary)] hover:underline"
+              >
+                View leads →
+              </Link>
+            </div>
+            <div className="sales-dash-card__body overflow-x-auto">
+              <div className="sales-dash-pipeline" role="list" aria-label="Sales pipeline stages">
+                {PIPELINE_STAGES.map((stage) => {
+                  const count = pipelineCounts[stage.key] ?? 0;
+                  const stageTo = (PIPELINE_STAGE_LINK[stage.key] || (() => stage.to))(kpiLinks);
+                  return (
                     <Link
                       key={stage.key}
-                      to={
-                        stage.key === "leads"
-                          ? kpiLinks.openLeads || stage.to
-                          : stage.key === "quotations"
-                            ? kpiLinks.openQuotations || stage.to
-                            : stage.to
-                      }
-                      className={`sales-dash-pipeline__stage sales-dash-pipeline__stage--${stage.key} hover:opacity-90`}
+                      to={stageTo}
+                      role="listitem"
+                      className={`sales-dash-pipeline__stage sales-dash-pipeline__stage--${stage.key} hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]`}
+                      aria-label={`${stage.label}: ${count}. Open ${stage.label}`}
                     >
                       <div className="sales-dash-pipeline__label">{stage.label}</div>
-                      <div className="sales-dash-pipeline__count">{pipelineCounts[stage.key] ?? 0}</div>
+                      <div className="sales-dash-pipeline__count">{count}</div>
                     </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="sales-dash-card">
-              <div className="sales-dash-card__head">
-                <h3 className="sales-dash-card__title">Quick Actions</h3>
-              </div>
-              <div className="sales-dash-card__body">
-                <div className="sales-dash-quick">
-                  <Link to="/sales/leads/new" className="sales-dash-quick__btn">
-                    <span className="sales-dash-quick__icon"><UserPlus className="h-4 w-4" /></span>
-                    New Lead
-                  </Link>
-                  <Link to="/sales/quotations/create" className="sales-dash-quick__btn">
-                    <span className="sales-dash-quick__icon"><FileText className="h-4 w-4" /></span>
-                    New Quote
-                  </Link>
-                  {canCreateJobCard ? (
-                    <Link to={jobCardCreateUrl()} className="sales-dash-quick__btn">
-                      <span className="sales-dash-quick__icon"><Plus className="h-4 w-4" /></span>
-                      New Job Card
-                    </Link>
-                  ) : (
-                    <span className="sales-dash-quick__btn opacity-50 pointer-events-none">
-                      <span className="sales-dash-quick__icon"><Plus className="h-4 w-4" /></span>
-                      New Job Card
-                    </span>
-                  )}
-                  <Link to="/sales/customers" className="sales-dash-quick__btn">
-                    <span className="sales-dash-quick__icon"><Users className="h-4 w-4" /></span>
-                    View Customers
-                  </Link>
-                  <Link to="/sales/leads" className="sales-dash-quick__btn">
-                    <span className="sales-dash-quick__icon"><Target className="h-4 w-4" /></span>
-                    Follow-ups
-                  </Link>
-                  <Link to="/sales/reports/quotations" className="sales-dash-quick__btn">
-                    <span className="sales-dash-quick__icon"><BarChart3 className="h-4 w-4" /></span>
-                    Reports
-                  </Link>
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -707,24 +732,38 @@ export default function SalesDashboard() {
                 </div>
                 <span className="text-[11px] font-medium text-[var(--color-text-muted)]">{periodMeta}</span>
               </div>
-              <div className="sales-dash-card__body h-[220px]">
-                {revenueSeries.length ? (
+              <div className="sales-dash-card__body h-[220px] min-h-[160px]">
+                {revenueChartReady ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={revenueSeries} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                       <defs>
                         <linearGradient id="salesRevFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#22c55e" stopOpacity={0.35} />
-                          <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
+                          <stop offset="0%" stopColor="var(--sales-primary)" stopOpacity={0.28} />
+                          <stop offset="100%" stopColor="var(--sales-primary)" stopOpacity={0.02} />
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                       <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)} />
                       <Tooltip formatter={(v) => formatInr(v)} />
-                      <Area type="monotone" dataKey="value" stroke="#16a34a" strokeWidth={2} fill="url(#salesRevFill)" />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="var(--sales-primary)"
+                        strokeWidth={2}
+                        fill="url(#salesRevFill)"
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <EmptyState compact title="No revenue in range" description="Orders in the selected date range will chart here." />
+                  <EmptyState
+                    compact
+                    title="No daily revenue trend"
+                    description={
+                      Number(hub.monthly_revenue) > 0
+                        ? `Period total is ${formatInr(hub.monthly_revenue)}. The chart appears when dated orders or invoices exist in range.`
+                        : "Dated sales orders or invoices in the selected period will chart here."
+                    }
+                  />
                 )}
               </div>
             </div>
@@ -733,37 +772,22 @@ export default function SalesDashboard() {
               <div className="sales-dash-card__head">
                 <div>
                   <h3 className="sales-dash-card__title">Sales Summary</h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">Total value by document type</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">Period snapshot from sales hub and quotations</p>
                 </div>
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)]">{reportingLabel}</span>
               </div>
-              <div className="sales-dash-card__body flex flex-col items-center justify-center gap-3 sm:flex-row min-h-[180px]">
-                {summaryDonut.total > 0 && (
-                  <div className="h-[180px] w-[180px] shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={summaryDonut.rows} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={2}>
-                          {summaryDonut.rows.map((_, i) => (
-                            <Cell key={i} fill={SUMMARY_COLORS[i % SUMMARY_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(v) => formatInr(v)} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-                <div className={summaryDonut.total > 0 ? "text-center sm:text-left" : "w-full text-center py-4 flex flex-col items-center justify-center"}>
-                  <p className="text-lg font-bold text-[var(--color-text)]">{formatInr(summaryDonut.total)}</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">Total Value</p>
-                  <ul className="mt-2 space-y-1 text-[11px]">
-                    {summaryDonut.rows.map((r, i) => (
-                      <li key={r.name} className={`flex items-center gap-2 ${summaryDonut.total > 0 ? "justify-center sm:justify-start" : "justify-center"}`}>
-                        <span className="h-2 w-2 rounded-full" style={{ background: SUMMARY_COLORS[i % SUMMARY_COLORS.length] }} />
-                        <span>{r.name}</span>
-                        <span className="text-[var(--color-text-muted)]">{formatInr(r.value)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <div className="sales-dash-card__body min-h-[180px]">
+                <ul className="sales-dash-summary-list">
+                  {periodSummaryRows.map((row) => (
+                    <li key={row.key} className="sales-dash-summary-list__row">
+                      <div className="min-w-0">
+                        <p className="sales-dash-summary-list__label">{row.label}</p>
+                        <p className="sales-dash-summary-list__hint">{row.hint}</p>
+                      </div>
+                      <p className="sales-dash-summary-list__value tabular-nums">{row.value}</p>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
@@ -791,18 +815,51 @@ export default function SalesDashboard() {
                   ))}
                 </div>
                 {filteredAlerts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-6 text-center text-[var(--color-text-muted)]">
-                    <Bell className="mb-2 h-8 w-8 opacity-40" aria-hidden />
+                  <div className="flex flex-col items-center justify-center py-5 text-center text-[var(--color-text-muted)]">
+                    <Bell className="mb-2 h-7 w-7 opacity-40" aria-hidden />
                     <p className="text-sm font-semibold text-[var(--color-text)]">No alerts</p>
-                    <p className="text-xs">You&apos;re all caught up on sales notifications.</p>
+                    <p className="text-xs max-w-[16rem]">
+                      {loadError
+                        ? "Alerts could not be loaded with the dashboard. Retry above if the request failed."
+                        : "No overdue payments, dispatch holds, or invoice warnings for this tenant."}
+                    </p>
                   </div>
                 ) : (
                   <ul className="space-y-2 text-xs">
-                    {filteredAlerts.map((a, i) => (
-                      <li key={i} className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 font-medium">
-                        {a.message}
-                      </li>
-                    ))}
+                    {filteredAlerts.map((a, i) => {
+                      const href = resolveSalesAlertLink(a, kpiLinks);
+                      const severity = String(a.severity || "info").toLowerCase();
+                      const tone =
+                        severity === "danger" ? "danger" : severity === "warning" ? "warning" : "info";
+                      const inner = (
+                        <>
+                          <StatusBadge tone={tone} className="mb-1 capitalize">
+                            {a.type ? String(a.type).replace(/_/g, " ") : "Alert"}
+                          </StatusBadge>
+                          <span className="block font-medium text-[var(--color-text)]">{a.message}</span>
+                        </>
+                      );
+                      if (href) {
+                        return (
+                          <li key={`${a.type}-${i}`}>
+                            <Link
+                              to={href}
+                              className="block rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-surface)]"
+                            >
+                              {inner}
+                            </Link>
+                          </li>
+                        );
+                      }
+                      return (
+                        <li
+                          key={`${a.type}-${i}`}
+                          className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2"
+                        >
+                          {inner}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -812,12 +869,23 @@ export default function SalesDashboard() {
           <div className="sales-dash__bottom-grid">
             <div className="sales-dash-card">
               <div className="sales-dash-card__head">
-                <h3 className="sales-dash-card__title">Today&apos;s Follow-ups</h3>
-                <Link to="/sales/leads?followup=due" className="text-xs font-semibold text-[var(--color-primary)]">View All →</Link>
+                <div>
+                  <h3 className="sales-dash-card__title">Due follow-ups</h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">Today and overdue next steps</p>
+                </div>
+                <Link to="/sales/leads" className="text-xs font-semibold text-[var(--color-primary)] shrink-0">
+                  View all →
+                </Link>
               </div>
               <div className="sales-dash-card__body overflow-x-auto">
                 {followups.length === 0 ? (
-                  <EmptyState compact title="No follow-ups scheduled" description="Leads with a next follow-up date appear here." />
+                  <EmptyState
+                    compact
+                    title="No follow-ups due"
+                    description="Leads with a next follow-up today or earlier appear here."
+                    actionLabel="New lead"
+                    actionHref="/sales/leads/new"
+                  />
                 ) : (
                   <table className="sales-dash-table">
                     <thead>
@@ -839,15 +907,17 @@ export default function SalesDashboard() {
                               {row.customer_name || row.company || "—"}
                             </td>
                             <td>{row.lead_id || row.id || "—"}</td>
-                            <td>{String(row.next_followup || "").slice(0, 16) || "—"}</td>
+                            <td>{formatMediumDate(row.next_followup) || "—"}</td>
                             <td>
-                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.badgeClass}`}>
+                              <StatusBadge
+                                tone={st.label === "Overdue" ? "danger" : st.label === "Today" ? "warning" : "pending"}
+                              >
                                 {st.label}
-                              </span>
+                              </StatusBadge>
                             </td>
                             <td>
                               <Link
-                                to={row.id ? `/sales/leads?lead=${row.id}` : "/sales/leads?followup=due"}
+                                to={row.id ? `/sales/leads?lead=${row.id}` : "/sales/leads"}
                                 className="text-[11px] font-semibold text-[var(--color-primary)] hover:underline"
                               >
                                 Follow up
@@ -875,7 +945,7 @@ export default function SalesDashboard() {
               <div className="sales-dash-card__body">
                 <div className="sales-dash-quote-grid">
                   {quoteTiles.map((t) => (
-                    <div key={t.label} className="sales-dash-quote-tile" style={{ background: t.bg, color: t.color }}>
+                    <div key={t.label} className={`sales-dash-quote-tile sales-dash-quote-tile--${t.tone}`}>
                       <strong>{t.value}</strong>
                       <span>{t.label}</span>
                     </div>
@@ -912,9 +982,9 @@ export default function SalesDashboard() {
                           <td>{String(o.order_date || "").slice(0, 10)}</td>
                           <td className="tabular-nums">{formatInr(o.total_amount || o.amount)}</td>
                           <td>
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${statusColor(o.status)}`}>
+                            <StatusBadge status={o.status} className="capitalize">
                               {String(o.status || "pending").replace(/_/g, " ")}
-                            </span>
+                            </StatusBadge>
                           </td>
                           <td>
                             <Link
@@ -979,10 +1049,9 @@ export default function SalesDashboard() {
                   <table className="sales-dash-table">
                     <thead>
                       <tr>
-                        <th>Sales Executive</th>
+                        <th>Sales executive</th>
                         <th>Orders</th>
                         <th>Revenue</th>
-                        <th>Conversion</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -990,8 +1059,7 @@ export default function SalesDashboard() {
                           <tr key={e.name}>
                             <td>{e.name}</td>
                             <td className="tabular-nums">{e.orders}</td>
-                            <td className="tabular-nums">{formatInr(e.revenue)}</td>
-                            <td className="tabular-nums">—</td>
+                            <td className="tabular-nums font-semibold">{formatInr(e.revenue)}</td>
                           </tr>
                         ))}
                     </tbody>

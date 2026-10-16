@@ -32,13 +32,19 @@ export const getAttendance = (params) => api.get("/hr/attendance", { params });
 export const getAttendanceSummary = (params) => api.get("/hr/attendance/summary", { params });
 export const getAttendanceEnriched = (params) => api.get("/hr/attendance/enriched", { params });
 export const createAttendance = (payload) => api.post("/hr/attendance", payload);
-export const clockIn = ({ employee_id, record_date }) =>
+export const clockIn = ({ employee_id, record_date } = {}) =>
   api.post("/hr/attendance/clock-in", null, {
-    params: { employee_id, record_date },
+    params: {
+      ...(employee_id != null && employee_id !== "" ? { employee_id } : {}),
+      ...(record_date ? { record_date } : {}),
+    },
   });
-export const clockOut = ({ employee_id, record_date }) =>
+export const clockOut = ({ employee_id, record_date } = {}) =>
   api.post("/hr/attendance/clock-out", null, {
-    params: { employee_id, record_date },
+    params: {
+      ...(employee_id != null && employee_id !== "" ? { employee_id } : {}),
+      ...(record_date ? { record_date } : {}),
+    },
   });
 
 export const getLeaveRequests = (params) => api.get("/hr/leave", { params });

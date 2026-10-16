@@ -24,17 +24,9 @@ import {
   submitQualityCheck,
 } from "../../api/workflowApi";
 import { getUserWorkflowTeams, userHasWorkflowTeam } from "../../config/manufacturingWorkflow";
-
-function Field({ label, children }) {
-  return (
-    <label className="block text-sm">
-      <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-const inputCls = "ui-input";
+import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
+import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
+import { Input, Select, Textarea } from "../../components/common/FormField";
 
 export default function WorkflowOrderActions({ orderId, onSuccess }) {
   const { user } = useAuth();
@@ -215,6 +207,24 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
   if (loading) return <Loader label="Loading actions..." />;
   if (!ctx) return null;
 
+  const packingGuidance = getJobCardWorkflowGuidance({
+    card: {
+      workflow_status: ws,
+      allowed_actions: ctx.allowed_actions || [],
+      invoice: ctx.invoice,
+    },
+    packingMode: true,
+  });
+  const billingGuidance = getJobCardWorkflowGuidance({
+    card: {
+      workflow_status: ws,
+      allowed_actions: ctx.invoice ? [] : ["create_invoice"],
+      invoice: ctx.invoice,
+      billing: ctx.invoice ? { invoice_no: ctx.invoice.invoice_number } : undefined,
+    },
+    billingMode: true,
+  });
+
   return (
     <div className="ui-card space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -270,9 +280,9 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
                       <td className="px-2 py-1.5">{ln.material_name}</td>
                       <td className="px-2 py-1.5">{ln.required_qty}</td>
                       <td className="px-2 py-1.5">
-                        <input
+                        <Input
                           type="number"
-                          className={inputCls}
+                          aria-label={`Available quantity for ${ln.material_name || `line ${idx + 1}`}`}
                           value={ln.available_qty}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -283,8 +293,8 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <input
-                          className={inputCls}
+                        <Input
+                          aria-label={`Stock location for ${ln.material_name || `line ${idx + 1}`}`}
                           value={ln.stock_location}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -302,14 +312,13 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
           ) : (
             <p className="mb-3 text-xs text-slate-500">No BOM lines — verify order has products with BOM.</p>
           )}
-          <Field label="Notes">
-            <textarea
-              className={inputCls}
-              rows={2}
-              value={materialNotes}
-              onChange={(e) => setMaterialNotes(e.target.value)}
-            />
-          </Field>
+          <Textarea
+            label="Notes"
+            optional
+            rows={2}
+            value={materialNotes}
+            onChange={(e) => setMaterialNotes(e.target.value)}
+          />
           <Button
             variant="primary"
             className="mt-3"
@@ -343,60 +352,56 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
             Production — Assign operator · {primaryWo.work_order_number}
           </h4>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Operator">
-              <select
-                className={inputCls}
-                value={assignForm.operator_user_id}
-                onChange={(e) => {
-                  if (e.target.value === "__add_operator__") {
-                    setShowAddOperatorModal(true);
-                    return;
-                  }
-                  setAssignForm((f) => ({ ...f, operator_user_id: e.target.value }));
-                }}
-              >
-                <option value="">Select operator</option>
-                {isAdmin ? (
-                  <option value="__add_operator__">+ Add Operator</option>
-                ) : null}
-                {operators.map((op) => (
-                  <option key={op.id} value={op.id}>
-                    {op.full_name || op.email}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Machine">
-              <select
-                className={inputCls}
-                value={assignForm.machine_id}
-                onChange={(e) => {
-                  if (e.target.value === "__add_machine__") {
-                    setShowAddMachineModal(true);
-                    return;
-                  }
-                  setAssignForm((f) => ({ ...f, machine_id: e.target.value }));
-                }}
-              >
-                <option value="">Select Machine</option>
-                {isAdmin ? (
-                  <option value="__add_machine__">+ Add new Machine</option>
-                ) : null}
-                {machines.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name || m.machine_name || m.code || m.id}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Production quantity">
-              <input
-                type="number"
-                className={inputCls}
-                value={assignForm.planned_quantity}
-                onChange={(e) => setAssignForm((f) => ({ ...f, planned_quantity: e.target.value }))}
-              />
-            </Field>
+            <Select
+              label="Operator"
+              required
+              value={assignForm.operator_user_id}
+              onChange={(e) => {
+                if (e.target.value === "__add_operator__") {
+                  setShowAddOperatorModal(true);
+                  return;
+                }
+                setAssignForm((f) => ({ ...f, operator_user_id: e.target.value }));
+              }}
+            >
+              <option value="">Select operator</option>
+              {isAdmin ? (
+                <option value="__add_operator__">+ Add Operator</option>
+              ) : null}
+              {operators.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.full_name || op.email}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="Machine"
+              optional
+              value={assignForm.machine_id}
+              onChange={(e) => {
+                if (e.target.value === "__add_machine__") {
+                  setShowAddMachineModal(true);
+                  return;
+                }
+                setAssignForm((f) => ({ ...f, machine_id: e.target.value }));
+              }}
+            >
+              <option value="">Select Machine</option>
+              {isAdmin ? (
+                <option value="__add_machine__">+ Add new Machine</option>
+              ) : null}
+              {machines.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name || m.machine_name || m.code || m.id}
+                </option>
+              ))}
+            </Select>
+            <Input
+              label="Production quantity"
+              type="number"
+              value={assignForm.planned_quantity}
+              onChange={(e) => setAssignForm((f) => ({ ...f, planned_quantity: e.target.value }))}
+            />
           </div>
           <Button
             variant="primary"
@@ -444,21 +449,18 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
             Operator — Complete production · {primaryWo.work_order_number}
           </h4>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Produced quantity">
-              <input
-                type="number"
-                className={inputCls}
-                value={producedQty}
-                onChange={(e) => setProducedQty(e.target.value)}
-              />
-            </Field>
-            <Field label="Notes">
-              <input
-                className={inputCls}
-                value={productionNotes}
-                onChange={(e) => setProductionNotes(e.target.value)}
-              />
-            </Field>
+            <Input
+              label="Produced quantity"
+              type="number"
+              value={producedQty}
+              onChange={(e) => setProducedQty(e.target.value)}
+            />
+            <Input
+              label="Notes"
+              optional
+              value={productionNotes}
+              onChange={(e) => setProductionNotes(e.target.value)}
+            />
           </div>
           <Button
             variant="primary"
@@ -487,33 +489,30 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
             Quality — Final inspection · {pendingQc.inspection_number}
           </h4>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Result">
-              <select
-                className={inputCls}
-                value={qualityForm.result}
-                onChange={(e) => setQualityForm((f) => ({ ...f, result: e.target.value }))}
-              >
-                <option value="pass">Pass</option>
-                <option value="fail">Fail</option>
-                <option value="partial">Partial</option>
-              </select>
-            </Field>
-            <Field label="Defects">
-              <input
-                className={inputCls}
-                value={qualityForm.defects}
-                onChange={(e) => setQualityForm((f) => ({ ...f, defects: e.target.value }))}
-              />
-            </Field>
-          </div>
-          <Field label="Inspection notes">
-            <textarea
-              className={`${inputCls} mt-3`}
-              rows={2}
-              value={qualityForm.notes}
-              onChange={(e) => setQualityForm((f) => ({ ...f, notes: e.target.value }))}
+            <Select
+              label="Result"
+              required
+              value={qualityForm.result}
+              onChange={(e) => setQualityForm((f) => ({ ...f, result: e.target.value }))}
+            >
+              <option value="pass">Pass</option>
+              <option value="fail">Fail</option>
+              <option value="partial">Partial</option>
+            </Select>
+            <Input
+              label="Defects"
+              optional
+              value={qualityForm.defects}
+              onChange={(e) => setQualityForm((f) => ({ ...f, defects: e.target.value }))}
             />
-          </Field>
+          </div>
+          <Textarea
+            label="Inspection notes"
+            optional
+            rows={2}
+            value={qualityForm.notes}
+            onChange={(e) => setQualityForm((f) => ({ ...f, notes: e.target.value }))}
+          />
           <Button
             variant="primary"
             className="mt-3"
@@ -538,61 +537,64 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
       {/* Packing & Dispatch */}
       {["QUALITY_APPROVED", "PACKING_PENDING", "PACKING_IN_PROGRESS", "PACKING_ISSUE"].includes(ws) &&
       userHasWorkflowTeam(user, "packing") ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <section className="rounded-lg border border-slate-200 bg-white p-4" id="packing-dispatch-entry">
+          {packingGuidance ? (
+            <WorkflowNextStep
+              tone={packingGuidance.tone}
+              title={packingGuidance.title}
+              statusLabel={packingGuidance.statusLabel}
+              message={packingGuidance.message}
+              nextStep={packingGuidance.nextStep}
+              className="mb-3"
+              compact
+            />
+          ) : null}
           <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
             Packing & Dispatch
           </h4>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Packing status">
-              <select
-                className={inputCls}
-                value={packingForm.packing_status}
-                onChange={(e) => setPackingForm((f) => ({ ...f, packing_status: e.target.value }))}
-              >
-                <option value="in_progress">In progress</option>
-                <option value="packed">Packed</option>
-                <option value="dispatched">Dispatched</option>
-              </select>
-            </Field>
-            <Field label="Packed quantity">
-              <input
-                type="number"
-                className={inputCls}
-                value={packingForm.packed_quantity}
-                onChange={(e) => setPackingForm((f) => ({ ...f, packed_quantity: e.target.value }))}
-              />
-            </Field>
-            <Field label="Package count">
-              <input
-                type="number"
-                className={inputCls}
-                value={packingForm.package_count}
-                onChange={(e) => setPackingForm((f) => ({ ...f, package_count: e.target.value }))}
-              />
-            </Field>
-            <Field label="Courier / transport">
-              <input
-                className={inputCls}
-                value={packingForm.courier}
-                onChange={(e) => setPackingForm((f) => ({ ...f, courier: e.target.value }))}
-              />
-            </Field>
-            <Field label="LR / Tracking number">
-              <input
-                className={inputCls}
-                value={packingForm.lr_number}
-                onChange={(e) => setPackingForm((f) => ({ ...f, lr_number: e.target.value }))}
-              />
-            </Field>
-          </div>
-          <Field label="Remarks">
-            <textarea
-              className={`${inputCls} mt-3`}
-              rows={2}
-              value={packingForm.remarks}
-              onChange={(e) => setPackingForm((f) => ({ ...f, remarks: e.target.value }))}
+            <Select
+              label="Packing status"
+              required
+              value={packingForm.packing_status}
+              onChange={(e) => setPackingForm((f) => ({ ...f, packing_status: e.target.value }))}
+            >
+              <option value="in_progress">In progress</option>
+              <option value="packed">Packed</option>
+              <option value="dispatched">Dispatched</option>
+            </Select>
+            <Input
+              label="Packed quantity"
+              type="number"
+              value={packingForm.packed_quantity}
+              onChange={(e) => setPackingForm((f) => ({ ...f, packed_quantity: e.target.value }))}
             />
-          </Field>
+            <Input
+              label="Package count"
+              type="number"
+              value={packingForm.package_count}
+              onChange={(e) => setPackingForm((f) => ({ ...f, package_count: e.target.value }))}
+            />
+            <Input
+              label="Courier / transport"
+              optional
+              value={packingForm.courier}
+              onChange={(e) => setPackingForm((f) => ({ ...f, courier: e.target.value }))}
+            />
+            <Input
+              label="LR / Tracking number"
+              optional
+              value={packingForm.lr_number}
+              onChange={(e) => setPackingForm((f) => ({ ...f, lr_number: e.target.value }))}
+            />
+          </div>
+          <Textarea
+            label="Remarks"
+            optional
+            rows={2}
+            value={packingForm.remarks}
+            onChange={(e) => setPackingForm((f) => ({ ...f, remarks: e.target.value }))}
+          />
           <Button
             variant="primary"
             className="mt-3"
@@ -624,7 +626,18 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
       {/* Billing */}
       {["BILLING_PENDING", "BILLING_HOLD", "PACKED"].includes(ws) &&
       userHasWorkflowTeam(user, "billing") ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <section className="rounded-lg border border-slate-200 bg-white p-4" id="billing-entry">
+          {billingGuidance ? (
+            <WorkflowNextStep
+              tone={billingGuidance.tone}
+              title={billingGuidance.title}
+              statusLabel={billingGuidance.statusLabel}
+              message={billingGuidance.message}
+              nextStep={billingGuidance.nextStep}
+              className="mb-3"
+              compact
+            />
+          ) : null}
           <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Billing — Create invoice</h4>
           {ctx.invoice ? (
             <p className="text-sm text-emerald-700">
@@ -633,14 +646,13 @@ export default function WorkflowOrderActions({ orderId, onSuccess }) {
             </p>
           ) : (
             <>
-              <Field label="Billing remarks">
-                <textarea
-                  className={inputCls}
-                  rows={2}
-                  value={billingRemarks}
-                  onChange={(e) => setBillingRemarks(e.target.value)}
-                />
-              </Field>
+              <Textarea
+                label="Billing remarks"
+                optional
+                rows={2}
+                value={billingRemarks}
+                onChange={(e) => setBillingRemarks(e.target.value)}
+              />
               <Button
                 variant="primary"
                 className="mt-3"

@@ -1,6 +1,25 @@
 """Ensure default tenant exists."""
 
 
+def _sync_tenant_id_sequence(db) -> None:
+    """Keep PostgreSQL in sync after inserting an explicit tenants.id=1.
+
+    Without this, the next INSERT uses the stale sequence and collides on id=1.
+    """
+    bind = db.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    from sqlalchemy import text
+
+    db.execute(
+        text(
+            "SELECT setval("
+            "pg_get_serial_sequence('tenants', 'id'), "
+            "GREATEST((SELECT COALESCE(MAX(id), 1) FROM tenants), 1))"
+        )
+    )
+
+
 def seed_tenant(db):
     """Create or update tenant 1 (GNS) with company email for domain auth."""
     from sqlalchemy import select
@@ -32,6 +51,8 @@ def seed_tenant(db):
             changed = True
         if changed:
             db.commit()
+        _sync_tenant_id_sequence(db)
+        db.commit()
         return
 
     tenant = Tenant(
@@ -43,4 +64,6 @@ def seed_tenant(db):
         trial_status=True,
     )
     db.add(tenant)
+    db.flush()
+    _sync_tenant_id_sequence(db)
     db.commit()

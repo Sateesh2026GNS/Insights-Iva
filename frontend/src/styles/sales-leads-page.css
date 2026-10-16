@@ -1,0 +1,264 @@
+/* Sales → Leads list page (scoped) */
+
+.sales-leads-page {
+  --leads-primary: #3158d8;
+  --leads-bg: #f5f7fb;
+  --leads-card: #ffffff;
+  --leads-text: #172033;
+  --leads-muted: #64748b;
+  --leads-border: #dfe6ef;
+  --leads-blue-soft: #eef4ff;
+  --leads-teal-soft: #e7f5f3;
+  --leads-green-soft: #e8f7ef;
+  --leads-red-soft: #fdecec;
+
+  background: var(--leads-bg);
+  padding: 0.25rem 0.5rem 0.75rem;
+  border-radius: var(--radius-lg, 12px);
+}
+
+@media (min-width: 640px) {
+  .sales-leads-page {
+    padding: 0.5rem 0.75rem 1rem;
+  }
+}
+
+/* Action banner (PageHeader hero) */
+.sales-leads-page__banner.erp-hero-header {
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 8%);
+  align-items: center;
+}
+
+.sales-leads-page__banner .erp-hero-header__subtitle {
+  margin-top: 0.15rem;
+  line-height: 1.45;
+  max-width: 42rem;
+}
+
+.sales-leads-page__banner-actions {
+  align-items: center;
+}
+
+.sales-leads-page__banner-actions .ui-btn--secondary {
+  background: rgb(255 255 255 / 12%);
+  border-color: rgb(255 255 255 / 35%);
+  color: #fff;
+}
+
+.sales-leads-page__banner-actions .ui-btn--secondary:hover:not(:disabled) {
+  background: rgb(255 255 255 / 20%);
+  border-color: rgb(255 255 255 / 50%);
+}
+
+.sales-leads-page__banner-actions .ui-btn--add {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 12%);
+}
+
+/* KPI row */
+.sales-leads-page__kpi-grid {
+  gap: 0.75rem;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi {
+  background: var(--leads-card) !important;
+  border: 1px solid var(--leads-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+  min-height: 5.5rem;
+  color: var(--leads-text);
+}
+
+.sales-leads-page__kpi-grid .ui-kpi__label {
+  color: var(--leads-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi__value {
+  color: var(--leads-text);
+  font-weight: 600;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi--teal .ui-kpi__icon {
+  background: var(--leads-teal-soft) !important;
+  color: #0f766e !important;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi--info .ui-kpi__icon {
+  background: var(--leads-blue-soft) !important;
+  color: var(--leads-primary) !important;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi--neutral .ui-kpi__icon {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi--danger .ui-kpi__icon {
+  background: var(--leads-red-soft) !important;
+  color: #b91c1c !important;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi--success .ui-kpi__icon {
+  background: var(--leads-green-soft) !important;
+  color: #047857 !important;
+}
+
+.sales-leads-page__kpi-grid .ui-kpi.cursor-pointer:hover {
+  border-color: color-mix(in srgb, var(--leads-primary) 35%, var(--leads-border));
+  box-shadow: 0 2px 6px rgb(49 88 216 / 8%);
+}
+
+.sales-leads-page__kpi-grid article.ui-kpi[data-tone] {
+  cursor: default;
+}
+
+/* Lead workflow strip */
+.sales-leads-page__workflow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--leads-border);
+  background: var(--leads-card);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+  scrollbar-width: thin;
+}
+
+.sales-leads-page__workflow-step {
+  flex-shrink: 0;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--leads-border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--leads-text);
+  letter-spacing: 0.01em;
+}
+
+.sales-leads-page__workflow-sep {
+  flex-shrink: 0;
+  color: var(--leads-muted);
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+/* Records card */
+.sales-leads-page__records {
+  border: 1px solid var(--leads-border);
+  border-radius: 12px;
+  background: var(--leads-card);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 5%);
+}
+
+.sales-leads-page__records-body {
+  padding: 1rem 1rem 1.15rem;
+}
+
+@media (min-width: 640px) {
+  .sales-leads-page__records-body {
+    padding: 1.15rem 1.25rem 1.35rem;
+  }
+}
+
+.sales-leads-page__toolbar.ui-list-toolbar {
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.sales-leads-page__toolbar .ui-list-toolbar__start {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Search */
+.sales-leads-page__search .erp-list-search-input,
+.sales-leads-page__search .ui-input {
+  background: #f8fafc;
+  border-color: var(--leads-border);
+  color: var(--leads-text);
+}
+
+.sales-leads-page__search .erp-list-search-input::placeholder,
+.sales-leads-page__search .ui-input::placeholder {
+  color: #94a3b8;
+}
+
+.sales-leads-page__search .erp-list-search-input:focus,
+.sales-leads-page__search .ui-input:focus {
+  background: var(--leads-card);
+  border-color: var(--leads-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--leads-primary) 18%, transparent);
+}
+
+/* Table / Kanban toggle */
+.sales-leads-page__view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border-radius: 8px;
+  border: 1px solid var(--leads-border);
+  background: #f8fafc;
+}
+
+.sales-leads-page__view-toggle .ui-btn {
+  border: none !important;
+  box-shadow: none !important;
+  min-height: 2rem;
+}
+
+.sales-leads-page__view-toggle .ui-btn[aria-pressed="true"] {
+  background: var(--leads-card) !important;
+  color: var(--leads-primary) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%) !important;
+}
+
+.sales-leads-page__view-toggle .ui-btn[aria-pressed="false"] {
+  background: transparent !important;
+  color: var(--leads-muted) !important;
+}
+
+.sales-leads-page__view-toggle .ui-btn:focus-visible {
+  outline: 2px solid var(--leads-primary);
+  outline-offset: 1px;
+}
+
+/* Advanced filters — single select chrome (global ui-select already hides native duplicate) */
+.sales-leads-page__records .ui-select {
+  background-color: #f8fafc;
+  border-color: var(--leads-border);
+}
+
+.sales-leads-page__records .ui-input {
+  border-color: var(--leads-border);
+  background: #f8fafc;
+}
+
+/* Empty state */
+.sales-leads-page__empty {
+  padding: 2rem 1rem !important;
+}
+
+.sales-leads-page__empty h3 {
+  font-size: 0.95rem;
+  color: var(--leads-text);
+}
+
+.sales-leads-page__empty p {
+  color: var(--leads-muted);
+  font-size: 0.8125rem;
+  max-width: 22rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sales-leads-page__empty [class*="opacity-40"] svg,
+.sales-leads-page__empty .h-12 {
+  width: 3rem;
+  height: 3rem;
+}

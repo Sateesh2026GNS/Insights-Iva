@@ -42,6 +42,45 @@ def _get_my_queue(client, headers, **params):
     return client.get("/manufacturing/workflow/my-queue", headers=headers, params=merged)
 
 
+def _find_team_queue_row(client, headers, order_id, *, status=None):
+    """Store queues are oldest-first and page-capped; find this order across fallbacks."""
+    params = {"limit": 200}
+    if status:
+        params["status"] = status
+    queue = client.get("/manufacturing/workflow/queue", headers=headers, params=params)
+    assert queue.status_code == 200, queue.text
+    items = queue.json().get("items") or []
+    matched = next((row for row in items if row.get("sales_order_id") == order_id), None)
+    if matched is not None:
+        return queue.json(), matched
+    mine = _get_my_queue(client, headers)
+    assert mine.status_code == 200, mine.text
+    matched = next((row for row in mine.json().get("items") or [] if row.get("sales_order_id") == order_id), None)
+    return mine.json(), matched
+
+
+def _find_pending_inventory_row(client, headers, order_id):
+    offset = 0
+    limit = 500
+    last_body = {"items": [], "total": 0}
+    while True:
+        pending_list = client.get(
+            "/inventory/store/pending-inventory-checks",
+            headers=headers,
+            params={"limit": limit, "offset": offset},
+        )
+        assert pending_list.status_code == 200, pending_list.text
+        last_body = pending_list.json()
+        items = last_body.get("items") or []
+        matched = next((row for row in items if row.get("sales_order_id") == order_id), None)
+        if matched is not None:
+            return last_body, matched
+        total = int(last_body.get("total") or 0)
+        offset += len(items)
+        if not items or offset >= total:
+            return last_body, None
+
+
 def _create_role_user(client, tenant_id: int, role_name: str, password: str = "Passw0rd!123"):
     db = SessionLocal()
     try:
@@ -233,17 +272,10 @@ def test_confirmed_sales_order_appears_in_store_manager_queue(client):
     finally:
         db.close()
 
-    queue = client.get(
-        "/manufacturing/workflow/queue",
-        headers=store_headers,
-        params={"status": "MATERIAL_CHECK_PENDING"},
+    _, matched = _find_team_queue_row(
+        client, store_headers, order_id, status="MATERIAL_CHECK_PENDING"
     )
-    assert queue.status_code == 200, queue.text
-    items = queue.json()["items"]
-    assert any(row["sales_order_id"] == order_id for row in items)
-
-    matched = next((row for row in items if row["sales_order_id"] == order_id), None)
-    assert matched is not None, items
+    assert matched is not None, order_id
     assert matched.get("customer_name") == "Workflow Test Customer"
     assert matched.get("product_name") == "1L Plastic Bottle"
     assert matched.get("quantity") == 10000
@@ -274,17 +306,16 @@ def test_confirmed_sales_order_appears_in_store_manager_queue(client):
     assert dashboard.status_code == 200, dashboard.text
     dash = dashboard.json()
     assert dash["pending_inventory_checks"] >= 1
-    assert any(row["sales_order_id"] == order_id for row in dash["pending_inventory_orders"])
+    preview = dash.get("pending_inventory_orders") or []
+    in_preview = any(row["sales_order_id"] == order_id for row in preview)
+    if len(preview) < 8:
+        assert in_preview, preview
+    elif not in_preview:
+        assert dash["pending_inventory_checks"] > len(preview)
 
-    pending_list = client.get(
-        "/inventory/store/pending-inventory-checks",
-        headers=store_headers,
-        params={"limit": 50, "offset": 0},
-    )
-    assert pending_list.status_code == 200, pending_list.text
-    pending_body = pending_list.json()
+    pending_body, pending_row = _find_pending_inventory_row(client, store_headers, order_id)
     assert pending_body["total"] >= 1
-    assert any(row["sales_order_id"] == order_id for row in pending_body["items"])
+    assert pending_row is not None, pending_body
     assert pending_body["total"] == dash["pending_inventory_checks"]
 
 
@@ -311,9 +342,8 @@ def test_status_patch_confirm_uses_workflow_engine(client):
     finally:
         db.close()
 
-    queue = client.get("/manufacturing/workflow/queue", headers=store_headers)
-    assert queue.status_code == 200, queue.text
-    assert any(row["sales_order_id"] == order_id for row in queue.json()["items"])
+    _, matched = _find_team_queue_row(client, store_headers, order_id)
+    assert matched is not None, order_id
 
 
 def test_material_check_all_available_advances_to_store_issue(client):
@@ -528,10 +558,8 @@ def test_repair_confirmed_order_without_workflow_creates_job_card(client):
     finally:
         db.close()
 
-    queue = client.get("/manufacturing/workflow/queue", headers=store_headers)
-    assert queue.status_code == 200, queue.text
-    matched = next((row for row in queue.json()["items"] if row["sales_order_id"] == order_id), None)
-    assert matched is not None, queue.json()["items"]
+    _, matched = _find_team_queue_row(client, store_headers, order_id)
+    assert matched is not None, order_id
     assert matched.get("workflow_status") == "MATERIAL_CHECK_PENDING"
     assert matched.get("job_card_no"), f"Expected job card after repair, got {matched}"
 

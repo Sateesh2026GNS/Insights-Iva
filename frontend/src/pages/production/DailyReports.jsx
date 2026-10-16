@@ -15,7 +15,7 @@ import Button, { IconButton } from "../../components/common/Button";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import KpiCard from "../../components/common/KpiCard";
+import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
@@ -286,18 +286,6 @@ function NewReportModal({ onClose, onSuccess }) {
   );
 }
 
-function ClickableKpiCard({ onClick, title, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
-      title={title}
-    >
-      {children}
-    </button>
-  );
-}
 
 export default function DailyReports() {
   const tenantId = useTenantId();
@@ -575,16 +563,16 @@ export default function DailyReports() {
         }
       />
       <div className="ui-grid-kpi">
-        <ClickableKpiCard onClick={() => applyKpiPreset("all")} title="Show all reports" tone="primary">
+        <ClickableKpiCard onClick={() => applyKpiPreset("all")} title="Show all reports">
           <KpiCard label="Produced" value={kpis.produced.toLocaleString()} icon={Factory} tone="primary" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applyKpiPreset("yield")} title="Show high yield reports" tone="success">
+        <ClickableKpiCard onClick={() => applyKpiPreset("yield")} title="Show high yield reports">
           <KpiCard label="Yield" value={`${kpis.yieldPct}%`} icon={CheckCircle2} tone="success" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applyKpiPreset("scrap")} title="Show reports with scrap" tone="danger">
+        <ClickableKpiCard onClick={() => applyKpiPreset("scrap")} title="Show reports with scrap">
           <KpiCard label="Scrap" value={kpis.scrap.toLocaleString()} icon={AlertTriangle} tone="danger" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applyKpiPreset("downtime")} title="Show reports with downtime" tone="warning">
+        <ClickableKpiCard onClick={() => applyKpiPreset("downtime")} title="Show reports with downtime">
           <KpiCard label="Downtime" value={`${kpis.downtime} min`} icon={Clock3} tone="warning" meta="Click to filter" />
         </ClickableKpiCard>
       </div>

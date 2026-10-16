@@ -267,3 +267,19 @@ def test_user_can_cancel_sales_order_roles(register_admin):
         assert user_can_cancel_sales_order(admin_user) is True
     finally:
         db.close()
+
+
+def test_sales_order_detail_after_confirm_does_not_500(client, register_admin):
+    """Regression: stage job-card IDs are scalars; detail must still evaluate cancellation."""
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    customer_id, product_id = _ensure_customer_and_product(tenant_id)
+    order_id = _create_sales_order(client, admin["headers"], customer_id, product_id)
+    confirm = client.post(f"/sales/sales-orders/{order_id}/confirm", headers=admin["headers"])
+    assert confirm.status_code == 200, confirm.text
+
+    detail = client.get(f"/sales/sales-orders/{order_id}", headers=admin["headers"])
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert body.get("order", {}).get("id") == order_id
+    assert "cancellation" in body

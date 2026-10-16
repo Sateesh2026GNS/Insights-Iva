@@ -41,12 +41,6 @@ const RoleIcon = () => (
   </svg>
 );
 
-const ChevronDownIcon = () => (
-  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-  </svg>
-);
-
 const FALLBACK_ROLES = ROLES.map((r) => ({
   id: r.id,
   name: r.name,
@@ -236,12 +230,6 @@ export default function Register() {
                       </option>
                     ))}
                   </select>
-                  <div
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                    aria-hidden
-                  >
-                    <ChevronDownIcon />
-                  </div>
                   {roleOptions.find((r) => r.name === role)?.description && (
                     <p className="mt-1 pl-1 text-[11px] text-gray-500">
                       {roleOptions.find((r) => r.name === role).description}

@@ -15,7 +15,7 @@ import {
 import Button from "../../components/common/Button";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
-import KpiCard from "../../components/common/KpiCard";
+import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -57,18 +57,6 @@ function thumbColor(name = "") {
   return colors[hash];
 }
 
-function ClickableKpiCard({ onClick, title, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
-      title={title}
-    >
-      {children}
-    </button>
-  );
-}
 
 export default function Warehouses() {
   const tenantId = useTenantId();

@@ -211,20 +211,20 @@ def create_attendance_endpoint(
 def clock_in_endpoint(
     employee_id: int | None = Query(None),
     record_date: date | None = Query(None),
-    tenant_id: int = Depends(ATT_SCOPE),
+    user: User = Depends(ATT_PERM),
     db: Session = Depends(get_db),
 ):
-    return record_clock_in(db, tenant_id, employee_id, record_date)
+    return record_clock_in(db, user.tenant_id, employee_id, record_date, user=user)
 
 
 @router.post("/attendance/clock-out")
 def clock_out_endpoint(
     employee_id: int | None = Query(None),
     record_date: date | None = Query(None),
-    tenant_id: int = Depends(ATT_SCOPE),
+    user: User = Depends(ATT_PERM),
     db: Session = Depends(get_db),
 ):
-    rec = record_clock_out(db, tenant_id, employee_id, record_date)
+    rec = record_clock_out(db, user.tenant_id, employee_id, record_date, user=user)
     if not rec:
         raise HTTPException(404, "No open attendance record to clock out")
     return {"success": True, "record": AttendanceRecordRead.model_validate(rec)}

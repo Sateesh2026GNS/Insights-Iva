@@ -38,11 +38,25 @@ export const SALES_MANAGER_NAV_ITEMS = [
     icon: ShoppingCart,
     module: "sales",
     children: [
-      { key: "leads", label: "Leads / Enquiries", to: "/sales/leads", icon: Target, module: "sales" },
-      { key: "createLead", label: "Create Lead", to: "/sales/leads/new", icon: Target, module: "sales" },
+      {
+        key: "leads",
+        label: "Leads / Enquiries",
+        to: "/sales/leads",
+        icon: Target,
+        module: "sales",
+        activeMatch: "leadsIndex",
+      },
+      {
+        key: "createLead",
+        label: "Create Lead",
+        to: "/sales/leads/new",
+        icon: Target,
+        module: "sales",
+        end: true,
+        activeMatch: "leadsCreate",
+      },
       { key: "quotations", label: "Quotations", to: "/sales/quotations", icon: FileText, module: "sales" },
       { key: "orders", label: "Sales Orders", to: "/sales/orders", icon: ClipboardList, module: "sales" },
-      { key: "followUps", label: "Follow-ups", to: "/sales/leads?followup=due", icon: CalendarDays, module: "sales" },
     ],
   },
   {
@@ -68,7 +82,6 @@ export const SALES_MANAGER_NAV_ITEMS = [
     module: "alerts",
     children: [
       { key: "allAlerts", label: "All Alerts", to: "/alerts", icon: Bell, module: "alerts", end: true },
-      { key: "followUpsDue", label: "Follow-ups Due", to: "/sales/leads?followup=due", icon: Target, module: "sales" },
       {
         key: "orderDelays",
         label: "Order Delays",

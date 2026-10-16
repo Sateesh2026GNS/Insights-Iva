@@ -202,10 +202,7 @@ function CheckInPanel({ user, onAttendanceChange }) {
     });
 
     try {
-      await clockIn({
-        employee_id: user?.employee_id || user?.id || null,
-        record_date: today,
-      });
+      await clockIn({ record_date: today });
     } catch {
       // Handled via local storage
     }
@@ -299,10 +296,7 @@ function CheckInPanel({ user, onAttendanceChange }) {
     });
 
     try {
-      await clockOut({
-        employee_id: user?.employee_id || user?.id || null,
-        record_date: today,
-      });
+      await clockOut({ record_date: today });
     } catch {
       // Handled via local storage
     }

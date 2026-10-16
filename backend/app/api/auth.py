@@ -444,10 +444,18 @@ def update_auth_profile(
 def change_password_endpoint(
     req: ChangePasswordRequest,
     request: Request,
+    response: Response,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MessageResponse:
-    """Change password for the signed-in user."""
+    """Change password for the signed-in user.
+
+    On success, all device sessions (including this browser) are revoked. The
+    client must sign in again with the new password.
+    """
+    from app.services.auth_service import revoke_sessions_after_password_change
+
     try:
         change_user_password(
             db,
@@ -462,6 +470,17 @@ def change_password_endpoint(
         db.rollback()
         logger.exception("Failed to change password for user_id=%s: %s", current_user.id, exc)
         raise HTTPException(status_code=503, detail="Database connection unavailable") from exc
+
+    access_token = resolve_access_token(request, creds)
+    payload = decode_access_token(access_token) if access_token else {}
+    current_sid = payload.get("sid") if payload else None
+    revoke_sessions_after_password_change(
+        db,
+        current_user,
+        current_sid=current_sid,
+        request=request,
+    )
+
     log_audit(
         db,
         tenant_id=current_user.tenant_id,
@@ -471,7 +490,13 @@ def change_password_endpoint(
         resource_id=current_user.id,
         ip_address=_client_ip(request),
     )
-    return MessageResponse(message="Password updated successfully.")
+    clear_auth_cookies(response, request)
+    return MessageResponse(
+        message=(
+            "Password updated. For your security, all devices were signed out. "
+            "Please sign in again with your new password."
+        )
+    )
 
 
 @router.put("/avatar", response_model=UserResponse)

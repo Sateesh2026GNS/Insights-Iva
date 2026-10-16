@@ -17,7 +17,9 @@ def _iso(dt: datetime | None) -> str | None:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.isoformat()
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
 
 
 def _serialize(row: ErpNotification) -> dict:

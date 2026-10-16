@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import Button from "../common/Button";
 import { FormField, Input, Textarea } from "../common/FormField";
@@ -7,9 +7,10 @@ import JobCardActions from "./JobCardActions";
 import { CardSectionHeader, fmtDeliveryDisplay, NOTES_MAX } from "./jobCardUiShared";
 
 function ReadOnlyField({ label, value, className = "" }) {
+  const fieldId = useId();
   return (
-    <FormField label={label} className={className}>
-      <Input value={value ?? "—"} readOnly />
+    <FormField label={label} className={className} htmlFor={fieldId}>
+      <Input id={fieldId} value={value ?? "—"} readOnly />
     </FormField>
   );
 }
@@ -183,19 +184,20 @@ export default function OperatorJobCardBody({
           <ReadOnlyField label="Machine" value={instructions.machine || card?.machine || execution.machine_name} />
           <ReadOnlyField label="Target Quantity" value={fmtQty(instructions.target_quantity ?? targetQty, unit)} />
           <ReadOnlyField label="Standard Production Time" value={instructions.standard_production_time || "—"} />
-          <FormField label="Work Instructions" className="sm:col-span-2">
+          <div className="sm:col-span-2">
             <Textarea
+              label="Work Instructions"
               rows={3}
               value={instructions.work_instructions || card?.work_instructions || "—"}
               readOnly
             />
-          </FormField>
-          <FormField label="Safety Instructions" className="sm:col-span-2">
-            <Textarea rows={2} value={instructions.safety_instructions || "—"} readOnly />
-          </FormField>
-          <FormField label="Special Instructions" className="sm:col-span-2">
-            <Textarea rows={2} value={instructions.special_instructions || "—"} readOnly />
-          </FormField>
+          </div>
+          <div className="sm:col-span-2">
+            <Textarea label="Safety Instructions" rows={2} value={instructions.safety_instructions || "—"} readOnly />
+          </div>
+          <div className="sm:col-span-2">
+            <Textarea label="Special Instructions" rows={2} value={instructions.special_instructions || "—"} readOnly />
+          </div>
         </div>
       </article>
 
@@ -232,57 +234,57 @@ export default function OperatorJobCardBody({
       </article>
 
       {/* Operator production */}
-      <article className="ui-card overflow-hidden">
+      <article className="ui-card overflow-hidden" id="operator-production-entry">
         <CardSectionHeader title="Operator Production" />
         <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <FormField label="Produced Quantity" error={fieldErrors.produced_qty}>
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={form.produced_qty}
-              onChange={(e) => handleField("produced_qty", e.target.value)}
-              disabled={!editable}
-            />
-          </FormField>
-          <FormField label="Rejected Quantity" error={fieldErrors.rejected_qty}>
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={form.rejected_qty}
-              onChange={(e) => handleField("rejected_qty", e.target.value)}
-              disabled={!editable}
-            />
-          </FormField>
-          <FormField label="Rework Quantity" error={fieldErrors.rework_qty}>
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={form.rework_qty}
-              onChange={(e) => handleField("rework_qty", e.target.value)}
-              disabled={!editable}
-            />
-          </FormField>
-          <FormField label="Actual Start Time">
-            <Input
-              type="datetime-local"
-              value={form.actual_start_time || toDateTimeLocalValue(execution.actual_start_time)}
-              onChange={(e) => handleField("actual_start_time", e.target.value)}
-              disabled={!editable}
-            />
-          </FormField>
-          <FormField label="Actual End Time">
-            <Input
-              type="datetime-local"
-              value={form.actual_end_time || toDateTimeLocalValue(execution.actual_end_time)}
-              onChange={(e) => handleField("actual_end_time", e.target.value)}
-              disabled={!editable}
-            />
-          </FormField>
-          <FormField label="Operator Remarks" className="sm:col-span-2" error={fieldErrors.notes}>
+          <Input
+            label="Produced Quantity"
+            error={fieldErrors.produced_qty}
+            type="number"
+            min={0}
+            step="any"
+            value={form.produced_qty}
+            onChange={(e) => handleField("produced_qty", e.target.value)}
+            disabled={!editable}
+          />
+          <Input
+            label="Rejected Quantity"
+            error={fieldErrors.rejected_qty}
+            type="number"
+            min={0}
+            step="any"
+            value={form.rejected_qty}
+            onChange={(e) => handleField("rejected_qty", e.target.value)}
+            disabled={!editable}
+          />
+          <Input
+            label="Rework Quantity"
+            error={fieldErrors.rework_qty}
+            type="number"
+            min={0}
+            step="any"
+            value={form.rework_qty}
+            onChange={(e) => handleField("rework_qty", e.target.value)}
+            disabled={!editable}
+          />
+          <Input
+            label="Actual Start Time"
+            type="datetime-local"
+            value={form.actual_start_time || toDateTimeLocalValue(execution.actual_start_time)}
+            onChange={(e) => handleField("actual_start_time", e.target.value)}
+            disabled={!editable}
+          />
+          <Input
+            label="Actual End Time"
+            type="datetime-local"
+            value={form.actual_end_time || toDateTimeLocalValue(execution.actual_end_time)}
+            onChange={(e) => handleField("actual_end_time", e.target.value)}
+            disabled={!editable}
+          />
+          <div className="sm:col-span-2">
             <Textarea
+              label="Operator Remarks"
+              error={fieldErrors.notes}
               rows={3}
               maxLength={NOTES_MAX}
               placeholder="Production notes, downtime, tool changes…"
@@ -290,7 +292,7 @@ export default function OperatorJobCardBody({
               onChange={(e) => handleField("notes", e.target.value)}
               disabled={!editable}
             />
-          </FormField>
+          </div>
         </div>
 
         {editable ? (

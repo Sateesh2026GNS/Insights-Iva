@@ -130,12 +130,17 @@ def test_health(client):
 
 def test_register_duplicate_company_name_succeeds(client):
     """Two companies with the same display name must both register successfully."""
+    import uuid
+
+    stamp = uuid.uuid4().hex[:8]
+    email1 = f"first-gns-{stamp}@acme1.test"
+    email2 = f"second-gns-{stamp}@acme2.test"
     first = client.post(
         "/auth/register",
         json={
             "company_name": "GNS",
             "full_name": "First Admin",
-            "email": "first-gns@acme1.test",
+            "email": email1,
             "password": "Passw0rd!123",
         },
     )
@@ -144,7 +149,7 @@ def test_register_duplicate_company_name_succeeds(client):
         json={
             "company_name": "GNS",
             "full_name": "Second Admin",
-            "email": "second-gns@acme2.test",
+            "email": email2,
             "password": "Passw0rd!123",
         },
     )
@@ -153,11 +158,11 @@ def test_register_duplicate_company_name_succeeds(client):
 
     login1 = client.post(
         "/auth/login",
-        json={"email": "first-gns@acme1.test", "password": "Passw0rd!123", "role": "Operator"},
+        json={"email": email1, "password": "Passw0rd!123", "role": "Operator"},
     )
     login2 = client.post(
         "/auth/login",
-        json={"email": "second-gns@acme2.test", "password": "Passw0rd!123", "role": "Operator"},
+        json={"email": email2, "password": "Passw0rd!123", "role": "Operator"},
     )
     assert login1.status_code == 200
     assert login2.status_code == 200
@@ -473,16 +478,21 @@ def test_failed_login_audit_records_have_session_id(client, register_admin):
         assert len(sid) > 0
 
 
-def test_single_active_session_policy_prevents_multiple_open_sessions(client, register_admin):
-    """Verify that logging in multiple times closes prior active session logs and invalidates prior session tokens."""
-    import time
+def test_login_keeps_prior_device_sessions_active(client, register_admin):
+    """Login is multi-device: a second login must not revoke the first access token.
+
+    issue_auth_response_data deliberately skips tokens_revoked_at so other
+    devices stay signed in. Use /auth/sessions/{id}/revoke or revoke-all
+    to close a device, not a new login.
+    """
+    from sqlalchemy import select
+
+    from app.core.database import SessionLocal
+    from app.models.user import User
+
     ctx = register_admin()
     token1 = ctx["token"]
 
-    # Small sleep to ensure distinct timestamp seconds
-    time.sleep(1.1)
-
-    # Login a second time to create Session 2
     login2_resp = client.post(
         "/auth/login",
         json={"email": ctx["email"], "password": ctx["password"], "role": "Admin"},
@@ -491,25 +501,110 @@ def test_single_active_session_policy_prevents_multiple_open_sessions(client, re
     token2 = login2_resp.json()["access_token"]
     assert token2 != token1
 
-    # Session 1 token MUST be invalidated (401) when superseded by Session 2
-    me_resp_s1 = client.get("/auth/me", headers={"Authorization": f"Bearer {token1}"})
-    assert me_resp_s1.status_code == 401, "Prior session token was not invalidated upon new login!"
+    me_first = client.get("/auth/me", headers={"Authorization": f"Bearer {token1}"})
+    me_second = client.get("/auth/me", headers={"Authorization": f"Bearer {token2}"})
+    assert me_first.status_code == 200, me_first.text
+    assert me_second.status_code == 200, me_second.text
 
-    # Session 2 token MUST be active and valid
-    me_resp_s2 = client.get("/auth/me", headers={"Authorization": f"Bearer {token2}"})
-    assert me_resp_s2.status_code == 200
+    db = SessionLocal()
+    try:
+        user = db.scalars(select(User).where(User.email == ctx["email"])).first()
+        assert user is not None
+        assert user.tokens_revoked_at is None
+    finally:
+        db.close()
 
-    # Inspect audit logs to confirm previous open login was closed with logout_at
-    logs_resp = client.get("/api/settings/audit-logs", headers={"Authorization": f"Bearer {token2}"})
-    assert logs_resp.status_code == 200
-    data = logs_resp.json()
-    items = data["data"]["items"] if "data" in data and isinstance(data["data"], dict) else data.get("items", [])
-    login_logs = [l for l in items if l.get("action") == "login" and l.get("login_status") == "Success"]
+    revoke_all = client.post("/auth/sessions/revoke-all", headers={"Authorization": f"Bearer {token2}"})
+    assert revoke_all.status_code == 200, revoke_all.text
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {token1}"}).status_code == 401
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {token2}"}).status_code == 401
 
-    assert len(login_logs) >= 2
-    # Oldest login session should have logout_at populated (closed)
-    oldest_login = login_logs[-1]
-    assert oldest_login.get("logout_at") is not None, "Prior login session log was left open!"
+
+def test_change_password_rejects_wrong_current_and_accepts_new_login(client, register_admin):
+    ctx = register_admin()
+    me_before = client.get("/auth/me", headers=ctx["headers"])
+    assert me_before.status_code == 200, me_before.text
+
+    wrong = client.post(
+        "/auth/change-password",
+        headers=ctx["headers"],
+        json={
+            "current_password": "NotTheCurrent1!",
+            "new_password": "NewPassw0rd!456",
+            "confirm_password": "NewPassw0rd!456",
+        },
+    )
+    assert wrong.status_code == 400, wrong.text
+    me_after_wrong = client.get("/auth/me", headers=ctx["headers"])
+    assert me_after_wrong.status_code == 200, me_after_wrong.text
+
+    changed = client.post(
+        "/auth/change-password",
+        headers=ctx["headers"],
+        json={
+            "current_password": ctx["password"],
+            "new_password": "NewPassw0rd!456",
+            "confirm_password": "NewPassw0rd!456",
+        },
+    )
+    assert changed.status_code == 200, changed.text
+    assert "sign in again" in changed.json()["message"].lower()
+
+    assert client.get("/auth/me", headers=ctx["headers"]).status_code == 401
+
+    old_login = client.post(
+        "/auth/login",
+        json={"email": ctx["email"], "password": ctx["password"], "role": "Admin"},
+    )
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/auth/login",
+        json={"email": ctx["email"], "password": "NewPassw0rd!456", "role": "Admin"},
+    )
+    assert new_login.status_code == 200
+    assert new_login.json()["access_token"]
+
+
+def test_change_password_revokes_other_devices_and_refresh_tokens(client, register_admin):
+    """Password change must sign out every device (tokens_revoked_at + refresh revoke)."""
+    from app.services.security_service import validate_refresh_token
+    from app.core.database import SessionLocal
+
+    ctx = register_admin()
+    login_b = client.post(
+        "/auth/login",
+        json={"email": ctx["email"], "password": ctx["password"], "role": "Admin"},
+        headers={"User-Agent": "Mozilla/5.0 (iPhone) PasswordChangeTest"},
+    )
+    assert login_b.status_code == 200, login_b.text
+    token_b = login_b.json()["access_token"]
+    refresh_b = login_b.json()["refresh_token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    changed = client.post(
+        "/auth/change-password",
+        headers=ctx["headers"],
+        json={
+            "current_password": ctx["password"],
+            "new_password": "NewPassw0rd!789",
+            "confirm_password": "NewPassw0rd!789",
+        },
+    )
+    assert changed.status_code == 200, changed.text
+
+    assert client.get("/auth/me", headers=ctx["headers"]).status_code == 401
+    assert client.get("/auth/me", headers=headers_b).status_code == 401
+
+    client.cookies.clear()
+    refreshed = client.post("/auth/refresh", json={"refresh_token": refresh_b})
+    assert refreshed.status_code == 401
+
+    db = SessionLocal()
+    try:
+        assert validate_refresh_token(db, refresh_b) is None
+    finally:
+        db.close()
 
 
 def test_no_duplicate_logout_records_for_same_session(client, register_admin):

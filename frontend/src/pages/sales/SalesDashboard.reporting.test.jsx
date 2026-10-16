@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import SalesDashboard from "./SalesDashboard";
 import * as salesApi from "../../api/salesApi";
@@ -39,6 +39,8 @@ const hubPayload = {
   open_quotations_value: 0,
   conversion_rate: 0,
   period_label: "01 Aug – 31 Aug 2026",
+  period_from: "2026-08-01",
+  period_to: "2026-08-31",
   top_customers: [],
   sales_executive_performance: [],
   alerts: [],
@@ -69,14 +71,48 @@ describe("SalesDashboard reporting period", () => {
     expect(/^\d{4}-\d{2}-\d{2}$/.test(call.from_date)).toBe(true);
   });
 
-  it("does not render reporting period toolbar control", async () => {
+  it("shows reporting period in the main header bar", async () => {
     render(
       <MemoryRouter initialEntries={["/sales"]}>
         <SalesDashboard />
       </MemoryRouter>
     );
     await waitFor(() => expect(salesApi.getSalesHub).toHaveBeenCalled());
-    expect(screen.queryByText("Reporting Period")).toBeNull();
-    expect(document.getElementById("sales-dash-period-preset")).toBeNull();
+    expect(screen.getByTestId("sales-dash-period-bar")).toBeTruthy();
+    expect(screen.getByText("Reporting period")).toBeTruthy();
+    expect(screen.getByLabelText("Recent Transactions period")).toBeTruthy();
+  });
+
+  it("refetches period-scoped APIs when the reporting period changes", async () => {
+    render(
+      <MemoryRouter initialEntries={["/sales"]}>
+        <SalesDashboard />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(salesApi.getSalesHub.mock.calls.length).toBeGreaterThan(0));
+    const callsBefore = salesApi.getSalesHub.mock.calls.length;
+    const periodSelect = screen.getByLabelText("Recent Transactions period");
+    fireEvent.change(periodSelect, { target: { value: "current_fy" } });
+    await waitFor(() => expect(salesApi.getSalesHub.mock.calls.length).toBeGreaterThan(callsBefore));
+    const lastParams = salesApi.getSalesHub.mock.calls.at(-1)?.[0];
+    expect(lastParams).toHaveProperty("from_date");
+    expect(lastParams).toHaveProperty("to_date");
+    expect(salesApi.getQuotationSummary.mock.calls.at(-1)?.[0]).toEqual(lastParams);
+    expect(salesApi.getSalesOrdersEnriched.mock.calls.at(-1)?.[0]).toEqual(lastParams);
+    expect(salesApi.getLeadsEnriched).toHaveBeenCalledWith({ followup_due: true });
+  });
+
+  it("shows sales dashboard page title and avoids fake revenue chart when hub has revenue but no dated lines", async () => {
+    vi.spyOn(salesApi, "getSalesHub").mockResolvedValue({
+      data: { ...hubPayload, monthly_revenue: 250000 },
+    });
+    render(
+      <MemoryRouter initialEntries={["/sales"]}>
+        <SalesDashboard />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Sales Dashboard" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/No daily revenue trend/i)).toBeTruthy());
+    expect(screen.getByText(/Period total is/i)).toBeTruthy();
   });
 });

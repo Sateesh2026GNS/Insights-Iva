@@ -1,3 +1,4 @@
+import { Children, cloneElement } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
@@ -64,6 +65,7 @@ export default function KpiCard({
   onClick,
   navAriaLabel,
   active = false,
+  emphasized = false,
 }) {
   const resolved = resolveTone(tone, color);
   const supporting = meta ?? sub ?? trend;
@@ -80,7 +82,7 @@ export default function KpiCard({
     ? "ring-2 ring-[var(--color-primary)] border-[var(--color-primary)] shadow-md"
     : "";
   const isInteractive = Boolean(to || onClick);
-  const cardClass = `ui-kpi ui-kpi--${resolved} group ${isInteractive ? "cursor-pointer" : ""} transition-all duration-200 ${isInteractive ? "hover:-translate-y-0.5 hover:shadow-md" : ""} focus-visible:outline-none ${isInteractive ? hoverBorderClass : ""} ${activeClass} ${className}`.trim();
+  const cardClass = `ui-kpi ui-kpi--${resolved} group ${emphasized ? "ui-kpi--emphasized" : ""} ${isInteractive ? "cursor-pointer" : ""} transition-all duration-200 ${isInteractive ? "hover:-translate-y-0.5 hover:shadow-md" : ""} focus-visible:outline-none ${isInteractive ? hoverBorderClass : ""} ${activeClass} ${className}`.trim();
 
   const inner = (
     <>
@@ -124,8 +126,18 @@ export default function KpiCard({
   }
 
   if (onClick) {
+    const buttonLabel =
+      navAriaLabel ||
+      (typeof label === "string" ? `${label}. ${tip || "Filter list"}` : tip);
     return (
-      <button type="button" className={`${cardClass} w-full text-left`} title={tip} onClick={onClick} data-tone={resolved}>
+      <button
+        type="button"
+        className={`${cardClass} w-full text-left`}
+        title={tip}
+        onClick={onClick}
+        aria-label={buttonLabel}
+        data-tone={resolved}
+      >
         {inner}
       </button>
     );
@@ -136,4 +148,15 @@ export default function KpiCard({
       {inner}
     </article>
   );
+}
+
+/** Pass click/navigation onto a child KpiCard so it looks and behaves interactive. */
+export function ClickableKpiCard({ onClick, to, title, emphasized, children }) {
+  const child = Children.only(children);
+  return cloneElement(child, {
+    onClick: onClick ?? child.props.onClick,
+    to: to ?? child.props.to,
+    title: title ?? child.props.title,
+    emphasized: emphasized ?? child.props.emphasized,
+  });
 }

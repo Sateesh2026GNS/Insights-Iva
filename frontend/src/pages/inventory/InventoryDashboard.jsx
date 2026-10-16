@@ -10,7 +10,7 @@ import {
   Truck,
 } from "lucide-react";
 
-import KpiCard from "../../components/common/KpiCard";
+import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import DashboardReportExport from "../../components/common/DashboardReportExport";
 import PageHeader from "../../components/common/PageHeader";
 import { metricExportRows } from "../../utils/dashboardExportRows";
@@ -73,18 +73,6 @@ function SectionCard({ title, viewAllTo, children }) {
       </div>
       {children}
     </section>
-  );
-}
-
-function ClickableKpiCard({ to, title, children }) {
-  return (
-    <Link
-      to={to}
-      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none"
-      title={title}
-    >
-      {children}
-    </Link>
   );
 }
 

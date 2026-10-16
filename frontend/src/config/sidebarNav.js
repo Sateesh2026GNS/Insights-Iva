@@ -113,7 +113,7 @@ export const SIDEBAR_NAV = [
     icon: Wallet,
     children: [
       { label: "Sales Dashboard", to: "/sales/dashboard", module: "sales" },
-      { label: "Leads", to: "/sales/leads", module: "sales" },
+      { label: "Leads", to: "/sales/leads", module: "sales", activeMatch: "leadsIndex" },
       { label: "Quotations", to: "/sales/quotations", module: "sales" },
       { label: "Sales Orders", to: "/sales/orders", module: "sales" },
       { label: "Customers", to: "/sales/customers", module: "sales" },
@@ -278,23 +278,77 @@ export const SIDEBAR_NAV = [
 ];
 
 export function isPathActive(pathname, to, end = false) {
-  if (end) return pathname === to;
-  return pathname === to || pathname.startsWith(`${to}/`);
+  const pathOnly = (to || "").split("?")[0];
+  if (end) return pathname === pathOnly;
+  return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
 }
 
-/** True when a nav node or any descendant matches the current path. */
-export function navNodeIsActive(pathname, node) {
+/** Split a router `to` string into pathname and search (including leading `?`). */
+export function parseNavTo(to) {
+  if (!to) return { pathname: "", search: "" };
+  const q = to.indexOf("?");
+  if (q === -1) return { pathname: to, search: "" };
+  return { pathname: to.slice(0, q), search: to.slice(q) };
+}
+
+function normalizeNavLocation(pathnameOrLocation, search = "") {
+  if (pathnameOrLocation && typeof pathnameOrLocation === "object") {
+    return {
+      pathname: pathnameOrLocation.pathname || "",
+      search: pathnameOrLocation.search || "",
+    };
+  }
+  return { pathname: pathnameOrLocation || "", search: search || "" };
+}
+
+function navSearchParamsMatch(expectedSearch, actualSearch) {
+  if (!expectedSearch) return true;
+  const expected = new URLSearchParams(expectedSearch.replace(/^\?/, ""));
+  const actual = new URLSearchParams((actualSearch || "").replace(/^\?/, ""));
+  for (const [key, value] of expected.entries()) {
+    if (actual.get(key) !== value) return false;
+  }
+  return true;
+}
+
+/**
+ * Whether a sidebar leaf should use the active style (pathname + optional query rules).
+ */
+export function isSidebarLinkActive(pathnameOrLocation, node, search = "") {
+  if (!node?.to) return false;
+  const { pathname, search: locationSearch } = normalizeNavLocation(pathnameOrLocation, search);
+  const { pathname: toPath, search: toSearch } = parseNavTo(node.to);
+
+  if (toSearch) {
+    return pathname === toPath && navSearchParamsMatch(toSearch, locationSearch);
+  }
+
+  if (node.activeMatch === "leadsIndex") {
+    return pathname === toPath;
+  }
+
+  if (node.activeMatch === "leadsCreate") {
+    return (
+      pathname === "/sales/leads/new" || /\/sales\/leads\/[^/]+\/edit$/.test(pathname)
+    );
+  }
+
+  return isPathActive(pathname, toPath, node.end === true);
+}
+
+/** True when a nav node or any descendant matches the current route. */
+export function navNodeIsActive(pathnameOrLocation, node, search = "") {
   if (!node) return false;
-  if (node.to && isPathActive(pathname, node.to, node.end)) return true;
+  if (node.to && isSidebarLinkActive(pathnameOrLocation, node, search)) return true;
   if (Array.isArray(node.children)) {
-    return node.children.some((child) => navNodeIsActive(pathname, child));
+    return node.children.some((child) => navNodeIsActive(pathnameOrLocation, child, search));
   }
   return false;
 }
 
-export function sectionHasActiveChild(pathname, section) {
+export function sectionHasActiveChild(pathnameOrLocation, section, search = "") {
   if (!section.children) return false;
-  return section.children.some((child) => navNodeIsActive(pathname, child));
+  return section.children.some((child) => navNodeIsActive(pathnameOrLocation, child, search));
 }
 
 /** Filter a nested nav tree by module/RBAC on leaf nodes. */
@@ -313,12 +367,12 @@ export function filterNavTree(nodes, canAccessLeaf) {
 }
 
 /** Collect expand keys for nested groups that contain the active route. */
-export function buildNestedExpanded(pathname, nodes, sectionKey, state = {}) {
+export function buildNestedExpanded(pathnameOrLocation, nodes, sectionKey, state = {}) {
   for (const node of nodes || []) {
     const itemKey = `${sectionKey}:${node.key || node.label}`;
     if (node.children?.length) {
-      if (navNodeIsActive(pathname, node)) state[itemKey] = true;
-      buildNestedExpanded(pathname, node.children, sectionKey, state);
+      if (navNodeIsActive(pathnameOrLocation, node)) state[itemKey] = true;
+      buildNestedExpanded(pathnameOrLocation, node.children, sectionKey, state);
     }
   }
   return state;

@@ -45,9 +45,7 @@ async function apiJson(url, body, { method = "POST" } = {}) {
 }
 
 async function loginUser(email, password, role) {
-  const authBase = WEB_BASE;
-  await apiJson(`${authBase}/auth/csrf`, null, { method: "GET" });
-  const login = await apiJson(`${authBase}/auth/login`, { email, password, role });
+  const login = await apiJson(`${API_BASE}/auth/login`, { email, password, role });
   if (!login.ok) {
     throw new Error(`Login failed for ${role} (${email}): ${login.status} ${login.text.slice(0, 200)}`);
   }
@@ -61,7 +59,7 @@ async function loginUser(email, password, role) {
 
 async function provisionUser(role, label) {
   const stamp = Date.now().toString(36);
-  const email = `e2e-${label}-${stamp}@example.com`;
+  const email = `e2e-${label}-${stamp}@company-e2e.test`;
   const reg = await apiJson(`${API_BASE}/auth/register`, {
     company_name: `E2E ${label} ${stamp}`,
     full_name: `E2E ${role}`,
@@ -80,7 +78,11 @@ async function provisionUser(role, label) {
 
 async function resolveAccount(role, label, envEmail, envPassword) {
   if (envEmail && envPassword) {
-    return loginUser(envEmail, envPassword, role);
+    try {
+      return await loginUser(envEmail, envPassword, role);
+    } catch {
+      // Stored e2e credentials may target a different database than this run.
+    }
   }
   return provisionUser(role, label);
 }
@@ -115,8 +117,19 @@ async function saveStorageState(account, outFile) {
   await browser.close();
 }
 
+function isManufacturingOnlyRun() {
+  const args = process.argv.join(" ");
+  return /--project[= ]manufacturing\b/.test(args) || /manufacturing-workflow\.spec\.js/.test(args);
+}
+
 export default async function globalSetup() {
   await loadE2eEnvFile();
+  // Manufacturing spec authenticates through the login UI and does not use
+  // accountant/operator storage state. Skip Chromium provisioning so the spec
+  // can skip cleanly when E2E_MANUFACTURING is unset or browsers are missing.
+  if (isManufacturingOnlyRun()) {
+    return;
+  }
   await mkdir(AUTH_DIR, { recursive: true });
 
   const accountant = await resolveAccount(

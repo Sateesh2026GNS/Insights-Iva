@@ -1,14 +1,16 @@
+import { BarChart3, Factory, Package, Receipt, ShieldCheck, Wrench } from "lucide-react";
+
 import Button from "../components/common/Button";
 import BrandLogo from "../components/common/BrandLogo";
 import { AUTH_LOGIN_SLIDE_1_URL } from "../utils/authSlideAssets";
 
 const features = [
-  { icon: "🏭", title: "Production Management", desc: "Work orders, batch tracking, machine status in real-time." },
-  { icon: "📦", title: "Inventory & Procurement", desc: "Stock alerts, purchase orders, vendor management." },
-  { icon: "💰", title: "Sales & Billing", desc: "GST invoices, sales orders, payment tracking." },
-  { icon: "📊", title: "Analytics & Reports", desc: "Production trends, machine efficiency, profit analysis." },
-  { icon: "✅", title: "Quality Control", desc: "Inspections, defect tracking, compliance logs." },
-  { icon: "🔧", title: "Maintenance", desc: "Preventive schedules, breakdown reports, alerts." },
+  { icon: Factory, title: "Production Management", desc: "Work orders, batch tracking, and shop-floor visibility." },
+  { icon: Package, title: "Inventory & Procurement", desc: "Stock levels, purchase orders, and vendor records." },
+  { icon: Receipt, title: "Sales & Billing", desc: "GST invoices, sales orders, and payment tracking." },
+  { icon: BarChart3, title: "Analytics & Reports", desc: "Operational reports across production and finance." },
+  { icon: ShieldCheck, title: "Quality Control", desc: "Inspections, defect tracking, and compliance logs." },
+  { icon: Wrench, title: "Maintenance", desc: "Preventive schedules, breakdown reports, and alerts." },
 ];
 
 export default function Landing() {
@@ -42,11 +44,11 @@ export default function Landing() {
             <BrandLogo size="hero" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl" style={{ color: "var(--color-dark-bg)" }}>
-            Control Your Factory in Real-Time with{" "}
+            Manufacturing operations in one workspace:{" "}
             <span style={{ color: "var(--color-primary)" }}>Insights Iva</span>
           </h1>
           <p className="mt-6 text-xl text-slate-600">
-            Business Intelligence • Analytics • AI for modern manufacturing operations.
+            ERP for production, inventory, sales, and finance with role-based access for your team.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Button variant="primary" to="/login" size="lg">
@@ -70,7 +72,7 @@ export default function Landing() {
           <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f) => (
               <div key={f.title} className="rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition">
-                <span className="text-3xl">{f.icon}</span>
+                <f.icon className="h-8 w-8 text-[var(--color-primary)]" aria-hidden />
                 <h3 className="mt-4 text-lg font-semibold text-slate-900">{f.title}</h3>
                 <p className="mt-2 text-slate-600">{f.desc}</p>
               </div>
@@ -109,8 +111,8 @@ export default function Landing() {
       {/* CTA */}
       <section className="py-20 px-6" style={{ background: "var(--color-dark-bg)" }}>
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-bold text-white">Ready to Transform Your Factory?</h2>
-          <p className="mt-4 text-slate-300">Get started with a free demo. No credit card required.</p>
+          <h2 className="text-3xl font-bold text-white">Ready to evaluate Insights Iva?</h2>
+          <p className="mt-4 text-slate-300">Contact your administrator or GNS for tenant access.</p>
           <Button variant="primary" to="/login" size="lg" className="mt-8">
             Request Demo
           </Button>
@@ -118,7 +120,7 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-12 px-6">
+      <footer id="contact" className="border-t border-slate-200 bg-white py-12 px-6">
         <div className="mx-auto max-w-6xl flex flex-wrap justify-between items-center gap-4">
           <BrandLogo
             size="sm"

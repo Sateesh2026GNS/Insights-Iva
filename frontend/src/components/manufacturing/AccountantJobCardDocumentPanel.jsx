@@ -15,7 +15,9 @@ import { getCompanySettings } from "../../api/settingsApi";
 import { createBillingInvoice, getManualJobCard, getStageJobCard } from "../../api/workflowApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { erpListStatus } from "../../utils/jobCardListStatus";
+import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
 import { printSalesJobCardLandscape } from "../../utils/printUtils";
+import WorkflowNextStep from "./WorkflowNextStep";
 
 export default function AccountantJobCardDocumentPanel({
   orderId = null,
@@ -185,6 +187,21 @@ export default function AccountantJobCardDocumentPanel({
   };
 
   const billingActions = billingContext?.allowed_actions || [];
+  const billingGuidance = getJobCardWorkflowGuidance({
+    card: {
+      ...(billingContext || {}),
+      workflow_status:
+        billingContext?.workflow_status ||
+        billingContext?.summary_panel?.workflow_status ||
+        card?.workflow_status ||
+        row?.workflow_status,
+      allowed_actions: billingActions,
+      billing: billingContext?.billing,
+      invoice: billingContext?.invoice || billingContext?.billing,
+    },
+    row,
+    billingMode: true,
+  });
 
   return (
     <div className="my-job-cards-page__store-panels">
@@ -248,23 +265,39 @@ export default function AccountantJobCardDocumentPanel({
           ) : null}
 
           {showDocument ? (
-            <AccountantJobCardDocument
-              manualCard={isManual ? manualCard : null}
-              soCard={!isManual ? soCard : null}
-              row={row}
-              billingContext={billingContext}
-              companyProfile={profile}
-              assignedUser={user}
-            />
+            <>
+              {billingGuidance ? (
+                <WorkflowNextStep
+                  tone={billingGuidance.tone}
+                  title={billingGuidance.title}
+                  statusLabel={billingGuidance.statusLabel}
+                  message={billingGuidance.message}
+                  nextStep={billingGuidance.nextStep}
+                  actionLabel={billingGuidance.actionLabel}
+                  scrollToId={billingGuidance.scrollToId}
+                  className="mb-4"
+                />
+              ) : null}
+              <AccountantJobCardDocument
+                manualCard={isManual ? manualCard : null}
+                soCard={!isManual ? soCard : null}
+                row={row}
+                billingContext={billingContext}
+                companyProfile={profile}
+                assignedUser={user}
+              />
+            </>
           ) : null}
 
           {showDocument && resolvedOrderId && billingActions.length ? (
-            <JobCardActions
-              actions={billingActions}
-              loading={submitting}
-              onAction={runBillingAction}
-              labels={{ confirm_billing: "Mark as Billed" }}
-            />
+            <div id="billing-entry">
+              <JobCardActions
+                actions={billingActions}
+                loading={submitting}
+                onAction={runBillingAction}
+                labels={{ confirm_billing: "Mark as Billed" }}
+              />
+            </div>
           ) : null}
         </div>
       </section>

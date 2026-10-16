@@ -97,31 +97,7 @@ export const getMachines = async () => {
 };
 
 export const getOperators = async () => {
-  try {
-    return await apiGet("/api/production/operators");
-  } catch (primaryError) {
-    try {
-      const fallback = await api.get("/admin/users");
-      const users = Array.isArray(fallback?.data)
-        ? fallback.data
-        : Array.isArray(fallback?.data?.data)
-          ? fallback.data.data
-          : [];
-      const ops = users.filter((u) => {
-        const roles = Array.isArray(u.roles)
-          ? u.roles.map((r) => (typeof r === "string" ? r : r.name || "")).join(" ").toLowerCase()
-          : String(u.role || "").toLowerCase();
-        return (
-          roles.includes("operator") ||
-          roles.includes("machinist") ||
-          String(u.designation || "").toLowerCase().includes("operator")
-        );
-      });
-      return { data: ops };
-    } catch {
-      throw primaryError;
-    }
-  }
+  return apiGet("/api/production/operators");
 };
 
 export const getWorkOrders = (productionOrderId) =>

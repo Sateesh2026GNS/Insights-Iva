@@ -18,7 +18,7 @@ import {
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import KpiCard from "../../components/common/KpiCard";
+import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import Button, { IconButton } from "../../components/common/Button";
@@ -737,18 +737,6 @@ function NewScheduleModal({ onClose, onSuccess }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-function ClickableKpiCard({ onClick, title, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
-      title={title}
-    >
-      {children}
-    </button>
-  );
-}
 
 export default function ProductionSchedule() {
   const { addToast } = useToast();
@@ -1053,16 +1041,16 @@ export default function ProductionSchedule() {
   return (
     <ListPageShell>
       <div className="ui-grid-kpi">
-        <ClickableKpiCard onClick={() => applySchedulePreset("all")} title="Show all production targets" tone="primary">
+        <ClickableKpiCard onClick={() => applySchedulePreset("all")} title="Show all production targets">
           <KpiCard label="Target Quantity" value={(dashboard.production_target ?? 0).toLocaleString()} icon={Target} tone="primary" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applySchedulePreset("completed")} title="Show completed orders" tone="success">
+        <ClickableKpiCard onClick={() => applySchedulePreset("completed")} title="Show completed orders">
           <KpiCard label="Completed Orders" value={(dashboard.completed ?? 0).toLocaleString()} icon={CheckCircle2} tone="success" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applySchedulePreset("pending")} title="Show pending orders" tone="warning">
+        <ClickableKpiCard onClick={() => applySchedulePreset("pending")} title="Show pending orders">
           <KpiCard label="Pending Orders" value={(dashboard.pending ?? 0).toLocaleString()} icon={ClipboardList} tone="warning" meta="Click to filter" />
         </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applySchedulePreset("delayed")} title="Show delayed orders" tone="danger">
+        <ClickableKpiCard onClick={() => applySchedulePreset("delayed")} title="Show delayed orders">
           <KpiCard label="Delayed" value={dashboard.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
         </ClickableKpiCard>
       </div>
