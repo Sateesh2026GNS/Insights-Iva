@@ -1,6 +1,6 @@
 import Button from "../common/Button";
 
-export default function JobCardActions({ actions = [], loading, onAction, labels: labelOverrides = {} }) {
+export default function JobCardActions({ actions = [], loading, onAction, labels: labelOverrides = {}, disabledActions = [] }) {
   const visible = (actions || []).filter((a) => a && a !== "view");
   if (!visible.length) return null;
 
@@ -48,6 +48,7 @@ export default function JobCardActions({ actions = [], loading, onAction, labels
           variant={variants[action] || "primary"}
           size="sm"
           loading={loading}
+          disabled={disabledActions.includes(action)}
           onClick={() => onAction?.(action)}
         >
           {labels[action] || action}

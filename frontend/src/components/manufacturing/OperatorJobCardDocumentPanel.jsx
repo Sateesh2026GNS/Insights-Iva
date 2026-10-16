@@ -39,6 +39,7 @@ function emptyProductionForm(card) {
 export default function OperatorJobCardDocumentPanel({
   orderId = null,
   row = null,
+  onQueueRefresh,
   showEmptyShell = false,
   emptyMessage = "Select a job card from the list below to open the Operator Job Card.",
 }) {
@@ -141,6 +142,7 @@ export default function OperatorJobCardDocumentPanel({
       });
       addToast("Production progress saved", "success");
       await reload();
+      await onQueueRefresh?.();
     } catch (err) {
       addToast(apiErrorMessage(err, "Could not save progress"), "error");
     } finally {
@@ -171,6 +173,7 @@ export default function OperatorJobCardDocumentPanel({
         addToast("Production completed. Sent to Quality Check.", "success");
       }
       await reload();
+      await onQueueRefresh?.();
     } catch (err) {
       addToast(apiErrorMessage(err, "Action failed"), "error");
     } finally {

@@ -13,6 +13,7 @@ export default function DashboardReportExport({
   filename,
   rows = [],
   columns,
+  pdfOptions,
   disabled = false,
   module,
   defaultRecipient = "",
@@ -33,6 +34,7 @@ export default function DashboardReportExport({
         filename={filename}
         rows={rows}
         columns={exportColumns}
+        pdfOptions={pdfOptions}
         disabled={disabled}
         onEmail={module ? onEmail : undefined}
         emailMode="modal"

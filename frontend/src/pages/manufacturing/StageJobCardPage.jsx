@@ -662,7 +662,8 @@ export default function StageJobCardPage() {
             onAction={runAction}
             labels={card?.workflow_status === "PRODUCTION_ASSIGNED"
               ? { assign_operator: "Save Reassignment", send_to_operator: "Save Reassignment" }
-              : undefined}
+              : { assign_operator: "Assign & Send to Operator", send_to_operator: "Assign & Send to Operator" }}
+            disabledActions={assignForm.operator_user_id ? [] : ["assign_operator", "send_to_operator"]}
           />
         </article>
       );

@@ -99,13 +99,19 @@ def list_alerts(
 
         if user and not user_is_admin(user):
             role_names = {r.lower() for r in get_role_names(user)}
+            creator_names = {
+                str(name).strip().lower()
+                for name in (user.full_name, getattr(user, "name", None), user.email)
+                if name
+            }
             filtered = []
             for a in rows:
                 if not a.target_role:
                     filtered.append(a)
                     continue
                 targets = {t.strip().lower() for t in a.target_role.split(",") if t.strip()}
-                if targets & role_names:
+                creator = str(a.created_by or "").strip().lower()
+                if targets & role_names or creator in creator_names:
                     filtered.append(a)
             rows = filtered
 

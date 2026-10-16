@@ -3,12 +3,12 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 VALID_MACHINE_STATUSES = {
-    "idle", "running", "active", "busy", "allocated", "maintenance", "breakdown", "offline", "setup"
+    "idle", "running", "active", "busy", "allocated", "maintenance", "breakdown", "offline", "setup", "stopped"
 }
 
 VALID_ALLOCATION_STATUSES = {
-    "unassigned", "allocated", "planned", "released", "material_ready",
-    "machine_ready", "running", "in_progress", "completed", "paused", "pending"
+    "unassigned", "allocated", "assigned", "planned", "released", "material_ready",
+    "machine_ready", "running", "in_progress", "quality_check", "completed", "paused", "pending"
 }
 
 VALID_PRIORITIES = {"low", "medium", "high", "urgent", "critical"}

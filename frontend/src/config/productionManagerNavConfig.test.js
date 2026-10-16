@@ -31,6 +31,7 @@ describe("productionManagerNavConfig", () => {
     expect(production?.label).toBe("Production Flow");
     expect(production?.children?.map((item) => item.label)).toEqual([
       "Production Planning",
+      "Job Card Queue",
       "Work Orders",
       "Production Schedule",
       "Machine Allocation",
@@ -38,18 +39,16 @@ describe("productionManagerNavConfig", () => {
       "Batch Tracking",
       "Quality Control",
       "Finished Goods Inventory",
+      "Production Reports",
     ]);
   });
 
-  it("keeps the job card queue and reports available as production support", () => {
-    const tools = PRODUCTION_MANAGER_NAV_ITEMS.find((n) => n.key === "productionTools");
-    expect(tools?.children?.map((item) => item.key)).toEqual([
-      "productionQueue",
-      "dailyReports",
-    ]);
-    const queue = tools?.children?.find((c) => c.key === "productionQueue");
+  it("places the job card queue in the main production flow", () => {
+    const production = PRODUCTION_MANAGER_NAV_ITEMS.find((n) => n.key === "production");
+    const queue = production?.children?.find((c) => c.key === "productionQueue");
     expect(queue?.to).toContain("/my-job-cards");
     expect(queue?.to).toContain("dept=production");
+    expect(PRODUCTION_MANAGER_NAV_ITEMS.some((item) => item.key === "productionTools")).toBe(false);
   });
 
   it("omits procurement and incoming inspection", () => {
@@ -79,7 +78,6 @@ describe("productionManagerNavConfig", () => {
     expect(keys).toEqual([
       "dashboard",
       "production",
-      "productionTools",
       "materials",
       "masters",
       "quality",

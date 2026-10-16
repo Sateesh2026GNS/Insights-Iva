@@ -227,6 +227,7 @@ const BREADCRUMB_TITLE_OVERRIDES = {
 const STAGE_LABELS = {
   store: "Store Issue",
   production: "Production Planning",
+  production_manager: "Production Manager",
   operator: "Shop Floor Execution",
   quality: "Quality Inspection",
   packing: "Packing & Dispatch",
@@ -340,6 +341,20 @@ function getLabel(segment, segments, index) {
 export function getBreadcrumbTrail(pathname) {
   const normalizedPath = (pathname || "/").replace(/\/$/, "") || "/";
   const segments = (pathname || "/").split("/").filter(Boolean);
+
+  // Workflow job card paths contain routing details (workflow/order/id) that
+  // make poor breadcrumbs. Show the section, list, and active stage instead.
+  const workflowStageMatch = normalizedPath.match(
+    /^\/manufacturing\/workflow\/order\/\d+\/[a-z0-9_-]+$/i
+  );
+  if (workflowStageMatch) {
+    return [
+      { label: "Dashboard", path: "/" },
+      { label: "Production", path: "/production/dashboard" },
+      { label: "Work Order", path: "/production/work-orders" },
+      { label: "Job Card", path: normalizedPath },
+    ];
+  }
 
   if (segments[0] === "admin") {
     const adminLabels = {

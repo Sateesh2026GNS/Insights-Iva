@@ -14,10 +14,10 @@ export const DEFAULT_REPORT_EXPORT_COLUMNS = [
   { key: "value", label: "Value" },
 ];
 
-export async function runReportExport(format, { rows, columns, title, filename }) {
+export async function runReportExport(format, { rows, columns, title, filename, pdfOptions }) {
   if (!rows?.length) return false;
   if (format === "pdf") {
-    await exportToPdf(rows, columns, title, filename);
+    await exportToPdf(rows, columns, title, filename, pdfOptions);
     return true;
   }
   if (format === "excel") {

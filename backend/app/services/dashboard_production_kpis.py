@@ -8,6 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.manufacturing_workflow import SalesJobCard
+from app.models.inventory import StoreIssueRequest
 from app.models.product import Product
 from app.models.production import DailyProductionReport, ProductionOrder, WorkOrder
 from app.models.sales import SalesOrder
@@ -77,7 +78,6 @@ JC_PRODUCTION_QUEUE_STAGES = (
 )
 JC_IN_PROGRESS_STAGES = ("PRODUCTION_IN_PROGRESS", "PRODUCTION_REWORK")
 JC_QC_PENDING_STAGES = ("QUALITY_CHECK_PENDING", "QUALITY_ON_HOLD", "PRODUCTION_COMPLETED")
-JC_MATERIAL_WAITING_STAGES = ("MATERIAL_SHORTAGE", "MATERIAL_PARTIAL")
 JC_TERMINAL_STAGES = ("COMPLETED", "CANCELLED")
 
 
@@ -234,22 +234,18 @@ def get_production_manager_summary(db: Session, tenant_id: int, today: date) -> 
 
 def get_production_manager_action_required(db: Session, tenant_id: int, today: date) -> dict[str, int]:
     """Action-required counts for the Production Manager dashboard."""
-    so_material = int(
+    # This KPI links to the Store Material Requests page, so count the same
+    # pending request records that page presents instead of workflow-stage
+    # shortages (which are a separate queue and can exist without a request).
+    material_waiting = int(
         db.scalar(
-            select(func.count(SalesOrder.id)).where(
-                SalesOrder.tenant_id == tenant_id,
-                SalesOrder.workflow_status.in_(JC_MATERIAL_WAITING_STAGES),
+            select(func.count(StoreIssueRequest.id)).where(
+                StoreIssueRequest.tenant_id == tenant_id,
+                StoreIssueRequest.status == "pending",
             )
         )
         or 0
     )
-    manual_jc_material = _count_job_cards(
-        db,
-        tenant_id,
-        SalesJobCard.sales_order_id.is_(None),
-        SalesJobCard.workflow_stage.in_(JC_MATERIAL_WAITING_STAGES),
-    )
-    material_waiting = so_material + manual_jc_material
 
     overdue_production = int(
         db.scalar(

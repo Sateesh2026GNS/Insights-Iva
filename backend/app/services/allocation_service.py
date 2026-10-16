@@ -18,7 +18,7 @@ from app.schemas.allocation import (
     MachineAvailabilityRead,
 )
 
-ALLOCATED_STATUSES = ("planned", "released", "material_ready", "machine_ready", "running", "in_progress")
+ALLOCATED_STATUSES = ("assigned", "planned", "released", "material_ready", "machine_ready", "running", "in_progress")
 
 
 def get_allocation_summary(db: Session, tenant_id: int) -> AllocationSummaryRead:

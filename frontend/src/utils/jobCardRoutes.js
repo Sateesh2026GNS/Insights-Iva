@@ -25,6 +25,12 @@ export function jobCardDetailsUrl(orderId) {
   return `/job-cards/${orderId}`;
 }
 
+/** Production Planning row → production-stage job card for its sales order. */
+export function productionStageJobCardUrl(orderId) {
+  if (!orderId) return null;
+  return `/manufacturing/workflow/order/${orderId}/production`;
+}
+
 /**
  * Inline view on My Job Cards — keeps dept/filters in the query string.
  * Example: /my-job-cards?dept=sales&order=42

@@ -373,9 +373,9 @@ def _stage_editable(stage: str, ws: str, user: User | None) -> bool:
         "inventory_check": "inventory",
         "store": "inventory",
         "production_manager": "production",
-        # Production managers supervise shop-floor execution and need to be
-        # able to start/update the assigned work order from the workflow page.
-        "operator": ("operator", "production"),
+        # Shop-floor production entry is owned by the assigned Operator.
+        # Production Managers can review the card but should not edit or start it.
+        "operator": "operator",
         "quality": "quality",
         "packing": "packing",
         "billing": "billing",

@@ -71,7 +71,7 @@ export default function MachineControlCard({ initialMachines = null, onRefreshDa
     );
 
     try {
-      await updateMachineStatus(machineId, newStatus, { reason });
+      await updateMachineStatus(machineId, newStatus, reason);
       addToast(
         `Machine status changed to ${newStatus.replace(/_/g, " ")}`,
         "success"

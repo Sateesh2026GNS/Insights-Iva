@@ -35,7 +35,7 @@ export default function MachineStatus() {
   const handleAction = async (machine, newStatus) => {
     setActionLoading(machine.id);
     try {
-      await updateMachineStatus(machine.id, tenantId, newStatus);
+      await updateMachineStatus(machine.id, newStatus);
       setMachines((prev) =>
         prev.map((m) => (m.id === machine.id ? { ...m, status: newStatus } : m))
       );

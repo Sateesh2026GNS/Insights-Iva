@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AlertTriangle, Bell, CheckCircle2, Eye, Filter, ShieldAlert, Trash2, X, Plus, Calendar, Save, Tag } from "lucide-react";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
@@ -24,7 +24,7 @@ import {
   resolveAlert,
 } from "../../api/alertsApi";
 import { getUsers } from "../../api/adminApi";
-import { isAdmin, userCanAction } from "../../config/permissions";
+import { isAdmin, isOperator, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import Button from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -125,12 +125,19 @@ function normalizeAlert(a) {
 
 export default function AlertsDashboard({ initialAlertType = null, title, subtitle, topContent = null }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { addToast } = useToast();
   const { online, markRequestStart, markRequestEnd, registerRetry } = useNetworkStatus();
   const admin = isAdmin(user);
+  const showActionsColumn = !isOperator(user);
   const canWrite = userCanAction(user, "alerts", "update");
   const canCreate = userCanAction(user, "alerts", "create");
+  const searchParams = new URLSearchParams(location.search);
+  const reportMachineId = initialAlertType === "machine_failure" ? searchParams.get("machine") || "" : "";
+  const reportMachineName = searchParams.get("machine_name") || (reportMachineId ? `Machine #${reportMachineId}` : "");
+  const canReportMachineIssue = Boolean(reportMachineId && isOperator(user));
+  const canCreateAlert = canCreate || canReportMachineIssue;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -152,19 +159,19 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [viewRow, setViewRow] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(Boolean(reportMachineId));
   const [busyId, setBusyId] = useState(null);
   const [saving, setSaving] = useState(false);
 
   // Form state
-  const [form, setForm] = useState({
-    title: "",
+  const [form, setForm] = useState(() => ({
+    title: reportMachineId ? `Machine issue — ${reportMachineName}` : "",
     message: "",
     alert_type: initialAlertType || "general",
     severity: "medium",
     assigned_to: "",
     triggered_at: getNowLocalISO(),
-  });
+  }));
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -243,6 +250,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
     const q = appliedFilters.search.trim().toLowerCase();
     const { severity, module, dateFrom, dateTo, assignedUser } = appliedFilters;
     return rows.filter((r) => {
+      if (reportMachineId && String(r.reference_id ?? "") !== String(reportMachineId)) return false;
       if (initialAlertType && !isMatchingAlertType(r.alert_type, initialAlertType)) {
         return false;
       }
@@ -268,7 +276,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         .toLowerCase()
         .includes(q);
     });
-  }, [rows, appliedFilters, status, initialAlertType]);
+  }, [rows, appliedFilters, status, initialAlertType, reportMachineId]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -358,6 +366,13 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       created_by: creator,
       triggered_at: triggeredDateStr,
       status: "active",
+      ...(reportMachineId ? {
+        reference_type: "machine",
+        reference_id: Number(reportMachineId),
+        module: "maintenance",
+        target_role: "Operator,Production Manager",
+        link: `${location.pathname}${location.search}`,
+      } : {}),
     };
 
     try {
@@ -444,9 +459,9 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
               </Button>
             )}
             <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            {canCreate && (
+            {canCreateAlert && !reportMachineId && (
               <Button variant="add" type="button" onClick={() => setShowCreate(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-                New Alert
+                {canReportMachineIssue ? "Report Machine Issue" : "New Alert"}
               </Button>
             )}
           </div>
@@ -659,23 +674,23 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
 
       <ListPageCard className="overflow-hidden print:hidden">
         <ListPageCardBody className="p-0">
-        <div className="ui-table-wrap overflow-x-auto">
-          <table className="ui-table min-w-[920px] w-full border-collapse text-left text-[13px]">
+        <div className="ui-table-wrap ui-table-wrap--scroll w-full max-w-full">
+          <table className={`ui-table ${showActionsColumn ? "min-w-[920px]" : "min-w-[840px]"} w-full border-collapse text-left text-[13px]`}>
             <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">
                 <SerialNumberHeader className="px-3 py-3" />
-                <th className="min-w-[280px] px-4 py-3">Alert</th>
+                <th className={`${showActionsColumn ? "min-w-[280px]" : "min-w-[220px]"} px-4 py-3`}>Alert</th>
                 <th className="px-4 py-3">Module</th>
                 <th className="px-4 py-3">Severity</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="whitespace-nowrap px-4 py-3">Created</th>
-                <th className="w-[4.5rem] px-3 py-3 text-right">Actions</th>
+                {showActionsColumn ? <th className="w-[4.5rem] px-3 py-3 text-right">Actions</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border-muted)]">
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="border-none p-0">
+                  <td colSpan={showActionsColumn ? 7 : 6} className="border-none p-0">
                     <EmptyState
                       icon="document"
                       title="No records found."
@@ -776,14 +791,16 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                       <td className="whitespace-nowrap px-4 py-3.5 text-xs text-[var(--color-text-secondary)]">
                         {row.created_date}
                       </td>
-                      <td className="px-3 py-3.5 text-right">
-                        <RowActionMenu
-                          rowId={row.id}
-                          openMenu={openMenuId}
-                          setOpenMenu={setOpenMenuId}
-                          items={menuItems}
-                        />
-                      </td>
+                      {showActionsColumn ? (
+                        <td className="px-3 py-3.5 text-right">
+                          <RowActionMenu
+                            rowId={row.id}
+                            openMenu={openMenuId}
+                            setOpenMenu={setOpenMenuId}
+                            items={menuItems}
+                          />
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })
@@ -911,8 +928,12 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
             >
               <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] pb-3">
                 <div>
-                  <h2 className="text-lg font-bold text-[var(--color-text)]">Create New Alert</h2>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Register a system or operational alert across modules.</p>
+                  <h2 className="text-lg font-bold text-[var(--color-text)]">{reportMachineId ? "Report Machine Issue" : "Create New Alert"}</h2>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                    {reportMachineId
+                      ? "Describe the machine fault. The Production Manager will be notified."
+                      : "Register a system or operational alert across modules."}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -924,6 +945,11 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
               </div>
 
               <div className="space-y-4">
+                {reportMachineId ? (
+                  <div className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm">
+                    <span className="font-semibold">Machine:</span> {reportMachineName} <span className="text-[var(--color-text-muted)]">(ID {reportMachineId})</span>
+                  </div>
+                ) : null}
                 <div>
                   <label className="ui-label">Alert Title *</label>
                   <input
@@ -940,7 +966,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                   <label className="ui-label">Description / Instructions</label>
                   <textarea
                     rows={3}
-                    placeholder="Provide detailed description of the alert, location, or recommended action..."
+                    placeholder={reportMachineId ? "Describe the fault, symptoms, and any immediate safety concerns..." : "Provide detailed description of the alert, location, or recommended action..."}
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
                     className="ui-input w-full min-h-[80px] resize-none"

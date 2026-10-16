@@ -24,7 +24,6 @@ import {
   Target,
   Trash2,
   Upload,
-  UserRoundPlus,
   X,
 } from "lucide-react";
 
@@ -37,7 +36,6 @@ import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
 import CreateProductionOrderModal from "../../components/production/CreateProductionOrderModal";
 import ProductionOrderDetailModal, {
@@ -69,7 +67,6 @@ import {
   DEPARTMENTS,
   ORDER_STATUSES,
   PRIORITIES,
-  SHIFTS,
   canPause,
   canStart,
   calculateProgressPct,
@@ -81,33 +78,58 @@ import {
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
 import QuickWorkOrderModal from "../../components/production/QuickWorkOrderModal";
+import IssueMaterialsModal from "../../components/production/IssueMaterialsModal";
 import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 
+function planningPdfDate(value) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function planningPdfStatus(row) {
+  const label = row.is_delayed ? "Delayed" : planningStatusLabel(row);
+  return String(label || "-").replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 const PLANNING_EXPORT_COLUMNS = [
-  { key: "order_number", label: "Order Number" },
-  { key: "product_name", label: "Product" },
-  { key: "customer_name", label: "Customer" },
-  { key: "planned_quantity", label: "Planned Quantity" },
-  { key: "produced_quantity", label: "Produced Quantity" },
-  { key: "priority", label: "Priority" },
-  { key: "status", label: "Status" },
-  { key: "machine_name", label: "Machine" },
-  { key: "operator_name", label: "Operator" },
-  { key: "department", label: "Department" },
-  { key: "shift", label: "Shift" },
-  { key: "start_date", label: "Start Date" },
-  { key: "due_date", label: "Due Date" },
+  { key: "order_number", label: "Order Number", pdfWidth: 37 },
+  { key: "product_name", label: "Product", pdfWidth: 34, pdfValue: (row) => row.product_name || "-" },
+  { key: "customer_name", label: "Customer", pdfWidth: 32, pdfValue: (row) => row.customer_name || "-" },
+  { key: "planned_quantity", label: "Planned Quantity", pdfLabel: "Planned Qty", pdfWidth: 14, pdfAlign: "right" },
+  { key: "produced_quantity", label: "Produced Quantity", pdfLabel: "Produced Qty", pdfWidth: 14, pdfAlign: "right" },
+  { key: "priority", label: "Priority", pdfWidth: 12, pdfAlign: "center", pdfValue: (row) => String(row.priority || "Medium").replace(/^./, (letter) => letter.toUpperCase()) },
+  {
+    key: "status",
+    label: "Status",
+    pdfWidth: 25,
+    pdfValue: planningPdfStatus,
+  },
+  { key: "machine_name", label: "Machine", pdfWidth: 21, pdfValue: (row) => row.machine_name || "-" },
+  { key: "operator_name", label: "Operator", pdfWidth: 20, pdfValue: (row) => row.operator_name || "-" },
+  { key: "department", label: "Department", pdfWidth: 16, pdfValue: (row) => row.department || "-" },
+  { key: "shift", label: "Shift", pdfWidth: 12, pdfAlign: "center", pdfValue: (row) => row.shift || "-" },
+  { key: "start_date", label: "Start Date", pdfWidth: 18, pdfValue: (row) => planningPdfDate(row.start_date) },
+  { key: "due_date", label: "Due Date", pdfWidth: 18, pdfValue: (row) => planningPdfDate(row.due_date) },
 ];
 
 const PAGE_SIZES = [20, 50, 100, 200, 500];
+
+function hasReachedPlannedQuantity(row) {
+  const planned = Number(row?.planned_quantity || 0);
+  const produced = Number(row?.produced_quantity ?? row?.actual_quantity ?? 0);
+  return planned > 0 && produced >= planned;
+}
 
 function statusTone(row) {
   if (row?.is_delayed) return "danger";
   const s = String(row?.status || "").toLowerCase();
   if (s === "completed" || s === "closed" || s === "done") return "success";
-  if (s === "in_progress" || s === "running" || s === "started") return "progress";
   const workflowStatus = String(row?.workflow_status || "").toUpperCase();
   if (workflowStatus === "PRODUCTION_COMPLETED" || workflowStatus === "QUALITY_APPROVED" || workflowStatus === "COMPLETED") return "success";
+  if (hasReachedPlannedQuantity(row) && ["in_progress", "running", "started"].includes(s)) return "warning";
+  if (s === "in_progress" || s === "running" || s === "started") return "progress";
   if (workflowStatus === "PRODUCTION_IN_PROGRESS") return "progress";
   if (workflowStatus === "READY_FOR_PRODUCTION" || workflowStatus === "PRODUCTION_ASSIGNED") return "pending";
   if (s === "planned" || s === "pending") return "pending";
@@ -118,8 +140,7 @@ function statusTone(row) {
 
 function planningStatusLabel(row) {
   const internal = String(row?.status || "").toLowerCase();
-  if (["completed", "closed", "done"].includes(internal)) return statusLabel(row.status);
-  if (["in_progress", "running", "started"].includes(internal)) return statusLabel(row.status);
+  const workflowStatus = String(row?.workflow_status || "").toUpperCase();
   const workflowLabels = {
     READY_FOR_PRODUCTION: "Production Pending",
     PRODUCTION_ASSIGNED: "Assigned to Operator",
@@ -134,7 +155,14 @@ function planningStatusLabel(row) {
     INVOICED: "Invoiced",
     COMPLETED: "Completed",
   };
-  const workflowStatus = String(row?.workflow_status || "").toUpperCase();
+  if (["PRODUCTION_COMPLETED", "QUALITY_CHECK_PENDING", "QUALITY_APPROVED", "PACKING_PENDING", "PACKING_IN_PROGRESS", "PACKED", "BILLING_PENDING", "INVOICED", "COMPLETED"].includes(workflowStatus)) {
+    return workflowLabels[workflowStatus];
+  }
+  if (hasReachedPlannedQuantity(row) && ["in_progress", "running", "started"].includes(internal)) {
+    return "Ready to Complete";
+  }
+  if (["completed", "closed", "done"].includes(internal)) return statusLabel(row.status);
+  if (["in_progress", "running", "started"].includes(internal)) return statusLabel(row.status);
   return workflowLabels[workflowStatus] || statusLabel(row?.status);
 }
 
@@ -179,7 +207,6 @@ function OrderActions({
   onStart,
   onPause,
   onWorkOrder,
-  onAssignOperator,
   onDelete,
   canEdit,
   canDelete = true,
@@ -203,13 +230,6 @@ function OrderActions({
           label: "Edit",
           icon: <Pencil className="h-3.5 w-3.5 text-blue-600" />,
           onClick: () => onEdit(row),
-        }
-      : null,
-    canEdit && row.sales_order_id && ["planned", "machine_assigned"].includes(String(row.status || "").toLowerCase())
-      ? {
-          label: "Assign Operator",
-          icon: <UserRoundPlus className="h-3.5 w-3.5 text-blue-600" />,
-          onClick: () => onAssignOperator(row),
         }
       : null,
     canStart(row.status)
@@ -283,7 +303,7 @@ function OrderActions({
   }, [open]);
 
   return (
-    <div className="flex items-center justify-end whitespace-nowrap print:hidden">
+    <div className="flex items-center justify-center whitespace-nowrap print:hidden">
       <div className="relative">
         <span ref={menuBtnRef} className="inline-flex">
           <IconButton
@@ -359,7 +379,9 @@ const defaultFilters = {
 function formatDate(val) {
   if (!val) return "—";
   const d = new Date(val);
-  return isNaN(d.getTime()) ? String(val).slice(0, 10) : d.toLocaleDateString(undefined, { dateStyle: "short" });
+  return isNaN(d.getTime())
+    ? String(val).slice(0, 10)
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 const PLANNED_STATUSES = ["draft", "planned", "pending", "assigned", "material_ready", "machine_assigned"];
@@ -526,6 +548,11 @@ export default function ProductionPlanning() {
       setMachines(mRes?.data || []);
       const apiOrders = Array.isArray(oRes.data) ? oRes.data.map(enrichApiOrder) : [];
       apiOrders.sort((a, b) => {
+        const createdA = Date.parse(a.created_at || "");
+        const createdB = Date.parse(b.created_at || "");
+        if (Number.isFinite(createdA) && Number.isFinite(createdB) && createdA !== createdB) {
+          return createdB - createdA;
+        }
         const idA = typeof a.id === "number" ? a.id : Number(String(a.id).replace(/\D/g, "")) || 0;
         const idB = typeof b.id === "number" ? b.id : Number(String(b.id).replace(/\D/g, "")) || 0;
         if (idA && idB && idA !== idB) return idB - idA;
@@ -868,31 +895,6 @@ export default function ProductionPlanning() {
     openOrder(order);
   };
 
-  const assignOperator = async (order) => {
-    let salesOrderId = order?.sales_order_id;
-    if (!salesOrderId && typeof order?.id === "number") {
-      try {
-        const res = await getProductionOrderDetail(order.id);
-        salesOrderId = enrichApiOrder(res.data)?.sales_order_id;
-      } catch {
-        /* show a useful warning below */
-      }
-    }
-    if (!salesOrderId) {
-      addToast("This production order is not linked to a sales job card, so operator assignment is unavailable here.", "warning");
-      return;
-    }
-    const target = stageJobCardUrl(salesOrderId, "READY_FOR_PRODUCTION");
-    const separator = target.includes("?") ? "&" : "?";
-    navigate(`${target}${separator}production_order_id=${encodeURIComponent(order.id)}`, {
-      state: {
-        from: "/production/planning",
-        productionOrderId: order.id,
-        focusStageAction: true,
-      },
-    });
-  };
-
   const handlePriorityChange = async (orderId, newPriority) => {
     setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, priority: newPriority } : o)));
     addToast(`Priority updated to ${newPriority}`);
@@ -1132,7 +1134,10 @@ export default function ProductionPlanning() {
 
   const handleListExport = (format) => {
     if (format === "pdf") {
-      exportToPdf(filteredOrders, PLANNING_EXPORT_COLUMNS, "Production Planning Report", "production-planning-orders");
+      exportToPdf(filteredOrders, PLANNING_EXPORT_COLUMNS, "Production Planning Report", "production-planning-orders", {
+        variant: "production-planning",
+        landscape: true,
+      });
     } else {
       exportToExcel(filteredOrders, PLANNING_EXPORT_COLUMNS, "production-planning-orders");
     }
@@ -1155,9 +1160,9 @@ export default function ProductionPlanning() {
     {
       key: "_sno",
       label: "S.No.",
-      width: "3.5rem",
-      minWidth: "3.5rem",
-      className: "w-14 min-w-[3.5rem] text-center whitespace-nowrap",
+      width: "4rem",
+      minWidth: "4rem",
+      className: "w-16 min-w-[4rem] text-center whitespace-nowrap",
       cellClassName: "text-center tabular-nums whitespace-nowrap",
       render: (_r, _col, i, serialOffset) => {
         const rowIdx = typeof i === "number" && Number.isFinite(i) ? i : 0;
@@ -1176,6 +1181,8 @@ export default function ProductionPlanning() {
     {
       key: "order_number",
       label: "Order",
+      width: "13.5rem",
+      minWidth: "13.5rem",
       render: (r) => (
         <span
           role="link"
@@ -1187,7 +1194,7 @@ export default function ProductionPlanning() {
               openOrder(r);
             }
           }}
-          className="font-medium text-[var(--color-primary)] hover:underline cursor-pointer focus:outline-none print:text-black print:no-underline print:font-semibold"
+          className="whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline cursor-pointer focus:outline-none print:text-black print:no-underline print:font-semibold"
         >
           {r.order_number || r.order_code || r.code || (r.id ? `PO-${r.id}` : "—")}
         </span>
@@ -1196,6 +1203,8 @@ export default function ProductionPlanning() {
     {
       key: "product_name",
       label: "Product",
+      width: "15rem",
+      minWidth: "15rem",
       render: (r) => (
         <div className="max-w-[200px] truncate print:max-w-none print:whitespace-normal" title={r.product_name}>
           <span className="font-medium text-[var(--color-text)] print:text-black">{r.product_name}</span>
@@ -1206,8 +1215,22 @@ export default function ProductionPlanning() {
       ),
     },
     {
+      key: "status",
+      label: "Status",
+      width: "12rem",
+      minWidth: "12rem",
+      render: (r) => (
+        <StatusBadge tone={statusTone(r)}>
+          {r.is_delayed ? "Delayed" : planningStatusLabel(r)}
+        </StatusBadge>
+      ),
+    },
+    {
       key: "planned_quantity",
       label: "Qty",
+      align: "center",
+      width: "4.5rem",
+      minWidth: "4.5rem",
       render: (r) => (
         <span className="tabular-nums text-[var(--color-text)] print:text-black">
           {Number(r.planned_quantity || 0).toLocaleString()}
@@ -1217,27 +1240,24 @@ export default function ProductionPlanning() {
     {
       key: "priority",
       label: "Priority",
+      width: "7rem",
+      minWidth: "7rem",
       render: (r) => <PriorityPill priority={r.priority} />,
     },
     {
       key: "progress",
       label: "Progress",
+      width: "9.5rem",
+      minWidth: "9.5rem",
       sortable: false,
       printHidden: true,
       render: (r) => <ProgressCell row={r} />,
     },
     {
-      key: "status",
-      label: "Status",
-      render: (r) => (
-        <StatusBadge tone={statusTone(r)}>
-          {r.is_delayed ? "Delayed" : planningStatusLabel(r)}
-        </StatusBadge>
-      ),
-    },
-    {
       key: "due_date",
       label: "Due",
+      width: "6rem",
+      minWidth: "6rem",
       render: (r) => (
         <span className="whitespace-nowrap text-[12px] tabular-nums text-[var(--color-text-secondary)] print:text-black">
           {formatDate(r.due_date)}
@@ -1247,6 +1267,9 @@ export default function ProductionPlanning() {
     {
       key: "actions",
       label: "Actions",
+      width: "4.5rem",
+      minWidth: "4.5rem",
+      className: "text-center whitespace-nowrap",
       sortable: false,
       printHidden: true,
       render: (r) => (
@@ -1255,7 +1278,6 @@ export default function ProductionPlanning() {
           canEdit={!isOperator(user)}
           canDelete={!isOperator(user)}
           onView={viewJobCard}
-          onAssignOperator={assignOperator}
           onEdit={(order) => {
             setEditModalOrder(order);
             setCreateOrderModalOpen(true);
@@ -1302,47 +1324,44 @@ export default function ProductionPlanning() {
             className="hidden"
           />
 
-          <PageHeader
-            action={
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="secondary" to="/production/work-orders">
-                  <ClipboardList className="h-4 w-4" />
-                  Work Orders
-                </Button>
-                <Button variant="secondary" to="/procurement/material-requests">
-                  <FileText className="h-4 w-4" />
-                  Material Requests
-                </Button>
+          <section aria-label="Production overview" className="space-y-3 print:hidden">
+            <div className="flex flex-wrap items-end justify-between gap-2 px-1">
+              <div>
+                <h2 className="text-base font-bold text-[var(--color-text)]">Production Overview</h2>
+                <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">A quick view of order progress and output</p>
               </div>
-            }
-          />
-
-          <div className="ui-grid-kpi print:hidden">
-            <ClickableKpiCard onClick={() => applyPlanningPreset("all")} title="Show all production orders" tone="primary">
-              <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ClipboardList} tone="primary" meta="Click to filter" />
-            </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("production_pending")} title="Show orders Store has released to Production" tone="yellow">
-              <KpiCard label="Production Pending" value={summary.production_pending_orders ?? 0} icon={FileText} tone="yellow" meta="Ready from Store · click to filter" />
-            </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("in_progress")} title="Show in-progress orders" tone="warning">
-              <KpiCard label="In Progress" value={summary.in_progress_orders ?? 0} icon={Play} tone="warning" meta="Click to filter" />
-            </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("completed")} title="Show completed orders" tone="success">
-              <KpiCard label="Completed" value={summary.completed_orders ?? 0} icon={CheckCircle2} tone="success" meta="Click to filter" />
-            </ClickableKpiCard>
-            <ClickableKpiCard onClick={() => applyPlanningPreset("delayed")} title="Show delayed orders" tone="danger">
-              <KpiCard label="Delayed" value={summary.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
-            </ClickableKpiCard>
-            <ClickableKpiCard onClick={showTodayStartOrders} title="Show orders starting today" tone="violet">
-              <KpiCard
-                label="Today's Production"
-                value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production ?? 0}
-                icon={Target}
-                tone="violet"
-                meta="Click to filter"
-              />
-            </ClickableKpiCard>
-          </div>
+              <span className="rounded-full border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-text-muted)]">
+                {summary.total_orders ?? 0} orders
+              </span>
+            </div>
+            <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <ClickableKpiCard onClick={() => applyPlanningPreset("all")} title="Show all production orders">
+                <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ClipboardList} tone="primary" meta="View all orders" className="h-full" />
+              </ClickableKpiCard>
+              <ClickableKpiCard onClick={() => applyPlanningPreset("production_pending")} title="Show orders Store has released to Production">
+                <KpiCard label="Production Pending" value={summary.production_pending_orders ?? 0} icon={FileText} tone="yellow" meta="Ready from Store" className="h-full" />
+              </ClickableKpiCard>
+              <ClickableKpiCard onClick={() => applyPlanningPreset("in_progress")} title="Show in-progress orders">
+                <KpiCard label="In Progress" value={summary.in_progress_orders ?? 0} icon={Play} tone="warning" meta="View active orders" className="h-full" />
+              </ClickableKpiCard>
+              <ClickableKpiCard onClick={() => applyPlanningPreset("completed")} title="Show completed orders">
+                <KpiCard label="Completed" value={summary.completed_orders ?? 0} icon={CheckCircle2} tone="success" meta="View completed orders" className="h-full" />
+              </ClickableKpiCard>
+              <ClickableKpiCard onClick={() => applyPlanningPreset("delayed")} title="Show delayed orders">
+                <KpiCard label="Delayed" value={summary.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Needs attention" className="h-full" />
+              </ClickableKpiCard>
+              <ClickableKpiCard onClick={showTodayStartOrders} title="Show orders starting today">
+                <KpiCard
+                  label="Today's Production"
+                  value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production ?? 0}
+                  icon={Target}
+                  tone="violet"
+                  meta="View today's output"
+                  className="h-full"
+                />
+              </ClickableKpiCard>
+            </div>
+          </section>
 
           <ListPageCard className="min-w-0 print:border-0 print:bg-transparent print:shadow-none">
             <ListPageCardBody className="print:p-0">
@@ -1384,102 +1403,50 @@ export default function ProductionPlanning() {
             </div>
 
             {showAdvanced && (
-              <div className="mb-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 print:hidden">
-                <input
-                  placeholder="WO Number"
-                  value={filters.work_order}
-                  onChange={(e) => patchFilters({ work_order: e.target.value })}
-                  onKeyDown={handleFilterKeyDown}
-                  className="ui-input"
-                />
-                <input
-                  placeholder="Production Order"
-                  value={filters.order_number}
-                  onChange={(e) => patchFilters({ order_number: e.target.value })}
-                  onKeyDown={handleFilterKeyDown}
-                  className="ui-input"
-                />
-                <input
-                  placeholder="Product"
-                  value={filters.product}
-                  onChange={(e) => patchFilters({ product: e.target.value })}
-                  onKeyDown={handleFilterKeyDown}
-                  className="ui-input"
-                />
-                <input
-                  placeholder="Customer"
-                  value={filters.customer}
-                  onChange={(e) => patchFilters({ customer: e.target.value })}
-                  onKeyDown={handleFilterKeyDown}
-                  className="ui-input"
-                />
-                <input
-                  placeholder="Machine"
-                  value={filters.machine}
-                  onChange={(e) => patchFilters({ machine: e.target.value })}
-                  onKeyDown={handleFilterKeyDown}
-                  className="ui-input"
-                />
-                <input
-                  placeholder="Operator"
-                  value={filters.operator}
-                  onChange={(e) => patchFilters({ operator: e.target.value })}
-                  onKeyDown={handleFilterKeyDown}
-                  className="ui-input"
-                />
-                <select
-                  value={filters.department}
-                  onChange={(e) => patchFilters({ department: e.target.value })}
-                  className="ui-select"
-                >
-                  <option value="">Department</option>
-                  {DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={filters.shift}
-                  onChange={(e) => patchFilters({ shift: e.target.value })}
-                  className="ui-select"
-                >
-                  <option value="">Shift</option>
-                  {SHIFTS.map((s) => {
-                    const id = typeof s === "object" ? s.id : s;
-                    const label = typeof s === "object" ? s.label : s;
-                    return (
-                      <option key={id} value={id}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-                <select
-                  value={filters.priority}
-                  onChange={(e) => patchFilters({ priority: e.target.value })}
-                  className="ui-select"
-                >
-                  <option value="">Priority</option>
-                  {PRIORITIES.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={filters.status}
-                  onChange={(e) => patchFilters({ status: e.target.value })}
-                  className="ui-select"
-                >
-                  <option value="">Status</option>
-                  {ORDER_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {statusLabel(s)}
-                    </option>
-                  ))}
-                </select>
-                <div className="relative flex items-center">
+              <div className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3 print:hidden">
+                <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                    Department
+                    <select
+                      value={filters.department}
+                      onChange={(e) => patchFilters({ department: e.target.value })}
+                      className="ui-select mt-1 w-full"
+                    >
+                      <option value="">All departments</option>
+                      {DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                    Priority
+                    <select
+                      value={filters.priority}
+                      onChange={(e) => patchFilters({ priority: e.target.value })}
+                      className="ui-select mt-1 w-full"
+                    >
+                      <option value="">All priorities</option>
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                    Status
+                    <select
+                      value={filters.status}
+                      onChange={(e) => patchFilters({ status: e.target.value })}
+                      className="ui-select mt-1 w-full"
+                    >
+                      <option value="">All statuses</option>
+                      {ORDER_STATUSES.map((s) => (
+                        <option key={s} value={s}>{statusLabel(s)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                    Start date
+                    <div className="relative mt-1 flex items-center">
                   <input
                     ref={startDateRef}
                     type="date"
@@ -1494,7 +1461,7 @@ export default function ProductionPlanning() {
                         e.target.showPicker?.();
                       } catch {}
                     }}
-                    className="ui-input w-full pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    className="ui-input w-full min-w-0 pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
                   <button
                     type="button"
@@ -1512,8 +1479,11 @@ export default function ProductionPlanning() {
                   >
                     <Calendar className="h-4 w-4" />
                   </button>
-                </div>
-                <div className="relative flex items-center">
+                    </div>
+                  </label>
+                  <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                    Due date
+                    <div className="relative mt-1 flex items-center">
                   <input
                     ref={dueDateRef}
                     type="date"
@@ -1528,7 +1498,7 @@ export default function ProductionPlanning() {
                         e.target.showPicker?.();
                       } catch {}
                     }}
-                    className="ui-input w-full pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    className="ui-input w-full min-w-0 pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
                   <button
                     type="button"
@@ -1546,8 +1516,10 @@ export default function ProductionPlanning() {
                   >
                     <Calendar className="h-4 w-4" />
                   </button>
+                    </div>
+                  </label>
                 </div>
-                <div className="flex items-center gap-2 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-6">
+                <div className="mt-3 flex items-center justify-start gap-2">
                   <Button variant="primary" type="button" onClick={handleApplyFilters}>
                     Apply Filters
                   </Button>
@@ -1562,6 +1534,7 @@ export default function ProductionPlanning() {
               <DataTable
                 columns={columns}
                 data={paginatedOrders}
+                tableClassName="production-planning-table"
                 showSearch={false}
                 showPagination={false}
                 emptyState={

@@ -112,6 +112,7 @@ function inDateRange(iso, from, to) {
 const TEAM_STATUS_MAP = {
   inventory: STORE_ACTIONABLE_STATUSES,
   production: new Set([
+    "BOM_PENDING",
     "READY_FOR_PRODUCTION",
     "PRODUCTION_ASSIGNED",
     "PRODUCTION_IN_PROGRESS",
@@ -683,6 +684,7 @@ export default function MyJobCardsPage() {
             key={activeOrderId || activeJobCardId || "empty-operator"}
             orderId={activeOrderId || null}
             row={activeRow}
+            onQueueRefresh={() => load(true)}
             showEmptyShell={!activeOrderId && !activeJobCardId}
             emptyMessage={
               filtered.length === 0
