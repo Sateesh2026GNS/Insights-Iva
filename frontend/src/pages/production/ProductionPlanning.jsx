@@ -34,7 +34,7 @@ import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
-import KpiCard from "../../components/common/KpiCard";
+import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import StatusBadge from "../../components/common/StatusBadge";
 import CreateProductionOrderModal from "../../components/production/CreateProductionOrderModal";
@@ -388,18 +388,6 @@ const PLANNED_STATUSES = ["draft", "planned", "pending", "assigned", "material_r
 const IN_PROGRESS_STATUSES = ["in_progress", "running", "quality_check", "paused"];
 const COMPLETED_STATUSES = ["completed", "closed", "done"];
 
-function ClickableKpiCard({ onClick, title, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
-      title={title}
-    >
-      {children}
-    </button>
-  );
-}
 
 /* ─── Bottom-Right Yellow Order Created Toast Popup ───────────────────────── */
 function OrderCreatedToast({ order, onClose }) {
@@ -1334,21 +1322,21 @@ export default function ProductionPlanning() {
                 {summary.total_orders ?? 0} orders
               </span>
             </div>
-            <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-3 print:hidden">
               <ClickableKpiCard onClick={() => applyPlanningPreset("all")} title="Show all production orders">
-                <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ClipboardList} tone="primary" meta="View all orders" className="h-full" />
+                <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ClipboardList} tone="primary" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("production_pending")} title="Show orders Store has released to Production">
-                <KpiCard label="Production Pending" value={summary.production_pending_orders ?? 0} icon={FileText} tone="yellow" meta="Ready from Store" className="h-full" />
+                <KpiCard label="Production Pending" value={summary.production_pending_orders ?? 0} icon={FileText} tone="yellow" meta="Ready from Store · click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("in_progress")} title="Show in-progress orders">
-                <KpiCard label="In Progress" value={summary.in_progress_orders ?? 0} icon={Play} tone="warning" meta="View active orders" className="h-full" />
+                <KpiCard label="In Progress" value={summary.in_progress_orders ?? 0} icon={Play} tone="warning" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("completed")} title="Show completed orders">
-                <KpiCard label="Completed" value={summary.completed_orders ?? 0} icon={CheckCircle2} tone="success" meta="View completed orders" className="h-full" />
+                <KpiCard label="Completed" value={summary.completed_orders ?? 0} icon={CheckCircle2} tone="success" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("delayed")} title="Show delayed orders">
-                <KpiCard label="Delayed" value={summary.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Needs attention" className="h-full" />
+                <KpiCard label="Delayed" value={summary.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={showTodayStartOrders} title="Show orders starting today">
                 <KpiCard
@@ -1356,7 +1344,7 @@ export default function ProductionPlanning() {
                   value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production ?? 0}
                   icon={Target}
                   tone="violet"
-                  meta="View today's output"
+                  meta="Click to filter"
                   className="h-full"
                 />
               </ClickableKpiCard>

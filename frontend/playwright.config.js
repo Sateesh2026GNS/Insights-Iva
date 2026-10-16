@@ -59,6 +59,12 @@ export default defineConfig({
       },
       testMatch: /auth-staging-topology\.spec\.js/,
     },
+    {
+      name: "manufacturing",
+      timeout: 120_000,
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: /manufacturing-workflow\.spec\.js/,
+    },
   ],
   webServer: process.env.E2E_SKIP_WEB_SERVER
     ? undefined

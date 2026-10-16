@@ -343,18 +343,6 @@ function WoRowActions({
   );
 }
 
-function ClickableKpiCard({ onClick, title, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block h-full w-full border-0 p-0 bg-transparent text-left focus:outline-none cursor-pointer"
-      title={title}
-    >
-      {children}
-    </button>
-  );
-}
 
 const defaultFilters = {
   search: "",

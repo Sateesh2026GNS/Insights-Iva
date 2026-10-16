@@ -334,6 +334,7 @@ const ROLE_TEAM_MAP = {
   "Sales Manager": ["sales"],
   "Store Manager": ["inventory", "packing"],
   "Production Manager": ["production", "quality"],
+  "Quality Control": ["quality"],
   Operator: ["operator"],
   "HR Manager": ["hr"],
   Accountant: ["billing"],

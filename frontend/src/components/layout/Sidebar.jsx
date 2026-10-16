@@ -61,7 +61,14 @@ import {
   OPERATOR_BLOCKED_CHILDREN,
   OPERATOR_BLOCKED_SECTIONS,
 } from "../../config/rbacNavFilters";
-import { SIDEBAR_NAV, sectionHasActiveChild, filterNavTree, buildNestedExpanded, navNodeIsActive } from "../../config/sidebarNav";
+import {
+  SIDEBAR_NAV,
+  sectionHasActiveChild,
+  filterNavTree,
+  buildNestedExpanded,
+  navNodeIsActive,
+  isSidebarLinkActive,
+} from "../../config/sidebarNav";
 
 const ACCOUNTS_DASHBOARD_PATH_ONLY = "/accounts/dashboard";
 
@@ -139,6 +146,7 @@ function buildSalesManagerSidebarNav() {
           to: c.to,
           module: c.module || item.module || "sales",
           end: c.end,
+          activeMatch: c.activeMatch,
         })),
       };
     }
@@ -373,14 +381,14 @@ export function filterStaticNav(user) {
   return filtered;
 }
 
-function buildInitialExpanded(pathname, nav) {
+function buildInitialExpanded(location, nav) {
   const state = {};
   nav.forEach((section) => {
-    if (section.children && sectionHasActiveChild(pathname, section)) {
+    if (section.children && sectionHasActiveChild(location, section)) {
       state[section.key] = true;
     }
     if (section.nestedNav && section.children?.length) {
-      buildNestedExpanded(pathname, section.children, section.key, state);
+      buildNestedExpanded(location, section.children, section.key, state);
     }
   });
   return state;
@@ -395,11 +403,23 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const createButtonRef = useRef(null);
+  const createCloseTimerRef = useRef(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const storeMode = isStoreManager(user);
   const salesMode = isSalesManager(user);
   const productionMode = isProductionManager(user);
   const qualityMode = isQualityTeam(user);
+
+  const cancelCreateClose = () => {
+    if (createCloseTimerRef.current) {
+      clearTimeout(createCloseTimerRef.current);
+      createCloseTimerRef.current = null;
+    }
+  };
+  const scheduleCreateClose = () => {
+    cancelCreateClose();
+    createCloseTimerRef.current = setTimeout(() => setCreateOpen(false), 160);
+  };
 
   useEffect(() => {
     setCreateOpen(false);
@@ -519,24 +539,22 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     [user, visibleNav]
   );
 
-  const [expanded, setExpanded] = useState(() =>
-    buildInitialExpanded(location.pathname, visibleNav)
-  );
+  const [expanded, setExpanded] = useState(() => buildInitialExpanded(location, visibleNav));
 
   useEffect(() => {
     setExpanded((prev) => {
       const next = { ...prev };
       visibleNav.forEach((section) => {
-        if (section.children && sectionHasActiveChild(location.pathname, section)) {
+        if (section.children && sectionHasActiveChild(location, section)) {
           next[section.key] = true;
         }
         if (section.nestedNav && section.children?.length) {
-          buildNestedExpanded(location.pathname, section.children, section.key, next);
+          buildNestedExpanded(location, section.children, section.key, next);
         }
       });
       return next;
     });
-  }, [location.pathname, visibleNav]);
+  }, [location.pathname, location.search, visibleNav]);
 
   const toggleSection = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -565,9 +583,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     }`;
 
   const childLinkClass = ({ isActive }) =>
-    `group relative flex w-full items-center rounded-md px-2.5 py-2 min-h-[36px] text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
+    `group relative flex w-full items-center gap-2 rounded-md px-2.5 py-2 min-h-[38px] text-[13px] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
       isActive
-        ? "bg-[var(--color-nav-active)] font-medium text-white"
+        ? "bg-[var(--color-nav-active)] font-medium text-white shadow-sm"
         : "font-normal text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
 
@@ -597,18 +615,23 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   };
 
   const nestedLinkClass = ({ isActive }) => {
-    return `group relative flex w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 min-h-[36px] text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
+    return `group relative flex w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 min-h-[38px] text-[13px] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
       collapsed ? "justify-center px-2" : ""
     } ${
       isActive
-        ? "bg-[var(--color-nav-active)] font-medium text-white"
+        ? "bg-[var(--color-nav-active)] font-medium text-white shadow-sm"
         : "font-normal text-slate-300 hover:bg-white/10 hover:text-white"
     }`;
   };
 
   const submenuContainerClass = () => {
-    return "mb-1 space-y-0.5 overflow-x-hidden rounded-b-lg border border-t-0 border-white/12 bg-black/15 p-1 pt-1";
+    return "mb-1 space-y-0.5 overflow-x-hidden rounded-b-lg border border-t-0 border-white/10 bg-black/15 p-1.5";
   };
+
+  const submenuPanelClass =
+    "mb-1 space-y-0.5 overflow-x-hidden rounded-b-xl border border-t-0 border-white/10 bg-black/15 p-1.5";
+
+  const linkIsActive = (node) => () => isSidebarLinkActive(location, node);
 
   const nestedGroupClass = (isOpen, hasActive) =>
     `relative flex w-full min-w-0 items-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${
@@ -648,7 +671,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
 
       if (node.children?.length) {
         const isOpen = expanded[itemKey];
-        const hasActive = navNodeIsActive(location.pathname, node);
+        const hasActive = navNodeIsActive(location, node);
         return (
           <div key={itemKey} className="space-y-0.5">
             <button
@@ -688,6 +711,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
+          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
@@ -734,11 +758,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
+          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
           className={({ isActive }) =>
-            `flex items-center justify-between rounded-lg px-3 py-2 text-sm font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30 ${
+            `flex items-center justify-between rounded-lg px-3 py-2 min-h-[38px] text-sm font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30 ${
               isActive
                 ? "bg-slate-100 font-medium text-[var(--color-primary,#3157d5)] dark:bg-slate-800 dark:text-indigo-400"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white"
@@ -821,6 +846,11 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
             ref={createButtonRef}
             type="button"
             onClick={() => setCreateOpen((open) => !open)}
+            onMouseEnter={() => {
+              cancelCreateClose();
+              if (collapsed) setCreateOpen(true);
+            }}
+            onMouseLeave={scheduleCreateClose}
             className={`mb-3 flex min-h-11 w-full items-center rounded-xl bg-[var(--color-nav-active)] px-3 text-sm font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)] ${collapsed ? "justify-center" : "justify-center gap-2.5"}`}
             aria-label="Create"
             aria-expanded={createOpen}
@@ -879,6 +909,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 <NavLink
                   to={section.to}
                   end={section.end}
+                  isActive={linkIsActive(section)}
                   onMouseEnter={() => prefetchRouteChunk(section.to)}
                   onFocus={() => prefetchRouteChunk(section.to)}
                   onClick={() => onClose?.()}
@@ -899,6 +930,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                       <NavLink
                         to={section.to}
                         end={section.end}
+                        isActive={linkIsActive(section)}
                         onMouseEnter={() => prefetchRouteChunk(section.to)}
                         onFocus={() => prefetchRouteChunk(section.to)}
                         onClick={() => onClose?.()}
@@ -922,7 +954,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
 
           const Icon = section.icon || LayoutDashboard;
           const isOpen = expanded[section.key];
-          const hasActive = sectionHasActiveChild(location.pathname, section);
+          const hasActive = sectionHasActiveChild(location, section);
           const label = sectionLabel(section);
 
           return (
@@ -945,7 +977,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 )}
               </button>
               {!collapsed && isOpen && (
-                <div className="mb-1.5 space-y-0.5 overflow-x-hidden rounded-b-xl border border-t-0 border-white/15 bg-black/20 p-1 pt-1">
+                <div className={submenuPanelClass}>
                   {section.nestedNav
                     ? renderNestedNav(section.children, section.key)
                     : section.children.map((child) => (
@@ -953,6 +985,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                           key={`${section.key}-${child.to}-${child.label || child.key}`}
                           to={child.to}
                           end={child.end}
+                          isActive={linkIsActive(child)}
                           onMouseEnter={() => prefetchRouteChunk(child.to)}
                           onFocus={() => prefetchRouteChunk(child.to)}
                           onClick={() => onClose?.()}
@@ -988,6 +1021,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                                 key={`flyout-${section.key}-${child.to}-${child.label || child.key}`}
                                 to={child.to}
                                 end={child.end}
+                                isActive={linkIsActive(child)}
                                 onMouseEnter={() => prefetchRouteChunk(child.to)}
                                 onFocus={() => prefetchRouteChunk(child.to)}
                                 onClick={() => onClose?.()}
@@ -1022,6 +1056,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       <GlobalCreateMenu
         open={createOpen}
         onOpenChange={setCreateOpen}
+        onPointerEnter={cancelCreateClose}
+        onPointerLeave={scheduleCreateClose}
         anchorRef={createButtonRef}
         palette
         navSections={visibleNav}

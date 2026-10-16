@@ -511,7 +511,7 @@ class Settings(BaseSettings):
             ]
         self.cors_origins = ",".join(origins)
 
-        # In production, ensure allowed hosts include render and production domains
+        # TrustedHost: production gets real API/frontend hostnames only (not localhost).
         hosts = [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
         default_hosts = [
             "insights-iva-api.onrender.com",
@@ -520,14 +520,20 @@ class Settings(BaseSettings):
             "insights-734ee.firebaseapp.com",
             "www.insightsiva.com",
             "insightsiva.com",
-            "localhost",
-            "127.0.0.1",
         ]
+        if not self.is_production:
+            default_hosts.extend(["localhost", "127.0.0.1"])
         if render_host and render_host not in default_hosts:
             default_hosts.append(render_host)
         for dh in default_hosts:
             if dh not in hosts:
                 hosts.append(dh)
+        if self.is_production:
+            hosts = [
+                h
+                for h in hosts
+                if h not in ("localhost", "127.0.0.1") and "localhost" not in h.lower()
+            ]
         self.allowed_hosts = ",".join(hosts)
         return self
 
@@ -554,7 +560,14 @@ class Settings(BaseSettings):
     @property
     def allowed_host_list(self) -> list[str]:
         hosts = [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
-        return hosts or ["localhost", "127.0.0.1"]
+        if hosts:
+            return hosts
+        if self.is_production:
+            return [
+                "insights-iva-api.onrender.com",
+                "*.onrender.com",
+            ]
+        return ["localhost", "127.0.0.1"]
 
     @property
     def is_production(self) -> bool:

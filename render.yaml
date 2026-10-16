@@ -33,7 +33,7 @@ services:
       - key: AUTH_COOKIE_SECURE
         value: "true"
       - key: ALLOWED_HOSTS
-        value: "insights-iva-api.onrender.com,*.onrender.com,insights-734ee.web.app,insights-734ee.firebaseapp.com,www.insightsiva.com,insightsiva.com,localhost,127.0.0.1"
+        value: "insights-iva-api.onrender.com,*.onrender.com,insights-734ee.web.app,insights-734ee.firebaseapp.com,www.insightsiva.com,insightsiva.com"
       - key: FRONTEND_BASE_URL
         value: "https://insights-734ee.web.app"
       # OpenAI / AI Assistant — set OPENAI_API_KEY in Render dashboard (Environment tab)

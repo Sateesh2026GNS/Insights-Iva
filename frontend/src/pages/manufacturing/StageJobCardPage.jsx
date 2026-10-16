@@ -13,7 +13,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 
-import { FormField, Input, Select, Textarea } from "../../components/common/FormField";
+import { Input, Select, Textarea } from "../../components/common/FormField";
 import Button from "../../components/common/Button";
 import AddUserModal from "../../components/admin/AddUserModal";
 import CreateMachineModal from "../../components/production/CreateMachineModal";
@@ -49,6 +49,8 @@ import {
   updateProductionProgress,
 } from "../../api/workflowApi";
 import { ROUTE_SEGMENT_TO_STAGE, STAGE_TITLES } from "../../config/workflowStages";
+import WorkflowNextStep from "../../components/manufacturing/WorkflowNextStep";
+import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
 
 function formFromStageCard(card) {
   const sp = card?.summary_panel || {};
@@ -369,7 +371,13 @@ export default function StageJobCardPage() {
           await load();
         } else if (action === "send_to_production") {
           await submitStoreIssue(orderId, {
-            lines: issueLines.map((ln) => ({ id: ln.id, issued_qty: ln.required_qty, store_location: ln.store_location })),
+            lines: issueLines
+              .filter((ln) => ln.id != null)
+              .map((ln) => ({
+                id: Number(ln.id),
+                issued_qty: Number(ln.required_qty || ln.issued_qty || 0),
+                store_location: ln.store_location,
+              })),
             send_to_production: true,
           });
           addToast("All required materials issued. Advanced to Production Manager.", "success");
@@ -594,19 +602,16 @@ export default function StageJobCardPage() {
         <article id="stage-action-panel" className="ui-card overflow-hidden">
           <CardSectionHeader title="Production Planning" />
           <div className="grid gap-4 p-4 sm:grid-cols-2">
-            <FormField label="Work Order">
-              <Input value={plan.work_order_number || "—"} readOnly />
-            </FormField>
-            <FormField label="Planned Qty">
-              <Input
-                type="number"
-                value={assignForm.planned_quantity}
-                onChange={(e) => setAssignForm((f) => ({ ...f, planned_quantity: e.target.value }))}
-                disabled={!card?.editable || !canAssignOperator}
-              />
-            </FormField>
-            <FormField label="Assign Operator">
-              <Select
+            <Input label="Work Order" value={plan.work_order_number || "—"} readOnly />
+            <Input
+              label="Planned Qty"
+              type="number"
+              value={assignForm.planned_quantity}
+              onChange={(e) => setAssignForm((f) => ({ ...f, planned_quantity: e.target.value }))}
+              disabled={!card?.editable || !canAssignOperator}
+            />
+            <Select
+              label="Assign Operator"
                 value={assignForm.operator_user_id}
                 onChange={(e) => {
                   if (e.target.value === "__add_operator__") {
@@ -631,9 +636,8 @@ export default function StageJobCardPage() {
                   );
                 })}
               </Select>
-            </FormField>
-            <FormField label="Machine">
-              <Select
+            <Select
+              label="Machine"
                 value={assignForm.machine_id}
                 onChange={(e) => {
                   if (e.target.value === "__add_machine__") {
@@ -654,7 +658,6 @@ export default function StageJobCardPage() {
                   </option>
                 ))}
               </Select>
-            </FormField>
           </div>
           <JobCardActions
             actions={card?.allowed_actions}
@@ -685,25 +688,25 @@ export default function StageJobCardPage() {
         <article className="ui-card overflow-hidden">
           <CardSectionHeader title="Quality Inspection" />
           <div className="grid gap-4 p-4 sm:grid-cols-2">
-            <FormField label="Result">
-              <Select
-                value={qualityForm.result}
-                onChange={(e) => setQualityForm((f) => ({ ...f, result: e.target.value }))}
-                disabled={!card?.editable}
-              >
-                <option value="pass">Pass</option>
-                <option value="fail">Fail</option>
-                <option value="hold">Hold</option>
-              </Select>
-            </FormField>
-            <FormField label="Remarks" className="sm:col-span-2">
+            <Select
+              label="Result"
+              value={qualityForm.result}
+              onChange={(e) => setQualityForm((f) => ({ ...f, result: e.target.value }))}
+              disabled={!card?.editable}
+            >
+              <option value="pass">Pass</option>
+              <option value="fail">Fail</option>
+              <option value="hold">Hold</option>
+            </Select>
+            <div className="sm:col-span-2">
               <Textarea
+                label="Remarks"
                 rows={3}
                 value={qualityForm.notes}
                 onChange={(e) => setQualityForm((f) => ({ ...f, notes: e.target.value }))}
                 disabled={!card?.editable}
               />
-            </FormField>
+            </div>
           </div>
           <JobCardActions actions={card?.allowed_actions} loading={submitting} onAction={runAction} />
         </article>
@@ -711,31 +714,28 @@ export default function StageJobCardPage() {
     }
     if (stage === "packing") {
       return (
-        <article className="ui-card overflow-hidden">
+        <article className="ui-card overflow-hidden" id="packing-dispatch-entry">
           <CardSectionHeader title="Packing & Dispatch" />
           <div className="grid gap-4 p-4 sm:grid-cols-2">
-            <FormField label="Packed Qty">
-              <Input
-                type="number"
-                value={packingForm.packed_quantity}
-                onChange={(e) => setPackingForm((f) => ({ ...f, packed_quantity: e.target.value }))}
-                disabled={!card?.editable}
-              />
-            </FormField>
-            <FormField label="Transporter">
-              <Input
-                value={packingForm.courier}
-                onChange={(e) => setPackingForm((f) => ({ ...f, courier: e.target.value }))}
-                disabled={!card?.editable}
-              />
-            </FormField>
-            <FormField label="LR / AWB No.">
-              <Input
-                value={packingForm.lr_number}
-                onChange={(e) => setPackingForm((f) => ({ ...f, lr_number: e.target.value }))}
-                disabled={!card?.editable}
-              />
-            </FormField>
+            <Input
+              label="Packed Qty"
+              type="number"
+              value={packingForm.packed_quantity}
+              onChange={(e) => setPackingForm((f) => ({ ...f, packed_quantity: e.target.value }))}
+              disabled={!card?.editable}
+            />
+            <Input
+              label="Transporter"
+              value={packingForm.courier}
+              onChange={(e) => setPackingForm((f) => ({ ...f, courier: e.target.value }))}
+              disabled={!card?.editable}
+            />
+            <Input
+              label="LR / AWB No."
+              value={packingForm.lr_number}
+              onChange={(e) => setPackingForm((f) => ({ ...f, lr_number: e.target.value }))}
+              disabled={!card?.editable}
+            />
           </div>
           <JobCardActions actions={card?.allowed_actions} loading={submitting} onAction={runAction} />
         </article>
@@ -744,15 +744,16 @@ export default function StageJobCardPage() {
     if (stage === "billing") {
       const bill = card?.billing || {};
       return (
-        <article className="ui-card overflow-hidden">
+        <article className="ui-card overflow-hidden" id="billing-entry">
           <CardSectionHeader title="Billing Information" />
           <div className="grid gap-4 p-4 sm:grid-cols-2">
-            <FormField label="Invoice No.">
-              <Input value={bill.invoice_no || "—"} readOnly />
-            </FormField>
-            <FormField label="Total Amount">
-              <Input value={bill.total_amount != null ? `₹ ${bill.total_amount}` : "—"} readOnly className="ui-num" />
-            </FormField>
+            <Input label="Invoice No." value={bill.invoice_no || "—"} readOnly />
+            <Input
+              label="Total Amount"
+              value={bill.total_amount != null ? `₹ ${bill.total_amount}` : "—"}
+              readOnly
+              className="ui-num"
+            />
           </div>
           <JobCardActions actions={card?.allowed_actions} loading={submitting} onAction={runAction} />
         </article>
@@ -804,6 +805,13 @@ export default function StageJobCardPage() {
     );
   }
 
+  const workflowGuidance =
+    stage === "packing"
+      ? getJobCardWorkflowGuidance({ card, packingMode: true })
+      : stage === "billing"
+        ? getJobCardWorkflowGuidance({ card, billingMode: true })
+        : null;
+
   const displayForm = detailsForm || formFromStageCard(card);
   const selectedProduct = products.find((p) => String(p.id) === String(displayForm?.product_id));
   const productCode = selectedProduct?.product_code || selectedProduct?.sku || displayForm?.product_code || "";
@@ -819,6 +827,17 @@ export default function StageJobCardPage() {
           Refresh
         </Button>
       </div>
+      {workflowGuidance ? (
+        <WorkflowNextStep
+          tone={workflowGuidance.tone}
+          title={workflowGuidance.title}
+          statusLabel={workflowGuidance.statusLabel}
+          message={workflowGuidance.message}
+          nextStep={workflowGuidance.nextStep}
+          actionLabel={workflowGuidance.actionLabel}
+          scrollToId={workflowGuidance.scrollToId}
+        />
+      ) : null}
       {stageBody()}
     </div>
   );

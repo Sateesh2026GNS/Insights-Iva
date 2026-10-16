@@ -41,6 +41,7 @@ import {
 } from "../../data/salesMasterData";
 import { runListExport } from "../../utils/listExport";
 import { applyDraftListFilters, clearListFilters } from "../../utils/listFilterState";
+import "../../styles/sales-leads-page.css";
 
 const LEAD_EXPORT_COLUMNS = [
   { key: "lead_id", label: "Lead ID" },
@@ -76,11 +77,9 @@ export default function Leads() {
   const [summaryState, setSummaryState] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const openPipelineOnly = searchParams.get("open") === "1";
-  const followupDueOnly = searchParams.get("followup") === "due";
   const leadQueryParams = useMemo(() => {
     const params = {};
     if (openPipelineOnly) params.open_only = true;
-    if (followupDueOnly) params.followup_due = true;
     const createdFrom = searchParams.get("created_from");
     const createdTo = searchParams.get("created_to");
     if (createdFrom && createdTo) {
@@ -88,7 +87,14 @@ export default function Leads() {
       params.to_date = createdTo;
     }
     return params;
-  }, [openPipelineOnly, followupDueOnly, searchParams]);
+  }, [openPipelineOnly, searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("followup") !== "due") return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("followup");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -382,11 +388,11 @@ export default function Leads() {
   if (loading) return <Loader label="Loading leads..." />;
 
   return (
-    <ListPageShell stackClassName="space-y-4 pb-4">
+    <ListPageShell stackClassName="sales-leads-page space-y-4 pb-4">
       <PageHeader
-        className="erp-hero-header--compact inventory-hero-header--compact"
+        className="erp-hero-header--compact inventory-hero-header--compact sales-leads-page__banner"
         action={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="sales-leads-page__banner-actions flex flex-wrap items-center gap-2">
             <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
             <Button
               variant="add"
@@ -400,7 +406,7 @@ export default function Leads() {
         }
       />
 
-      <div className="ui-grid-kpi">
+      <div className="ui-grid-kpi sales-leads-page__kpi-grid">
         <KpiCard
           label="Total Leads"
           value={summary.total_leads}
@@ -460,30 +466,29 @@ export default function Leads() {
         <KpiCard label="Conversion Rate" value={summary.conversion_rate} suffix="%" icon={TrendingUp} tone="success" title="Overall conversion rate" />
       </div>
 
-      <div className={`ui-card flex items-center gap-2 overflow-x-auto py-2.5 px-3 text-xs font-medium ${salesListTextSecondary} scrollbar-none`}>
+      <nav className="sales-leads-page__workflow" aria-label="Lead workflow">
         {["Lead", "Qualification", "Opportunity", "Quotation", "Sales Order"].map((s, i, arr) => (
           <span key={s} className="flex items-center gap-2 shrink-0">
-            <span className={`rounded-lg bg-[var(--color-surface-muted)] px-2.5 py-1 font-semibold ${salesListTextPrimary} ring-1 ring-[var(--color-border)]`}>
-              {s}
-            </span>
-            {i < arr.length - 1 && (
-              <span className={salesListTextMuted} aria-hidden="true">
+            <span className="sales-leads-page__workflow-step">{s}</span>
+            {i < arr.length - 1 ? (
+              <span className="sales-leads-page__workflow-sep" aria-hidden="true">
                 →
               </span>
-            )}
+            ) : null}
           </span>
         ))}
-      </div>
+      </nav>
 
-      <ListPageCard>
-        <ListPageCardBody>
-          <div className="ui-list-toolbar mb-3">
+      <ListPageCard className="sales-leads-page__records">
+        <ListPageCardBody className="sales-leads-page__records-body">
+          <div className="ui-list-toolbar mb-3 sales-leads-page__toolbar">
             <div className="ui-list-toolbar__start">
               <SearchBar
                 value={tableSearch}
                 onChange={setTableSearch}
-                placeholder="Search"
+                placeholder="Search leads by name, company, or executive"
                 aria-label="Search leads"
+                className="sales-leads-page__search"
               />
               <Button
                 type="button"
@@ -497,11 +502,7 @@ export default function Leads() {
               </Button>
             </div>
             <div className="ui-list-toolbar__end">
-              <div
-                className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] p-0.5"
-                role="group"
-                aria-label="Lead view"
-              >
+              <div className="sales-leads-page__view-toggle" role="group" aria-label="Lead view">
                 <Button
                   type="button"
                   variant={view === "table" ? "secondary" : "ghost"}
@@ -624,7 +625,7 @@ export default function Leads() {
                     icon="document"
                     title="No records found."
                     description="There is nothing to show here yet."
-                    className="border-none bg-transparent py-8"
+                    className="sales-leads-page__empty border-none bg-transparent py-8"
                   />
                 ) : (
                   filtered.map((r) => {
@@ -696,7 +697,7 @@ export default function Leads() {
                       icon="document"
                       title="No records found."
                       description="There is nothing to show here yet."
-                      className="border-none bg-transparent py-12"
+                      className="sales-leads-page__empty border-none bg-transparent py-12"
                     />
                   }
                 />

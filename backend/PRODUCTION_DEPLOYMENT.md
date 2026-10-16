@@ -120,7 +120,7 @@ docker compose -f docker-compose.postgres.yml up -d
 
 # 2. Apply schema via Alembic (required — app does NOT create_all in production)
 alembic upgrade head
-alembic current   # expect: k9l0m1n2o3p4 (head)
+alembic current   # expect: e5f6a7b8c9d0 (head — refresh token session metadata)
 
 # 3. One-time SQLite → PostgreSQL data migration (manual, not automatic)
 # python scripts/migrate_sqlite_to_postgres.py --dry-run
@@ -252,7 +252,11 @@ Idempotent seeds that **do** run: `seed_super_admin` (from env), `seed_roles` pe
 
 ## Related docs
 
-- [POSTGRES_MIGRATION.md](./backend/POSTGRES_MIGRATION.md) — SQLite → PostgreSQL migration
+- [POSTGRES_MIGRATION.md](./POSTGRES_MIGRATION.md) — SQLite → PostgreSQL migration
+- [docs/POSTGRES_BACKUP_RESTORE.md](./docs/POSTGRES_BACKUP_RESTORE.md) — backup and disposable restore
+- [docs/HEALTH_AND_RENDER.md](./docs/HEALTH_AND_RENDER.md) — liveness vs DB health, cold start
+- [docs/PRODUCTION_OPERATOR_CHECKLIST.md](./docs/PRODUCTION_OPERATOR_CHECKLIST.md) — run in Render shell
+- [docs/PASSWORD_CHANGE_SESSION_POLICY.md](./docs/PASSWORD_CHANGE_SESSION_POLICY.md) — password change revokes all sessions
 - [SECURITY_REPORT.md](../SECURITY_REPORT.md) — Auth hardening
 - [README.md](../README.md) — Development setup
 

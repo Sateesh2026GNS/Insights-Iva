@@ -228,14 +228,14 @@ export default function BomListPage() {
               </Button>
             </div>
             <div className="ui-list-toolbar__end">
-              {canEdit ? <Button to="/production/bom/new" variant="add" leftIcon={<Plus className="h-4 w-4" />}>New BOM</Button> : null}
+              {canEdit ? <Button to="/production/bom/new" variant="add" leftIcon={<Plus className="h-4 w-4" />}>Create BOM</Button> : null}
             </div>
           </div>
           {showFilters ? (
             <div className="mb-3">
               <label className="text-xs font-medium text-[var(--color-text-muted)]">Status</label>
               <select
-                className="ui-input mt-1 w-auto"
+                className="ui-input mt-1 w-40 max-w-full"
                 value={status}
                 onChange={(e) => setParams({ status: e.target.value, page: "1" })}
               >

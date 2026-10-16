@@ -322,9 +322,22 @@ export default function Shipping() {
           value={summary.ready_to_dispatch}
           icon={ClipboardList}
           tone="warning"
+          meta="Informational summary"
         />
-        <KpiCard label="Pending Dispatch" value={summary.packed} icon={Clock} tone="info" />
-        <KpiCard label="Shipped This Month" value={shippedThisMonth} icon={Truck} tone="success" />
+        <KpiCard
+          label="Pending Dispatch"
+          value={summary.packed}
+          icon={Clock}
+          tone="info"
+          meta="Informational summary"
+        />
+        <KpiCard
+          label="Shipped This Month"
+          value={shippedThisMonth}
+          icon={Truck}
+          tone="success"
+          meta="Informational summary"
+        />
       </div>
 
       <div className="shipping-page__filters mt-5 flex flex-col gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3 sm:flex-row sm:items-center sm:p-4">

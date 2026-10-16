@@ -12,6 +12,8 @@ import { getGlobalCreateActionsForUser } from "../../config/globalCreateActions"
 export default function GlobalCreateMenu({
   open,
   onOpenChange,
+  onPointerEnter,
+  onPointerLeave,
   anchorRef,
   align = "center",
   palette = false,
@@ -118,6 +120,8 @@ export default function GlobalCreateMenu({
       role="menu"
       aria-label="Add"
       className={`app-shell-create-menu ${palette ? "!box-border !p-5 sm:!p-6 !rounded-2xl !shadow-2xl !overflow-x-hidden !overflow-y-auto" : ""}`}
+      onMouseEnter={onPointerEnter}
+      onMouseLeave={onPointerLeave}
       style={{
         position: "fixed",
         top: pos.top,

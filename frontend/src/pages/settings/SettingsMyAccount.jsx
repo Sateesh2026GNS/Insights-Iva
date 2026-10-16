@@ -144,7 +144,7 @@ function ProfileAvatarColumn({ editing, onEdit, onCancelEdit, onSave, saving }) 
             Cancel
           </Button>
           <Button type="button" variant="primary" size="sm" onClick={onSave} loading={saving}>
-            Save
+            Save Changes
           </Button>
         </div>
       )}
@@ -168,7 +168,8 @@ function ProfileAvatarColumn({ editing, onEdit, onCancelEdit, onSave, saving }) 
 }
 
 export function MyAccountProfileView() {
-  const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
+  const { user, refreshUser, logout } = useAuth();
   const { addToast } = useToast();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -238,11 +239,18 @@ export function MyAccountProfileView() {
         phone: phonePayload || null,
       });
       if (wantsPassword) {
-        await changeAuthPassword({
+        const pwdRes = await changeAuthPassword({
           current_password: form.currentPassword,
           new_password: form.password,
           confirm_password: form.confirmPassword,
         });
+        const pwdMessage =
+          pwdRes?.message ||
+          "Password updated. Sign in again with your new password.";
+        await logout({ allDevices: false });
+        addToast(pwdMessage, "success");
+        navigate("/login", { replace: true });
+        return;
       }
       await refreshUser?.();
       addToast("Profile saved", "success");
@@ -465,7 +473,7 @@ export function MyAccountTwoFactorView() {
               Cancel
             </Button>
             <Button type="button" variant="primary" size="sm" onClick={handleSave} loading={saving}>
-              Save
+              Save Changes
             </Button>
           </div>
         ) : null}

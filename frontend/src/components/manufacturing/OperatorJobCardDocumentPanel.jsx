@@ -22,7 +22,9 @@ import {
 } from "../../api/workflowApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { erpListStatus } from "../../utils/jobCardListStatus";
+import { getJobCardWorkflowGuidance } from "../../utils/jobCardWorkflowUx";
 import { printSalesJobCardLandscape } from "../../utils/printUtils";
+import WorkflowNextStep from "./WorkflowNextStep";
 
 function emptyProductionForm(card) {
   const ex = card?.execution || {};
@@ -120,6 +122,11 @@ export default function OperatorJobCardDocumentPanel({
   const showDocument = Boolean(hasSelection && operatorContext && !loading && !error);
   const showEmptyLayout = showEmptyShell && !hasSelection;
   const workflowStatus = erpListStatus(operatorContext || row || {});
+  const guidance = getJobCardWorkflowGuidance({
+    card: operatorContext,
+    row,
+    operatorMode: true,
+  });
 
   const title =
     operatorContext?.card_number ||
@@ -258,6 +265,18 @@ export default function OperatorJobCardDocumentPanel({
 
           {showDocument ? (
             <>
+              {guidance ? (
+                <WorkflowNextStep
+                  tone={guidance.tone}
+                  title={guidance.title}
+                  statusLabel={guidance.statusLabel}
+                  message={guidance.message}
+                  nextStep={guidance.nextStep}
+                  actionLabel={guidance.actionLabel}
+                  scrollToId={guidance.scrollToId}
+                  className="mb-4"
+                />
+              ) : null}
               <OperatorJobCardDocument
                 operatorContext={operatorContext}
                 soCard={soCard}

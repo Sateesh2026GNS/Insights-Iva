@@ -89,15 +89,14 @@ def _has_active_invoice(db: Session, tenant_id: int, order_id: int) -> bool:
 
 
 def _material_issue_lines(db: Session, tenant_id: int, order_id: int) -> list[WorkflowMaterialIssueLine]:
-    stage_ids = [
-        row.id
-        for row in db.scalars(
+    stage_ids = list(
+        db.scalars(
             select(WorkflowStageJobCard.id).where(
                 WorkflowStageJobCard.tenant_id == tenant_id,
                 WorkflowStageJobCard.sales_order_id == order_id,
             )
         ).all()
-    ]
+    )
     if not stage_ids:
         return []
     return list(

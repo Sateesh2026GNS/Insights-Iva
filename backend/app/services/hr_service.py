@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
+from app.models.user import User
 from app.models.hr import (
     AttendanceRecord,
     Employee,
@@ -128,29 +129,80 @@ def create_attendance_record(
     return rec
 
 
+def _employee_for_tenant(db: Session, tenant_id: int, employee_id: int) -> Employee | None:
+    return db.scalars(
+        select(Employee).where(Employee.tenant_id == tenant_id, Employee.id == employee_id)
+    ).first()
+
+
+def resolve_attendance_employee(
+    db: Session,
+    tenant_id: int,
+    user: User | None = None,
+    employee_id: int | None = None,
+) -> int:
+    """Map the signed-in user (or explicit id) to a valid employees.id for this tenant."""
+    if employee_id is not None:
+        emp = _employee_for_tenant(db, tenant_id, employee_id)
+        if emp and emp.is_active:
+            return emp.id
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not resolve employee for attendance. Sign in or provide a valid employee_id.",
+        )
+
+    if user.email:
+        emp = db.scalars(
+            select(Employee).where(
+                Employee.tenant_id == tenant_id,
+                Employee.email == user.email,
+                Employee.is_active.is_(True),
+            )
+        ).first()
+        if emp:
+            return emp.id
+
+    code = (user.employee_id or "").strip()
+    if code:
+        emp = db.scalars(
+            select(Employee).where(
+                Employee.tenant_id == tenant_id,
+                Employee.employee_code == code,
+                Employee.is_active.is_(True),
+            )
+        ).first()
+        if emp:
+            return emp.id
+        if code.isdigit():
+            emp = _employee_for_tenant(db, tenant_id, int(code))
+            if emp and emp.is_active:
+                return emp.id
+
+    new_emp = Employee(
+        tenant_id=tenant_id,
+        employee_code=code or f"EMP-{user.id:03d}",
+        full_name=user.full_name or user.email or "Employee",
+        email=user.email,
+        department="General",
+        is_active=True,
+    )
+    db.add(new_emp)
+    db.commit()
+    db.refresh(new_emp)
+    return new_emp.id
+
+
 def record_clock_in(
-    db: Session, tenant_id: int, employee_id: int | None = None, record_date: date | None = None
+    db: Session,
+    tenant_id: int,
+    employee_id: int | None = None,
+    record_date: date | None = None,
+    user: User | None = None,
 ) -> AttendanceRecord:
     d = record_date or date.today()
-    emp_id = employee_id
-    if not emp_id:
-        first_emp = db.scalars(
-            select(Employee).where(Employee.tenant_id == tenant_id, Employee.is_active.is_(True))
-        ).first()
-        if not first_emp:
-            first_emp = db.scalars(select(Employee).where(Employee.tenant_id == tenant_id)).first()
-        if not first_emp:
-            first_emp = Employee(
-                tenant_id=tenant_id,
-                employee_code="G1234",
-                full_name="Satish Gogulothu",
-                department="Management",
-                is_active=True,
-            )
-            db.add(first_emp)
-            db.commit()
-            db.refresh(first_emp)
-        emp_id = first_emp.id
+    emp_id = resolve_attendance_employee(db, tenant_id, user, employee_id)
 
     existing = db.scalars(
         select(AttendanceRecord).where(
@@ -211,10 +263,18 @@ def record_clock_in(
 
 
 def record_clock_out(
-    db: Session, tenant_id: int, employee_id: int | None = None, record_date: date | None = None
+    db: Session,
+    tenant_id: int,
+    employee_id: int | None = None,
+    record_date: date | None = None,
+    user: User | None = None,
 ) -> AttendanceRecord | None:
     d = record_date or date.today()
     emp_id = employee_id
+    if emp_id is not None:
+        emp = _employee_for_tenant(db, tenant_id, emp_id)
+        if not emp:
+            emp_id = None
     if not emp_id:
         open_rec = db.scalars(
             select(AttendanceRecord).where(
@@ -226,8 +286,7 @@ def record_clock_out(
         if open_rec:
             emp_id = open_rec.employee_id
         else:
-            first_emp = db.scalars(select(Employee).where(Employee.tenant_id == tenant_id)).first()
-            emp_id = first_emp.id if first_emp else 1
+            emp_id = resolve_attendance_employee(db, tenant_id, user, None)
 
     rec = db.scalars(
         select(AttendanceRecord).where(

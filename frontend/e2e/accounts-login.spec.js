@@ -17,5 +17,6 @@ test("Accountant UI login lands on accounts dashboard", async ({ page }) => {
   await page.getByRole("button", { name: /^SIGN IN$/i }).click();
 
   await expect(page).toHaveURL(/\/accounts\/dashboard/, { timeout: 20_000 });
-  await expect(page.getByRole("heading", { name: "Accounts Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
+  await expect(page.getByText("Total Receivables")).toBeVisible();
 });

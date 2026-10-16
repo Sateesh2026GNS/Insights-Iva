@@ -517,6 +517,7 @@ def change_user_password(
     new_password: str,
     confirm_password: str,
 ) -> None:
+    """Update password after validation. Does not revoke sessions (call revoke after success)."""
     from app.utils.password import validate_password_strength
 
     if new_password != confirm_password:
@@ -532,3 +533,26 @@ def change_user_password(
     validate_password_strength(new_password)
     user.hashed_password = hash_password(new_password)
     db.commit()
+
+
+def revoke_sessions_after_password_change(
+    db: Session,
+    user: User,
+    *,
+    current_sid: str | None = None,
+    request=None,
+) -> int:
+    """Invalidate every device session after a successful password change.
+
+    Sets ``tokens_revoked_at`` so access tokens issued before revocation fail
+    ``is_access_token_revoked``, and marks all refresh-token rows revoked.
+    """
+    from app.services.session_service import revoke_all_user_sessions
+
+    result = revoke_all_user_sessions(
+        db,
+        user,
+        current_sid=current_sid,
+        request=request,
+    )
+    return int(result.get("revoked_count") or 0)
