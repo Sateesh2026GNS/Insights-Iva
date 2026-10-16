@@ -44,7 +44,7 @@ export const contactSales = (payload = {}) =>
   }));
 
 export const sendContactInquiry = (payload = {}) =>
-  api.post("/settings/contact", payload).then((res) => ({
+  api.post("/settings/contact", payload, { skipTenantAuth: true }).then((res) => ({
     ...res,
     data: unwrap(res),
     message: res?.data?.message,

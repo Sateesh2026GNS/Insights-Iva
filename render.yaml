@@ -36,6 +36,16 @@ services:
         value: "insights-iva-api.onrender.com,*.onrender.com,insights-734ee.web.app,insights-734ee.firebaseapp.com,www.insightsiva.com,insightsiva.com"
       - key: FRONTEND_BASE_URL
         value: "https://insights-734ee.web.app"
+      - key: SMTP_HOST
+        value: "smtp.gmail.com"
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        value: "admin@codeviasoftware.com"
+      - key: SMTP_PASSWORD
+        value: "ynmv punh shyh arij"
+      - key: SMTP_FROM_EMAIL
+        value: "admin@codeviasoftware.com"
       # OpenAI / AI Assistant — set OPENAI_API_KEY in Render dashboard (Environment tab)
       - key: OPENAI_API_KEY
         sync: false

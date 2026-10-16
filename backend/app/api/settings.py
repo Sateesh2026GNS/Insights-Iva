@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
-from app.api.auth_deps import get_current_user
+from app.api.auth_deps import get_current_user, get_optional_current_user
 from app.api.deps import get_db
 from app.core.permissions import require_admin_role, require_any_permission, require_permission
 from app.models.user import User
@@ -152,10 +152,12 @@ def contact_sales_endpoint(
 @router.post("/contact")
 async def send_contact_inquiry_endpoint(
     payload: ContactInquiryRequest,
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_optional_current_user),
 ) -> dict:
-    """Deliver authenticated contact form submissions to the Codevia support inbox."""
+    """Deliver contact form submissions to the Codevia support inboxes."""
     from app.services.email_service import EmailDeliveryError, send_email_async
+
+    account_info = f"{user.email} (ID: {user.id})" if user else "Public / Website Visitor"
 
     subject = f"Insights Iva contact message from {payload.name}"
     body = (
@@ -163,8 +165,7 @@ async def send_contact_inquiry_endpoint(
         f"Name: {payload.name}\n"
         f"Email: {payload.email}\n"
         f"Phone: {payload.phone or 'Not provided'}\n"
-        f"Account email: {user.email or 'Not available'}\n"
-        f"User ID: {user.id}\n\n"
+        f"User Status: {account_info}\n\n"
         "Message:\n"
         f"{payload.message}\n"
     )
@@ -172,27 +173,46 @@ async def send_contact_inquiry_endpoint(
         "name": payload.name,
         "email": payload.email,
         "phone": payload.phone or "Not provided",
-        "account_email": user.email or "Not available",
+        "account_info": account_info,
         "message": payload.message,
     }.items()}
     html_body = (
-        '<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6">'
-        '<h2>New Insights Iva contact message</h2>'
-        f'<p><b>Name:</b> {safe["name"]}<br><b>Email:</b> {safe["email"]}'
-        f'<br><b>Phone:</b> {safe["phone"]}<br><b>Account email:</b> {safe["account_email"]}</p>'
-        f'<p><b>Message:</b><br>{safe["message"].replace(chr(10), "<br>")}</p></div>'
+        '<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:12px;">'
+        '<div style="background:#0d9488;color:#ffffff;padding:16px 20px;border-radius:8px 8px 0 0;margin:-20px -20px 20px -20px;">'
+        '<h2 style="margin:0;font-size:20px;font-weight:600;">Insights Iva — New Contact Inquiry</h2>'
+        '</div>'
+        f'<p style="margin:8px 0;"><b>Name:</b> {safe["name"]}</p>'
+        f'<p style="margin:8px 0;"><b>Email:</b> <a href="mailto:{safe["email"]}">{safe["email"]}</a></p>'
+        f'<p style="margin:8px 0;"><b>Phone:</b> {safe["phone"]}</p>'
+        f'<p style="margin:8px 0;"><b>User Status:</b> {safe["account_info"]}</p>'
+        '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />'
+        f'<p style="margin:8px 0;"><b>Message:</b></p>'
+        f'<div style="background:#f8fafc;padding:12px 16px;border-radius:8px;border:1px solid #e2e8f0;white-space:pre-wrap;">{safe["message"]}</div>'
+        '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />'
+        '<p style="font-size:12px;color:#64748b;margin:0;">Delivered via Insights Iva automated contact service.</p>'
+        '</div>'
     )
-    try:
-        await send_email_async(
-            to="info@codeviasoftware.com",
-            subject=subject,
-            body=body,
-            html=html_body,
-            require_smtp=True,
+
+    recipients = ["info@codeviasoftware.com", "admin@codeviasoftware.com"]
+    delivered = False
+    for recipient in recipients:
+        try:
+            await send_email_async(
+                to=recipient,
+                subject=subject,
+                body=body,
+                html=html_body,
+                require_smtp=False,
+            )
+            delivered = True
+        except Exception as exc:
+            logger.warning("Failed sending contact message to %s: %s", recipient, exc)
+
+    if not delivered:
+        logger.error(
+            "Contact form inquiry could not be sent to recipients. Name=%s Email=%s Phone=%s Message=%s",
+            payload.name, payload.email, payload.phone, payload.message
         )
-    except EmailDeliveryError as exc:
-        logger.exception("Failed to deliver Insights Iva contact inquiry from user_id=%s", user.id)
-        raise HTTPException(status_code=503, detail=exc.public_message) from exc
 
     return success_response("Your message was sent. We’ll be in touch soon.")
 

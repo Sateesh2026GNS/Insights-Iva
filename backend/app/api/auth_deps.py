@@ -93,3 +93,43 @@ def get_current_user(
         touch_refresh_session(db, str(session_id))
     request.state.session_id = session_id
     return user
+
+
+def get_optional_current_user(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Return the authenticated user if valid credentials present; otherwise None without raising 401."""
+    try:
+        token = resolve_access_token(request, creds)
+        if not token:
+            return None
+        payload = decode_access_token(token)
+        if not payload:
+            return None
+        if is_access_token_revoked(db, token, payload):
+            return None
+        sub = payload.get("sub")
+        if sub is None:
+            return None
+        try:
+            user_id = int(sub)
+        except (TypeError, ValueError):
+            return None
+        user = db.scalars(
+            select(User).where(User.id == user_id).options(selectinload(User.roles))
+        ).first()
+        if not user or not user.is_active or not user.email_verified:
+            return None
+        if not check_session_active(user):
+            return None
+        session_id = payload.get("sid")
+        if session_id and is_refresh_session_revoked(
+            db, session_uuid=str(session_id), user_id=user.id, tenant_id=user.tenant_id
+        ):
+            return None
+        user.active_role = payload.get("role_name") or payload.get("role")
+        return user
+    except Exception:
+        return None

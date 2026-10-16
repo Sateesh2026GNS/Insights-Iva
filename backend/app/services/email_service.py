@@ -485,8 +485,6 @@ async def send_email_async(
         try:
             await _send_via_fastapi_mail(to, subject, body, html=html)
             return
-        except EmailDeliveryError:
-            raise
         except Exception as exc:
             logger.warning("fastapi_mail_failed_falling_back_to_smtplib to=%s: %s", to, exc)
     await asyncio.to_thread(_send_via_smtplib, to, subject, body, html=html, attachments=attachments)
