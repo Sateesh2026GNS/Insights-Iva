@@ -857,93 +857,167 @@ function buildSalesJobCardHtml(data) {
     ? `<img src="${escapeHtml(data.logoUrl)}" alt="" style="width:52px;height:52px;object-fit:contain" />`
     : `<div style="width:52px;height:52px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:9px">LOGO</div>`;
 
-  const lineRows = lines
-    .map(
-      (r) => `<tr>
-        <td style="text-align:right">${r.sl_no}</td>
-        <td>${escapeHtml(r.product_code || "—")}</td>
-        <td>${escapeHtml(r.product_name || "—")}</td>
-        <td>${escapeHtml(r.description || "—")}</td>
-        <td style="text-align:right">${escapeHtml(r.quantity ?? "—")}</td>
-        <td>${escapeHtml(r.uom || "—")}</td>
+  const hasPricingAny = lines.some(
+    (r) => r.unit_price != null || r.line_amount != null || r.total_amount != null
+  );
+
+  const fmtInr = (v) => {
+    if (v == null || v === '') return '';
+    const n = Number(v);
+    if (Number.isNaN(n)) return '';
+    return `\u20B9${n.toLocaleString('en-IN')}`;
+  };
+
+  const colCount = hasPricingAny ? 8 : 6;
+
+  const lineRows = lines.length
+    ? lines
+        .map(
+          (r) => `<tr>
+            <td class="num">${r.sl_no}</td>
+            <td>${escapeHtml(r.product_code || '')}</td>
+            <td>${escapeHtml(r.product_name || '')}</td>
+            <td>${escapeHtml(r.description || '')}</td>
+            <td class="num">${escapeHtml(r.quantity != null ? String(r.quantity) : '')}</td>
+            <td>${escapeHtml(r.uom || '')}</td>
+            ${hasPricingAny ? `<td class="num">${fmtInr(r.unit_price)}</td><td class="num">${fmtInr(r.line_amount ?? r.total_amount)}</td>` : ''}
+          </tr>`
+        )
+        .join('')
+    : `<tr><td colspan="${colCount}" style="text-align:center;color:#6b7280;font-style:italic">No products on this sales order.</td></tr>`;
+
+  const totalQty = lines.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const totalAmt = lines.reduce((s, r) => s + (Number(r.line_amount ?? r.total_amount) || 0), 0);
+
+  const totalRow = hasPricingAny && lines.length
+    ? `<tfoot>
+        <tr class="totals-row">
+          <td colspan="4" class="totals-label">Total</td>
+          <td class="num">${totalQty.toLocaleString('en-IN')}</td>
+          <td></td>
+          <td class="num" style="font-weight:700">Total Amount</td>
+          <td class="num">${fmtInr(totalAmt)}</td>
+        </tr>
+      </tfoot>`
+    : '';
+
+  const productTableHeader = hasPricingAny
+    ? `<tr>
+        <th style="width:3%">Sl.</th>
+        <th style="width:11%">Product Code</th>
+        <th style="width:22%">Product Name</th>
+        <th>Description</th>
+        <th class="num" style="width:7%">Qty</th>
+        <th style="width:6%">UOM</th>
+        <th class="num" style="width:10%">Unit Price</th>
+        <th class="num" style="width:10%">Amount</th>
       </tr>`
-    )
-    .join("");
+    : `<tr>
+        <th style="width:4%">Sl.</th>
+        <th style="width:13%">Product Code</th>
+        <th style="width:25%">Product Name</th>
+        <th>Description</th>
+        <th class="num" style="width:8%">Qty</th>
+        <th style="width:8%">UOM</th>
+      </tr>`;
 
   const specRows = specs.length
     ? specs
         .map(
           (r) => `<tr>
             <td style="text-align:right">${r.sl_no}</td>
-            <td>${escapeHtml(r.parameter || "—")}</td>
-            <td>${escapeHtml(r.specification || "—")}</td>
+            <td>${escapeHtml(r.parameter || '')}</td>
+            <td>${escapeHtml(r.specification || '')}</td>
           </tr>`
         )
-        .join("")
+        .join('')
     : `<tr><td colspan="3" style="text-align:center;font-style:italic;color:#666">No technical specifications available.</td></tr>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8" />
-<title>Sales Job Card ${escapeHtml(h.job_card_no || "")}</title>
+<title>Sales Job Card ${escapeHtml(h.job_card_no || '')}</title>
 <style>
   @page { size: A4 landscape; margin: 10mm; }
+  * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; color: #111; margin: 0; }
-  .page { padding: 12px 16px; }
-  .hdr { display: flex; justify-content: space-between; gap: 16px; }
-  .co { display: flex; gap: 10px; }
-  .co-name { font-size: 14px; font-weight: 800; color: #00733c; text-transform: uppercase; }
-  .co-addr { font-size: 9px; margin-top: 2px; max-width: 320px; }
-  .meta td { border: 1px solid #bbb; padding: 3px 6px; font-size: 9.5px; }
-  .meta .lbl { background: #e8f5ee; font-weight: 700; width: 42%; }
-  .tagline { text-align: center; font-style: italic; font-size: 10px; color: #666; margin: 4px 0; }
-  .title { text-align: center; background: #00733c; color: #fff; font-size: 17px; font-weight: 800; letter-spacing: 0.12em; padding: 8px; margin: 10px 0; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
-  .panel { border: 1px solid #bbb; }
-  .panel-h { background: #e8f5ee; color: #00733c; font-weight: 800; font-size: 11px; padding: 5px 8px; border-bottom: 1px solid #bbb; text-transform: uppercase; }
-  .panel-b { padding: 6px 8px; }
-  .row { display: grid; grid-template-columns: 38% 1fr; font-size: 10px; border-bottom: 1px solid #d8d8d8; }
-  .row .lbl { font-weight: 700; color: #374151; background: #f3faf6; padding: 3px 5px; border-right: 1px solid #d8d8d8; }
-  .row span:last-child { padding: 3px 5px; }
-  table.data { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 10px; }
-  table.data th { background: #f3faf6; color: #1f2937; padding: 4px 6px; border: 1px solid #bbb; text-align: left; }
-  table.data td { padding: 4px 6px; border: 1px solid #ccc; vertical-align: top; }
-  table.data tr:nth-child(even) td { background: #f9fafb; }
-  .cap { background: #e8f5ee; color: #00733c; font-weight: 800; padding: 5px 8px; border: 1px solid #bbb; border-bottom: none; text-transform: uppercase; font-size: 11px; }
-  .sign td { min-height: 40px; vertical-align: bottom; }
+  .page { padding: 10px 14px; }
+  .hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .co { display: flex; gap: 10px; align-items: flex-start; }
+  .co-name { font-size: 13px; font-weight: 800; color: #00733c; text-transform: uppercase; letter-spacing: 0.03em; }
+  .co-addr { font-size: 8.5px; margin-top: 2px; max-width: 340px; color: #444; line-height: 1.4; }
+  .meta { border-collapse: collapse; min-width: 200px; }
+  .meta td { border: 1px solid #bbb; padding: 3px 7px; font-size: 9.5px; }
+  .meta .lbl { background: #e8f5ee; font-weight: 700; width: 52%; color: #1a3a26; }
+  .tagline { text-align: center; font-style: italic; font-size: 9.5px; color: #555; margin: 3px 0; }
+  .title { text-align: center; background: #00733c; color: #fff; font-size: 15px; font-weight: 800; letter-spacing: 0.14em; padding: 7px 8px; margin: 8px 0; border-radius: 2px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+  .panel { border: 1px solid #bbb; border-radius: 2px; overflow: hidden; }
+  .panel-h { background: #e8f5ee; color: #00733c; font-weight: 800; font-size: 10.5px; padding: 4px 8px; border-bottom: 1px solid #bbb; text-transform: uppercase; letter-spacing: 0.05em; }
+  .panel-b { padding: 0; }
+  .row { display: grid; grid-template-columns: 40% 1fr; font-size: 9.5px; border-bottom: 1px solid #e8e8e8; }
+  .row:last-child { border-bottom: none; }
+  .row .lbl { font-weight: 700; color: #374151; background: #f7fbf8; padding: 3px 6px; border-right: 1px solid #e8e8e8; }
+  .row span:last-child { padding: 3px 6px; color: #222; }
+  .cap { background: #e8f5ee; color: #00733c; font-weight: 800; padding: 4px 8px; border: 1px solid #bbb; border-bottom: none; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.05em; border-radius: 2px 2px 0 0; margin-top: 6px; }
+  table.data { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 8px; }
+  table.data th { background: #f3faf6; color: #1f2937; padding: 4px 5px; border: 1px solid #bbb; text-align: left; font-size: 9px; font-weight: 700; }
+  table.data th.num { text-align: right; }
+  table.data td { padding: 3px 5px; border: 1px solid #ccc; vertical-align: top; font-size: 9px; line-height: 1.4; }
+  table.data td.num { text-align: right; }
+  table.data tbody tr:nth-child(even) td { background: #f9fbfa; }
+  .totals-row td { background: #e8f5ee !important; font-weight: 700; font-size: 9.5px; color: #1a3a26; border-top: 2px solid #00733c; }
+  .totals-label { text-align: right !important; padding-right: 8px !important; font-weight: 700; }
+  table.sign td { min-height: 42px; vertical-align: bottom; padding: 6px 5px 3px; font-size: 9px; }
+  table.sign th { font-size: 9px; }
 </style></head><body><div class="page">
   <div class="hdr">
     <div class="co">${logo}<div><div class="co-name">${escapeHtml(data.companyName)}</div><div class="co-addr">${escapeHtml(data.companyAddress)}</div></div></div>
-    ${data.tagline ? `<p class="tagline">${escapeHtml(data.tagline)}</p>` : ""}
-    <table class="meta"><tr><td class="lbl">Job Card No.</td><td>${escapeHtml(h.job_card_no || "—")}</td></tr>
-    <tr><td class="lbl">Date</td><td>${escapeHtml(h.job_card_date || "—")}</td></tr>
-    <tr><td class="lbl">Sales Order No.</td><td>${escapeHtml(h.sales_order_no || "—")}</td></tr>
-    <tr><td class="lbl">Customer PO No.</td><td>${escapeHtml(h.customer_po_no || "—")}</td></tr></table>
+    ${data.tagline ? `<p class="tagline">${escapeHtml(data.tagline)}</p>` : ''}
+    <table class="meta">
+      <tr><td class="lbl">Job Card No.</td><td>${escapeHtml(h.job_card_no || '')}</td></tr>
+      <tr><td class="lbl">Date</td><td>${escapeHtml(h.job_card_date || '')}</td></tr>
+      <tr><td class="lbl">Sales Order No.</td><td>${escapeHtml(h.sales_order_no || '')}</td></tr>
+      <tr><td class="lbl">Customer PO No.</td><td>${escapeHtml(h.customer_po_no || '')}</td></tr>
+    </table>
   </div>
   <div class="title">SALES JOB CARD</div>
   <div class="cols">
     <div class="panel"><div class="panel-h">Customer Details</div><div class="panel-b">
-      <div class="row"><span class="lbl">Customer Name</span><span>${escapeHtml(c.customer_name || "—")}</span></div>
-      <div class="row"><span class="lbl">Contact Person</span><span>${escapeHtml(c.contact_person || "—")}</span></div>
-      <div class="row"><span class="lbl">Phone</span><span>${escapeHtml(c.phone || "—")}</span></div>
-      <div class="row"><span class="lbl">Email</span><span>${escapeHtml(c.email || "—")}</span></div>
-      <div class="row"><span class="lbl">Billing Address</span><span>${escapeHtml(c.billing_address || "—")}</span></div>
+      <div class="row"><span class="lbl">Customer Name</span><span>${escapeHtml(c.customer_name || '')}</span></div>
+      <div class="row"><span class="lbl">Contact Person</span><span>${escapeHtml(c.contact_person || '')}</span></div>
+      <div class="row"><span class="lbl">Phone</span><span>${escapeHtml(c.phone || '')}</span></div>
+      <div class="row"><span class="lbl">Email</span><span>${escapeHtml(c.email || '')}</span></div>
+      <div class="row"><span class="lbl">Billing Address</span><span>${escapeHtml(c.billing_address || '')}</span></div>
     </div></div>
     <div class="panel"><div class="panel-h">Order Details</div><div class="panel-b">
-      <div class="row"><span class="lbl">Sales Order Date</span><span>${escapeHtml(o.sales_order_date || "—")}</span></div>
-      <div class="row"><span class="lbl">Delivery Date</span><span>${escapeHtml(o.delivery_date || "—")}</span></div>
-      <div class="row"><span class="lbl">Product Category</span><span>${escapeHtml(o.product_category || "—")}</span></div>
-      <div class="row"><span class="lbl">End Use</span><span>${escapeHtml(o.end_use || "—")}</span></div>
-      <div class="row"><span class="lbl">Payment Terms</span><span>${escapeHtml(o.payment_terms || "—")}</span></div>
-      <div class="row"><span class="lbl">Priority</span><span>${escapeHtml(o.priority || "—")}</span></div>
-      <div class="row"><span class="lbl">Remarks</span><span>${escapeHtml(o.remarks || "—")}</span></div>
+      <div class="row"><span class="lbl">Sales Order Date</span><span>${escapeHtml(o.sales_order_date || '')}</span></div>
+      <div class="row"><span class="lbl">Delivery Date</span><span>${escapeHtml(o.delivery_date || '')}</span></div>
+      <div class="row"><span class="lbl">Product Category</span><span>${escapeHtml(o.product_category || '')}</span></div>
+      <div class="row"><span class="lbl">End Use</span><span>${escapeHtml(o.end_use || '')}</span></div>
+      <div class="row"><span class="lbl">Payment Terms</span><span>${escapeHtml(o.payment_terms || '')}</span></div>
+      <div class="row"><span class="lbl">Priority</span><span>${escapeHtml(o.priority || '')}</span></div>
+      <div class="row"><span class="lbl">Remarks</span><span>${escapeHtml(o.remarks || '')}</span></div>
     </div></div>
   </div>
   <div class="cap">Product / Job Details</div>
-  <table class="data"><thead><tr><th>Sl.</th><th>Product Code</th><th>Product Name</th><th>Description</th><th>Qty</th><th>UOM</th></tr></thead>
-  <tbody>${lineRows || '<tr><td colspan="6">—</td></tr>'}</tbody></table>
+  <table class="data">
+    <thead>${productTableHeader}</thead>
+    <tbody>${lineRows}</tbody>
+    ${totalRow}
+  </table>
   <div class="cap">Technical Specifications</div>
-  <table class="data"><thead><tr><th>Sl.</th><th>Parameter</th><th>Specification</th></tr></thead><tbody>${specRows}</tbody></table>
-  <table class="data sign"><thead><tr><th>Prepared By</th><th>Checked By</th><th>Approved By</th><th>Date</th></tr></thead>
-  <tbody><tr><td>${escapeHtml(a.prepared_by || "")}</td><td>${escapeHtml(a.checked_by || "")}</td><td>${escapeHtml(a.approved_by || "")}</td><td>${escapeHtml(a.prepared_date || a.approved_date || "")}</td></tr></tbody></table>
+  <table class="data">
+    <thead><tr><th style="width:4%">Sl.</th><th style="width:30%">Parameter</th><th>Specification</th></tr></thead>
+    <tbody>${specRows}</tbody>
+  </table>
+  <table class="data sign">
+    <thead><tr><th>Prepared By</th><th>Checked By</th><th>Approved By</th><th>Date</th></tr></thead>
+    <tbody><tr>
+      <td>${escapeHtml(a.prepared_by || '')}</td>
+      <td>${escapeHtml(a.checked_by || '')}</td>
+      <td>${escapeHtml(a.approved_by || '')}</td>
+      <td>${escapeHtml(a.prepared_date || a.approved_date || '')}</td>
+    </tr></tbody>
+  </table>
 </div></body></html>`;
 }
 
@@ -988,54 +1062,140 @@ export async function downloadSalesJobCardPdf(order, user) {
   doc.setFont("helvetica", "bold");
   doc.text("SALES JOB CARD", pageW / 2, y + 19, { align: "center" });
   y += 36;
+  const fmtVal = (v) => (v == null || v === "—" ? "" : String(v));
   const h = data.header || {};
+  const margin = { left: 30, right: 30 };
   autoTable(doc, {
     startY: y,
+    margin,
     head: [["Job Card No.", "Date", "Sales Order", "Customer PO"]],
-    body: [[h.job_card_no || "—", h.job_card_date || "—", h.sales_order_no || "—", h.customer_po_no || "—"]],
-    styles: { fontSize: 8, cellPadding: 4 },
+    body: [[fmtVal(h.job_card_no), fmtVal(h.job_card_date), fmtVal(h.sales_order_no), fmtVal(h.customer_po_no)]],
+    styles: { fontSize: 8, cellPadding: 4, lineColor: [180, 180, 180], lineWidth: 0.5 },
     theme: "grid",
   });
   const c = data.customer_details || {};
   const o = data.order_details || {};
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 8,
-    head: [["Customer", "Contact", "Phone", "Email"]],
-    body: [[c.customer_name || "—", c.contact_person || "—", c.phone || "—", c.email || "—"]],
-    styles: { fontSize: 8, cellPadding: 4 },
+    margin,
+    head: [["Customer", "Contact", "Phone", "Email", "Billing Address"]],
+    body: [
+      [
+        fmtVal(c.customer_name),
+        fmtVal(c.contact_person),
+        fmtVal(c.phone),
+        fmtVal(c.email),
+        fmtVal(c.billing_address),
+      ],
+    ],
+    styles: { fontSize: 8, cellPadding: 4, lineColor: [180, 180, 180], lineWidth: 0.5 },
     theme: "grid",
   });
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 6,
-    head: [["SO Date", "Delivery", "Category", "Payment Terms", "Priority"]],
-    body: [[o.sales_order_date || "—", o.delivery_date || "—", o.product_category || "—", o.payment_terms || "—", o.priority || "—"]],
-    styles: { fontSize: 8, cellPadding: 4 },
+    margin,
+    head: [["SO Date", "Delivery", "Category", "Payment Terms", "Priority", "Remarks"]],
+    body: [
+      [
+        fmtVal(o.sales_order_date),
+        fmtVal(o.delivery_date),
+        fmtVal(o.product_category),
+        fmtVal(o.payment_terms),
+        fmtVal(o.priority),
+        fmtVal(o.remarks),
+      ],
+    ],
+    styles: { fontSize: 8, cellPadding: 4, lineColor: [180, 180, 180], lineWidth: 0.5 },
     theme: "grid",
   });
   if (data.product_lines?.length) {
+    const hasPricing = data.product_lines.some(
+      (r) => r.unit_price != null || r.line_amount != null || r.total_amount != null
+    );
+    const fmtInrPdf = (v) => {
+      if (v == null || v === '') return '';
+      const n = Number(v);
+      return Number.isNaN(n) ? '' : n.toLocaleString('en-IN');
+    };
+    const head = hasPricing
+      ? [['#', 'Code', 'Product', 'Description', 'Qty', 'UOM', 'Unit Price', 'Amount']]
+      : [['#', 'Code', 'Product', 'Description', 'Qty', 'UOM']];
+    const body = data.product_lines.map((r) =>
+      hasPricing
+        ? [r.sl_no, fmtVal(r.product_code), fmtVal(r.product_name), fmtVal(r.description),
+           r.quantity != null ? String(r.quantity) : '', fmtVal(r.uom), fmtInrPdf(r.unit_price),
+           fmtInrPdf(r.line_amount ?? r.total_amount)]
+        : [r.sl_no, fmtVal(r.product_code), fmtVal(r.product_name), fmtVal(r.description),
+           r.quantity != null ? String(r.quantity) : '', fmtVal(r.uom)]
+    );
+    if (hasPricing) {
+      const totalQty = data.product_lines.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+      const totalAmt = data.product_lines.reduce(
+        (s, r) => s + (Number(r.line_amount ?? r.total_amount) || 0), 0
+      );
+      body.push([
+        { content: 'Total', colSpan: 4, styles: { fontStyle: 'bold', halign: 'right', fillColor: [232, 245, 238] } },
+        { content: String(totalQty.toLocaleString('en-IN')), styles: { fontStyle: 'bold', halign: 'right', fillColor: [232, 245, 238] } },
+        { content: '', styles: { fillColor: [232, 245, 238] } },
+        { content: 'Total Amount', styles: { fontStyle: 'bold', halign: 'right', fillColor: [232, 245, 238] } },
+        { content: `${totalAmt.toLocaleString('en-IN')}`, styles: { fontStyle: 'bold', halign: 'right', fillColor: [232, 245, 238] } },
+      ]);
+    }
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 8,
-      head: [["#", "Code", "Product", "Description", "Qty", "UOM"]],
-      body: data.product_lines.map((r) => [
-        r.sl_no,
-        r.product_code || "—",
-        r.product_name || "—",
-        r.description || "—",
-        r.quantity ?? "—",
-        r.uom || "—",
-      ]),
-      styles: { fontSize: 7.5, cellPadding: 3 },
-      theme: "striped",
+      margin,
+      head,
+      body,
+      styles: { fontSize: 7.5, cellPadding: 4, lineColor: [180, 180, 180], lineWidth: 0.5 },
+      headStyles: { fillColor: [243, 250, 246], textColor: [31, 41, 55], fontStyle: 'bold' },
+      columnStyles: hasPricing
+        ? {
+            0: { halign: 'center', cellWidth: 25 },
+            1: { cellWidth: 80 },
+            2: { cellWidth: 190 },
+            4: { halign: 'right', cellWidth: 40 },
+            5: { halign: 'center', cellWidth: 40 },
+            6: { halign: 'right', cellWidth: 60 },
+            7: { halign: 'right', cellWidth: 65 },
+          }
+        : {
+            0: { halign: 'center', cellWidth: 25 },
+            1: { cellWidth: 90 },
+            2: { cellWidth: 210 },
+            4: { halign: 'right', cellWidth: 45 },
+            5: { halign: 'center', cellWidth: 45 },
+          },
+      theme: 'grid',
     });
   }
   if (data.technical_specifications?.length) {
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 8,
+      margin,
       head: [["#", "Parameter", "Specification"]],
-      body: data.technical_specifications.map((r) => [r.sl_no, r.parameter, r.specification]),
-      styles: { fontSize: 7.5, cellPadding: 3 },
-      theme: "striped",
+      body: data.technical_specifications.map((r) => [r.sl_no, fmtVal(r.parameter), fmtVal(r.specification)]),
+      styles: { fontSize: 7.5, cellPadding: 3, lineColor: [180, 180, 180], lineWidth: 0.5 },
+      headStyles: { fillColor: [243, 250, 246], textColor: [31, 41, 55], fontStyle: 'bold' },
+      columnStyles: { 0: { halign: 'center', cellWidth: 25 }, 1: { cellWidth: 180 } },
+      theme: "grid",
     });
   }
+  const a = data.approval || {};
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 12,
+    margin,
+    head: [["Prepared By", "Checked By", "Approved By", "Date"]],
+    body: [
+      [
+        fmtVal(a.prepared_by),
+        fmtVal(a.checked_by),
+        fmtVal(a.approved_by),
+        fmtVal(a.prepared_date || a.approved_date),
+      ],
+    ],
+    styles: { fontSize: 8, cellPadding: 6, lineColor: [180, 180, 180], lineWidth: 0.5 },
+    headStyles: { fillColor: [243, 250, 246], textColor: [31, 41, 55], fontStyle: 'bold' },
+    theme: "grid",
+  });
   doc.save(`SalesJobCard_${h.job_card_no || h.sales_order_no || "document"}.pdf`);
 }

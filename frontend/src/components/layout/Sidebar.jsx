@@ -34,9 +34,9 @@ import useAuth from "../../hooks/useAuth";
 import { getSidebarMenus } from "../../api/authApi";
 import {
   userCanAccess,
+  userCanAccessMyJobCards,
   userCanAccessApprovalQueue,
   userCanAccessPath,
-  userCanAccessMyJobCards,
   userCanViewBom,
   isStoreManager,
   isProductionManager,
@@ -307,13 +307,11 @@ export function filterStaticNav(user) {
     if (isAcct && !ACCOUNTANT_ALLOWED_SECTIONS.has(section.key)) return null;
     if (isOp && OPERATOR_BLOCKED_SECTIONS.has(section.key)) return null;
     if (section.to) {
-      if (section.operatorOnly) {
-        if (section.key === "myJobCards") {
-          if (!userCanAccessMyJobCards(user)) return null;
-        } else if (!isOp) {
-          return null;
-        }
+      if (section.key === "myJobCards") {
+        if (!userCanAccessMyJobCards(user)) return null;
+        return section;
       }
+      if (!isOp && section.operatorOnly) return null;
       if (!userCanAccess(user, section.module)) return null;
       if (storeMgr && !storeManagerPathAllowed(section.to)) return null;
       return section;

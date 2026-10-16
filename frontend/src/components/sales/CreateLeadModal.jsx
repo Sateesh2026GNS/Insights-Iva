@@ -443,6 +443,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSuccess, leadToEdit
                   onChange={(v) => setForm((f) => ({ ...f, estimated_value: v }))}
                   className={`${inputClass} text-right`}
                   placeholder="Enter estimated value"
+                  showWords={false}
                 />
               </div>
             </div>

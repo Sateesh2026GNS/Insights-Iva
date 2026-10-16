@@ -383,7 +383,7 @@ export default function MachineStatus() {
       return;
     }
     try {
-      await updateMachineStatus(machine.id, tenantId, newStatus, idleReason);
+      await updateMachineStatus(machine.id, newStatus, idleReason);
       addToast(`Machine ${newStatus}`);
       loadMachines();
       setSelected(null);

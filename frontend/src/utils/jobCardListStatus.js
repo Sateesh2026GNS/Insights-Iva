@@ -15,10 +15,21 @@ const WORKFLOW_STATUS_TONES = {
   INVOICED: "success",
 };
 
+// Mirrors the Production Manager pending KPI stages in
+// backend/app/services/dashboard_production_kpis.py.
+const PRODUCTION_QUEUE_PENDING_STATUSES = new Set([
+  "BOM_PENDING",
+  "READY_FOR_PRODUCTION",
+  "PRODUCTION_REWORK",
+  "QUALITY_REJECTED",
+]);
+
 export function erpListStatus(row) {
   const workflowLabel = rowStatusLabel(row);
+  const ws = String(row.workflow_status || "").toUpperCase();
+  if (ws === "BOM_PENDING") return { label: "Pending", tone: "warning" };
+
   if (workflowLabel && row?.is_manual) {
-    const ws = String(row.workflow_status || "").toUpperCase();
     const tone = WORKFLOW_STATUS_TONES[ws] || "progress";
     if (workflowLabel === "Pending Store Review") return { label: workflowLabel, tone: "warning" };
     if (workflowLabel === "Store Reviewed") return { label: workflowLabel, tone: "success" };
@@ -29,7 +40,6 @@ export function erpListStatus(row) {
     return { label: workflowLabel, tone };
   }
 
-  const ws = String(row.workflow_status || "").toUpperCase();
   if (["COMPLETED", "INVOICED", "DELIVERED", "DISPATCHED"].includes(ws)) {
     return { label: "Completed", tone: "success" };
   }
@@ -55,8 +65,19 @@ export const ERP_LIST_STATUS_FILTER_OPTIONS = [
 export function matchesErpListStatusFilter(row, filterValue) {
   if (!filterValue) return true;
   const { label } = erpListStatus(row);
+  if (filterValue === "pending") {
+    return PRODUCTION_QUEUE_PENDING_STATUSES.has(
+      String(row?.workflow_status || "").trim().toUpperCase()
+    );
+  }
   if (filterValue === "not_started") return label === "Not Started";
-  if (filterValue === "in_progress") return label === "In Progress";
+  if (filterValue === "in_progress") {
+    const workflowStatus = String(row?.workflow_status || "").trim().toUpperCase();
+    return (
+      label === "In Progress" ||
+      ["IN_PROGRESS", "RUNNING", "PRODUCTION_IN_PROGRESS", "PRODUCTION_REWORK"].includes(workflowStatus)
+    );
+  }
   if (filterValue === "completed") return label === "Completed";
   return true;
 }

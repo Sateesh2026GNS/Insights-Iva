@@ -59,7 +59,7 @@ function DateTimeField({ value, onChange, error }) {
         type="datetime-local"
         value={value}
         onChange={onChange}
-        className={`ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none ${error ? "border-[var(--color-danger)]" : ""}`}
+        className={`ui-input w-full !pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${error ? "border-[var(--color-danger)]" : ""}`}
       />
       <button
         type="button"
@@ -495,13 +495,13 @@ export default function CreateProductionOrderModal({
                     value={form.operator_name || ""}
                     onChange={(e) => handleChange("operator_name", e.target.value)}
                     placeholder="Enter operator name"
-                    disabled={workflowManaged}
+                    disabled={false}
                     autoFocus
                     className="ui-input flex-1"
                   />
                   <button
                     type="button"
-                      disabled={workflowManaged}
+                    disabled={false}
                     onClick={() => {
                       setCustomOperatorMode(false);
                       handleChange("operator_name", "");
@@ -542,7 +542,7 @@ export default function CreateProductionOrderModal({
                         }
                       }
                     }}
-                    disabled={loadingOptions || workflowManaged}
+                    disabled={loadingOptions}
                     className="ui-select pl-10 w-full"
                   >
                     <option value="">Select Operator</option>
@@ -583,14 +583,9 @@ export default function CreateProductionOrderModal({
                 value={form.operator_id}
                 onChange={(e) => handleChange("operator_id", e.target.value)}
                 placeholder="e.g. OP-104"
-                disabled={workflowManaged}
+                disabled={false}
                 className="ui-input w-full"
               />
-              {workflowManaged ? (
-                <p className="mt-1 text-xs text-[var(--color-text-muted)] md:col-span-2">
-                  Assign operators from the workflow using the row action menu’s “Assign Operator” option.
-                </p>
-              ) : null}
             </label>
 
             <label className="block space-y-1.5">

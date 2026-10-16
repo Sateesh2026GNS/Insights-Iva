@@ -71,16 +71,15 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
 ]);
 
 /** Operator may only open production execution paths (no management/admin). */
-/** Production paths operators may open (planning / allocation excluded). */
+/** Operator-facing production shortcuts; management pages remain manager-only. */
 export const OPERATOR_ALLOWED_CHILDREN = new Set([
-  "/production/work-orders",
-  "/production/schedule",
   "/production/my-machine",
   "/production/my-entry",
 ]);
 
 export const OPERATOR_BLOCKED_CHILDREN = new Set([
   "/production/planning",
+  "/production/schedule",
   "/production/tasks",
   "/production/reports",
 ]);
@@ -92,8 +91,8 @@ export const OPERATOR_ALLOWED_PATHS = new Set([
   "/my-job-cards",
   "/production",
   "/production/dashboard",
+  // The Work Orders page switches operators to their server-scoped assignments.
   "/production/work-orders",
-  "/production/schedule",
   "/production/my-machine",
   "/production/my-entry",
   "/factory-monitor/machine-status",
@@ -330,7 +329,7 @@ export function operatorPathAllowed(pathname) {
   if (OPERATOR_BLOCKED_CHILDREN.has(path)) return false;
   if (OPERATOR_ALLOWED_PATHS.has(path)) return true;
   if (path.startsWith("/production/")) {
-    return OPERATOR_ALLOWED_CHILDREN.has(path) || path.startsWith("/production/work-orders/");
+    return OPERATOR_ALLOWED_CHILDREN.has(path);
   }
   if (path.startsWith("/manufacturing/")) return true;
   if (path.startsWith("/factory-monitor/")) return true;

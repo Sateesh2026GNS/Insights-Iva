@@ -12,9 +12,7 @@ import {
   Users,
   AlertTriangle,
 } from "lucide-react";
-import DashboardReportExport from "../../components/common/DashboardReportExport";
 import KpiCard from "../../components/common/KpiCard";
-import { metricExportRows } from "../../utils/dashboardExportRows";
 
 import Loader from "../../components/common/Loader";
 import { useToast } from "../../context/ToastContext";
@@ -147,26 +145,8 @@ export default function ProductionDashboard() {
     );
   }
 
-  const productionExportRows = metricExportRows([
-    { label: "Job cards pending", value: summary.job_cards_pending ?? 0 },
-    { label: "Job cards in progress", value: summary.job_cards_in_progress ?? 0 },
-    { label: "Produced today", value: formatProducedToday(summary.produced_today) },
-    { label: "Pending QC", value: summary.pending_qc ?? 0 },
-    { label: "Material waiting", value: actions.material_waiting ?? 0 },
-    { label: "Overdue production", value: actions.overdue_production ?? 0 },
-  ]);
-
   return (
-    <div className="min-w-0 max-w-full space-y-5 overflow-x-hidden pb-4">
-      <div className="flex justify-end">
-        <DashboardReportExport
-          title="Production Dashboard"
-          filename="production-dashboard"
-          rows={productionExportRows}
-          disabled={Boolean(error)}
-          module="production"
-        />
-      </div>
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden pb-6">
       {error ? (
         <div className="ui-card flex flex-wrap items-center justify-between gap-3 border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3">
           <p className="text-sm text-[var(--color-danger)]">{error}</p>
@@ -177,8 +157,12 @@ export default function ProductionDashboard() {
       ) : null}
 
       <section className="ui-card overflow-hidden p-0">
-        <div className="border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
-          <h3 className="text-sm font-bold text-[#1e3a5f] sm:text-[15px]">Production Summary</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border-soft)] px-4 py-3.5 sm:px-5">
+          <div>
+            <h3 className="text-sm font-bold text-[var(--color-text)] sm:text-[15px]">Production Summary</h3>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">A quick read on jobs and output for today</p>
+          </div>
+          <span className="rounded-full border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-secondary)]">Today’s snapshot</span>
         </div>
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4">
           <KpiCard
@@ -193,7 +177,7 @@ export default function ProductionDashboard() {
             value={summary.job_cards_in_progress ?? 0}
             icon={PlayCircle}
             tone="info"
-            to="/my-job-cards?status=in_progress"
+            to="/my-job-cards?dept=production&status=in_progress"
           />
           <KpiCard
             label="Produced Today"
@@ -213,8 +197,12 @@ export default function ProductionDashboard() {
       </section>
 
       <section className="ui-card overflow-hidden p-0">
-        <div className="border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
-          <h3 className="text-sm font-bold text-[#1e3a5f] sm:text-[15px]">Action Required</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border-soft)] px-4 py-3.5 sm:px-5">
+          <div>
+            <h3 className="text-sm font-bold text-[var(--color-text)] sm:text-[15px]">Action Required</h3>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Items to resolve to keep production moving</p>
+          </div>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">Needs attention</span>
         </div>
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5">
           <KpiCard

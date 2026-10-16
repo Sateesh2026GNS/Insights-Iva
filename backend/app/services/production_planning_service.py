@@ -36,6 +36,23 @@ IN_PROGRESS_STATUSES = {"in_progress", "running", "quality_check"}
 COMPLETED_STATUSES = {"completed", "closed", "done"}
 
 
+def _effective_workflow_status(
+    workflow_status: str | None, work_order_statuses: list[str]
+) -> str | None:
+    """Resolve stale sales workflow state from the production work orders."""
+    if work_order_statuses:
+        normalized = [str(status or "").strip().lower() for status in work_order_statuses]
+        if all(status in COMPLETED_STATUSES for status in normalized):
+            return "PRODUCTION_COMPLETED"
+        if any(status == "quality_check" for status in normalized):
+            return "QUALITY_CHECK_PENDING"
+        if any(status in IN_PROGRESS_STATUSES or status == "paused" for status in normalized):
+            return "PRODUCTION_IN_PROGRESS"
+        if any(status == "assigned" for status in normalized):
+            return "PRODUCTION_ASSIGNED"
+    return workflow_status
+
+
 def _is_delayed(order: ProductionOrder) -> bool:
     if order.status in COMPLETED_STATUSES or order.status == "cancelled":
         return False
@@ -137,19 +154,10 @@ def _to_list_read(db: Session, tenant_id: int, order: ProductionOrder) -> Produc
         if order.sales_order_id
         else None
     )
-    workflow_status = sales_order.workflow_status if sales_order else None
-    if sales_order and ctx["work_orders"]:
-        child_statuses = [str(child.status or "").strip().lower() for child in ctx["work_orders"]]
-        if all(child_status in COMPLETED_STATUSES for child_status in child_statuses):
-            # Production Planning should show the production stage from its
-            # work orders, even when the linked sales workflow value is stale.
-            workflow_status = "PRODUCTION_COMPLETED"
-        elif any(child_status == "quality_check" for child_status in child_statuses):
-            workflow_status = "QUALITY_CHECK_PENDING"
-        elif any(child_status in IN_PROGRESS_STATUSES or child_status == "paused" for child_status in child_statuses):
-            workflow_status = "PRODUCTION_IN_PROGRESS"
-        elif any(child_status == "assigned" for child_status in child_statuses):
-            workflow_status = "PRODUCTION_ASSIGNED"
+    workflow_status = _effective_workflow_status(
+        sales_order.workflow_status if sales_order else None,
+        [child.status for child in ctx["work_orders"]],
+    )
 
     op_name = getattr(order, "operator_name", None) or (wo.operator_name if wo else None)
     if not op_name and wo and wo.assigned_user_id:
@@ -212,16 +220,38 @@ def get_production_planning_summary(
     db: Session, tenant_id: int
 ) -> ProductionPlanningSummaryRead:
     orders = list_production_orders(db, tenant_id)
-    production_pending = int(
-        db.scalar(
-            select(func.count(ProductionOrder.id))
-            .join(SalesOrder, SalesOrder.id == ProductionOrder.sales_order_id)
-            .where(
-                ProductionOrder.tenant_id == tenant_id,
-                SalesOrder.tenant_id == tenant_id,
-                SalesOrder.workflow_status == "READY_FOR_PRODUCTION",
+    sales_order_ids = {o.sales_order_id for o in orders if o.sales_order_id}
+    sales_status_by_id: dict[int, str | None] = {}
+    if sales_order_ids:
+        sales_status_by_id = {
+            so_id: workflow_status
+            for so_id, workflow_status in db.execute(
+                select(SalesOrder.id, SalesOrder.workflow_status).where(
+                    SalesOrder.tenant_id == tenant_id,
+                    SalesOrder.id.in_(sales_order_ids),
+                )
+            ).all()
+        }
+
+    work_order_statuses_by_po: dict[int, list[str]] = {}
+    production_order_ids = [o.id for o in orders]
+    if production_order_ids:
+        for production_order_id, work_order_status in db.execute(
+            select(WorkOrder.production_order_id, WorkOrder.status).where(
+                WorkOrder.tenant_id == tenant_id,
+                WorkOrder.production_order_id.in_(production_order_ids),
             )
-        ) or 0
+        ).all():
+            work_order_statuses_by_po.setdefault(production_order_id, []).append(work_order_status)
+
+    production_pending = sum(
+        1
+        for order in orders
+        if _effective_workflow_status(
+            sales_status_by_id.get(order.sales_order_id),
+            work_order_statuses_by_po.get(order.id, []),
+        )
+        == "READY_FOR_PRODUCTION"
     )
     counts = {
         "planned": 0,

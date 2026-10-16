@@ -22,7 +22,6 @@ import {
   ListPageShell,
   ListToolbar,
 } from "../../components/common/ListPageShell";
-import { ToolbarPageRefreshButton } from "../../components/common/GlobalRefreshButton";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -595,7 +594,6 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
                 >
                   Filters
                 </Button>
-                <ToolbarPageRefreshButton />
               </>
             }
           />

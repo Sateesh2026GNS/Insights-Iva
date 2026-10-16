@@ -25,4 +25,23 @@ describe("Accounts sidebar navigation", () => {
     const financePaths = (finance?.children || []).map((c) => c.to);
     expect(financePaths).not.toContain("/accounts/dashboard");
   });
+
+  it("includes My Job Cards in filterStaticNav for Accountant, Admin, and Operator", () => {
+    const accountant = {
+      role: "Accountant",
+      permissions: ["dashboard", "accounts", "masters", "documents", "analytics", "alerts", "settings"],
+    };
+    const admin = {
+      role: "Admin",
+      permissions: ["*"],
+    };
+    const operator = {
+      role: "Operator",
+      permissions: ["dashboard", "production"],
+    };
+
+    expect(filterStaticNav(accountant).some((s) => s.key === "myJobCards")).toBe(true);
+    expect(filterStaticNav(admin).some((s) => s.key === "myJobCards")).toBe(true);
+    expect(filterStaticNav(operator).some((s) => s.key === "myJobCards")).toBe(true);
+  });
 });

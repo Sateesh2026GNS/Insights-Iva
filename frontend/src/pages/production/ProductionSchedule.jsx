@@ -69,7 +69,7 @@ function ScheduleEmpty({ message }) {
     <EmptyState
       icon="document"
       title="No records found."
-      description="There is nothing to show here yet."
+      description={message || "There is nothing to show here yet."}
       className="border-none bg-transparent py-12"
     />
   );
@@ -100,7 +100,7 @@ function StatusDot({ status }) {
 function ViewTabs({ view, onChange }) {
   return (
     <div
-      className="inline-flex max-w-full flex-nowrap overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1"
+      className="inline-flex w-max max-w-full shrink-0 flex-nowrap overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1"
       role="tablist"
       aria-label="Schedule views"
     >
@@ -148,7 +148,7 @@ function TimelineView({ rows, onDrop, onCreate }) {
   if (!rows.length) {
     return (
       <ScheduleEmpty
-        message="No machines or work orders found. Add machines and create work orders to see the timeline."
+        message="No active work orders are assigned to machines. Assign a machine to an active work order to show it on this timeline."
         onCreate={onCreate}
       />
     );
@@ -1051,9 +1051,12 @@ export default function ProductionSchedule() {
           <KpiCard label="Pending Orders" value={(dashboard.pending ?? 0).toLocaleString()} icon={ClipboardList} tone="warning" meta="Click to filter" />
         </ClickableKpiCard>
         <ClickableKpiCard onClick={() => applySchedulePreset("delayed")} title="Show delayed orders">
-          <KpiCard label="Delayed" value={dashboard.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
+          <KpiCard label="Delayed Orders" value={dashboard.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
         </ClickableKpiCard>
       </div>
+      <p className="-mt-3 text-xs text-[var(--color-text-muted)]">
+        Target is measured in units. The other summary cards count work orders; the timeline shows active work orders assigned to machines.
+      </p>
 
       {conflicts.length > 0 ? (
         <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--color-warning)]/40 bg-[var(--color-warning-soft)] px-4 py-3">
@@ -1075,13 +1078,13 @@ export default function ProductionSchedule() {
         <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
           <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
             <ViewTabs view={view} onChange={setView} />
-            <p className="whitespace-nowrap text-xs text-[var(--color-text-muted)]">
+            <p className="min-w-0 text-xs leading-5 text-[var(--color-text-muted)]">
               Today · {formatScheduleDate(dashboard.today)}
               {dashboard.machine_utilization_pct != null ? ` · ${dashboard.machine_utilization_pct}% util.` : ""}
               {runningMachines ? ` · ${runningMachines} running` : ""}
             </p>
           </div>
-          <div className="flex flex-nowrap items-center justify-start gap-2 xl:justify-end">
+          <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap xl:justify-self-end">
             <ExportDownloadMenu
               disabled={!(filteredTable.length ? filteredTable : tableRows).length}
               onExport={handleExport}

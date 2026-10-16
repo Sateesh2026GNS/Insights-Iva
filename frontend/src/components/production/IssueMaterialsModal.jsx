@@ -225,7 +225,7 @@ export default function IssueMaterialsModal({ workOrder, onClose, onSuccess, add
           {!workOrder?.sales_order_id ? (
             <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900 dark:bg-blue-950/30">
               <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Store-issued Sales Order
+                Has Store already issued these materials?
               </label>
               <select
                 name="store_sales_order_id"
@@ -234,7 +234,7 @@ export default function IssueMaterialsModal({ workOrder, onClose, onSuccess, add
                 disabled={loadingOptions}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#2563EB] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
-                <option value="">Select the order Store issued (if already issued)</option>
+                <option value="">Select the sales order Store issued</option>
                 {storeReadyOrders.map((order) => (
                   <option key={order.id} value={order.id}>
                     {order.order_number}{order.customer_name ? ` · ${order.customer_name}` : ""}
@@ -242,7 +242,7 @@ export default function IssueMaterialsModal({ workOrder, onClose, onSuccess, add
                 ))}
               </select>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                Linking the matching order prevents a second stock deduction. The server checks product, quantity, and completed Store issue.
+                If Store already issued these materials, choose the matching order here. This links that issue to the work order and prevents a second stock deduction. Leave blank if Store has not issued them yet; this action will issue them now.
               </p>
             </div>
           ) : null}

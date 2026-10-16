@@ -22,6 +22,7 @@ export default function ReportExportToolbar({
   columns,
   title = "Report",
   filename = "report",
+  pdfOptions,
   formats = REPORT_EXPORT_FORMATS,
   onEmail,
   /** When "modal", Email button only opens UI (no success toast). */
@@ -43,14 +44,14 @@ export default function ReportExportToolbar({
     }
     setDownloading(true);
     try {
-      const ok = await runReportExport(format, { rows, columns: exportColumns, title, filename });
+      const ok = await runReportExport(format, { rows, columns: exportColumns, title, filename, pdfOptions });
       if (ok) addToast("Download complete", "success");
     } catch {
       addToast("Unable to generate the report. Please try again.", "error");
     } finally {
       setDownloading(false);
     }
-  }, [rows, exportColumns, title, filename, format, emptyMessage, addToast]);
+  }, [rows, exportColumns, title, filename, format, pdfOptions, emptyMessage, addToast]);
 
   const onEmailClick = useCallback(async () => {
     if (!onEmail) return;

@@ -50,7 +50,7 @@ export default function ExportDownloadMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-1.5 min-w-[168px] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+          className="absolute left-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
         >
           <button
             type="button"

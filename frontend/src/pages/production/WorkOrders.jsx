@@ -61,7 +61,6 @@ import {
 import {
   DEPARTMENTS,
   PRIORITIES,
-  SHIFTS,
   WO_STATUSES,
   canWoIssueMaterials,
   canWoPause,
@@ -272,7 +271,7 @@ function WoRowActions({
   }, [open]);
 
   return (
-    <div className="flex items-center justify-end whitespace-nowrap print:hidden">
+    <div className="flex w-full items-center justify-center whitespace-nowrap print:hidden">
       <div className="relative">
         <span ref={menuBtnRef} className="inline-flex">
           <IconButton
@@ -366,7 +365,20 @@ const defaultFilters = {
 function formatDate(val) {
   if (!val) return "—";
   const d = new Date(val);
-  return isNaN(d.getTime()) ? String(val).slice(0, 10) : d.toLocaleDateString(undefined, { dateStyle: "short" });
+  return isNaN(d.getTime())
+    ? String(val).slice(0, 10)
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function workOrderExportStatus(row) {
+  const status = woStatusLabel(row.status);
+  return row.is_delayed ? `${status} (Delayed)` : status;
+}
+
+function workOrderExportAssignment(row) {
+  return [row.machine_name, row.operator_name]
+    .filter((value) => value && value !== "—" && value !== "Unassigned")
+    .join(" / ") || "—";
 }
 
 // Statuses that count as "pending" (i.e. not yet completed)
@@ -560,12 +572,6 @@ export default function WorkOrders() {
     setAppliedFilters(updated);
     setShowAdvanced(false);
     setPage(1);
-  };
-
-  const handleFilterKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleApplyFilters();
-    }
   };
 
   const filtered = useMemo(() => {
@@ -866,15 +872,18 @@ export default function WorkOrders() {
   };
 
   const exportCols = [
-    { key: "work_order_number", label: "Work Order Number" },
-    { key: "product_name", label: "Product" },
-    { key: "production_order_number", label: "Production Order" },
-    { key: "customer_name", label: "Customer" },
-    { key: "machine_name", label: "Machine" },
-    { key: "planned_quantity", label: "Planned" },
-    { key: "produced_quantity", label: "Produced" },
-    { key: "priority", label: "Priority" },
-    { key: "status", label: "Status" },
+    { key: "work_order_number", label: "Work Order", pdfLabel: "Work Order", pdfWidth: 27, render: (row) => row.work_order_number || "—" },
+    { key: "production_order_number", label: "Production Order", pdfLabel: "Production Order", pdfWidth: 30, render: (row) => row.production_order_number || "—" },
+    { key: "product_name", label: "Product", pdfWidth: 34, render: (row) => cleanProductLabel(row.product_name) || "—" },
+    { key: "customer_name", label: "Customer", pdfWidth: 26, render: (row) => row.customer_name || "—" },
+    { key: "status", label: "Status", pdfWidth: 20, render: workOrderExportStatus, pdfValue: workOrderExportStatus },
+    { key: "planned_quantity", label: "Planned Qty", pdfWidth: 17, pdfAlign: "right" },
+    { key: "produced_quantity", label: "Produced Qty", pdfWidth: 17, pdfAlign: "right", render: (row) => Number(row.produced_quantity ?? row.actual_quantity ?? 0), pdfValue: (row) => Number(row.produced_quantity ?? row.actual_quantity ?? 0) },
+    { key: "remaining_quantity", label: "Remaining Qty", pdfWidth: 18, pdfAlign: "right", render: (row) => Number(row.remaining_quantity ?? Math.max(Number(row.planned_quantity || 0) - Number(row.produced_quantity ?? row.actual_quantity ?? 0), 0)), pdfValue: (row) => Number(row.remaining_quantity ?? Math.max(Number(row.planned_quantity || 0) - Number(row.produced_quantity ?? row.actual_quantity ?? 0), 0)) },
+    { key: "priority", label: "Priority", pdfWidth: 17, render: (row) => String(row.priority || "Medium").replace(/^./, (letter) => letter.toUpperCase()) },
+    { key: "planned_end", label: "Due Date", pdfWidth: 21, render: (row) => formatDate(row.planned_end || row.planned_start), pdfValue: (row) => formatDate(row.planned_end || row.planned_start) },
+    { key: "machine_name", label: "Machine", pdfWidth: 26, render: (row) => row.machine_name || "Unassigned" },
+    { key: "operator_name", label: "Operator", pdfWidth: 24, render: (row) => row.operator_name || "—" },
   ];
 
   const columns = [
@@ -884,8 +893,8 @@ export default function WorkOrders() {
       width: "15rem",
       minWidth: "15rem",
       render: (r) => (
-        <div className="min-w-[7.5rem]">
-          <p className="whitespace-nowrap text-[13px] font-semibold tabular-nums text-[var(--color-text)]" title={r.work_order_number || "—"}>{r.work_order_number || "—"}</p>
+        <div className="min-w-0 max-w-full overflow-hidden">
+          <p className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold tabular-nums text-[var(--color-text)]" title={r.work_order_number || "—"}>{r.work_order_number || "—"}</p>
           <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-muted)]" title={r.production_order_number || undefined}>
             {r.production_order_number ? `PO ${r.production_order_number}` : "No production order"}
           </p>
@@ -926,9 +935,29 @@ export default function WorkOrders() {
       },
     },
     {
+      key: "status",
+      label: "Status",
+      width: "9rem",
+      minWidth: "9rem",
+      render: (r) => (
+        <div className="flex min-w-[8rem] flex-col items-start gap-1">
+          <div className="flex flex-wrap items-center gap-1">
+            <StatusBadge tone={woStatusTone({ ...r, is_delayed: false })}>
+              {woStatusLabel(r.status)}
+            </StatusBadge>
+            {r.is_delayed ? <StatusBadge tone="danger">Delayed</StatusBadge> : null}
+          </div>
+          {r.materials_issued ? (
+            <span className="text-[10px] font-semibold text-emerald-700">Materials issued</span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
       key: "planned_quantity",
       label: "Qty",
       align: "center",
+      className: "work-orders-qty-column",
       width: "9rem",
       minWidth: "9rem",
       render: (r) => {
@@ -936,9 +965,9 @@ export default function WorkOrders() {
         const produced = Number(r.produced_quantity ?? r.actual_quantity ?? 0);
         const remaining = r.remaining_quantity ?? Math.max(planned - produced, 0);
         return (
-          <div className="whitespace-nowrap text-center tabular-nums">
+          <div className="w-full whitespace-nowrap text-center tabular-nums">
             <p className="text-[13px] font-semibold text-[var(--color-text)]">{planned}</p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
+            <p className="text-[11px] text-[var(--color-text-muted)] whitespace-nowrap">
               {produced} done · {remaining} left
             </p>
           </div>
@@ -961,22 +990,6 @@ export default function WorkOrders() {
       render: (r) => <ProgressCell row={r} />,
     },
     {
-      key: "status",
-      label: "Status",
-      width: "9rem",
-      minWidth: "9rem",
-      render: (r) => (
-        <div className="flex flex-col items-start gap-1">
-          <StatusBadge tone={woStatusTone(r)}>
-            {r.is_delayed ? "Delayed" : woStatusLabel(r.status)}
-          </StatusBadge>
-          {r.materials_issued ? (
-            <span className="text-[10px] font-semibold text-emerald-700">Materials issued</span>
-          ) : null}
-        </div>
-      ),
-    },
-    {
       key: "planned_end",
       label: "Due",
       width: "7rem",
@@ -990,10 +1003,12 @@ export default function WorkOrders() {
     {
       key: "actions",
       label: "Actions",
+      align: "center",
+      className: "text-center",
       sortable: false,
       printHidden: true,
-      width: "7rem",
-      minWidth: "7rem",
+      width: "4.5rem",
+      minWidth: "4.5rem",
       render: (r) => (
         <WoRowActions
           row={r}
@@ -1016,7 +1031,10 @@ export default function WorkOrders() {
 
   const handleListExport = (format) => {
     if (format === "pdf") {
-      exportToPdf(filtered, exportCols, "Work Orders", "work-orders");
+      exportToPdf(filtered, exportCols, "Work Orders Report", "work-orders", {
+        variant: "production-work-orders",
+        landscape: true,
+      });
     } else {
       exportToExcel(filtered, exportCols, "work-orders");
     }
@@ -1038,9 +1056,48 @@ export default function WorkOrders() {
           </div>
           <h1 className="text-xl font-bold text-black print-header-title">Work Orders Report</h1>
           <p className="text-xs text-slate-600 mt-1 print-header-meta">
-            Generated on: {new Date().toLocaleDateString()} | Total Work Orders: {filtered.length}
+            Generated on: {new Date().toLocaleDateString("en-GB")} | Total Work Orders: {filtered.length}
             {(user?.full_name || user?.name) ? ` | Printed By: ${user.full_name || user.name}` : ""}
           </p>
+        </div>
+
+        <div className="hidden print:block work-orders-print-report">
+          <table>
+            <thead>
+              <tr>
+                <th>Work Order</th>
+                <th>Production Order</th>
+                <th>Product</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Planned Qty</th>
+                <th>Produced Qty</th>
+                <th>Remaining Qty</th>
+                <th>Priority</th>
+                <th>Due Date</th>
+                <th>Machine</th>
+                <th>Operator</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((row) => (
+                <tr key={row.id || row.work_order_number}>
+                  <td>{row.work_order_number || "—"}</td>
+                  <td>{row.production_order_number || "—"}</td>
+                  <td>{cleanProductLabel(row.product_name) || "—"}</td>
+                  <td>{row.customer_name || "—"}</td>
+                  <td>{workOrderExportStatus(row)}</td>
+                  <td>{Number(row.planned_quantity || 0)}</td>
+                  <td>{Number(row.produced_quantity ?? row.actual_quantity ?? 0)}</td>
+                  <td>{Number(row.remaining_quantity ?? Math.max(Number(row.planned_quantity || 0) - Number(row.produced_quantity ?? row.actual_quantity ?? 0), 0))}</td>
+                  <td>{row.priority || "Medium"}</td>
+                  <td>{formatDate(row.planned_end || row.planned_start)}</td>
+                  <td>{row.machine_name || "Unassigned"}</td>
+                  <td>{row.operator_name || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {pendingView && (
@@ -1141,102 +1198,43 @@ export default function WorkOrders() {
           </div>
 
           {showAdvanced && (
-            <div className="mb-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 print:hidden">
-              <input
-                placeholder="WO Number"
-                value={filters.work_order_number}
-                onChange={(e) => setFilters((f) => ({ ...f, work_order_number: e.target.value }))}
-                onKeyDown={handleFilterKeyDown}
-                className="ui-input"
-              />
-              <input
-                placeholder="Production Order"
-                value={filters.production_order}
-                onChange={(e) => setFilters((f) => ({ ...f, production_order: e.target.value }))}
-                onKeyDown={handleFilterKeyDown}
-                className="ui-input"
-              />
-              <input
-                placeholder="Product"
-                value={filters.product}
-                onChange={(e) => setFilters((f) => ({ ...f, product: e.target.value }))}
-                onKeyDown={handleFilterKeyDown}
-                className="ui-input"
-              />
-              <input
-                placeholder="Customer"
-                value={filters.customer}
-                onChange={(e) => setFilters((f) => ({ ...f, customer: e.target.value }))}
-                onKeyDown={handleFilterKeyDown}
-                className="ui-input"
-              />
-              <input
-                placeholder="Machine"
-                value={filters.machine}
-                onChange={(e) => setFilters((f) => ({ ...f, machine: e.target.value }))}
-                onKeyDown={handleFilterKeyDown}
-                className="ui-input"
-              />
-              <input
-                placeholder="Operator"
-                value={filters.operator}
-                onChange={(e) => setFilters((f) => ({ ...f, operator: e.target.value }))}
-                onKeyDown={handleFilterKeyDown}
-                className="ui-input"
-              />
-              <select
-                value={filters.department}
-                onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))}
-                className="ui-select"
-              >
-                <option value="">Department</option>
-                {DEPARTMENTS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filters.shift}
-                onChange={(e) => setFilters((f) => ({ ...f, shift: e.target.value }))}
-                className="ui-select"
-              >
-                <option value="">Shift</option>
-                {SHIFTS.map((s) => {
-                  const id = typeof s === "object" ? s.id : s;
-                  const label = typeof s === "object" ? s.label : s;
-                  return (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
-              <select
-                value={filters.priority}
-                onChange={(e) => setFilters((f) => ({ ...f, priority: e.target.value }))}
-                className="ui-select"
-              >
-                <option value="">Priority</option>
-                {PRIORITIES.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-                className="ui-select"
-              >
-                <option value="">Status</option>
-                {WO_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {woStatusLabel(s)}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4 xl:col-span-5">
+            <div className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3 print:hidden">
+              <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                  Department
+                  <select
+                    value={filters.department}
+                    onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))}
+                    className="ui-select mt-1 w-full"
+                  >
+                    <option value="">All departments</option>
+                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+                <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                  Priority
+                  <select
+                    value={filters.priority}
+                    onChange={(e) => setFilters((f) => ({ ...f, priority: e.target.value }))}
+                    className="ui-select mt-1 w-full"
+                  >
+                    <option value="">All priorities</option>
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </label>
+                <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                  Status
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                    className="ui-select mt-1 w-full"
+                  >
+                    <option value="">All statuses</option>
+                    {WO_STATUSES.map((s) => <option key={s} value={s}>{woStatusLabel(s)}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
                 <Button variant="primary" type="button" onClick={handleApplyFilters}>
                   Apply Filters
                 </Button>
@@ -1248,7 +1246,7 @@ export default function WorkOrders() {
           )}
 
           {/* Mobile Work Order Cards View */}
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-3 md:hidden print:hidden">
             {paginatedWorkOrders.length === 0 ? (
               <EmptyState
                 icon="document"
@@ -1273,9 +1271,10 @@ export default function WorkOrders() {
                           <span className="font-bold text-sm text-[var(--color-primary)]">
                             {r.work_order_number || "—"}
                           </span>
-                          <StatusBadge tone={woStatusTone(r)}>
-                            {r.is_delayed ? "Delayed" : woStatusLabel(r.status)}
+                          <StatusBadge tone={woStatusTone({ ...r, is_delayed: false })}>
+                            {woStatusLabel(r.status)}
                           </StatusBadge>
+                          {r.is_delayed ? <StatusBadge tone="danger">Delayed</StatusBadge> : null}
                           <PriorityPill priority={r.priority} />
                         </div>
                         {r.production_order_number && (
@@ -1384,10 +1383,11 @@ export default function WorkOrders() {
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-hidden rounded-lg border border-[#ececf0] print:border-none print:shadow-none">
+          <div className="planning-table-panel hidden md:block print:hidden">
             <DataTable
               columns={columns}
               data={paginatedWorkOrders}
+              tableClassName="production-planning-table work-orders-table"
               showSearch={false}
               showPagination={false}
               emptyState={
@@ -1484,8 +1484,11 @@ export default function WorkOrders() {
               <div className="flex items-center gap-4 mt-1">
                 <PriorityPill priority={printDetailWorkOrder.priority} />
                 <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize border border-slate-300">
-                  {printDetailWorkOrder.is_delayed ? "Delayed" : woStatusLabel(printDetailWorkOrder.status)}
+                  {woStatusLabel(printDetailWorkOrder.status)}
                 </span>
+                {printDetailWorkOrder.is_delayed ? (
+                  <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold border border-red-300 text-red-700 bg-red-50">Delayed</span>
+                ) : null}
                 {printDetailWorkOrder.materials_issued ? (
                   <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-300 bg-emerald-50">
                     Materials Issued

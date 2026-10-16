@@ -809,6 +809,59 @@
   align-items: center;
 }
 
+/* ── Production Planning-style ERP toolbar filter ─────────────────────────── */
+.erp-section-header .my-job-cards-search-toggle--open,
+.ui-section-title .my-job-cards-search-toggle--open {
+  background: #e8f5ee;
+  color: var(--erp-primary-dark, #1b5e20);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.my-job-cards-filters--erp-fields {
+  padding: 0.875rem 1rem;
+  background: var(--color-surface-muted, #f8fafc);
+  border-bottom: 1px solid var(--color-border-soft, #e2e8f0);
+}
+
+.my-job-cards-filters--erp-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .my-job-cards-filters--erp-fields-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .my-job-cards-filters--erp-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 900px) {
+  .my-job-cards-filters--erp-fields-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr) auto;
+  }
+}
+
+.my-job-cards-filters--erp-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  align-self: end;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.my-job-cards-filters--erp-actions .ui-btn {
+  min-height: var(--control-h-lg, 2.75rem);
+  padding: 0.5rem 1.125rem;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+}
+
 .my-job-cards-filters__grid {
   display: grid;
   grid-template-columns: 1fr;

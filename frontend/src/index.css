@@ -1219,46 +1219,27 @@ input[type="datetime-local"],
 input[type="month"],
 input[type="time"],
 .ui-date-input {
+  position: relative;
   color-scheme: light dark;
   font-family: var(--font-sans);
 }
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-input[type="month"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.65;
-  filter: opacity(0.85);
-}
-input[type="date"]::-webkit-calendar-picker-indicator:hover,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
-input[type="month"]::-webkit-calendar-picker-indicator:hover,
-input[type="time"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-/* Avoid duplicate chrome on native date controls (Edge / Chrome) */
-input[type="date"]::-webkit-inner-spin-button,
-input[type="datetime-local"]::-webkit-inner-spin-button,
-input[type="time"]::-webkit-inner-spin-button {
-  display: none;
-}
-input[type="date"]::-webkit-clear-button,
-input[type="datetime-local"]::-webkit-clear-button {
-  display: none;
-}
-/* Custom calendar button (FormField / DatePicker) — single icon only */
+
+/* Custom calendar button (FormField / DatePicker) — single icon only, anchored at calendar button */
 .ui-date-input::-webkit-calendar-picker-indicator,
 .relative > input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .relative > input[type="date"]::-webkit-calendar-picker-indicator {
-  display: none !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  width: 0 !important;
-  height: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  width: 2.5rem !important;
+  height: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  display: block !important;
+  background: transparent !important;
+  color: transparent !important;
 }
 .ui-date-range-popover {
   z-index: 80;
@@ -2306,14 +2287,75 @@ table > tbody > tr:first-child:has(th) {
 .planning-table-panel {
   min-width: 0;
   width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-table-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-table-bg);
+  box-shadow: var(--shadow-sm);
 }
 .planning-table-panel .ui-table-wrap {
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  border: 0;
+  border-radius: inherit;
+}
+.planning-table-panel .ui-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+.planning-table-panel .ui-table-wrap tbody td {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+}
+.planning-table-panel .ui-table-wrap tbody tr {
+  transition: background-color 0.15s ease;
+}
+.planning-table-panel .production-planning-table thead th:last-child,
+.planning-table-panel .production-planning-table tbody td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  box-shadow: -8px 0 10px -10px rgb(15 23 42 / 45%);
+}
+.planning-table-panel .production-planning-table thead th:last-child {
+  z-index: 3;
+  background-color: var(--color-table-header);
+}
+.planning-table-panel .production-planning-table tbody td:last-child {
+  background-color: var(--color-table-bg);
+}
+.planning-table-panel .production-planning-table tbody tr:nth-child(even) td:last-child {
+  background-color: var(--color-table-row-alt);
+}
+.planning-table-panel .production-planning-table tbody tr:hover td:last-child {
+  background-color: var(--color-table-row-hover);
 }
 .planning-table-panel .ui-table-wrap table {
   min-width: 960px;
+}
+.planning-table-panel .ui-table-wrap .production-planning-table {
+  min-width: 78rem;
+  table-layout: fixed;
+}
+.planning-table-panel .ui-table-wrap .work-orders-table {
+  min-width: 88rem;
+}
+.planning-table-panel .ui-table-wrap .work-orders-table th.work-orders-qty-column,
+.planning-table-panel .ui-table-wrap .work-orders-table td.work-orders-qty-column {
+  width: 9rem !important;
+  min-width: 9rem !important;
+  text-align: center !important;
+}
+.planning-table-panel .work-orders-table thead th:last-child,
+.planning-table-panel .work-orders-table tbody td:last-child {
+  position: static;
+  right: auto;
+  z-index: auto;
+  box-shadow: none;
 }
 .ui-empty {
   padding: var(--space-12) var(--space-4);
