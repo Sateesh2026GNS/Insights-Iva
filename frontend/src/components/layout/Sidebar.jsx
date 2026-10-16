@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -25,11 +25,15 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Plus,
+  PhoneCall,
+  Zap,
   X,
 } from "lucide-react";
 
 import BrandLogo from "../common/BrandLogo";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
+import GlobalCreateMenu from "../common/GlobalCreateMenu";
+import { getGlobalCreateActionsForUser } from "../../config/globalCreateActions";
 import useAuth from "../../hooks/useAuth";
 import { getSidebarMenus } from "../../api/authApi";
 import {
@@ -389,11 +393,17 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const navigate = useNavigate();
   const [apiNav, setApiNav] = useState(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const createButtonRef = useRef(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const storeMode = isStoreManager(user);
   const salesMode = isSalesManager(user);
   const productionMode = isProductionManager(user);
   const qualityMode = isQualityTeam(user);
+
+  useEffect(() => {
+    setCreateOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -479,7 +489,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     }
 
     const roleJobCardUrl = getRoleJobCardUrl(user);
-    return dedupeNavSections(result).map((section) => {
+    const roleNav = dedupeNavSections(result).map((section) => {
       if (section.key === "myJobCards") {
         return {
           ...section,
@@ -498,7 +508,16 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       }
       return section;
     });
+    return [
+      ...roleNav,
+      { key: "contactUs", label: "Contact Us", to: "/contact", icon: PhoneCall, end: true },
+    ];
   }, [apiNav, user, storeMode, salesMode]);
+
+  const createActions = useMemo(
+    () => getGlobalCreateActionsForUser(user, visibleNav),
+    [user, visibleNav]
+  );
 
   const [expanded, setExpanded] = useState(() =>
     buildInitialExpanded(location.pathname, visibleNav)
@@ -797,6 +816,21 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       </div>
 
       <nav className={`sidebar-scroll flex-1 space-y-0.5 py-4 ${collapsed ? "px-2 overflow-visible" : "overflow-x-hidden overflow-y-auto px-3"}`}>
+        {createActions.length > 0 && (
+          <button
+            ref={createButtonRef}
+            type="button"
+            onClick={() => setCreateOpen((open) => !open)}
+            className={`mb-3 flex min-h-11 w-full items-center rounded-xl bg-[var(--color-nav-active)] px-3 text-sm font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)] ${collapsed ? "justify-center" : "justify-center gap-2.5"}`}
+            aria-label="Create"
+            aria-expanded={createOpen}
+            aria-haspopup="menu"
+            title={collapsed ? "Create" : undefined}
+          >
+            <Zap className="h-5 w-5 fill-current" strokeWidth={2} aria-hidden />
+            {!collapsed && <span>Create</span>}
+          </button>
+        )}
         {visibleNav.map((section, sectionIdx) => {
           const isLowerHalf = sectionIdx > 4;
 
@@ -984,6 +1018,15 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           );
         })}
       </nav>
+
+      <GlobalCreateMenu
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        anchorRef={createButtonRef}
+        palette
+        navSections={visibleNav}
+        onSelect={() => onClose?.()}
+      />
 
       {!collapsed && !storeMode && (
         <div className="shrink-0 space-y-2.5 border-t border-white/10 px-3 py-3">

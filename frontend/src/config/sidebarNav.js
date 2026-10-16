@@ -224,10 +224,10 @@ export const SIDEBAR_NAV = [
   {
     key: "meetings",
     labelKey: "erpNav.meetings",
+    to: "/meetings",
     icon: CalendarDays,
-    children: [
-      { labelKey: "erpNav.allMeetings", to: "/meetings", module: "meetings", end: true },
-    ],
+    module: "meetings",
+    end: true,
   },
   {
     key: "chat",

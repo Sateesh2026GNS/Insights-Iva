@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Calendar,
   ChevronLeft,
@@ -30,6 +30,7 @@ import { deleteInvoice, getInvoicesV2 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -96,42 +97,24 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, tone, onClick }) {
-  const toneStyles = {
-    blue: {
-      active: "border-[#0f6d84] text-[#0f6d84]",
-      hover: "hover:border-[#0f6d84] hover:text-[#0f6d84]",
-    },
-    purple: {
-      active: "border-[#0f6d84] text-[#0f6d84]",
-      hover: "hover:border-[#0f6d84] hover:text-[#0f6d84]",
-    },
-    green: {
-      active: "border-[#16a34a] text-[#16a34a]",
-      hover: "hover:border-[#16a34a] hover:text-[#16a34a]",
-    },
-    orange: {
-      active: "border-[#ea580c] text-[#ea580c]",
-      hover: "hover:border-[#ea580c] hover:text-[#ea580c]",
-    },
-  };
-  const currentTone = toneStyles[tone] || toneStyles.purple;
-
+function SummaryTab({ label, count, amount, active, onClick }) {
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`min-w-[125px] sm:min-w-0 flex-1 shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:px-5 sm:py-2 ${
         active
-          ? `bg-[var(--color-surface)] ${currentTone.active}`
-          : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
+          ? "border-[var(--color-primary)] bg-[var(--color-surface,#ffffff)] text-[var(--color-text,#0f172a)] shadow-sm"
+          : "border-transparent bg-[var(--color-surface-muted,#f8fafc)] text-[var(--color-text-muted,#64748b)] hover:bg-[var(--color-surface,#ffffff)]"
       }`}
     >
-      <p className={`text-[12px] sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
-        {label}{" "}
-        <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? "font-semibold text-indigo-900 dark:text-indigo-300" : "font-medium text-slate-600 dark:text-slate-400"}`}>
+        {label} <span className="text-slate-400 font-normal">({count})</span>
       </p>
-      <p className={`mt-1 text-[15px] sm:text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
         {amount}
       </p>
     </button>
@@ -157,26 +140,6 @@ export default function InvoiceDashboard() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
   const [dateTo, setDateTo] = useState("2027-03-31");
-  const dateFromRef = useRef(null);
-  const dateToRef = useRef(null);
-
-  const openDateFrom = () => {
-    if (typeof dateFromRef.current?.showPicker === "function") {
-      dateFromRef.current.showPicker();
-    } else {
-      dateFromRef.current?.focus();
-      dateFromRef.current?.click();
-    }
-  };
-
-  const openDateTo = () => {
-    if (typeof dateToRef.current?.showPicker === "function") {
-      dateToRef.current.showPicker();
-    } else {
-      dateToRef.current?.focus();
-      dateToRef.current?.click();
-    }
-  };
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [sortId, setSortId] = useState("date_desc");
@@ -282,79 +245,35 @@ export default function InvoiceDashboard() {
 
   return (
     <div className="min-h-full bg-[var(--color-bg)] px-3 py-4 sm:px-6 sm:py-5">
-      {/* Toolbar row 1: calendar + create */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full items-center justify-between sm:w-auto sm:justify-start gap-2 rounded-full bg-[var(--color-surface)] px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[13px] text-[var(--color-text-secondary)] shadow-sm shadow-[#00000010] border border-[var(--color-border-soft)]">
-          <button
-            type="button"
-            onClick={openDateFrom}
-            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
-            aria-label="Open start date picker"
-          >
-            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
-          <input
-            ref={dateFromRef}
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-            className="sr-only"
-          />
-          <button
-            type="button"
-            onClick={openDateFrom}
-            className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
-            title="Click to select start date"
-          >
-            {fmtDisplayDate(dateFrom) || "Start Date"}
-          </button>
-          <span className="text-[var(--color-text-faint)] select-none">→</span>
-          <button
-            type="button"
-            onClick={openDateTo}
-            className="text-xs sm:text-[14px] font-medium text-[#2c2b3d] dark:text-slate-100 hover:text-[#0f6d84] transition-colors cursor-pointer"
-            title="Click to select end date"
-          >
-            {fmtDisplayDate(dateTo) || "End Date"}
-          </button>
-          <input
-            ref={dateToRef}
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-            className="sr-only"
-          />
-          <button
-            type="button"
-            onClick={openDateTo}
-            className="flex items-center justify-center text-[var(--color-text-muted)] hover:text-[#0f6d84] transition-colors cursor-pointer"
-            aria-label="Open end date picker"
-          >
-            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
-        </div>
-        <div className="w-full sm:w-auto">
-          <Button variant="add" to="/sales/invoices/create" className="w-full sm:w-auto justify-center" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Create Invoice
-          </Button>
-        </div>
+      {/* Date range and create action aligned like the Quotations toolbar */}
+      <div className="mb-3 flex flex-col items-start gap-3 sm:ml-4 sm:flex-row sm:items-center">
+        <InlineNativeDateRange
+          from={dateFrom}
+          to={dateTo}
+          fromId="invoice-from-date"
+          toId="invoice-to-date"
+          onFromChange={(value) => {
+            setDateFrom(value);
+            setPage(1);
+          }}
+          onToChange={(value) => {
+            setDateTo(value);
+            setPage(1);
+          }}
+        />
+        <Button variant="add" to="/sales/invoices/create" className="w-full justify-center sm:w-auto" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+          Create Invoice
+        </Button>
       </div>
 
       {/* KPI strip */}
-      <div className="mb-4 overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
-        <div className="flex overflow-x-auto scrollbar-none sm:flex-wrap">
+      <div className="mb-0 w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+        <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Invoice payment status">
           <SummaryTab
             label="Total Sales"
             count={kpis.all.count}
             amount={formatInr(kpis.all.amount)}
             active={kpiFilter === "all"}
-            tone="blue"
             onClick={() => setKpiFilter("all")}
           />
           <SummaryTab
@@ -362,7 +281,6 @@ export default function InvoiceDashboard() {
             count={kpis.unpaid.count}
             amount={formatInr(kpis.unpaid.amount)}
             active={kpiFilter === "unpaid"}
-            tone="purple"
             onClick={() => setKpiFilter("unpaid")}
           />
           <SummaryTab
@@ -370,7 +288,6 @@ export default function InvoiceDashboard() {
             count={kpis.paid.count}
             amount={formatInr(kpis.paid.amount)}
             active={kpiFilter === "paid"}
-            tone="green"
             onClick={() => setKpiFilter("paid")}
           />
           <SummaryTab
@@ -378,72 +295,69 @@ export default function InvoiceDashboard() {
             count={kpis.partial.count}
             amount={formatInr(kpis.partial.amount)}
             active={kpiFilter === "partial"}
-            tone="orange"
             onClick={() => setKpiFilter("partial")}
           />
         </div>
       </div>
 
-      {/* Search row: under KPI cards */}
-      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search" />
-      </div>
-
-      {/* Toolbar row 2: filters + sort (right) */}
-      <div className="relative mb-3 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={openFilters}
-          className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-        >
-          <Filter className="h-4 w-4" />
-          Filters
-        </button>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowSort((v) => !v)}
-            className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium ${
-              showSort
-                ? "bg-[#dcdce3] text-[var(--color-text)]"
-                : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-            }`}
-          >
-            <ListFilter className="h-4 w-4" />
-            Sort by
-          </button>
-          {showSort && (
-            <>
+      {/* Search, list actions, and table share one aligned panel */}
+      <section className="ui-list-card space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search" />
+          <div className="flex items-center justify-end gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={openFilters}
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+            </button>
+            <div className="relative">
               <button
                 type="button"
-                className="fixed inset-0 z-10 cursor-default"
-                aria-label="Close sort"
-                onClick={() => setShowSort(false)}
-              />
-              <div className="absolute right-0 z-20 mt-1.5 w-[260px] overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)] py-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-                {SORT_OPTIONS.map((opt) => (
+                onClick={() => setShowSort((v) => !v)}
+                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium ${
+                  showSort
+                    ? "bg-[#dcdce3] text-[var(--color-text)]"
+                    : "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                }`}
+              >
+                <ListFilter className="h-4 w-4" />
+                Sort by
+              </button>
+              {showSort && (
+                <>
                   <button
-                    key={opt.id}
                     type="button"
-                    onClick={() => {
-                      setSortId(opt.id);
-                      setShowSort(false);
-                    }}
-                    className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)] ${
-                      sortId === opt.id ? "font-semibold text-[var(--color-text)]" : "font-normal text-[var(--color-text-secondary)]"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-label="Close sort"
+                    onClick={() => setShowSort(false)}
+                  />
+                  <div className="absolute right-0 z-20 mt-1.5 w-[260px] overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)] py-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setSortId(opt.id);
+                          setShowSort(false);
+                        }}
+                        className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)] ${
+                          sortId === opt.id ? "font-semibold text-[var(--color-text)]" : "font-normal text-[var(--color-text-secondary)]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Table card */}
-      <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
         <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
           <table className="ui-table w-full min-w-[880px] border-collapse text-left">
             <thead className="ui-table-head">
@@ -596,7 +510,8 @@ export default function InvoiceDashboard() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* Filters drawer ΓÇö full sections from screenshot */}
       {showFilters && (

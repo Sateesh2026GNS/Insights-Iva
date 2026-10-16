@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Building2, ChevronDown, FileText, Grid2x2, GripVertical, ImagePlus, Paperclip, MapPin, Package, PenLine, Plane, Plus, Ban, Search, Ship, TrainFront, Trash2, Truck, User, X } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, ChevronDown, FileText, Grid2x2, GripVertical, ImagePlus, Paperclip, MapPin, Package, PenLine, Plane, Plus, Ban, Search, Ship, TrainFront, Trash2, Truck, User, X } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -108,7 +108,8 @@ function PrefixDropdown({ value, options, onChange, onAddNew }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center justify-between border-0 border-b border-[var(--color-text)] bg-transparent py-2 text-left text-[13px] font-medium text-[var(--color-text)] focus:outline-none"
+        aria-expanded={open}
+        className="flex min-h-[var(--control-h)] w-full items-center justify-between rounded-[var(--control-radius)] border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-[var(--control-padding-x)] py-[var(--control-padding-y)] text-left text-sm font-medium text-[var(--color-text)] transition focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
       >
         <span>{value || "No Prefix"}</span>
         <ChevronDown className={`h-4 w-4 text-[var(--color-text-muted)] transition ${open ? "rotate-180" : ""}`} />
@@ -116,8 +117,8 @@ function PrefixDropdown({ value, options, onChange, onAddNew }) {
       {open ? (
         <>
           <button type="button" className="fixed inset-0 z-10 cursor-default" aria-label="Close prefix menu" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg">
-            <div className="space-y-2 p-2">
+          <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] py-1 shadow-lg">
+            <div>
               {["", ...options].map((prefix) => (
                 <button
                   key={prefix || "none"}
@@ -126,8 +127,10 @@ function PrefixDropdown({ value, options, onChange, onAddNew }) {
                     onChange(prefix);
                     setOpen(false);
                   }}
-                  className={`block w-full rounded-lg border-2 py-2.5 text-center text-[13px] font-bold ${
-                    value === prefix ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)]" : "border-[var(--color-primary)]/70 bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)]"
+                  className={`block w-full rounded-none px-3 py-2 text-left text-[13px] transition-colors ${
+                    value === prefix
+                      ? "bg-[var(--color-primary-soft)] font-semibold text-[var(--color-primary)]"
+                      : "font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                   }`}
                 >
                   {prefix || "No Prefix"}
@@ -140,7 +143,7 @@ function PrefixDropdown({ value, options, onChange, onAddNew }) {
                 setOpen(false);
                 onAddNew();
               }}
-              className="w-full bg-[var(--color-primary-soft)] py-3 text-center text-[13px] font-semibold text-[var(--color-primary)] hover:opacity-90"
+              className="mt-1 w-full border-t border-[var(--color-border-soft)] px-3 py-2.5 text-left text-[13px] font-semibold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-soft)]"
             >
               + Add New Prefix
             </button>
@@ -721,9 +724,9 @@ export default function CreatePurchaseOrder() {
           {/* Top: purchase type + company buyer — bordered two-column panel */}
           <div className="grid overflow-visible rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] lg:grid-cols-[1fr_1.35fr]">
           <section className="overflow-visible border-b border-[var(--color-border)] p-4 lg:border-b-0 lg:border-r">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <label className="relative block overflow-visible">
-                <FieldLabel>Purchase Order Prefix</FieldLabel>
+            <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(9rem,1.1fr)_minmax(8rem,0.9fr)_minmax(10.5rem,1.35fr)]">
+              <label className="relative block min-w-0 overflow-visible">
+                <div className="whitespace-nowrap"><FieldLabel>Purchase Order Prefix</FieldLabel></div>
                 <PrefixDropdown
                   value={form.po_prefix}
                   options={prefixOptions}
@@ -731,20 +734,27 @@ export default function CreatePurchaseOrder() {
                   onAddNew={() => setPrefixModalOpen(true)}
                 />
               </label>
-              <label className="block">
-                <FieldLabel>Purchase Order No.</FieldLabel>
+              <label className="block min-w-0">
+                <div className="whitespace-nowrap"><FieldLabel>Purchase Order No.</FieldLabel></div>
                 <SoftInput
                   value={form.po_number}
                   onChange={(e) => setForm((f) => ({ ...f, po_number: e.target.value }))}
                 />
               </label>
-              <label className="block">
-                <FieldLabel>Purchase Order Date</FieldLabel>
-                <SoftInput
-                  type="date"
-                  value={form.order_date}
-                  onChange={(e) => setForm((f) => ({ ...f, order_date: e.target.value }))}
-                />
+              <label className="block min-w-0">
+                <div className="whitespace-nowrap"><FieldLabel>Purchase Order Date</FieldLabel></div>
+                <div className="relative">
+                  <SoftInput
+                    type="date"
+                    className="ui-date-indicator-trailing min-w-[10.5rem]"
+                    value={form.order_date}
+                    onChange={(e) => setForm((f) => ({ ...f, order_date: e.target.value }))}
+                  />
+                  <Calendar
+                    className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+                    aria-hidden="true"
+                  />
+                </div>
               </label>
             </div>
           </section>
@@ -1063,14 +1073,15 @@ export default function CreatePurchaseOrder() {
                           value={row.qty}
                           onChange={(val) => updateItem(rowKey, "qty", val)}
                           placeholder="0"
-                          className="w-24 text-[12px]"
+                          containerClassName="min-w-[9rem]"
+                          className="text-[12px]"
                         />
                       </td>
                       <td className={cell}>
                         <select
                           value={row.unit}
                           onChange={(e) => updateItem(rowKey, "unit", e.target.value)}
-                          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1 py-1.5"
+                          className="po-line-item-select po-line-item-select--unit w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)]"
                         >
                           <option value="">Unit</option>
                           {row.unit && !["pcs", "KGS", "MT"].includes(row.unit) ? (
@@ -1087,14 +1098,15 @@ export default function CreatePurchaseOrder() {
                           onChange={(val) => updateItem(rowKey, "rate", val)}
                           prefix="₹"
                           placeholder="0"
-                          className="w-24 text-[12px]"
+                          containerClassName="min-w-[12rem]"
+                          className="text-[12px]"
                         />
                       </td>
                       <td className={cell}>
                         <select
                           value={row.tax_type}
                           onChange={(e) => updateItem(rowKey, "tax_type", e.target.value)}
-                          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-1.5"
+                          className="po-line-item-select po-line-item-select--tax w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)]"
                         >
                           <option>Exclusive</option>
                           <option>Inclusive</option>

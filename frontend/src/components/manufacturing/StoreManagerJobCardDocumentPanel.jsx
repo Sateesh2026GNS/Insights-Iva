@@ -20,7 +20,7 @@ import { getCompanySettings } from "../../api/settingsApi";
 import { getManualJobCard, getMaterialCheck } from "../../api/workflowApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { erpListStatus } from "../../utils/jobCardListStatus";
-import { printSalesJobCardLandscape } from "../../utils/printUtils";
+import { printSalesJobCardLandscape, downloadSalesJobCardPdf } from "../../utils/printUtils";
 
 export default function StoreManagerJobCardDocumentPanel({
   orderId = null,
@@ -394,7 +394,26 @@ export default function StoreManagerJobCardDocumentPanel({
                     }
                     leftIcon={<Printer className="h-4 w-4" aria-hidden />}
                   >
-                    Print Sales JC
+                    Print
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      downloadSalesJobCardPdf(
+                        isManual
+                          ? {
+                              card: manualCard,
+                              salesDocument: manualCard?.sales_document,
+                              companyProfile: profile,
+                            }
+                          : soPrintPayload(),
+                        user
+                      )
+                    }
+                    leftIcon={<Download className="h-4 w-4" aria-hidden />}
+                  >
+                    Download PDF
                   </Button>
                 </div>
               </div>

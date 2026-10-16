@@ -1,6 +1,7 @@
 import { createElement, lazy } from "react";
 
 export const Landing = lazy(() => import("../pages/Landing"));
+export const ContactUs = lazy(() => import("../pages/contact/ContactUs"));
 export const Login = lazy(() => import("../pages/auth/Login"));
 export const SuperAdminLogin = lazy(() => import("../pages/platform/SuperAdminLogin"));
 export const SuperAdminVerifyOtp = lazy(() => import("../pages/platform/SuperAdminVerifyOtp"));

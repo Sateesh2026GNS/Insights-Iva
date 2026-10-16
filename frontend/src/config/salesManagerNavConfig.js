@@ -90,11 +90,10 @@ export const SALES_MANAGER_NAV_ITEMS = [
   {
     key: "meetings",
     label: "Meetings",
+    to: "/meetings",
     icon: CalendarDays,
     module: "meetings",
-    children: [
-      { key: "meetingsList", label: "Meetings", to: "/meetings", icon: CalendarDays, module: "meetings", end: true },
-    ],
+    end: true,
   },
   {
     key: "chat",

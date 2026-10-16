@@ -521,9 +521,21 @@ input[type="password"],
 input[type="search"],
 input[type="tel"],
 input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
 select,
 textarea {
   min-height: 2.5rem;
+}
+
+/* Date/time inputs — prevent native calendar icon overlapping the date value */
+input[type="date"]:not(.ui-input),
+input[type="datetime-local"]:not(.ui-input),
+input[type="month"]:not(.ui-input),
+input[type="time"]:not(.ui-input) {
+  padding-right: 2.25rem;
 }
 
 /* Card surface */
@@ -1148,6 +1160,27 @@ select {
   padding-right: 2.5rem;
 }
 
+/* Compact the purchase-order line selects so values remain visible beside the chevron. */
+.po-line-item-select {
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  padding: 0.375rem 1.75rem 0.375rem 0.5rem;
+  background-position: right 0.5rem center;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: var(--color-text);
+}
+.po-line-item-select--unit {
+  min-width: 6rem;
+}
+.po-line-item-select--tax {
+  min-width: 8rem;
+}
+
+select::-ms-expand {
+  display: none;
+}
+
 /* Brand teal highlight for "Add New" and "Create" options across all dropdowns */
 select option[value^="__add"],
 select option[value*="add_"],
@@ -1217,6 +1250,42 @@ input[type="time"],
   font-family: var(--font-sans);
 }
 
+/* Ensure the calendar picker icon never overlaps the date value text */
+input[type="date"].ui-input,
+input[type="datetime-local"].ui-input,
+input[type="month"].ui-input,
+input[type="time"].ui-input {
+  padding-right: 2.5rem;
+}
+
+/* Standardise the native calendar picker indicator size & alignment */
+input[type="date"].ui-input::-webkit-calendar-picker-indicator,
+input[type="datetime-local"].ui-input::-webkit-calendar-picker-indicator,
+input[type="month"].ui-input::-webkit-calendar-picker-indicator,
+input[type="time"].ui-input::-webkit-calendar-picker-indicator {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.25rem;
+  opacity: 0.5;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Keep the purchase-order date icon aligned at the field's trailing edge. */
+input[type="date"].ui-input.ui-date-indicator-trailing {
+  padding-right: 2.5rem;
+}
+input[type="date"].ui-input.ui-date-indicator-trailing::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2.5rem;
+  height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  opacity: 0;
+}
+
 /* Custom calendar button (FormField / DatePicker) — single icon only, anchored at calendar button */
 .ui-date-input::-webkit-calendar-picker-indicator,
 .relative > input[type="datetime-local"]::-webkit-calendar-picker-indicator,
@@ -1242,10 +1311,13 @@ input[type="time"],
 .ui-date-range-control {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  width: fit-content;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  width: max-content;
+  flex: 0 0 auto;
+  height: 4rem;
   max-width: 100%;
-  padding: 0.375rem 0.75rem;
+  padding: 0.375rem 0.625rem;
   border-radius: var(--radius-lg, 0.75rem);
   border: 1px solid var(--color-border-soft);
   background: var(--color-surface);
@@ -1257,13 +1329,27 @@ input[type="time"],
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
+.ui-date-range-control__content {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 0.25rem;
+  width: max-content;
+  margin: 0 !important;
+  white-space: nowrap;
+}
 .ui-date-range-control__segment {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  flex: 0 0 auto;
+  width: max-content;
+  margin: 0;
+  white-space: nowrap;
+  gap: 0.3rem;
   border: none;
   background: transparent;
-  padding: 0.125rem 0.25rem;
+  padding: 0.125rem 0.125rem;
   border-radius: var(--radius-md, 0.5rem);
   cursor: pointer;
   color: inherit;
@@ -3219,6 +3305,21 @@ html.has-sticky-page-footer .app-shell-fab-stack {
   outline: none;
   background: var(--color-primary-soft);
   color: var(--color-primary);
+}
+
+/* Palette card — KPI-style coloured border on hover */
+.gcm-palette-card {
+  border: 1.5px solid transparent;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background-color 0.15s ease;
+}
+.gcm-palette-card:hover {
+  border-color: var(--gcm-accent, var(--color-primary));
+  box-shadow: 0 4px 14px -3px color-mix(in srgb, var(--gcm-accent, var(--color-primary)) 30%, transparent);
+  transform: translateY(-1px);
+  background-color: color-mix(in srgb, var(--gcm-accent, var(--color-primary)) 6%, #f1f5f9);
+}
+.dark .gcm-palette-card:hover {
+  background-color: color-mix(in srgb, var(--gcm-accent, var(--color-primary)) 12%, #1e293b);
 }
 
 /* ========== Dark theme — harmonize hardcoded light utilities ==========

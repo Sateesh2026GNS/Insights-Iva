@@ -210,7 +210,6 @@ export default function Login() {
                     disabled={loading}
                     aria-label="Role"
                     className={`${fieldClass} cursor-pointer pr-10`}
-                    style={{ WebkitAppearance: "none", MozAppearance: "none", appearance: "none" }}
                   >
                     <option value="" disabled>
                       Select Role *
@@ -221,16 +220,6 @@ export default function Login() {
                       </option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
                 </div>
 
                 <div className="relative">

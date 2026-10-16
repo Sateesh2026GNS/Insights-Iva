@@ -134,7 +134,7 @@ export default function SalesJobCardViewModal({ row, open, onClose, onEdit, canE
               Print
             </Button>
             <Button variant="secondary" size="sm" onClick={handlePdf} leftIcon={<Download className="h-4 w-4" aria-hidden />} disabled={loading || Boolean(error)}>
-              PDF
+              Download PDF
             </Button>
             <button
               type="button"

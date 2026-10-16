@@ -111,7 +111,8 @@ function SummaryTab({ label, count, amount, active, onClick }) {
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-w-[125px] flex-1 shrink-0 border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-3 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
         active
           ? "border-[var(--color-primary)] bg-[var(--color-surface,#ffffff)] text-[var(--color-text,#0f172a)] shadow-sm"
           : "border-transparent bg-[var(--color-surface-muted,#f8fafc)] text-[var(--color-text-muted,#64748b)] hover:bg-[var(--color-surface,#ffffff)]"
@@ -349,9 +350,33 @@ export default function Quotations() {
   }
 
   return (
-    <ListPageShell stackClassName="space-y-4">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)] flex-1 max-w-2xl">
+    <ListPageShell stackClassName="!gap-0 space-y-0">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="quotation-from-date"
+            toId="quotation-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <Link
+            to="/sales/quotations/create"
+            className="inline-flex h-[42px] w-[143px] items-center justify-center gap-1 rounded-lg bg-[var(--color-primary,#2563eb)] px-1 py-0 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            Create Quotation
+          </Link>
+        </div>
+
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
           <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Quotation status">
             <SummaryTab
               label="All Quotations"
@@ -384,31 +409,9 @@ export default function Quotations() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <InlineNativeDateRange
-            from={dateFrom}
-            to={dateTo}
-            fromId="quotation-from-date"
-            toId="quotation-to-date"
-            onFromChange={(value) => {
-              setDateFrom(value);
-              setPage(1);
-            }}
-            onToChange={(value) => {
-              setDateTo(value);
-              setPage(1);
-            }}
-          />
-          <Link
-            to="/sales/quotations/create"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary,#2563eb)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-            Create Quotation
-          </Link>
-        </div>
       </div>
 
+      <section className="ui-list-card space-y-4 p-4 sm:p-5">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar value={search} onChange={setSearch} placeholder="Search" />
         <div className="flex items-center gap-2 shrink-0">
@@ -605,7 +608,16 @@ export default function Quotations() {
       {/* Desktop Table View */}
       <div className="hidden md:block overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
         <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-[13px]">
+          <table className="w-full table-fixed border-collapse text-left text-[13px]">
+            <colgroup>
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "12%" }} />
+            </colgroup>
               <thead className="ui-table-head">
               <tr>
                 <SerialNumberHeader className="border-b border-r border-[var(--color-table-border)]" />
@@ -782,6 +794,7 @@ export default function Quotations() {
             </button>
           </div>
       </div>
+      </section>
 
       {showFilters ? (
         <div

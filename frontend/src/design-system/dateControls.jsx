@@ -679,6 +679,7 @@ export function InlineNativeDateRange({
   return (
     <div
       className={`ui-date-range-control ${className}`.trim()}
+      style={{ display: "inline-flex", flexDirection: "row", boxSizing: "border-box", width: "max-content", maxWidth: "100%", height: 42, justifyContent: "flex-start", alignItems: "center", gap: 4, padding: "4px 8px", overflow: "hidden" }}
       role="group"
       aria-label="Date range"
     >
@@ -706,29 +707,31 @@ export function InlineNativeDateRange({
         className="sr-only"
         tabIndex={-1}
       />
-      <button
-        type="button"
-        onClick={openFrom}
-        className="ui-date-range-control__segment ui-date-range-control__segment--from"
-        aria-label={`${fromLabel}: ${formatDisplayDate(from) || "not set"}`}
-      >
-        <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
-        <span className="font-medium tabular-nums text-[var(--color-text)]">
-          {formatDisplayDate(from) || "Start date"}
-        </span>
-      </button>
-      <span className="ui-date-range-control__sep" aria-hidden>—</span>
-      <button
-        type="button"
-        onClick={openTo}
-        className="ui-date-range-control__segment ui-date-range-control__segment--to"
-        aria-label={`${toLabel}: ${formatDisplayDate(to) || "not set"}`}
-      >
-        <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
-        <span className="font-medium tabular-nums text-[var(--color-text)]">
-          {formatDisplayDate(to) || "End date"}
-        </span>
-      </button>
+      <div className="ui-date-range-control__content" style={{ display: "inline-flex", flex: "0 0 auto", alignItems: "center", justifyContent: "flex-start", gap: 4, width: "max-content", whiteSpace: "nowrap" }}>
+        <button
+          type="button"
+          onClick={openFrom}
+          className="ui-date-range-control__segment ui-date-range-control__segment--from"
+          aria-label={`${fromLabel}: ${formatDisplayDate(from) || "not set"}`}
+        >
+          <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
+          <span className="font-medium tabular-nums text-[var(--color-text)]">
+            {formatDisplayDate(from) || "Start date"}
+          </span>
+        </button>
+        <span className="ui-date-range-control__sep" aria-hidden>—</span>
+        <button
+          type="button"
+          onClick={openTo}
+          className="ui-date-range-control__segment ui-date-range-control__segment--to"
+          aria-label={`${toLabel}: ${formatDisplayDate(to) || "not set"}`}
+        >
+          <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
+          <span className="font-medium tabular-nums text-[var(--color-text)]">
+            {formatDisplayDate(to) || "End date"}
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

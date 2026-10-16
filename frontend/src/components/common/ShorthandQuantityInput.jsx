@@ -11,6 +11,7 @@ export default function ShorthandQuantityInput({
   onChange,
   placeholder = "e.g. 500",
   className = "",
+  containerClassName = "",
   error = false,
   id,
   name,
@@ -131,7 +132,7 @@ export default function ShorthandQuantityInput({
       : "Type amount (e.g. 500)";
 
   return (
-    <div className="relative w-full min-w-[72px] flex items-center">
+    <div className={`relative flex w-full min-w-[72px] items-center ${containerClassName}`.trim()}>
       {prefix ? (
         <span className="absolute left-2.5 text-xs font-semibold text-slate-400 pointer-events-none select-none z-10">
           {prefix}

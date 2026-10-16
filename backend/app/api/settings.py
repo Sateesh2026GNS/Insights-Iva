@@ -1,6 +1,8 @@
 import logging
+import html
+import re
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -25,6 +27,32 @@ MODULE = "admin"
 class SalesInquiryRequest(BaseModel):
     message: str | None = Field(None, max_length=2000)
     preferred_plan: str | None = Field(None, max_length=64)
+
+
+class ContactInquiryRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    email: str = Field(..., min_length=3, max_length=254)
+    phone: str | None = Field(None, max_length=40)
+    message: str = Field(..., min_length=1, max_length=4000)
+
+    @field_validator("name", "email", "phone", "message", mode="before")
+    @classmethod
+    def trim_text_fields(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("name", "message")
+    @classmethod
+    def reject_blank_required_fields(cls, value: str) -> str:
+        if not value:
+            raise ValueError("This field cannot be blank.")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def validate_contact_email(cls, value: str) -> str:
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
+            raise ValueError("Enter a valid email address.")
+        return value
 
 
 @router.get("/address/pincode/{pincode}")
@@ -119,6 +147,54 @@ def contact_sales_endpoint(
         preferred_plan=payload.preferred_plan,
     )
     return success_response(data.get("message") or "Inquiry submitted", data)
+
+
+@router.post("/contact")
+async def send_contact_inquiry_endpoint(
+    payload: ContactInquiryRequest,
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Deliver authenticated contact form submissions to the Codevia support inbox."""
+    from app.services.email_service import EmailDeliveryError, send_email_async
+
+    subject = f"Insights Iva contact message from {payload.name}"
+    body = (
+        "A new message was sent from the Insights Iva Contact Us page.\n\n"
+        f"Name: {payload.name}\n"
+        f"Email: {payload.email}\n"
+        f"Phone: {payload.phone or 'Not provided'}\n"
+        f"Account email: {user.email or 'Not available'}\n"
+        f"User ID: {user.id}\n\n"
+        "Message:\n"
+        f"{payload.message}\n"
+    )
+    safe = {key: html.escape(value or "") for key, value in {
+        "name": payload.name,
+        "email": payload.email,
+        "phone": payload.phone or "Not provided",
+        "account_email": user.email or "Not available",
+        "message": payload.message,
+    }.items()}
+    html_body = (
+        '<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6">'
+        '<h2>New Insights Iva contact message</h2>'
+        f'<p><b>Name:</b> {safe["name"]}<br><b>Email:</b> {safe["email"]}'
+        f'<br><b>Phone:</b> {safe["phone"]}<br><b>Account email:</b> {safe["account_email"]}</p>'
+        f'<p><b>Message:</b><br>{safe["message"].replace(chr(10), "<br>")}</p></div>'
+    )
+    try:
+        await send_email_async(
+            to="info@codeviasoftware.com",
+            subject=subject,
+            body=body,
+            html=html_body,
+            require_smtp=True,
+        )
+    except EmailDeliveryError as exc:
+        logger.exception("Failed to deliver Insights Iva contact inquiry from user_id=%s", user.id)
+        raise HTTPException(status_code=503, detail=exc.public_message) from exc
+
+    return success_response("Your message was sent. We’ll be in touch soon.")
 
 
 @router.get("/company", response_model=CompanySettingsRead)
