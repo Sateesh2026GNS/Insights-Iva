@@ -189,7 +189,7 @@ export default function Purchases() {
   return (
     <div className="min-h-full bg-[#F5F5F5] p-4 sm:p-6">
       <div className="mb-4 flex w-full flex-wrap items-center justify-end gap-2.5">
-        <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)]">
+        <div className="relative inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)]">
           <button
             type="button"
             onClick={() => dateFromRef.current?.showPicker?.() || dateFromRef.current?.click()}
@@ -204,6 +204,9 @@ export default function Purchases() {
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="sr-only"
+            aria-hidden="true"
+            tabIndex={-1}
+            style={{ position: "absolute", width: 1, height: 1, minHeight: 0, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0,0,0,0)", border: 0, opacity: 0, pointerEvents: "none" }}
           />
           <button
             type="button"
@@ -228,6 +231,9 @@ export default function Purchases() {
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             className="sr-only"
+            aria-hidden="true"
+            tabIndex={-1}
+            style={{ position: "absolute", width: 1, height: 1, minHeight: 0, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0,0,0,0)", border: 0, opacity: 0, pointerEvents: "none" }}
           />
           <button
             type="button"
@@ -243,7 +249,7 @@ export default function Purchases() {
           to="/purchases/create"
           leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
         >
-          Create New
+          Create Purchase
         </Button>
       </div>
 
