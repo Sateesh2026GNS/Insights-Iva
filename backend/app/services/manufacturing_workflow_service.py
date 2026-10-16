@@ -66,7 +66,7 @@ def sales_order_has_final_qc_pass(
 def link_grn_to_incoming_quality_inspection(
     db: Session, tenant_id: int, gr, *, commit: bool = True
 ) -> QualityInspection | None:
-    """Mirror GRN QC pass into QualityInspection (incoming) for spine consistency."""
+    """Keep one incoming quality inspection synchronized with its GRN."""
     existing = db.scalars(
         select(QualityInspection).where(
             QualityInspection.tenant_id == tenant_id,
@@ -74,9 +74,6 @@ def link_grn_to_incoming_quality_inspection(
             QualityInspection.po_reference == (gr.grn_number or ""),
         )
     ).first()
-    if existing:
-        return existing
-
     first_line = (gr.line_items or [None])[0] if getattr(gr, "line_items", None) else None
     material_name = None
     qty = None
@@ -85,20 +82,40 @@ def link_grn_to_incoming_quality_inspection(
         item = getattr(first_line, "item", None)
         material_name = getattr(item, "name", None) if item else None
 
-    qi = QualityInspection(
-        tenant_id=tenant_id,
-        inspection_number=f"QI-IN-{gr.grn_number}",
-        inspection_date=date.today(),
-        result="pass",
-        inspection_type="incoming",
-        status="completed",
-        po_reference=gr.grn_number,
-        material_name=material_name,
-        quantity=qty,
-        notes=f"Auto-linked from GRN {gr.grn_number} QC pass",
-        approval="approved",
+    qc_status = (gr.qc_status or "pending").strip().lower()
+    if qc_status in {"pass", "passed", "approved"}:
+        result, inspection_status, approval = "pass", "approved", "approved"
+    elif qc_status in {"fail", "failed", "reject", "rejected"}:
+        result, inspection_status, approval = "fail", "rejected", "rejected"
+    else:
+        result, inspection_status, approval = "pending", "pending", None
+
+    if existing:
+        qi = existing
+    else:
+        qi = QualityInspection(
+            tenant_id=tenant_id,
+            inspection_number=f"QI-IN-{gr.grn_number}",
+            inspection_type="incoming",
+            po_reference=gr.grn_number,
+        )
+        db.add(qi)
+
+    qi.inspection_date = gr.receipt_date or date.today()
+    qi.result = result
+    qi.status = inspection_status
+    qi.approval = approval
+    qi.vendor_name = (
+        gr.purchase_order.supplier.name
+        if getattr(gr, "purchase_order", None)
+        and getattr(gr.purchase_order, "supplier", None)
+        else qi.vendor_name
     )
-    db.add(qi)
+    qi.material_name = material_name or qi.material_name
+    qi.quantity = qty if qty is not None else qi.quantity
+    qi.operator_name = gr.received_by or qi.operator_name
+    if not qi.notes:
+        qi.notes = f"Incoming QC linked to GRN {gr.grn_number}"
     if commit:
         db.commit()
         db.refresh(qi)

@@ -166,10 +166,10 @@ export const SIDEBAR_NAV = [
     labelKey: "erpNav.quality",
     icon: CheckCircle2,
     children: [
-      { labelKey: "erpNav.qualityDashboard", to: "/quality", module: "quality" },
       { labelKey: "erpNav.incomingInspection", to: "/quality/incoming", module: "quality" },
       { labelKey: "erpNav.inProcessQc", to: "/quality/in-process", module: "quality" },
       { labelKey: "erpNav.finalQc", to: "/quality/final", module: "quality" },
+      { label: "Quality Check Queue", to: "/my-job-cards?dept=quality", module: "quality" },
       { labelKey: "erpNav.batchReports", to: "/quality/batch-reports", module: "quality" },
     ],
   },

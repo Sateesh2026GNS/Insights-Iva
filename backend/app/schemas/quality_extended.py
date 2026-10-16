@@ -1,4 +1,5 @@
-from typing import Any
+from datetime import date
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -38,6 +39,30 @@ class IncomingInspectionRead(BaseModel):
         return None
 
 
+class IncomingInspectionUpdate(BaseModel):
+    inspection_date: date | None = None
+    vendor_name: str | None = Field(None, max_length=255)
+    material_name: str | None = Field(None, max_length=255)
+    batch_code: str | None = Field(None, max_length=64)
+    quantity: float | None = Field(None, ge=0)
+    inspector: str | None = Field(None, max_length=255)
+    inspection_time_minutes: float | None = Field(None, ge=0)
+    notes: str | None = None
+    status: Literal["pending", "in_progress", "approved", "passed", "rejected"] | None = None
+
+
+class IncomingInspectionCreate(BaseModel):
+    inspection_number: str = Field(..., min_length=1, max_length=64)
+    inspection_date: date
+    vendor_name: str | None = Field(None, max_length=255)
+    material_name: str | None = Field(None, max_length=255)
+    batch_code: str | None = Field(None, max_length=64)
+    quantity: float = Field(0, ge=0)
+    inspector: str | None = Field(None, max_length=255)
+    inspection_time_minutes: float | None = Field(None, ge=0)
+    notes: str | None = None
+
+
 class ProcessQCSummaryRead(BaseModel):
     production_running: int = Field(0, ge=0)
     qc_pending: int = Field(0, ge=0)
@@ -49,15 +74,31 @@ class ProcessQCSummaryRead(BaseModel):
 
 class ProcessQCRead(BaseModel):
     id: int = Field(..., ge=1)
+    qc_number: str | None = None
+    inspection_date: str | None = None
     work_order_number: str | None = None
     machine_name: str | None = None
     shift: str | None = None
     operator_name: str | None = None
     inspection_time: str | None = None
     qc_status: str = "pending"
+    result: str | None = None
     remarks: str | None = None
     product_name: str | None = None
     batch_code: str | None = None
+
+
+class ProcessQCCreate(BaseModel):
+    inspection_date: date
+    work_order_number: str = Field(..., min_length=1, max_length=64)
+    machine_name: str | None = Field(None, max_length=255)
+    shift: str | None = Field(None, max_length=64)
+    operator_name: str | None = Field(None, max_length=255)
+    inspection_time_minutes: float | None = Field(None, ge=0)
+    product_name: str | None = Field(None, max_length=255)
+    batch_code: str | None = Field(None, max_length=64)
+    qc_status: str = "pending"
+    remarks: str | None = None
 
 
 class FinalQCSummaryRead(BaseModel):
@@ -81,7 +122,20 @@ class FinalQCRead(BaseModel):
     result: str = "pending"
     status: str = "pending"
     inspector: str | None = None
+    checked_by: str | None = None
+    remarks: str | None = None
     inspection_date: str | None = None
+
+
+class FinalQCInspectionCreate(BaseModel):
+    inspection_number: str = Field(..., min_length=1, max_length=64)
+    inspection_date: date
+    customer_name: str | None = Field(None, max_length=255)
+    sales_order_number: str | None = Field(None, max_length=64)
+    product_name: str | None = Field(None, max_length=255)
+    batch_code: str | None = Field(None, max_length=64)
+    inspector: str | None = Field(None, max_length=255)
+    notes: str | None = None
 
 
 class BatchReportSummaryRead(BaseModel):
@@ -183,6 +237,8 @@ class QualityHubRead(BaseModel):
     yield_pct: float = Field(0.0, ge=0.0, le=100.0)
     defect_rate: float = Field(0.0, ge=0.0, le=100.0)
     pass_vs_fail: list[dict] = Field(default_factory=list)
+    inspection_trend: list[dict] = Field(default_factory=list)
+    inspection_by_type: list[dict] = Field(default_factory=list)
     defect_trend: list[dict] = Field(default_factory=list)
     monthly_yield: list[dict] = Field(default_factory=list)
     supplier_quality: list[dict] = Field(default_factory=list)

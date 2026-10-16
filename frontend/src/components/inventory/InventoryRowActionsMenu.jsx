@@ -21,14 +21,17 @@ export default function InventoryRowActionsMenu({
   showRemoveStock = false,
   showDelete = true,
   addLabel = "Add",
+  editLabel = "Edit",
+  editIcon,
   menuWidth = 168,
 }) {
   const btnRef = useRef(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const EditIcon = editIcon || Pencil;
 
   const items = [
     showView ? { key: "view", label: "View", icon: Eye, onClick: onView } : null,
-    showEdit ? { key: "edit", label: "Edit", icon: Pencil, onClick: onEdit } : null,
+    showEdit ? { key: "edit", label: editLabel, icon: EditIcon, onClick: onEdit } : null,
     showAddStock && onAddStock
       ? { key: "addStock", label: "Add Stock", icon: Plus, onClick: onAddStock }
       : null,

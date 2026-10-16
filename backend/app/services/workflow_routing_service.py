@@ -855,7 +855,9 @@ def serialize_queue_order(
                 product_name = p.name or product_name
                 product_code = getattr(p, "sku", None) or getattr(p, "code", None)
 
-    ws = so.workflow_status
+    from app.services.workflow_state_service import infer_workflow_status_from_legacy
+
+    ws = infer_workflow_status_from_legacy(db, so.tenant_id, so) or so.workflow_status
     label = workflow_status_label(ws)
     delivery = (
         job_card.required_delivery_date

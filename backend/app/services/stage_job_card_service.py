@@ -23,6 +23,7 @@ from app.models.production import ProductionOrder, WorkOrder
 from app.models.quality import QualityInspection
 from app.models.sales import DispatchShipment, Invoice, SalesOrder, SalesOrderLine
 from app.models.user import User
+from app.services.workflow_state_service import infer_workflow_status_from_legacy
 
 STAGE_PREFIX = {
     "inventory_check": "IC",
@@ -260,7 +261,7 @@ def _order_context(db: Session, tenant_id: int, sales_order_id: int) -> dict[str
         ),
         "sales_job_card_no": sjc.job_card_no if sjc else None,
         "sales_job_card_id": sjc.id if sjc else None,
-        "workflow_status": (so.workflow_status or "").upper(),
+        "workflow_status": (infer_workflow_status_from_legacy(db, tenant_id, so) or "").upper(),
     }
 
 

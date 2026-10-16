@@ -23,9 +23,11 @@ export const DEMO_INCOMING_SUMMARY = EMPTY_INCOMING_SUMMARY;
 export const DEMO_INCOMING_LIST = [];
 
 export function normalizeIncomingStatus(row) {
-  const raw = String(row?.status || row?.result || "").toLowerCase();
+  const rawStatus = String(row?.status || "").toLowerCase();
+  const raw = rawStatus || String(row?.result || "").toLowerCase();
   if (["pass", "passed", "approved"].includes(raw)) return "approved";
   if (["fail", "failed", "rejected"].includes(raw)) return "rejected";
+  if (raw === "completed" && ["pass", "passed", "approved"].includes(String(row?.result || "").toLowerCase())) return "approved";
   return "in_progress";
 }
 
@@ -73,9 +75,9 @@ export const DEMO_PROCESS_SUMMARY = EMPTY_PROCESS_SUMMARY;
 export const DEMO_PROCESS_LIST = [];
 
 export function normalizeProcessStatus(row) {
-  const raw = String(row?.status || row?.qc_status || row?.result || "").toLowerCase();
-  if (["pass", "passed", "approved", "conforming"].includes(raw)) return "passed";
-  if (["fail", "failed", "rejected", "non_conforming", "non-conforming"].includes(raw)) return "failed";
+  const values = [row?.status, row?.qc_status, row?.result].map((value) => String(value || "").toLowerCase());
+  if (values.some((value) => ["pass", "passed", "approved", "conforming"].includes(value))) return "passed";
+  if (values.some((value) => ["fail", "failed", "rejected", "non_conforming", "non-conforming"].includes(value))) return "failed";
   return "in_progress";
 }
 
