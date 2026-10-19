@@ -23,7 +23,7 @@ import {
   markAllAlertsRead,
   resolveAlert,
 } from "../../api/alertsApi";
-import { getUsers } from "../../api/adminApi";
+import { getTeamDirectory } from "../../api/adminApi";
 import { isAdmin, isOperator, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import Button from "../../components/common/Button";
@@ -183,7 +183,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
 
       const [alertsRes, usersRes] = await Promise.allSettled([
         getAlerts(params),
-        getUsers(),
+        getTeamDirectory(),
       ]);
 
 
@@ -548,12 +548,6 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
             placeholder="Search"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={clearAlertFilters}>
-              Clear Filters
-            </Button>
-            <Button type="button" variant="primary" size="sm" onClick={applyAlertFilters}>
-              Apply Filters
-            </Button>
             <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
               <Filter className="h-4 w-4" />
               Filters

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { Moon, Sun, TrendingDown, TrendingUp } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart,
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart,
@@ -81,6 +81,7 @@ export default function ProductionAnalytics() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(emptyData);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [appearance, setAppearance] = useState("day");
   const [activeKpi, setActiveKpi] = useState(null);
   const [filters, setFilters] = useState({
     fiscalYear: currentFiscalYearLabel(), month: "All Months", quarter: "All Quarters",
@@ -183,8 +184,8 @@ export default function ProductionAnalytics() {
 
   if (loading && !data.kpis?.length) {
     return (
-      <div className="production-analytics-page production-analytics-page--toolkit min-h-full min-w-0 w-full">
-        <div className="mtk-root mtk-theme--yellow">
+      <div className={`production-analytics-page production-analytics-page--toolkit${appearance === "night" ? " production-analytics-page--night" : ""} min-h-full min-w-0 w-full`}>
+        <div className="mtk-root mtk-theme--teal">
           {toolkitHero}
           <div className="mtk-body production-analytics-loading">
             <Loader label="Loading production analytics…" />
@@ -196,8 +197,8 @@ export default function ProductionAnalytics() {
 
   if (error && !data.kpis?.length) {
     return (
-      <div className="production-analytics-page production-analytics-page--toolkit min-h-full min-w-0 w-full">
-        <div className="mtk-root mtk-theme--yellow">
+      <div className={`production-analytics-page production-analytics-page--toolkit${appearance === "night" ? " production-analytics-page--night" : ""} min-h-full min-w-0 w-full`}>
+        <div className="mtk-root mtk-theme--teal">
           {toolkitHero}
           <div className="mtk-body production-analytics-error">
             <AnalyticsErrorState message={error} onRetry={() => load()} />
@@ -214,13 +215,31 @@ export default function ProductionAnalytics() {
   const legend = MTK_ANALYTICS_LEGEND;
 
   return (
-    <div className="production-analytics-page production-analytics-page--toolkit min-h-full min-w-0 w-full">
-      <div className="mtk-root mtk-theme--yellow">
+    <div className={`production-analytics-page production-analytics-page--toolkit${appearance === "night" ? " production-analytics-page--night" : ""} min-h-full min-w-0 w-full`}>
+      <div className="mtk-root mtk-theme--teal">
         {toolkitHero}
         {toolkitKpiRow}
 
         <div className="mtk-body min-w-0">
           <div className="production-analytics-toolbar">
+            <div className="production-analytics-appearance" role="group" aria-label="Page appearance">
+              <button
+                type="button"
+                className={appearance === "day" ? "is-active" : ""}
+                aria-pressed={appearance === "day"}
+                onClick={() => setAppearance("day")}
+              >
+                <Sun size={14} aria-hidden /> Day
+              </button>
+              <button
+                type="button"
+                className={appearance === "night" ? "is-active" : ""}
+                aria-pressed={appearance === "night"}
+                onClick={() => setAppearance("night")}
+              >
+                <Moon size={14} aria-hidden /> Night
+              </button>
+            </div>
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"

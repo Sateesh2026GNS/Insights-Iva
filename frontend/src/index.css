@@ -3245,11 +3245,11 @@ table > tbody > tr:first-child:has(th) {
   scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }
 
-/* Desktop sidebar collapse — centered on sidebar right edge, overlaps content slightly */
+/* Desktop sidebar collapse — keep the toggle fully inside the sidebar edge */
 .app-sidebar__collapse-btn {
   position: absolute;
   top: 50%;
-  right: -1.125rem; /* ~18px */
+  right: 0;
   transform: translateY(-50%);
   width: 2.125rem;
   height: 3.375rem; /* ~54px */

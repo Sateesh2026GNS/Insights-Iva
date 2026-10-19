@@ -1130,17 +1130,18 @@ export default function WorkOrders() {
                   className="w-full max-w-md"
                 />
                 <div className="work-orders-panel__toolbar-end">
-                  <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
+                  <Button variant="secondary" size="sm" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
                     {showAdvanced ? "Hide Filters" : "Filters"}
                   </Button>
-                  <ExportDownloadMenu disabled={!filtered.length} onExport={handleListExport} />
-                  <Button variant="secondary" type="button" onClick={handleGlobalPrint} title="Print">
+                  <ExportDownloadMenu size="sm" disabled={!filtered.length} onExport={handleListExport} />
+                  <Button variant="secondary" size="sm" type="button" onClick={handleGlobalPrint} title="Print">
                     <Printer className="h-4 w-4" />
                     <span className="hidden sm:inline">Print</span>
                   </Button>
                   {!isOperator(user) && (
                     <Button
                       variant="add"
+                      size="sm"
                       type="button"
                       onClick={() => setShowQuickModal(true)}
                       leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
@@ -1201,10 +1202,10 @@ export default function WorkOrders() {
                     </label>
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    <Button variant="primary" type="button" onClick={handleApplyFilters}>
+                    <Button variant="primary" size="sm" type="button" onClick={handleApplyFilters}>
                       Apply Filters
                     </Button>
-                    <Button variant="secondary" type="button" onClick={handleClearFilters}>
+                    <Button variant="secondary" size="sm" type="button" onClick={handleClearFilters}>
                       Clear
                     </Button>
                   </div>

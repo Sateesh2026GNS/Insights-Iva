@@ -918,6 +918,18 @@
   padding: 0.625rem 0.75rem;
 }
 
+.my-job-cards-page .my-job-cards-table__received-date {
+  min-width: 7.5rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.my-job-cards-page .my-job-cards-table__date {
+  min-width: 7rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
 .my-job-cards-page .my-job-cards-table .my-job-cards-table__product-cell {
   max-width: 220px;
   min-width: 140px;

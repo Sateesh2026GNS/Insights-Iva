@@ -191,7 +191,6 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadName, setUploadName] = useState("");
   const [uploadCategory, setUploadCategory] = useState(initialDocType || "purchase");
-  const [uploadDeptId, setUploadDeptId] = useState("");
   const [uploadNote, setUploadNote] = useState("");
   const [uploadProgress, setUploadProgress] = useState(null);
   const [duplicateChoice, setDuplicateChoice] = useState(null);
@@ -278,14 +277,17 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   }, [load]);
 
   useEffect(() => {
+    let active = true;
     getDepartments()
       .then((res) => {
         const data = Array.isArray(res.data) ? res.data : res.data?.items || res.data?.data || [];
-        setDepartments(data);
-        if (!uploadDeptId && data[0]?.id) setUploadDeptId(String(data[0].id));
+        if (active) setDepartments(data);
       })
-      .catch(() => {});
-  }, [uploadDeptId]);
+      .catch(() => {
+        if (active) setDepartments([]);
+      });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const on = () => setOffline(false);
@@ -359,12 +361,11 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   };
 
   const runDuplicateCheck = useCallback(async () => {
-    if (!uploadName.trim() || !uploadCategory || !uploadDeptId) return;
+    if (!uploadName.trim() || !uploadCategory) return;
     try {
       const res = await checkDocumentDuplicate({
         name: uploadName.trim(),
         category: uploadCategory,
-        department_id: Number(uploadDeptId),
       });
       if (res.data?.exists) {
         setDuplicateDocId(res.data.document_id);
@@ -376,7 +377,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
     } catch {
       setDuplicateDocId(null);
     }
-  }, [uploadName, uploadCategory, uploadDeptId]);
+  }, [uploadName, uploadCategory]);
 
   useEffect(() => {
     if (!uploadOpen) return;
@@ -385,8 +386,8 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
 
   const submitUpload = async (e) => {
     e.preventDefault();
-    if (!uploadFile || !uploadName.trim() || !uploadDeptId) {
-      addToast("Fill required fields and select a file", "error");
+    if (!uploadFile || !uploadName.trim()) {
+      addToast("Enter a document name and select a file", "error");
       return;
     }
     if (uploadCategory === "hr" && !canHr) {
@@ -413,7 +414,6 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
       } else {
         form.append("name", uploadName.trim());
         form.append("category", uploadCategory);
-        form.append("department_id", uploadDeptId);
         await createDocument(form, {
           onUploadProgress: (ev) => {
             if (ev.total) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
@@ -424,7 +424,16 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
       setUploadOpen(false);
       await load();
     } catch (err) {
-      addToast(apiErrorMessage(err), "error");
+      if (err?.response?.status === 422) {
+        const responseData = err.response.data;
+        const validationErrors = responseData?.errors;
+        const details = Array.isArray(validationErrors)
+          ? validationErrors.join("; ")
+          : validationErrors || responseData?.detail || responseData?.message;
+        addToast(`Upload rejected: ${details || "The API rejected the submitted form."}`, "error");
+      } else {
+        addToast(apiErrorMessage(err), "error");
+      }
     } finally {
       setUploadBusy(false);
       setUploadProgress(null);
@@ -876,20 +885,12 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
               <label className="ui-label">Document name *</label>
               <input className="ui-input w-full" required value={uploadName} onChange={(e) => setUploadName(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <label className="ui-label">Category</label>
                 <select className="ui-select w-full" value={uploadCategory} onChange={(e) => setUploadCategory(e.target.value)}>
                   {categoryOptions.map((c) => (
                     <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="ui-label">Department</label>
-                <select className="ui-select w-full" value={uploadDeptId} onChange={(e) => setUploadDeptId(e.target.value)}>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
               </div>

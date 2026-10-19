@@ -552,12 +552,12 @@ def quick_create_work_order(db: Session, payload: WorkOrderQuickCreate) -> WorkO
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Production order not found.",
             )
-        if payload.machine_id:
-            prod_order.machine_id = payload.machine_id
-        if payload.shift:
-            prod_order.shift = payload.shift
-        if payload.customer_name:
-            prod_order.customer_name = payload.customer_name
+        prod_order.machine_id = payload.machine_id
+        prod_order.shift = payload.shift
+        prod_order.customer_name = payload.customer_name
+        prod_order.priority = payload.priority or prod_order.priority
+        prod_order.start_date = payload.planned_start
+        prod_order.due_date = payload.planned_end
 
         # Reuse and update the work order linked to this production order.
         existing_wo = db.scalars(
@@ -568,16 +568,14 @@ def quick_create_work_order(db: Session, payload: WorkOrderQuickCreate) -> WorkO
         ).first()
 
         if existing_wo:
-            if payload.machine_id:
-                existing_wo.machine_id = payload.machine_id
-            if payload.operator_name:
-                existing_wo.operator_name = payload.operator_name
-            if payload.shift:
-                existing_wo.shift = payload.shift
-            if payload.customer_name:
-                existing_wo.customer_name = payload.customer_name
-            if payload.priority:
-                existing_wo.priority = payload.priority
+            existing_wo.work_order_number = wo_num
+            existing_wo.machine_id = payload.machine_id
+            existing_wo.operator_name = payload.operator_name
+            existing_wo.shift = payload.shift
+            existing_wo.customer_name = payload.customer_name
+            existing_wo.priority = payload.priority or existing_wo.priority
+            existing_wo.planned_start = payload.planned_start
+            existing_wo.planned_end = payload.planned_end
             existing_wo.plant_code = payload.plant_code or existing_wo.plant_code
             existing_wo.department = payload.department or prod_order.department or existing_wo.department
             db.commit()

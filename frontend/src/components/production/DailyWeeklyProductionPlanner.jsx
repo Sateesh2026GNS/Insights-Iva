@@ -153,11 +153,11 @@ export default function DailyWeeklyProductionPlanner({
           <p className="ppt-hero__subtitle">
             Plan Production | Track Progress | Manage Resources | Ensure On-Time Dispatch
           </p>
-          <label className="mt-2 inline-flex items-center gap-2 text-[10px] font-semibold">
+          <label className="ppt-hero__plan-date mt-2 inline-flex items-center gap-2 font-semibold">
             Plan date
             <input
               type="date"
-              className="rounded border border-white/30 bg-white/10 px-2 py-0.5 text-white"
+              className="ppt-hero__date-input rounded border border-white/30 bg-white/10 text-white"
               value={planDate}
               onChange={(e) => setPlanDate(e.target.value)}
             />

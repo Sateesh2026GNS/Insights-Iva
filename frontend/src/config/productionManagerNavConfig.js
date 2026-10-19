@@ -49,7 +49,6 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
       },
       { key: "workOrders", label: "Work Orders", to: "/production/work-orders", module: "production" },
       { key: "schedule", label: "Production Schedule", to: "/production/schedule", module: "production" },
-      { key: "qualityControl", label: "Quality Control", to: "/quality/final", module: "quality" },
       { key: "finishedGoods", label: "Finished Goods Inventory", to: "/inventory/finished-goods", module: "inventory" },
       { key: "dailyReports", label: "Production Reports", to: "/production/reports", module: "production" },
     ],
@@ -85,6 +84,7 @@ export const PRODUCTION_MANAGER_NAV_ITEMS = [
     icon: CheckCircle2,
     module: "quality",
     children: [
+      { key: "qualityControl", label: "Final QC", to: "/quality/final", module: "quality" },
       { key: "inProcessQc", label: "In-Process QC", to: "/quality/in-process", module: "quality" },
       { key: "batchReports", label: "Batch Reports", to: "/quality/batch-reports", module: "quality" },
     ],

@@ -175,7 +175,8 @@ def get_production_analytics(
             ChartPoint(label=str(r[0] or "Unassigned"), value=float(r[1] or 0))
             for r in shift_rows
             if float(r[1] or 0) > 0
-        ][:8]
+        ]
+        shift_wise = shift_wise[:8]
 
         # Product-wise output from daily reports (fallback: work orders via production order)
         from app.models.product import Product

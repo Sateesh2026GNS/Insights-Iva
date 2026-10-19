@@ -20,6 +20,36 @@
 
 .production-analytics-page--toolkit .production-analytics-toolbar label {
   font-size: 10px;
+  font-weight: 700;
+}
+
+.production-analytics-page--toolkit .production-analytics-appearance {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.production-analytics-page--toolkit .production-analytics-appearance button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.production-analytics-page--toolkit .production-analytics-appearance button.is-active {
+  background: #1d4ed8;
+  color: #fff;
 }
 
 .production-analytics-page--toolkit .production-analytics-alerts {
@@ -41,18 +71,21 @@
 .production-analytics-page--toolkit .production-analytics-filter-embedded .ui-label {
   font-size: 9px;
   margin-bottom: 2px;
+  font-weight: 700;
 }
 
 .production-analytics-page--toolkit .production-analytics-filter-embedded .ui-select,
 .production-analytics-page--toolkit .production-analytics-filter-embedded .ui-input {
   font-size: 10px;
   padding: 4px 6px;
+  font-weight: 600;
 }
 
 .production-analytics-page--toolkit .production-analytics-filter-embedded button.rounded-full {
   font-size: 9px;
   padding: 3px 8px;
   border-radius: 999px;
+  font-weight: 700;
 }
 
 .production-analytics-page--toolkit .production-analytics-benchmarks {
@@ -102,11 +135,24 @@
   cursor: pointer;
   border: 1px solid var(--mtk-border, #c5d0dc);
   background: #fff;
-  padding: 0;
+  padding: 6px 4px;
   text-align: center;
+  font-weight: 600;
   border-radius: 4px;
   width: 100%;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.production-analytics-page--toolkit .mtk-kpi__label {
+  font-weight: 700;
+}
+
+.production-analytics-page--toolkit .mtk-kpi__value {
+  font-weight: 800;
+}
+
+.production-analytics-page--toolkit .mtk-panel__title {
+  font-weight: 800;
 }
 
 .production-analytics-page--toolkit .mtk-kpi--button:hover {
@@ -133,4 +179,66 @@
   margin: 8px;
   font-size: 10px;
   border-radius: 2px;
+}
+
+/* Night appearance is scoped to Production KPI so it does not change the app theme. */
+.production-analytics-page--night {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.production-analytics-page--night .mtk-root {
+  color: #e2e8f0;
+  --mtk-border: #334155;
+}
+
+.production-analytics-page--night .mtk-kpi-row,
+.production-analytics-page--night .mtk-body {
+  background: #111c30;
+  border-color: #334155;
+}
+
+.production-analytics-page--night .mtk-kpi,
+.production-analytics-page--night .mtk-kpi--button,
+.production-analytics-page--night .mtk-panel,
+.production-analytics-page--night .production-analytics-filter-body,
+.production-analytics-page--night .production-analytics-appearance {
+  background: #1e293b;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+.production-analytics-page--night .mtk-kpi__label,
+.production-analytics-page--night .mtk-kpi__value,
+.production-analytics-page--night .mtk-kpi__unit,
+.production-analytics-page--night .production-analytics-toolbar,
+.production-analytics-page--night .production-analytics-chart-panel__head,
+.production-analytics-page--night .production-analytics-appearance button {
+  color: #cbd5e1;
+}
+
+.production-analytics-page--night .production-analytics-chart-panel__head {
+  background: #172337;
+  border-color: #334155;
+}
+
+.production-analytics-page--night .production-analytics-filter-embedded .ui-select,
+.production-analytics-page--night .production-analytics-filter-embedded .ui-input {
+  background: #0f172a;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+.production-analytics-page--night .production-analytics-appearance button.is-active {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.production-analytics-page--night .production-analytics-benchmarks .ui-card {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.production-analytics-page--night .production-analytics-benchmarks .ui-caption {
+  color: #94a3b8;
 }

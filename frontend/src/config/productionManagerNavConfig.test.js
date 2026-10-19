@@ -34,7 +34,6 @@ describe("productionManagerNavConfig", () => {
       "Job Card Queue",
       "Work Orders",
       "Production Schedule",
-      "Quality Control",
       "Finished Goods Inventory",
       "Production Reports",
     ]);
@@ -55,6 +54,9 @@ describe("productionManagerNavConfig", () => {
     const quality = PRODUCTION_MANAGER_NAV_ITEMS.find((n) => n.key === "quality");
     const paths = (quality?.children || []).map((c) => c.to);
     expect(paths).not.toContain("/quality/incoming");
+    expect(paths).toContain("/quality/final");
+    const production = PRODUCTION_MANAGER_NAV_ITEMS.find((n) => n.key === "production");
+    expect((production?.children || []).some((c) => c.to === "/quality/final")).toBe(false);
   });
 
   it("includes Settings at /settings", () => {

@@ -41,7 +41,7 @@ class ErpDocument(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_normalized: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"), nullable=False, index=True)
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default=DocumentStatus.draft.value, nullable=False)
     current_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("erp_document_versions.id", use_alter=True, name="fk_erp_doc_current_version"),

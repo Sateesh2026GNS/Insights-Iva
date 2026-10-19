@@ -45,12 +45,15 @@ def _normalize_name(name: str) -> str:
 
 def _base_query(db: Session, tenant_id: int, user: User):
     dept_ids = resolve_accessible_department_ids(db, tenant_id, user, None)
-    if not dept_ids:
-        return select(ErpDocument).where(False)
+    department_scope = (
+        or_(ErpDocument.department_id.in_(dept_ids), ErpDocument.department_id.is_(None))
+        if dept_ids
+        else ErpDocument.department_id.is_(None)
+    )
     q = select(ErpDocument).where(
         ErpDocument.tenant_id == tenant_id,
         ErpDocument.is_deleted.is_(False),
-        ErpDocument.department_id.in_(dept_ids),
+        department_scope,
     )
     if not user_can_access_hr_documents(user):
         q = q.where(ErpDocument.category != "hr")
@@ -62,7 +65,7 @@ def find_duplicate(
     tenant_id: int,
     name: str,
     category: str,
-    department_id: int,
+    department_id: int | None,
 ) -> ErpDocument | None:
     norm = _normalize_name(name)
     return db.scalar(
@@ -94,16 +97,16 @@ def list_documents(
     sort_dir: str = "desc",
 ) -> dict:
     tenant_id = user.tenant_id
-    dept_filter = [department_id] if department_id else None
+    dept_filter = [department_id] if department_id is not None else None
     dept_ids = resolve_accessible_department_ids(db, tenant_id, user, dept_filter)
-    if not dept_ids or (department_id and department_id not in dept_ids):
+    if department_id is not None and department_id not in dept_ids:
         return {"items": [], "pagination": {"page": page, "page_size": page_size, "total_rows": 0}}
 
     q = _base_query(db, tenant_id, user)
     if category:
         q = q.where(ErpDocument.category == category)
-    if dept_ids:
-        q = q.where(ErpDocument.department_id.in_(dept_ids))
+    if department_id is not None:
+        q = q.where(ErpDocument.department_id == department_id)
     if status:
         q = q.where(ErpDocument.status == status)
     if search:
@@ -194,8 +197,8 @@ def get_document(db: Session, user: User, document_id: int) -> ErpDocument:
         raise HTTPException(status_code=404, detail="Document not found")
     if doc.category == "hr" and not user_can_access_hr_documents(user):
         raise HTTPException(status_code=403, detail="HR documents are restricted")
-    dept_ids = resolve_accessible_department_ids(db, user.tenant_id, user, [doc.department_id])
-    if doc.department_id not in dept_ids:
+    dept_ids = resolve_accessible_department_ids(db, user.tenant_id, user, [doc.department_id] if doc.department_id is not None else None)
+    if doc.department_id is not None and doc.department_id not in dept_ids:
         raise HTTPException(status_code=403, detail="Department access denied")
     return doc
 
@@ -206,15 +209,15 @@ def create_document_with_file(
     *,
     name: str,
     category: str,
-    department_id: int,
+    department_id: int | None,
     file_bytes: bytes,
     filename: str,
     upload_note: str | None,
 ) -> dict:
     if category == "hr" and not user_can_access_hr_documents(user):
         raise HTTPException(status_code=403, detail="Only HR or Admin may upload HR documents")
-    dept_ids = resolve_accessible_department_ids(db, user.tenant_id, user, [department_id])
-    if department_id not in dept_ids:
+    dept_ids = resolve_accessible_department_ids(db, user.tenant_id, user, [department_id] if department_id is not None else None)
+    if department_id is not None and department_id not in dept_ids:
         raise HTTPException(status_code=400, detail="Invalid department")
     if find_duplicate(db, user.tenant_id, name, category, department_id):
         raise HTTPException(

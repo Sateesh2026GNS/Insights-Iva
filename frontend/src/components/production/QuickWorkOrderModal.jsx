@@ -428,13 +428,16 @@ export default function QuickWorkOrderModal({ order, onClose, onSuccess, addToas
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
-              <span className="ui-label">Planned Quantity</span>
+              <span className="ui-label">Planned Quantity <span className="text-[var(--color-danger)]" aria-hidden="true">*</span></span>
               <ShorthandQuantityInput
                 value={form.planned_quantity}
                 onChange={(val) => setForm((prev) => ({ ...prev, planned_quantity: val }))}
                 disabled={Boolean(selectedProductionOrder?.id)}
                 placeholder="e.g. 500"
+                required
+                aria-label="Planned Quantity, required"
               />
+              <span className="block text-xs text-[var(--color-text-muted)]">Required · enter a quantity greater than zero.</span>
             </label>
             <label className="block space-y-1">
               <span className="ui-label">Machine</span>

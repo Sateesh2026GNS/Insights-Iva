@@ -400,7 +400,7 @@ export default function App() {
           <div
             className={`app-shell-fab-stack pointer-events-none fixed bottom-5 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-6 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
               isSettings
-                ? "right-[var(--space-4)] sm:right-[var(--space-6)] lg:right-[var(--space-8)]"
+                ? "bottom-28 sm:bottom-28 lg:bottom-28 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] right-[var(--space-4)] sm:right-[var(--space-6)] lg:right-[var(--space-8)]"
                 : "right-5 sm:right-6"
             }`}
           >

@@ -115,7 +115,7 @@ async def create_document_endpoint(
     file: UploadFile = File(...),
     name: str = Form(...),
     category: str = Form(...),
-    department_id: int = Form(...),
+    department_id: int | None = Form(None),
     upload_note: str | None = Form(None),
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ClipboardList, Plus, Search, X } from "lucide-react";
+import { ClipboardList, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 
 import Button from "../../components/common/Button";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -769,11 +769,11 @@ export default function MyJobCardsPage() {
               searchOpen ? (
                 <X className="h-4 w-4" aria-hidden />
               ) : (
-                <Search className="h-4 w-4" aria-hidden />
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
               )
             }
           >
-            {searchOpen ? "Close Search" : "Search"}
+            {searchOpen ? "Close Filter" : "Filter"}
           </Button>
           {showCreateInQueue ? (
             <Button

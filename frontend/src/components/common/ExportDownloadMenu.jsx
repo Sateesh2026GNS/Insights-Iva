@@ -7,6 +7,7 @@ export default function ExportDownloadMenu({
   onExport,
   disabled = false,
   label = "Download",
+  size = "md",
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -37,6 +38,7 @@ export default function ExportDownloadMenu({
       <Button
         type="button"
         variant="secondary"
+        size={size}
         disabled={disabled}
         onClick={() => setOpen((value) => !value)}
         leftIcon={<Download className="h-4 w-4" aria-hidden />}

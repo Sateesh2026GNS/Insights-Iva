@@ -405,7 +405,7 @@ export default function JobCardQueueTable({
               <tr>
                 {plannerLayout ? <th>S.No.</th> : <SerialNumberHeader label="S.No." />}
                 <th className={`${thBase} ${left}`.trim()}>Job Card No.</th>
-                <th className={thBase}>Date</th>
+                <th className={`${thBase} my-job-cards-table__date`}>Date</th>
                 <th className={thBase}>Sales Order No.</th>
                 <th className={`${thBase} ${left}`.trim()}>Customer</th>
                 <th className={thBase}>Customer PO No.</th>
@@ -416,7 +416,7 @@ export default function JobCardQueueTable({
                 <th className={thBase}>Status</th>
                 <th className={thBase}>Priority</th>
                 <th className={`${thBase} ${left}`.trim()}>Created By</th>
-                <th className={thBase}>Received Date</th>
+                <th className={`${thBase} my-job-cards-table__received-date`}>Received Date</th>
                 <th className={`my-job-cards-table__actions-col ${thBase}`.trim()}>Actions</th>
               </tr>
             </thead>
@@ -480,7 +480,7 @@ export default function JobCardQueueTable({
                         row.job_card_no || "—"
                       )}
                     </td>
-                    <td className={`${tdBase} ${muted}`.trim()}>
+                    <td className={`${tdBase} ${muted} my-job-cards-table__date`.trim()}>
                       {fmtErpDate(row.job_card_date || row.order_date || row.received_at)}
                     </td>
                     <td className={`${tdBase} ${muted}`.trim()}>
@@ -522,7 +522,7 @@ export default function JobCardQueueTable({
                     <td className={`${tdBase} ${left} ${muted}`.trim()}>
                       <TruncateCell value={row.created_by} />
                     </td>
-                    <td className={`${tdBase} ${muted}`.trim()}>
+                    <td className={`${tdBase} ${muted} my-job-cards-table__received-date`.trim()}>
                       {fmtErpDate(row.received_at)}
                     </td>
                     <td

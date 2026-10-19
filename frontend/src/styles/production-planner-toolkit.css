@@ -50,6 +50,23 @@
   opacity: 0.9;
 }
 
+.ppt-hero__plan-date {
+  justify-content: center;
+  gap: 0.625rem;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.ppt-hero input[type="date"].ppt-hero__date-input {
+  box-sizing: border-box;
+  width: 140px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0.25rem 0.75rem 0.25rem 0.5rem;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
 .ppt-kpi-row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

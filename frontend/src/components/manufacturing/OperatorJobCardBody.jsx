@@ -165,7 +165,6 @@ export default function OperatorJobCardBody({
           <ReadOnlyField
             label="Delivery Date"
             value={fmtDeliveryDisplay(product.delivery_date)}
-            className="sm:col-span-2"
           />
         </div>
       </article>

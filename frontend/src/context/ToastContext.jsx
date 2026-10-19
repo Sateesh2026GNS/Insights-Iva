@@ -17,6 +17,7 @@ export function formatSimpleToastMessage(text, isError, type = "success") {
   if (isError) {
     const raw = String(text || "").trim();
     if (!raw) return "Something went wrong.";
+    if (raw.startsWith("Upload rejected:")) return raw;
     const lower = raw.toLowerCase();
     if (
       lower.includes("value error") ||
