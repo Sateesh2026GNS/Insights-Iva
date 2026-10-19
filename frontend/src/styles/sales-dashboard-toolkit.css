@@ -1,0 +1,544 @@
+/* Sales Manager Dashboard — aligned with Production Planning → Team Capacity (mtk-theme--teal) */
+
+.sales-dash-page--toolkit {
+  width: 100%;
+  max-width: none;
+  background: #f4f7fa;
+  font-size: 11px;
+  color: #1a1a1a;
+}
+
+.sales-dash-page--toolkit .mtk-hero__title h1 {
+  text-transform: uppercase;
+}
+
+.sales-dash-page--toolkit .mtk-kpi--link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.sales-dash-page--toolkit .mtk-kpi--link:hover,
+.sales-dash-page--toolkit .mtk-kpi--emphasized {
+  border-color: #0d9488;
+  box-shadow: 0 1px 3px rgba(15, 118, 110, 0.15);
+}
+
+.sales-dash-page--toolkit .mtk-kpi--link:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+.sales-dash-page--toolkit .mtk-kpi-row {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+.sales-dash-page--toolkit .mtk-kpi__unit {
+  line-height: 1.25;
+  padding: 0 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sales-dash-page--toolkit .sales-dash-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+}
+
+.sales-dash-page--toolkit .sales-dash-toolbar .ui-btn {
+  font-size: 10px;
+  min-height: 28px;
+  padding: 4px 10px;
+}
+
+.sales-dash-page--toolkit .sales-dash__period-bar {
+  gap: 6px 8px;
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash__period-label,
+.sales-dash-page--toolkit .sales-dash__period-active,
+.sales-dash-page--toolkit .sales-dash__period-context {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.sales-dash-page--toolkit .sales-dash__period-select .ui-select,
+.sales-dash-page--toolkit .sales-dash__period-select select {
+  font-size: 10px;
+  padding: 4px 6px;
+  border-radius: 2px;
+}
+
+.sales-dash-page--toolkit .sales-dash-card {
+  background: #fff;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.sales-dash-page--toolkit .sales-dash-card__head {
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--mtk-head, #115e59);
+  border-bottom: none;
+}
+
+.sales-dash-page--toolkit .sales-dash-card__title {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sales-dash-page--toolkit .sales-dash-card__head p,
+.sales-dash-page--toolkit .sales-dash-card__head span {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 9px;
+}
+
+.sales-dash-page--toolkit .sales-dash-card__head a {
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sales-dash-page--toolkit .sales-dash-card__head a:hover {
+  text-decoration: underline;
+}
+
+.sales-dash-page--toolkit .sales-dash-card__body {
+  padding: 8px;
+}
+
+.sales-dash-page--toolkit .sales-dash-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sales-dash-page--toolkit .sales-dash__charts-grid,
+.sales-dash-page--toolkit .sales-dash__bottom-grid {
+  gap: 8px;
+}
+
+.sales-dash-page--toolkit .sales-dash-revenue-chart {
+  height: 160px;
+  min-height: 160px;
+}
+
+.sales-dash-page--toolkit .sales-dash-table {
+  font-size: 9px;
+  border-collapse: collapse;
+}
+
+.sales-dash-page--toolkit .sales-dash-table th,
+.sales-dash-page--toolkit .sales-dash-table td {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  padding: 3px 5px;
+  text-align: center;
+  color: #1e293b;
+}
+
+.sales-dash-page--toolkit .sales-dash-table th:first-child,
+.sales-dash-page--toolkit .sales-dash-table td:first-child {
+  text-align: left;
+}
+
+.sales-dash-page--toolkit .sales-dash-card__body a {
+  color: #0f766e;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sales-dash-page--toolkit .mtk-body > .sales-dash-async {
+  margin-top: 8px;
+}
+
+.sales-dash-page--toolkit .sales-dash-table th {
+  background: #e8eef4;
+  font-weight: 700;
+  font-size: 9px;
+  color: #1e293b;
+  text-transform: none;
+}
+
+.sales-dash-page--toolkit .sales-dash-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.sales-dash-page--toolkit .sales-dash-table tbody tr:hover td {
+  background: #ecfdf5;
+}
+
+.sales-dash-page--toolkit .sales-dash-avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+  font-weight: 700;
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.sales-dash-page--toolkit .ui-badge {
+  border-radius: 10px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border: none;
+}
+
+.sales-dash-page--toolkit .ui-badge__mark {
+  display: none;
+}
+
+.sales-dash-page--toolkit .ui-badge-success {
+  background: #bbf7d0;
+  color: #166534;
+}
+
+.sales-dash-page--toolkit .ui-badge-info,
+.sales-dash-page--toolkit .ui-badge-progress {
+  background: #bfdbfe;
+  color: #1e40af;
+}
+
+.sales-dash-page--toolkit .ui-badge-warning,
+.sales-dash-page--toolkit .ui-badge-pending,
+.sales-dash-page--toolkit .ui-badge--primary {
+  background: #fef08a;
+  color: #854d0e;
+}
+
+.sales-dash-page--toolkit .ui-badge-danger,
+.sales-dash-page--toolkit .ui-badge-error {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.sales-dash-page--toolkit .ui-badge-neutral {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline {
+  min-width: 520px;
+  padding: 0;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage {
+  padding: 6px 8px 6px 16px;
+  border-radius: 0;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage:first-child,
+.sales-dash-page--toolkit .sales-dash-pipeline__stage:last-child {
+  border-radius: 2px;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage--leads {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage--quotations {
+  background: #99f6e4;
+  color: #115e59;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage--sales_orders {
+  background: #0d9488;
+  color: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage--production {
+  background: #0f766e;
+  color: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage--dispatch {
+  background: #115e59;
+  color: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__stage--completed {
+  background: #134e4a;
+  color: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__label {
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.sales-dash-page--toolkit .sales-dash-pipeline__count {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sales-dash-page--toolkit .sales-dash-summary-list {
+  gap: 0;
+}
+
+.sales-dash-page--toolkit .sales-dash-summary-list__row {
+  padding: 4px 0;
+  border-bottom-color: var(--mtk-border, #c5d0dc);
+}
+
+.sales-dash-page--toolkit .sales-dash-summary-list__label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #115e59;
+}
+
+.sales-dash-page--toolkit .sales-dash-summary-list__hint {
+  font-size: 9px;
+  color: #64748b;
+}
+
+.sales-dash-page--toolkit .sales-dash-summary-list__value {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sales-dash-page--toolkit .sales-dash-quote-grid {
+  gap: 6px;
+}
+
+.sales-dash-page--toolkit .sales-dash-quote-tile {
+  border-radius: 4px;
+  padding: 6px 4px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  background: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash-quote-tile strong {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sales-dash-page--toolkit .sales-dash-quote-tile span {
+  font-size: 8px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.sales-dash-page--toolkit .sales-dash-quote-tile--neutral { background: #f8fafc; }
+.sales-dash-page--toolkit .sales-dash-quote-tile--amber { background: #fef9c3; }
+.sales-dash-page--toolkit .sales-dash-quote-tile--blue { background: #dbeafe; }
+.sales-dash-page--toolkit .sales-dash-quote-tile--green { background: #dcfce7; }
+.sales-dash-page--toolkit .sales-dash-quote-tile--red { background: #fee2e2; }
+.sales-dash-page--toolkit .sales-dash-quote-tile--purple { background: #ede9fe; }
+
+.sales-dash-page--toolkit .sales-dash-tabs {
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.sales-dash-page--toolkit .sales-dash-tabs button {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 2px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  background: #fff;
+  color: #475569;
+}
+
+.sales-dash-page--toolkit .sales-dash-tabs button[aria-selected="true"] {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash-tabs button:focus-visible {
+  outline-color: #0d9488;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__header {
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  border-bottom: none;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__intro {
+  background: var(--mtk-head, #115e59);
+  padding: 5px 8px;
+  text-align: center;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__intro .sales-dash-card__title {
+  width: 100%;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__tagline {
+  margin: 2px 0 0;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__date-tools {
+  padding: 8px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--mtk-border, #c5d0dc);
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__date-tools-label,
+.sales-dash-page--toolkit .sales-dash-mywork__date-current {
+  font-size: 10px;
+  color: #475569;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__preset-btn,
+.sales-dash-page--toolkit .sales-dash-mywork__nav-btn,
+.sales-dash-page--toolkit .sales-dash-mywork__filters button {
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 2px;
+  border-color: var(--mtk-border, #c5d0dc);
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__preset-btn.is-active,
+.sales-dash-page--toolkit .sales-dash-mywork__filters button.is-active,
+.sales-dash-page--toolkit .sales-dash-mywork__filters button[aria-selected="true"] {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__stats {
+  padding: 6px 8px;
+  gap: 6px;
+  background: #f4f7fa;
+  border-bottom-color: var(--mtk-border, #c5d0dc);
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__stat-label {
+  font-size: 8px;
+  color: #475569;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__stat-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__filters,
+.sales-dash-page--toolkit .sales-dash-mywork__content {
+  padding: 8px;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__row {
+  border-radius: 2px;
+  border-color: var(--mtk-border, #c5d0dc);
+  background: #fff;
+  padding: 4px 6px;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__title,
+.sales-dash-page--toolkit .sales-dash-mywork__subtitle {
+  font-size: 10px;
+  color: #0f172a;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__desc,
+.sales-dash-page--toolkit .sales-dash-mywork__time {
+  font-size: 9px;
+  color: #64748b;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__view {
+  font-size: 9px;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__empty {
+  border-radius: 2px;
+  border-color: var(--mtk-border, #c5d0dc);
+  background: #f8fafc;
+  min-height: 7rem;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__empty-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #115e59;
+}
+
+.sales-dash-page--toolkit .sales-dash-mywork__empty-desc {
+  font-size: 9px;
+}
+
+.sales-dash-page--toolkit .sales-dash-more-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 50;
+  width: min(440px, 95vw);
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 2px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.sales-dash-page--toolkit .sales-dash-more-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--mtk-border, #c5d0dc);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.sales-dash-page--toolkit .sales-dash-more-menu__head button {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 0;
+}
+
+.sales-dash-page--toolkit .sales-dash-async {
+  font-size: 11px;
+}
+
+.sales-dash-page--toolkit .sales-dash-async .ui-empty,
+.sales-dash-page--toolkit .sales-dash-card__body .ui-empty {
+  padding: 12px 8px;
+  font-size: 10px;
+}
+
+@media (max-width: 1100px) {
+  .sales-dash-page--toolkit .sales-dash__charts-grid,
+  .sales-dash-page--toolkit .sales-dash__bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}

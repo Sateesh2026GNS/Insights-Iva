@@ -7,6 +7,7 @@ import Button from "../../../components/common/Button";
 import DataTable from "../../../components/common/DataTable";
 import EmptyState from "../../../components/common/EmptyState";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../../components/common/ListPageShell";
+import { PRODUCTION_MANAGER_PAGE_CHROME } from "../../../config/productionManagerPageChrome";
 import ManufacturingPageHeader from "../../../components/manufacturing/ManufacturingPageHeader";
 import StatusBadge from "../../../components/common/StatusBadge";
 import TableActionButtons from "../../../components/common/TableActionButtons";
@@ -165,7 +166,7 @@ export default function BomListPage() {
 
   if (!canView) {
     return (
-      <ListPageShell>
+      <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bom}>
         <ManufacturingPageHeader
           title="Bill of Materials (BOM)"
           crumbs={[
@@ -181,7 +182,7 @@ export default function BomListPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
 
   return (
-    <ListPageShell>
+    <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bom}>
       <div className="grid gap-3 sm:grid-cols-3 mb-4">
         <KpiTile label="Total BOMs" value={summary?.total_boms} icon={Layers} />
         <KpiTile

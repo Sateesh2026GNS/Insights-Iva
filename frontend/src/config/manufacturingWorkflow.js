@@ -12,7 +12,7 @@ export const MANUFACTURING_WORKFLOW_STEPS = [
   { id: "raw_material", label: "Raw Material", shortLabel: "Raw Material", path: "/inventory/raw-materials" },
   { id: "schedule", label: "Schedule", shortLabel: "Schedule", path: "/production/schedule" },
   { id: "work_order", label: "Work Order", shortLabel: "Work Order", path: "/production/work-orders" },
-  { id: "machine_assign", label: "Machine Assign", shortLabel: "Machine Assign", path: "/production/tasks" },
+  { id: "machine_assign", label: "Machine Assign", shortLabel: "Machine Assign", path: "/production/machines" },
   { id: "material_issue", label: "Material Issue", shortLabel: "Material Issue", path: "/production/work-orders" },
   { id: "production", label: "Production", shortLabel: "Production", path: "/manufacturing/workflow?status=READY_FOR_PRODUCTION" },
   { id: "quality", label: "Quality", shortLabel: "Quality", path: "/quality/final" },

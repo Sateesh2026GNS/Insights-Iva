@@ -63,10 +63,8 @@ export const SIDEBAR_NAV = [
       { label: "Bill of Materials", to: "/production/bom", module: "production", bomViewOnly: true },
       { labelKey: "erpNav.workOrders", to: "/production/work-orders", module: "production" },
       { labelKey: "erpNav.productionSchedule", to: "/production/schedule", module: "production" },
-      { labelKey: "erpNav.machineAllocation", to: "/production/tasks", module: "production", managerOnly: true },
       { labelKey: "erpNav.dailyProductionReports", to: "/production/reports", module: "production", managerOnly: true },
       { labelKey: "erpNav.myMachine", to: "/production/my-machine", module: "production", operatorOnly: true },
-      { labelKey: "erpNav.myProductionEntry", to: "/production/my-entry", module: "production", operatorOnly: true },
     ],
   },
   {
@@ -142,6 +140,7 @@ export const SIDEBAR_NAV = [
       { label: "Refund Vouchers", to: "/sales/refund-vouchers", module: "accounts" },
       { label: "Proforma Invoice", to: "/sales/proforma-invoices", module: "accounts" },
       { label: "Export Invoice", to: "/sales/export-invoices", module: "accounts" },
+      { label: "Export Packing List", to: "/sales/export-packing-list", module: "sales" },
       { label: "Export Proforma Invoice", to: "/sales/export-proforma-invoices", module: "accounts" },
       { label: "Delivery Challans", to: "/sales/delivery-challans", module: "accounts" },
       { label: "Credit Note", to: "/sales/credit-notes", module: "accounts" },
@@ -310,6 +309,37 @@ function navSearchParamsMatch(expectedSearch, actualSearch) {
   return true;
 }
 
+const PRODUCTION_PLANNING_PATH = "/production/planning";
+/** Default toolkit when Store Manager opens planning without `?toolkit=` (see manufacturingToolkitAccess). */
+const STORE_MANAGER_PLANNING_DEFAULT_TOOLKIT = "inventory_register";
+
+/**
+ * Disambiguate sidebar highlights when multiple items share `/production/planning`.
+ * @returns {boolean|undefined} `undefined` when this rule does not apply.
+ */
+export function productionPlanningToolkitLinkActive(pathname, locationSearch, toPath, toSearch, activeToolkit) {
+  if (pathname !== PRODUCTION_PLANNING_PATH || toPath !== PRODUCTION_PLANNING_PATH) {
+    return undefined;
+  }
+
+  const actualParams = new URLSearchParams((locationSearch || "").replace(/^\?/, ""));
+  const locToolkit = actualParams.get("toolkit");
+  const linkToolkit =
+    activeToolkit ||
+    (toSearch ? new URLSearchParams(toSearch.replace(/^\?/, "")).get("toolkit") : null);
+
+  if (linkToolkit) {
+    const effectiveLoc = locToolkit || STORE_MANAGER_PLANNING_DEFAULT_TOOLKIT;
+    return effectiveLoc === linkToolkit;
+  }
+
+  if (locToolkit) {
+    return false;
+  }
+
+  return undefined;
+}
+
 /**
  * Whether a sidebar leaf should use the active style (pathname + optional query rules).
  */
@@ -317,6 +347,17 @@ export function isSidebarLinkActive(pathnameOrLocation, node, search = "") {
   if (!node?.to) return false;
   const { pathname, search: locationSearch } = normalizeNavLocation(pathnameOrLocation, search);
   const { pathname: toPath, search: toSearch } = parseNavTo(node.to);
+
+  const planningActive = productionPlanningToolkitLinkActive(
+    pathname,
+    locationSearch,
+    toPath,
+    toSearch,
+    node.activeToolkit
+  );
+  if (planningActive !== undefined) {
+    return planningActive;
+  }
 
   if (toSearch) {
     return pathname === toPath && navSearchParamsMatch(toSearch, locationSearch);

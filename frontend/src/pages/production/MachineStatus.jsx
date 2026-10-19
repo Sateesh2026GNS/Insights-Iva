@@ -7,6 +7,7 @@ import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { PRODUCTION_MANAGER_PAGE_CHROME } from "../../config/productionManagerPageChrome";
 import Button from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
 import MachineDetailModal from "../../components/production/MachineDetailModal";
@@ -433,7 +434,7 @@ export default function MachineStatus() {
   }
 
   return (
-    <ListPageShell>
+    <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.machines}>
       <PageHeader
         subtitle="Digital profiles · Live status · OEE · Production integration"
         action={

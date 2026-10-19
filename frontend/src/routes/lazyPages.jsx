@@ -1,7 +1,6 @@
 import { createElement, lazy } from "react";
 
 export const Landing = lazy(() => import("../pages/Landing"));
-export const ContactUs = lazy(() => import("../pages/contact/ContactUs"));
 export const Login = lazy(() => import("../pages/auth/Login"));
 export const SuperAdminLogin = lazy(() => import("../pages/platform/SuperAdminLogin"));
 export const SuperAdminVerifyOtp = lazy(() => import("../pages/platform/SuperAdminVerifyOtp"));
@@ -19,15 +18,12 @@ export const OperatorJobsPage = lazy(() => import("../pages/production/OperatorJ
 export const LegacyJobCardRedirect = lazy(() => import("../pages/manufacturing/LegacyJobCardRedirect"));
 export const JobCard = lazy(() => import("../pages/production/JobCard"));
 export const ProductionSchedule = lazy(() => import("../pages/production/ProductionSchedule"));
-export const MachineAllocation = lazy(() => import("../pages/production/MachineAllocation"));
-export const BatchTracking = lazy(() => import("../pages/production/BatchTracking"));
 export const MachineStatus = lazy(() => import("../pages/production/MachineStatus"));
 export const FactoryMonitorMachineStatus = lazy(() => import("../pages/factoryMonitor/MachineStatus"));
 export const FactoryMonitorProductionLines = lazy(() => import("../pages/factoryMonitor/ProductionLines"));
 export const CreateMachine = lazy(() => import("../pages/production/CreateMachine"));
 export const DailyReports = lazy(() => import("../pages/production/DailyReports"));
 export const OperatorMyMachine = lazy(() => import("../pages/production/OperatorMyMachine"));
-export const OperatorProductionEntry = lazy(() => import("../pages/production/OperatorProductionEntry"));
 export const CreateProduction = lazy(() => import("../pages/production/CreateProduction"));
 export const BomListPage = lazy(() => import("../pages/production/bom/BomListPage"));
 export const BomDetailPage = lazy(() => import("../pages/production/bom/BomDetailPage"));
@@ -35,6 +31,8 @@ export const BomFormPage = lazy(() => import("../pages/production/bom/BomFormPag
 export const TaskManagement = lazy(() => import("../pages/production/TaskManagement"));
 export const InventoryDashboard = lazy(() => import("../pages/inventory/InventoryDashboard"));
 export const InventoryV2 = lazy(() => import("../pages/inventory/InventoryV2"));
+export const LowStockItemsPage = lazy(() => import("../pages/inventory/LowStockItemsPage"));
+export const OutOfStockItemsPage = lazy(() => import("../pages/inventory/OutOfStockItemsPage"));
 export const InventoryItemDetailV2 = lazy(() => import("../pages/inventory/InventoryItemDetailV2"));
 export const InventorySettingsV2 = lazy(() => import("../pages/inventory/InventorySettingsV2"));
 export const InventoryList = lazy(() => import("../pages/inventory/InventoryList"));
@@ -76,6 +74,7 @@ export const QuotationCopyPage = lazy(() => import("../pages/sales/QuotationCopy
 export const PublicEQuotationPage = lazy(() => import("../pages/sales/PublicEQuotationPage"));
 export const TaxInvoiceForm = lazy(() => import("../pages/sales/TaxInvoiceForm"));
 export const ExportInvoices = lazy(() => import("../pages/sales/ExportInvoices"));
+export const ExportPackingListGenerator = lazy(() => import("../pages/sales/ExportPackingListGenerator"));
 export const ExportInvoiceForm = lazy(() => import("../pages/sales/ExportInvoiceForm"));
 export const DeliveryChallans = lazy(() => import("../pages/sales/DeliveryChallans"));
 export const DeliveryChallanForm = lazy(() => import("../pages/sales/DeliveryChallanForm"));

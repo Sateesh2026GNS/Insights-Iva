@@ -37,6 +37,13 @@ import {
   issueListParams,
   toolkitActionError,
 } from "./manufacturingToolkitWorkflows";
+import useAuth from "../../hooks/useAuth";
+import {
+  isStoreManufacturingToolkitUser,
+  manufacturingToolkitIdsForUser,
+  normalizeManufacturingToolkitId,
+  userCanAccessManufacturingToolkit,
+} from "../../config/manufacturingToolkitAccess";
 
 export default function ManufacturingProductionToolkitHost({
   orders = [],
@@ -45,8 +52,24 @@ export default function ManufacturingProductionToolkitHost({
   plannerTab = "dashboard",
   onPlannerTabChange,
   plannerRefreshKey = 0,
+  initialToolkitId = null,
 }) {
-  const [toolkitId, setToolkitId] = useState("daily_weekly_planner");
+  const { user } = useAuth();
+  const storeToolkitUser = isStoreManufacturingToolkitUser(user);
+  const allowedToolkitIds = manufacturingToolkitIdsForUser(user);
+
+  const [toolkitId, setToolkitId] = useState(() =>
+    normalizeManufacturingToolkitId(user, initialToolkitId)
+  );
+
+  useEffect(() => {
+    setToolkitId(normalizeManufacturingToolkitId(user, initialToolkitId));
+  }, [initialToolkitId, user]);
+
+  const visibleToolkits = useMemo(() => {
+    if (!allowedToolkitIds) return MANUFACTURING_TOOLKITS;
+    return MANUFACTURING_TOOLKITS.filter((t) => allowedToolkitIds.includes(t.id));
+  }, [allowedToolkitIds]);
   const [inventoryItems, setInventoryItems] = useState(null);
   const [breakdownSummary, setBreakdownSummary] = useState(null);
   const [breakdowns, setBreakdowns] = useState(null);
@@ -114,6 +137,7 @@ export default function ManufacturingProductionToolkitHost({
   ]);
 
   useEffect(() => {
+    if (storeToolkitUser) return undefined;
     let cancelled = false;
     (async () => {
       const [
@@ -160,7 +184,34 @@ export default function ManufacturingProductionToolkitHost({
     return () => {
       cancelled = true;
     };
-  }, [plannerRefreshKey]);
+  }, [plannerRefreshKey, storeToolkitUser]);
+
+  useEffect(() => {
+    if (!storeToolkitUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      if (toolkitId === "inventory_register") {
+        try {
+          const invRes = await getInventoryDashboard();
+          if (!cancelled) setInventoryItems(asArray(invRes?.data));
+        } catch {
+          if (!cancelled) setInventoryItems([]);
+        }
+      }
+      if (toolkitId === "raw_material_tracker") {
+        const [rmSumRes, rmListRes] = await Promise.allSettled([
+          getRawMaterialsSummary(),
+          getRawMaterials(),
+        ]);
+        if (cancelled) return;
+        setRawMaterialsSummary(rmSumRes.status === "fulfilled" ? rmSumRes.value?.data ?? null : null);
+        setRawMaterials(rmListRes.status === "fulfilled" ? asArray(rmListRes.value?.data) : []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [plannerRefreshKey, storeToolkitUser, toolkitId]);
 
   useEffect(() => {
     if (!BATCH2_TOOLKIT_IDS.has(toolkitId)) return;
@@ -261,8 +312,8 @@ export default function ManufacturingProductionToolkitHost({
   }, [toolkitId, plannerRefreshKey, incidentRefreshKey, incidentFilter]);
 
   const activeMeta = useMemo(
-    () => MANUFACTURING_TOOLKITS.find((t) => t.id === toolkitId) || MANUFACTURING_TOOLKITS[0],
-    [toolkitId]
+    () => visibleToolkits.find((t) => t.id === toolkitId) || visibleToolkits[0],
+    [toolkitId, visibleToolkits]
   );
 
   const config = useMemo(() => {
@@ -526,7 +577,7 @@ export default function ManufacturingProductionToolkitHost({
   return (
     <div className="min-w-0">
       <div className="mtk-host__picker" role="tablist" aria-label="Manufacturing toolkits">
-        {MANUFACTURING_TOOLKITS.map((toolkit) => (
+        {visibleToolkits.map((toolkit) => (
           <button
             key={toolkit.id}
             type="button"
@@ -534,6 +585,7 @@ export default function ManufacturingProductionToolkitHost({
             aria-selected={toolkitId === toolkit.id}
             className={toolkitId === toolkit.id ? "mtk-host__picker--active" : ""}
             onClick={() => {
+              if (!userCanAccessManufacturingToolkit(user, toolkit.id)) return;
               setToolkitId(toolkit.id);
               if (toolkit.id !== "daily_weekly_planner" && plannerTab === "production_data") {
                 onPlannerTabChange?.("dashboard");
@@ -640,7 +692,9 @@ export default function ManufacturingProductionToolkitHost({
                   onRejectReasonChange={setChecklistRejectReason}
                 />
               ) : null}
-              <ManufacturingToolkitDashboard config={config} />
+              {config && (toolkitId !== "product_cost" || productCostPayload != null) ? (
+                <ManufacturingToolkitDashboard config={config} />
+              ) : null}
             </>
           )}
         </>

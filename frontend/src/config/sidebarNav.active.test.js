@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { isPathActive, isSidebarLinkActive } from "./sidebarNav";
+import { isPathActive, isSidebarLinkActive, productionPlanningToolkitLinkActive } from "./sidebarNav";
 import { SALES_DASHBOARD_PATH } from "../utils/roleRedirect";
 import { SALES_MANAGER_NAV_ITEMS } from "./salesManagerNavConfig";
+import { STORE_MANAGER_NAV_ITEMS } from "./storeManagerNavConfig";
 
 const salesChildren = SALES_MANAGER_NAV_ITEMS.find((s) => s.key === "sales").children;
 
@@ -59,5 +60,62 @@ describe("sidebarNav isSidebarLinkActive — Sales manager children", () => {
     const location = loc("/sales/orders");
     expect(isSidebarLinkActive(location, child("orders"))).toBe(true);
     expect(isSidebarLinkActive(location, child("quotations"))).toBe(false);
+  });
+});
+
+function storeInventoryToolkitChild(key) {
+  const inventory = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "inventory");
+  return inventory?.children?.find((c) => c.key === key);
+}
+
+describe("sidebarNav isSidebarLinkActive — Store Manager manufacturing toolkits", () => {
+  const inventoryRegister = () => storeInventoryToolkitChild("inventoryRegisterToolkit");
+  const rawMaterialTracker = () => storeInventoryToolkitChild("rawMaterialTrackerToolkit");
+
+  it("highlights only Inventory Register when toolkit=inventory_register", () => {
+    const location = loc("/production/planning", "?toolkit=inventory_register");
+    expect(isSidebarLinkActive(location, inventoryRegister())).toBe(true);
+    expect(isSidebarLinkActive(location, rawMaterialTracker())).toBe(false);
+  });
+
+  it("highlights only Raw Material Tracker when toolkit=raw_material_tracker", () => {
+    const location = loc("/production/planning", "?toolkit=raw_material_tracker");
+    expect(isSidebarLinkActive(location, rawMaterialTracker())).toBe(true);
+    expect(isSidebarLinkActive(location, inventoryRegister())).toBe(false);
+  });
+
+  it("defaults to Inventory Register when toolkit param is missing (refresh / bare URL)", () => {
+    const location = loc("/production/planning");
+    expect(isSidebarLinkActive(location, inventoryRegister())).toBe(true);
+    expect(isSidebarLinkActive(location, rawMaterialTracker())).toBe(false);
+  });
+
+  it("does not treat pathname-only planning links as active when toolkit is set", () => {
+    const location = loc("/production/planning", "?toolkit=raw_material_tracker");
+    const barePlanning = { to: "/production/planning", end: false };
+    expect(isSidebarLinkActive(location, barePlanning)).toBe(false);
+  });
+});
+
+describe("productionPlanningToolkitLinkActive", () => {
+  it("matches by explicit toolkit id", () => {
+    expect(
+      productionPlanningToolkitLinkActive(
+        "/production/planning",
+        "?toolkit=raw_material_tracker",
+        "/production/planning",
+        "?toolkit=raw_material_tracker",
+        "raw_material_tracker"
+      )
+    ).toBe(true);
+    expect(
+      productionPlanningToolkitLinkActive(
+        "/production/planning",
+        "?toolkit=raw_material_tracker",
+        "/production/planning",
+        "?toolkit=inventory_register",
+        "inventory_register"
+      )
+    ).toBe(false);
   });
 });

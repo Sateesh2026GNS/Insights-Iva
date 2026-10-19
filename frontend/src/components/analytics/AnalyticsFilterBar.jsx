@@ -61,6 +61,7 @@ export default function AnalyticsFilterBar({
   dateFrom, onDateFromChange,
   dateTo, onDateToChange,
   showAll = true,
+  embedded = false,
 }) {
   const applyPreset = (preset) => {
     const { from, to } = preset.range();
@@ -73,10 +74,18 @@ export default function AnalyticsFilterBar({
     return from === dateFrom && to === dateTo;
   })?.id;
 
+  const rootClass = embedded
+    ? "production-analytics-filter-embedded min-w-0"
+    : "ui-card ui-card--padded";
+
   return (
-    <div className="ui-card ui-card--padded">
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="ui-eyebrow">Reporting period</p>
+    <div className={rootClass}>
+      <div
+        className={`mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between${
+          embedded ? " sm:justify-end" : ""
+        }`}
+      >
+        {embedded ? null : <p className="ui-eyebrow">Reporting period</p>}
         <div className="flex flex-wrap gap-1.5">
           {PRESETS.map((preset) => (
             <button

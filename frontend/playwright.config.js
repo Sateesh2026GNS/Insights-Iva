@@ -60,6 +60,17 @@ export default defineConfig({
       testMatch: /auth-staging-topology\.spec\.js/,
     },
     {
+      name: "store-manager-staging",
+      timeout: 90_000,
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: process.env.E2E_STAGING_BASE_URL || baseURL,
+        trace: "on-first-retry",
+        screenshot: "only-on-failure",
+      },
+      testMatch: /store-manager-inventory-toolkit-staging\.spec\.js/,
+    },
+    {
       name: "manufacturing",
       timeout: 120_000,
       use: { ...devices["Desktop Chrome"] },

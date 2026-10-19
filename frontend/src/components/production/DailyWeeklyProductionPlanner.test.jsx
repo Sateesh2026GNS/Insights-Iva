@@ -113,9 +113,11 @@ describe("DailyWeeklyProductionPlanner", () => {
       </MemoryRouter>
     );
 
-    const kpiRegion = await screen.findByLabelText("Production KPIs");
-    expect(within(kpiRegion).getByText("250")).toBeTruthy();
-    expect(within(kpiRegion).getByText("500")).toBeTruthy();
+    await waitFor(() => {
+      const kpiRegion = screen.getByLabelText("Production KPIs");
+      expect(within(kpiRegion).getByText("250")).toBeTruthy();
+      expect(within(kpiRegion).getByText("500")).toBeTruthy();
+    });
     expect(screen.getAllByText("API-Only Widget").length).toBeGreaterThan(0);
     expect(screen.getByText("Test Customer")).toBeTruthy();
     expect(screen.getByText("Insight from API")).toBeTruthy();
@@ -149,6 +151,11 @@ describe("DailyWeeklyProductionPlanner", () => {
       </MemoryRouter>
     );
     expect(await screen.findByText("Planner unavailable")).toBeTruthy();
+    expect(screen.queryByLabelText("Production KPIs")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => {
+      expect(mockGetProductionPlannerDashboard).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("shows empty daily table message when API returns no rows", async () => {

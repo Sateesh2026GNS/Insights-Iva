@@ -162,6 +162,7 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath(storeManager, "/sales/job-cards/42/edit")).toBe(false);
     expect(userCanAccessPath(storeManager, "/my-job-cards")).toBe(true);
   });
+
 });
 
 describe("Work Chat — authenticated common feature", () => {
@@ -200,9 +201,8 @@ describe("Operator production nav", () => {
 
   it("blocks planning and allocation paths", () => {
     expect(operatorPathAllowed("/production/planning")).toBe(false);
-    expect(operatorPathAllowed("/production/tasks")).toBe(false);
     expect(operatorPathAllowed("/production/my-machine")).toBe(true);
-    expect(operatorPathAllowed("/production/my-entry")).toBe(true);
+    expect(operatorPathAllowed("/production/my-entry")).toBe(false);
     expect(operatorPathAllowed("/chat")).toBe(true);
   });
 

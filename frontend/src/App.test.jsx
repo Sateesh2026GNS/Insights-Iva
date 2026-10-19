@@ -10,7 +10,7 @@ describe("shouldShowChatbot", () => {
   it("shows the shared assistant for operator users on allowed routes", () => {
     expect(shouldShowChatbot({ role: "Operator" }, "/")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/my-job-cards")).toBe(true);
-    expect(shouldShowChatbot({ role: "Operator" }, "/production/my-entry")).toBe(true);
+    expect(shouldShowChatbot({ role: "Operator" }, "/production/my-machine")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/production/dashboard")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/production/work-orders")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/factory-monitor/machine-status")).toBe(true);

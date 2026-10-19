@@ -21,8 +21,7 @@ export const DEMO_SHOP_TIMELINE = [];
 
 export const SHOP_FLOW_STEPS = [
   "Sales Order", "Production Planning", "Production Schedule",
-  "Machine Allocation", "Shop Floor", "Production Entry",
-  "Batch Tracking", "Quality Control", "Finished Goods Inventory",
+  "Shop Floor", "Quality Control", "Finished Goods Inventory",
 ];
 
 export function shopStatusDot(status) {

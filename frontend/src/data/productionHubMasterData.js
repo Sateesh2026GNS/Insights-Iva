@@ -21,17 +21,13 @@ export const HUB_MODULES = [
   { label: "Production Planning", to: "/production/planning", color: "bg-blue-500" },
   { label: "Work Orders", to: "/production/work-orders", color: "bg-cyan-500" },
   { label: "Production Schedule", to: "/production/schedule", color: "bg-indigo-500" },
-  { label: "Machine Allocation", to: "/production/tasks", color: "bg-violet-500" },
-  { label: "Production Entry", to: "/production/my-entry", color: "bg-blue-600" },
-  { label: "Batch Tracking", to: "/production/batch-tracking", color: "bg-purple-500" },
   { label: "Quality Control", to: "/quality/final", color: "bg-green-500" },
   { label: "Finished Goods Inventory", to: "/inventory/finished-goods", color: "bg-emerald-500" },
 ];
 
 export const HUB_FLOW = [
   "Production Planning", "Work Orders", "Production Schedule",
-  "Machine Allocation", "Production Entry",
-  "Batch Tracking", "Quality Control", "Finished Goods Inventory",
+  "Quality Control", "Finished Goods Inventory",
 ];
 
 export function hubStatusColor(status) {

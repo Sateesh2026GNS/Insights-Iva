@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import WorkChat from "./WorkChat";
 
@@ -53,6 +53,7 @@ vi.mock("../../api/workChatApi", () => ({
             mime_type: "image/png",
             file_size: 102400,
             is_downloadable: true,
+            download_url: "/api/files/local-download/token-img",
           },
           {
             file_id: 102,
@@ -71,8 +72,25 @@ vi.mock("../../api/workChatApi", () => ({
   openDirectChat: vi.fn(),
   createGroupChat: vi.fn(),
   sendMessage: vi.fn(),
-  markConversationRead: vi.fn(),
+  markConversationRead: vi.fn().mockResolvedValue({}),
+  deleteChatMessage: vi.fn().mockResolvedValue({}),
+  forwardChatMessage: vi.fn().mockResolvedValue({}),
+  toggleChatMessageReaction: vi.fn().mockResolvedValue({}),
+  clearConversation: vi.fn().mockResolvedValue({}),
+  leaveConversation: vi.fn().mockResolvedValue({}),
 }));
+
+beforeAll(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("WorkChat", () => {
   it("renders conversation and message with image and document attachments", async () => {
@@ -132,7 +150,6 @@ describe("WorkChat", () => {
     const hrOption = screen.getByText("HR User");
     fireEvent.click(hrOption);
 
-    // Selected members section appears with chip and X button
     expect(screen.getByText("Selected members (1):")).toBeInTheDocument();
 
     const groupNameInput = screen.getByPlaceholderText("Group name");
@@ -148,19 +165,17 @@ describe("WorkChat", () => {
   });
 
   it("renders centered date divider badge and message options dropdown with Reply, Copy, React, Forward, Pin, Star, Delete (no Meta AI)", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+
     render(
       <MemoryRouter initialEntries={["/chat?conversation=1"]}>
         <WorkChat />
       </MemoryRouter>
     );
 
-    // Date divider renders in the chat thread
     expect(await screen.findByText("25/9/2026")).toBeInTheDocument();
 
     const optionsBtn = screen.getByTitle("Message options");
-    expect(optionsBtn).toBeInTheDocument();
-
-    const { fireEvent } = await import("@testing-library/react");
     fireEvent.click(optionsBtn);
 
     expect(screen.getByText("Reply")).toBeInTheDocument();
@@ -169,8 +184,6 @@ describe("WorkChat", () => {
     expect(screen.getByText("Forward")).toBeInTheDocument();
     expect(screen.getByText("Pin")).toBeInTheDocument();
     expect(screen.getByText("Star")).toBeInTheDocument();
-
-    // Verify Meta AI is NOT present in the menu
     expect(screen.queryByText(/meta ai/i)).not.toBeInTheDocument();
   });
 });

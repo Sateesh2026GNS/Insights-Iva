@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  Activity, BarChart3, Box, CheckCircle, Clock, Cog, Factory, Gauge,
-  IndianRupee, Package, Percent, Target, TrendingUp, Users, Zap,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart,
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart,
@@ -11,22 +8,34 @@ import {
 import AnalyticsAlertsBanner from "../../components/analytics/AnalyticsAlertsBanner";
 import AnalyticsBenchmarkCards from "../../components/analytics/AnalyticsBenchmarkCards";
 import AnalyticsChartCard from "../../components/analytics/AnalyticsChartCard";
-import AnalyticsDashboardHeader from "../../components/analytics/AnalyticsDashboardHeader";
+import AnalyticsErrorState from "../../components/analytics/AnalyticsErrorState";
 import AnalyticsFilterBar from "../../components/analytics/AnalyticsFilterBar";
-import AnalyticsKpiCard from "../../components/analytics/AnalyticsKpiCard";
-import AnalyticsPageShell from "../../components/analytics/AnalyticsPageShell";
-import { ANALYTICS_AXIS, ANALYTICS_GRID, ANALYTICS_LEGEND, ANALYTICS_TOOLTIP } from "../../components/analytics/analyticsChartTheme";
+import Loader from "../../components/common/Loader";
 import { useToast } from "../../context/ToastContext";
 import { getProductionAnalytics } from "../../api/analyticsApi";
-import { CHART_COLORS, currentFiscalYearLabel, fiscalYearToYear, SOURCE_LINKS } from "../../data/analyticsMasterData";
+import {
+  CHART_COLORS,
+  changeArrow,
+  changeColor,
+  currentFiscalYearLabel,
+  fiscalYearToYear,
+  SOURCE_LINKS,
+} from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { apiErrorMessage } from "../../utils/apiError";
-
-const KPI_ICONS = {
-  planned: Target, actual: Factory, efficiency: Gauge, oee: Activity,
-  utilization: Cog, rejection: Percent, downtime: Clock, cost: IndianRupee,
-  wip: Package, completed: CheckCircle, worker: Users, avg_month: BarChart3,
-};
+import {
+  MTK_ANALYTICS_AXIS,
+  MTK_ANALYTICS_GRID,
+  MTK_ANALYTICS_LEGEND,
+  MTK_ANALYTICS_TOOLTIP,
+  PRODUCTION_ANALYTICS_TOOLKIT_SUBTITLE,
+  PRODUCTION_ANALYTICS_TOOLKIT_TAGLINE,
+  productionAnalyticsKpiDisplay,
+  productionAnalyticsKpiIcon,
+  productionAnalyticsKpiTone,
+} from "../../utils/productionAnalyticsToolkit";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/production-analytics-toolkit.css";
 
 const fmtTooltip = (v, name) => [Number(v).toLocaleString("en-IN"), name];
 const emptyData = { kpis: [], alerts: [], monthly_production: [], production_trend: [], daily_output: [], shift_wise: [], machine_wise: [], product_wise: [], operator_performance: [], downtime_analysis: [], benchmarks: [] };
@@ -56,6 +65,15 @@ const normalizeChartData = (rows = []) => {
     })
     .filter((entry) => entry && (entry.value !== undefined || entry.value2 !== undefined));
 };
+
+function formatLastUpdated(iso) {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
 
 export default function ProductionAnalytics() {
   const { addToast } = useToast();
@@ -97,167 +115,267 @@ export default function ProductionAnalytics() {
     return () => clearInterval(t);
   }, [autoRefresh, load]);
 
-  if (loading && !data.kpis?.length) {
-    return <AnalyticsPageShell loading kpiCount={4} chartCount={6} />;
-  }
-  if (error && !data.kpis?.length) {
-    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
-  }
-
   const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
 
-  const monthlyProduction = normalizeChartData(data.monthly_production);
-  const productionTrend = normalizeChartData(data.production_trend);
-  const dailyOutput = normalizeChartData(data.daily_output);
-  const shiftWise = normalizeChartData(data.shift_wise);
-  const machineWise = normalizeChartData(data.machine_wise);
-  const productWise = normalizeChartData(data.product_wise);
-  const operatorPerformance = normalizeChartData(data.operator_performance);
-  const downtimeAnalysis = normalizeChartData(data.downtime_analysis);
+  const monthlyProduction = useMemo(() => normalizeChartData(data.monthly_production), [data.monthly_production]);
+  const productionTrend = useMemo(() => normalizeChartData(data.production_trend), [data.production_trend]);
+  const dailyOutput = useMemo(() => normalizeChartData(data.daily_output), [data.daily_output]);
+  const shiftWise = useMemo(() => normalizeChartData(data.shift_wise), [data.shift_wise]);
+  const machineWise = useMemo(() => normalizeChartData(data.machine_wise), [data.machine_wise]);
+  const productWise = useMemo(() => normalizeChartData(data.product_wise), [data.product_wise]);
+  const operatorPerformance = useMemo(() => normalizeChartData(data.operator_performance), [data.operator_performance]);
+  const downtimeAnalysis = useMemo(() => normalizeChartData(data.downtime_analysis), [data.downtime_analysis]);
+
+  const lastUpdatedLabel = formatLastUpdated(data.last_updated);
+
+  const toolkitHero = (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{PRODUCTION_ANALYTICS_TOOLKIT_TAGLINE}</span>
+        {lastUpdatedLabel ? (
+          <div className="mtk-hero__meta">
+            <div>Last updated</div>
+            <div>{lastUpdatedLabel}</div>
+          </div>
+        ) : null}
+      </div>
+      <div className="mtk-hero__title">
+        <h1>Production KPI</h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
+          Planned vs actual, OEE, machine utilization, downtime, and operator performance.
+        </p>
+        <p style={{ fontSize: 9, opacity: 0.85, margin: "4px 0 0" }}>{PRODUCTION_ANALYTICS_TOOLKIT_SUBTITLE}</p>
+      </div>
+    </header>
+  );
+
+  const toolkitKpiRow = (
+    <div className="mtk-kpi-row" aria-label="Production analytics KPIs">
+      {(data.kpis || []).map((kpi, index) => {
+        const pct = kpi.change_pct;
+        const isUp = pct > 0;
+        const TrendIcon = isUp ? TrendingUp : TrendingDown;
+        const active = activeKpi?.key === kpi.key;
+        return (
+          <button
+            key={kpi.key}
+            type="button"
+            className={`mtk-kpi mtk-kpi--button${active ? " mtk-kpi--active" : ""}`}
+            onClick={() => setActiveKpi(kpi)}
+            title={kpi.label}
+          >
+            <div className={`mtk-kpi__icon mtk-kpi__icon--${productionAnalyticsKpiTone(index)}`}>
+              {productionAnalyticsKpiIcon(kpi)}
+            </div>
+            <div className="mtk-kpi__label">{kpi.label}</div>
+            <div className="mtk-kpi__value">{productionAnalyticsKpiDisplay(kpi)}</div>
+            {pct != null ? (
+              <div className={`production-analytics-kpi-meta flex items-center justify-center gap-0.5 ${changeColor(pct)}`}>
+                <TrendIcon className="h-2.5 w-2.5" aria-hidden />
+                {changeArrow(pct)} {Math.abs(pct)}%
+              </div>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (loading && !data.kpis?.length) {
+    return (
+      <div className="production-analytics-page production-analytics-page--toolkit min-h-full min-w-0 w-full">
+        <div className="mtk-root mtk-theme--yellow">
+          {toolkitHero}
+          <div className="mtk-body production-analytics-loading">
+            <Loader label="Loading production analytics…" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !data.kpis?.length) {
+    return (
+      <div className="production-analytics-page production-analytics-page--toolkit min-h-full min-w-0 w-full">
+        <div className="mtk-root mtk-theme--yellow">
+          {toolkitHero}
+          <div className="mtk-body production-analytics-error">
+            <AnalyticsErrorState message={error} onRetry={() => load()} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const chartVariant = "toolkit";
+  const axis = MTK_ANALYTICS_AXIS;
+  const grid = MTK_ANALYTICS_GRID;
+  const tooltip = MTK_ANALYTICS_TOOLTIP;
+  const legend = MTK_ANALYTICS_LEGEND;
 
   return (
-    <AnalyticsPageShell>
-      <AnalyticsDashboardHeader
-        title="Production KPI"
-        subtitle="Planned vs actual, OEE, machine utilization, downtime, and operator performance."
-        lastUpdated={data.last_updated}
-        onRefresh={load}
-        autoRefresh={autoRefresh}
-        onAutoRefreshChange={setAutoRefresh}
-        loading={loading}
-      />
+    <div className="production-analytics-page production-analytics-page--toolkit min-h-full min-w-0 w-full">
+      <div className="mtk-root mtk-theme--yellow">
+        {toolkitHero}
+        {toolkitKpiRow}
 
-      <AnalyticsAlertsBanner alerts={data.alerts} />
+        <div className="mtk-body min-w-0">
+          <div className="production-analytics-toolbar">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(autoRefresh)}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-[var(--color-border)]"
+              />
+              Auto refresh (60s)
+            </label>
+          </div>
 
-      <AnalyticsFilterBar
-        fiscalYear={filters.fiscalYear} onFiscalYearChange={setF("fiscalYear")}
-        month={filters.month} onMonthChange={setF("month")}
-        quarter={filters.quarter} onQuarterChange={setF("quarter")}
-        plant={filters.plant} onPlantChange={setF("plant")}
-        department={filters.department} onDepartmentChange={setF("department")}
-        warehouse={filters.warehouse} onWarehouseChange={setF("warehouse")}
-        product={filters.product} onProductChange={setF("product")}
-        customer={filters.customer} onCustomerChange={setF("customer")}
-        machine={filters.machine} onMachineChange={setF("machine")}
-        dateFrom={filters.dateFrom} onDateFromChange={setF("dateFrom")}
-        dateTo={filters.dateTo} onDateToChange={setF("dateTo")}
-      />
+          <div className="production-analytics-alerts">
+            <AnalyticsAlertsBanner alerts={data.alerts} />
+          </div>
 
-      <div className="ui-kpi-strip">
-        {(data.kpis || []).map((kpi) => (
-          <AnalyticsKpiCard
-            key={kpi.key}
-            kpi={kpi}
-            icon={KPI_ICONS[kpi.key] || Zap}
-            active={activeKpi?.key === kpi.key}
-            onClick={setActiveKpi}
-          />
-        ))}
+          <section className="mtk-panel min-w-0">
+            <div className="mtk-panel__title">Reporting period</div>
+            <div className="production-analytics-filter-body">
+              <AnalyticsFilterBar
+                embedded
+                fiscalYear={filters.fiscalYear}
+                onFiscalYearChange={setF("fiscalYear")}
+                month={filters.month}
+                onMonthChange={setF("month")}
+                quarter={filters.quarter}
+                onQuarterChange={setF("quarter")}
+                plant={filters.plant}
+                onPlantChange={setF("plant")}
+                department={filters.department}
+                onDepartmentChange={setF("department")}
+                warehouse={filters.warehouse}
+                onWarehouseChange={setF("warehouse")}
+                product={filters.product}
+                onProductChange={setF("product")}
+                customer={filters.customer}
+                onCustomerChange={setF("customer")}
+                machine={filters.machine}
+                onMachineChange={setF("machine")}
+                dateFrom={filters.dateFrom}
+                onDateFromChange={setF("dateFrom")}
+                dateTo={filters.dateTo}
+                onDateToChange={setF("dateTo")}
+              />
+            </div>
+          </section>
+
+          {data.benchmarks?.length ? (
+            <div className="production-analytics-benchmarks">
+              <AnalyticsBenchmarkCards benchmarks={data.benchmarks} />
+            </div>
+          ) : null}
+
+          <div className="production-analytics-charts grid gap-4 lg:grid-cols-2">
+            <AnalyticsChartCard id="chart-monthly-prod" variant={chartVariant} title="Monthly Production" subtitle="Planned vs Actual" data={data.monthly_production} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={monthlyProduction}>
+                  <CartesianGrid {...grid} />
+                  <XAxis dataKey="label" {...axis} />
+                  <YAxis {...axis} />
+                  <Tooltip {...tooltip} formatter={fmtTooltip} />
+                  <Legend {...legend} />
+                  <Bar dataKey="value" name="Actual" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="value2" name="Planned" fill={CHART_COLORS[1]} radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+
+            <AnalyticsChartCard id="chart-prod-trend" variant={chartVariant} title="Production Trend" data={data.production_trend} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={productionTrend}>
+                  <CartesianGrid {...grid} />
+                  <XAxis dataKey="label" {...axis} />
+                  <YAxis {...axis} />
+                  <Tooltip {...tooltip} formatter={fmtTooltip} />
+                  <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.2} name="Output" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+
+            <AnalyticsChartCard id="chart-daily" variant={chartVariant} title="Daily Output" data={data.daily_output} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={dailyOutput}>
+                  <CartesianGrid {...grid} />
+                  <XAxis dataKey="label" {...axis} interval={4} />
+                  <YAxis {...axis} />
+                  <Tooltip {...tooltip} formatter={fmtTooltip} />
+                  <Line type="monotone" dataKey="value" stroke={CHART_COLORS[2]} strokeWidth={2} dot={false} name="Units" />
+                </LineChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+
+            <AnalyticsChartCard id="chart-shift" variant={chartVariant} title="Shift Wise Production" data={data.shift_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={shiftWise}>
+                  <CartesianGrid {...grid} />
+                  <XAxis dataKey="label" {...axis} />
+                  <YAxis {...axis} />
+                  <Tooltip {...tooltip} formatter={fmtTooltip} />
+                  <Bar dataKey="value" name="Units" radius={[2, 2, 0, 0]}>
+                    {data.shift_wise.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+
+            <AnalyticsChartCard id="chart-machine" variant={chartVariant} title="Machine Wise Production" data={data.machine_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={machineWise} layout="vertical">
+                  <CartesianGrid {...grid} />
+                  <XAxis type="number" {...axis} />
+                  <YAxis dataKey="label" type="category" width={80} {...axis} />
+                  <Tooltip {...tooltip} formatter={fmtTooltip} />
+                  <Bar dataKey="value" fill={CHART_COLORS[3]} name="Efficiency %" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+
+            <AnalyticsChartCard id="chart-product" variant={chartVariant} title="Product Wise Production" data={data.product_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={productWise} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={88} label>
+                    {productWise.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip {...tooltip} formatter={fmtTooltip} />
+                  <Legend {...legend} />
+                </PieChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+
+            <AnalyticsChartCard id="chart-operator" variant={chartVariant} title="Operator Performance" data={data.operator_performance} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={operatorPerformance}>
+                  <CartesianGrid {...grid} />
+                  <XAxis dataKey="label" {...axis} />
+                  <YAxis {...axis} domain={[0, 100]} />
+                  <Tooltip {...tooltip} formatter={fmtTooltip} />
+                  <Bar dataKey="value" fill={CHART_COLORS[4]} name="Score %" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+
+            <AnalyticsChartCard id="chart-downtime" variant={chartVariant} title="Downtime Analysis" data={data.downtime_analysis} sourceLink="/maintenance" sourceLabel="Maintenance">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={downtimeAnalysis}>
+                  <CartesianGrid {...grid} />
+                  <XAxis dataKey="label" {...axis} />
+                  <YAxis {...axis} />
+                  <Tooltip {...tooltip} formatter={(v) => [`${v} h`, "Downtime"]} />
+                  <Bar dataKey="value" fill="#dc2626" name="Hours" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
+          </div>
+        </div>
       </div>
-
-      <AnalyticsBenchmarkCards benchmarks={data.benchmarks} />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AnalyticsChartCard id="chart-monthly-prod" title="Monthly Production" subtitle="Planned vs Actual" data={data.monthly_production} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyProduction}>
-              <CartesianGrid {...ANALYTICS_GRID} />
-              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
-              <YAxis {...ANALYTICS_AXIS} />
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
-              <Legend {...ANALYTICS_LEGEND} />
-              <Bar dataKey="value" name="Actual" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="value2" name="Planned" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-
-        <AnalyticsChartCard id="chart-prod-trend" title="Production Trend" data={data.production_trend} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={productionTrend}>
-              <CartesianGrid {...ANALYTICS_GRID} />
-              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
-              <YAxis {...ANALYTICS_AXIS} />
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
-              <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.2} name="Output" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-
-        <AnalyticsChartCard id="chart-daily" title="Daily Output" data={data.daily_output} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={dailyOutput}>
-              <CartesianGrid {...ANALYTICS_GRID} />
-              <XAxis dataKey="label" {...ANALYTICS_AXIS} interval={4} />
-              <YAxis {...ANALYTICS_AXIS} />
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
-              <Line type="monotone" dataKey="value" stroke={CHART_COLORS[2]} strokeWidth={2} dot={false} name="Units" />
-            </LineChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-
-        <AnalyticsChartCard id="chart-shift" title="Shift Wise Production" data={data.shift_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={shiftWise}>
-              <CartesianGrid {...ANALYTICS_GRID} />
-              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
-              <YAxis {...ANALYTICS_AXIS} />
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
-              <Bar dataKey="value" name="Units" radius={[6, 6, 0, 0]}>
-                {data.shift_wise.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-
-        <AnalyticsChartCard id="chart-machine" title="Machine Wise Production" data={data.machine_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={machineWise} layout="vertical">
-              <CartesianGrid {...ANALYTICS_GRID} />
-              <XAxis type="number" {...ANALYTICS_AXIS} />
-              <YAxis dataKey="label" type="category" width={80} {...ANALYTICS_AXIS} />
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
-              <Bar dataKey="value" fill={CHART_COLORS[3]} name="Efficiency %" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-
-        <AnalyticsChartCard id="chart-product" title="Product Wise Production" data={data.product_wise} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={productWise} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={100} label>
-                {productWise.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-              </Pie>
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
-              <Legend {...ANALYTICS_LEGEND} />
-            </PieChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-
-        <AnalyticsChartCard id="chart-operator" title="Operator Performance" data={data.operator_performance} sourceLink={SOURCE_LINKS.production} sourceLabel="Production">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={operatorPerformance}>
-              <CartesianGrid {...ANALYTICS_GRID} />
-              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
-              <YAxis {...ANALYTICS_AXIS} domain={[0, 100]} />
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={fmtTooltip} />
-              <Bar dataKey="value" fill={CHART_COLORS[4]} name="Score %" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-
-        <AnalyticsChartCard id="chart-downtime" title="Downtime Analysis" data={data.downtime_analysis} sourceLink="/maintenance" sourceLabel="Maintenance">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={downtimeAnalysis}>
-              <CartesianGrid {...ANALYTICS_GRID} />
-              <XAxis dataKey="label" {...ANALYTICS_AXIS} />
-              <YAxis {...ANALYTICS_AXIS} />
-              <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v} h`, "Downtime"]} />
-              <Bar dataKey="value" fill="#ef4444" name="Hours" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </AnalyticsChartCard>
-      </div>
-    </AnalyticsPageShell>
+    </div>
   );
 }

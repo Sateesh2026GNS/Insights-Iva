@@ -224,7 +224,7 @@ export const GLOBAL_CREATE_ACTIONS = [
     label: "Machine",
     group: "Production",
     path: "/production/machines/create",
-    sidebarPaths: ["/production/tasks", "/maintenance/equipment"],
+    sidebarPaths: ["/production/machines", "/maintenance/equipment"],
     module: "production",
     action: "create",
   },

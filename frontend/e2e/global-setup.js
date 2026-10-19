@@ -122,12 +122,20 @@ function isManufacturingOnlyRun() {
   return /--project[= ]manufacturing\b/.test(args) || /manufacturing-workflow\.spec\.js/.test(args);
 }
 
+function isStoreManagerStagingOnlyRun() {
+  const args = process.argv.join(" ");
+  return (
+    /--project[= ]store-manager-staging\b/.test(args) ||
+    /store-manager-inventory-toolkit-staging\.spec\.js/.test(args)
+  );
+}
+
 export default async function globalSetup() {
   await loadE2eEnvFile();
   // Manufacturing spec authenticates through the login UI and does not use
   // accountant/operator storage state. Skip Chromium provisioning so the spec
   // can skip cleanly when E2E_MANUFACTURING is unset or browsers are missing.
-  if (isManufacturingOnlyRun()) {
+  if (isManufacturingOnlyRun() || isStoreManagerStagingOnlyRun()) {
     return;
   }
   await mkdir(AUTH_DIR, { recursive: true });

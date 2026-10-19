@@ -1,0 +1,282 @@
+/* Store Manager Dashboard — aligned with Production Planning → Capacity Planning (mtk-theme--green) */
+
+.store-dashboard-page--toolkit {
+  width: 100%;
+  max-width: none;
+  background: #f4f7fa;
+  font-size: 11px;
+  color: #1a1a1a;
+}
+
+.store-dashboard-page--toolkit .mtk-kpi-row {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+.store-dashboard-page--toolkit .mtk-kpi--link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.store-dashboard-page--toolkit .mtk-kpi--link:hover {
+  border-color: #15803d;
+  box-shadow: 0 1px 3px rgba(22, 101, 52, 0.15);
+}
+
+.store-dashboard-page--toolkit .mtk-kpi--link:focus-visible {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+}
+
+.store-dashboard-page--toolkit .mtk-kpi__unit {
+  line-height: 1.25;
+  padding: 0 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.store-dashboard-page--toolkit .store-dash-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.store-dashboard-page--toolkit .store-dash-toolbar .ui-btn {
+  font-size: 10px;
+  min-height: 28px;
+  padding: 4px 10px;
+}
+
+.store-dashboard-page--toolkit .store-dash-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.store-dashboard-page--toolkit .store-dash-split {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 1100px) {
+  .store-dashboard-page--toolkit .store-dash-split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.store-dashboard-page--toolkit .store-dash-panel__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.store-dashboard-page--toolkit .store-dash-panel__title h3 {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+}
+
+.store-dashboard-page--toolkit .store-dash-panel__title a {
+  position: absolute;
+  right: 8px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.store-dashboard-page--toolkit .store-dash-panel__title a:hover {
+  text-decoration: underline;
+}
+
+.store-dashboard-page--toolkit .store-dash-panel__body {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.store-dashboard-page--toolkit .store-dash-table-wrap {
+  overflow-x: auto;
+}
+
+.store-dashboard-page--toolkit .store-dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+}
+
+.store-dashboard-page--toolkit .store-dash-table th,
+.store-dashboard-page--toolkit .store-dash-table td {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  padding: 3px 5px;
+  text-align: center;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.store-dashboard-page--toolkit .store-dash-table th:first-child,
+.store-dashboard-page--toolkit .store-dash-table td:first-child {
+  text-align: left;
+}
+
+.store-dashboard-page--toolkit .store-dash-table th {
+  background: #e8eef4;
+  font-weight: 700;
+  font-size: 9px;
+  color: #1e293b;
+}
+
+.store-dashboard-page--toolkit .store-dash-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.store-dashboard-page--toolkit .store-dash-table tbody tr:hover td {
+  background: #f0fdf4;
+}
+
+.store-dashboard-page--toolkit .store-dash-table a {
+  color: #15803d;
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.store-dashboard-page--toolkit .store-dash-table a:hover {
+  text-decoration: underline;
+}
+
+.store-dashboard-page--toolkit .ui-badge {
+  border-radius: 10px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border: none;
+}
+
+.store-dashboard-page--toolkit .ui-badge__mark {
+  display: none;
+}
+
+.store-dashboard-page--toolkit .ui-badge-success {
+  background: #bbf7d0;
+  color: #166534;
+}
+
+.store-dashboard-page--toolkit .ui-badge-info,
+.store-dashboard-page--toolkit .ui-badge-progress {
+  background: #bfdbfe;
+  color: #1e40af;
+}
+
+.store-dashboard-page--toolkit .ui-badge-warning,
+.store-dashboard-page--toolkit .ui-badge-pending,
+.store-dashboard-page--toolkit .ui-badge--primary {
+  background: #fef08a;
+  color: #854d0e;
+}
+
+.store-dashboard-page--toolkit .ui-badge-danger,
+.store-dashboard-page--toolkit .ui-badge-error {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.store-dashboard-page--toolkit .ui-badge-neutral {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.store-dashboard-page--toolkit .store-dash-movement {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+}
+
+@media (min-width: 640px) {
+  .store-dashboard-page--toolkit .store-dash-movement {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.store-dashboard-page--toolkit .store-dash-movement__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+
+.store-dashboard-page--toolkit .store-dash-movement__link:hover {
+  border-color: #15803d;
+  background: #f0fdf4;
+}
+
+.store-dashboard-page--toolkit .store-dash-movement__label {
+  margin: 0;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.store-dashboard-page--toolkit .store-dash-movement__value {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.store-dashboard-page--toolkit .store-dash-movement__meta {
+  font-size: 9px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.store-dashboard-page--toolkit .store-dash-loading,
+.store-dashboard-page--toolkit .store-dash-error {
+  padding: 16px 8px;
+  font-size: 11px;
+}
+
+.store-dashboard-page--toolkit .store-dash-retry {
+  margin: 0 8px 8px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+  color: #14532d;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.store-dashboard-page--toolkit .store-dash-retry:hover {
+  border-color: #15803d;
+  background: #f0fdf4;
+}
+
+.store-dashboard-page--toolkit .store-dash-panel__body .ui-empty,
+.store-dashboard-page--toolkit .store-dash-error .ui-empty {
+  padding: 12px 8px;
+  font-size: 10px;
+}

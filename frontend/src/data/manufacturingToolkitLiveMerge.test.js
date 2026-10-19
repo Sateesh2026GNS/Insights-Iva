@@ -48,6 +48,22 @@ describe("manufacturingToolkitLiveMerge", () => {
     );
   });
 
+  it("product_cost does not expose reference SKU rows before API overlay", () => {
+    const config = resolveToolkitConfig("product_cost", { productCostPayload: null });
+    const table = config.layout
+      .flatMap((s) => (s.type === "row" ? s.children : [s]))
+      .find((c) => c.type === "table");
+    expect(table?.rows?.length ?? 0).toBe(0);
+    expect(config.kpis?.length ?? 0).toBe(0);
+  });
+
+  it("budget_planner without live handler shows unavailable KPI, not sample figures", () => {
+    const config = resolveToolkitConfig("budget_planner", {});
+    expect(config.kpis?.[0]?.value).toBe("—");
+    const table = config.layout?.find((s) => s.type === "table");
+    expect(table?.rows?.length ?? 0).toBe(0);
+  });
+
   it("capacity_planning uses machine and allocation context", () => {
     const config = resolveToolkitConfig("capacity_planning", {
       machines: [

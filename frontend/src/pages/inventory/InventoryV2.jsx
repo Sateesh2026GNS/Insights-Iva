@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  ChevronDown,
-  Eye,
-  ListFilter,
-  Pencil,
-  Settings,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Eye, Pencil, Trash2, X } from "lucide-react";
 
 import AddNewItemModal from "../../components/sales/AddNewItemModal";
 import AddInventoryCategoryModal from "../../components/inventory/AddInventoryCategoryModal";
 import SelectStockItemCategoryModal from "../../components/inventory/SelectStockItemCategoryModal";
-import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
-import RowActionMenu from "../../components/common/RowActionMenu";
+import InventoryStockItems from "../../components/inventory/InventoryStockItems";
 import useAuth from "../../hooks/useAuth";
 import { isProductionManager, userCanWriteProductMaster } from "../../config/permissions";
 import {
@@ -29,9 +20,6 @@ import InventoryItemPhoto from "../../components/inventory/InventoryItemPhoto";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/common/Button";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
-import EmptyState from "../../components/common/EmptyState";
-import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import {
   addInventoryV2Stock,
@@ -47,72 +35,18 @@ import { apiErrorMessage } from "../../utils/apiError";
 import { removeLocalProducts } from "../../utils/localProductCache";
 import { catalogStockReportMeta } from "../../utils/storeReportPageMeta";
 import { invalidateReferenceCache } from "../../utils/referenceDataCache";
+import { InventoryPageShell } from "../../components/inventory/inventoryDesignSystem";
 import {
-  InventoryOutlineButton,
-  InventoryPageCard,
-  InventoryPageShell,
-  InventoryPrimaryButton,
-  InventoryAddButton,
-  InventorySearchInput,
-  InventoryTabs,
-  InventoryToolbarButton,
-  InventoryPagination,
-  inventoryRowClass,
-  inventoryTableHeadClass,
-  inventoryTdClass,
-  inventoryThClass,
-} from "../../components/inventory/inventoryDesignSystem";
-
-const PAGE_SIZES = [10, 20, 50];
-
-const SORT_OPTIONS = [
-  { id: "name-asc", label: "Item Name A-Z" },
-  { id: "name-desc", label: "Item Name Z-A" },
-  { id: "qty-asc", label: "Quantity Low to High" },
-  { id: "qty-desc", label: "Quantity High to low" },
-];
-
-const STOCK_FILTERS = [
-  { id: "all", label: "All" },
-  { id: "in", label: "In Stock" },
-  { id: "low", label: "Low Stock" },
-  { id: "out", label: "Out Of Stock" },
-];
+  filterInventoryStockRows,
+  getInventoryStockItemTableHeaders,
+  isLockedKpiStockFilter,
+  resolveInventoryKpiStockFilter,
+  SORT_OPTIONS,
+} from "../../utils/inventoryStockItems";
 
 function todayLabel() {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
-}
-
-function DropdownMenu({ open, children, className = "" }) {
-  if (!open) return null;
-
-  return (
-    <div
-      className={`absolute right-0 z-30 mt-1 min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-function RadioRow({ checked, label, onSelect }) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-    >
-      <span
-        className={`grid h-4 w-4 place-items-center rounded-full border ${
-          checked ? "border-[var(--color-text)]" : "border-[var(--color-border-strong)]"
-        }`}
-      >
-        {checked ? <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]" /> : null}
-      </span>
-      {label}
-    </button>
-  );
 }
 
 function StockAdjustModal({ mode, open, stock, unit, onClose, onSubmit }) {
@@ -215,34 +149,11 @@ function StockAdjustModal({ mode, open, stock, unit, onClose, onSubmit }) {
   );
 }
 
-function stockFilterFromSearchParams(searchParams) {
-  const stock = String(searchParams.get("stock") || "").toLowerCase();
-  const legacy = String(searchParams.get("filter") || "").toLowerCase();
-  if (stock === "low" || legacy === "low_stock") return "low";
-  if (stock === "out" || legacy === "out_of_stock") return "out";
-  if (stock === "in") return "in";
-  return "all";
-}
-
-function stockFilterFromPath(pathname) {
-  const path = String(pathname || "").replace(/\/$/, "");
-  if (path.endsWith("/low-stock")) return "low";
-  if (path.endsWith("/out-of-stock")) return "out";
-  return null;
-}
-
-const CATEGORY_WISE_HEADERS = [
-  "HSN Code",
-  "Item Name",
-  "Category",
-  "Stock Value",
-  "Purchase Price",
-  "Sales Price",
-  "Stock In Hand",
-  "Action",
-];
-
-export default function InventoryV2() {
+/**
+ * @param {{ forcedStockFilter?: "low"|"out"|null }} props
+ * When set (dedicated low/out pages), KPI stock filter is locked; data still loads once via listInventoryV2Items.
+ */
+export default function InventoryV2({ forcedStockFilter = null }) {
   const { user } = useAuth();
   const canWrite = userCanWriteProductMaster(user);
   const isPM = isProductionManager(user);
@@ -250,9 +161,15 @@ export default function InventoryV2() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const pathStockFilter = stockFilterFromPath(location.pathname);
-  const kpiStockFilter = pathStockFilter || stockFilterFromSearchParams(searchParams);
-  const lockedStockFilter = pathStockFilter != null;
+  const kpiStockFilter = resolveInventoryKpiStockFilter({
+    pathname: location.pathname,
+    searchParams,
+    forcedStockFilter,
+  });
+  const lockedStockFilter = isLockedKpiStockFilter({
+    pathname: location.pathname,
+    forcedStockFilter,
+  });
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
   const [tab, setTab] = useState("items");
@@ -311,7 +228,7 @@ export default function InventoryV2() {
 
   useEffect(() => {
     setStockFilter(kpiStockFilter);
-  }, [kpiStockFilter, location.pathname]);
+  }, [kpiStockFilter, location.pathname, forcedStockFilter]);
 
   useEffect(() => {
     setPage(1);
@@ -336,32 +253,10 @@ export default function InventoryV2() {
   };
   }, []);
 
-  const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let rows = products.filter((p) => {
-      if (q) {
-        const hay = `${p.name} ${p.hsn_code} ${p.category} ${p.product_code || p.sku}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      const qty = Number(p.current_stock) || 0;
-      const minStk = Number(p.min_stock) || 0;
-      if (stockFilter === "in" && qty <= 0) return false;
-      if (stockFilter === "out" && qty > 0) return false;
-      if (stockFilter === "low") {
-        if (qty <= 0) return false;
-        if (minStk > 0 && qty <= minStk) return true;
-        return false;
-      }
-      return true;
-    });
-    rows = [...rows].sort((a, b) => {
-      if (sort === "name-desc") return String(b.name).localeCompare(String(a.name));
-      if (sort === "qty-asc") return (Number(a.current_stock) || 0) - (Number(b.current_stock) || 0);
-      if (sort === "qty-desc") return (Number(b.current_stock) || 0) - (Number(a.current_stock) || 0);
-      return String(a.name).localeCompare(String(b.name));
-    });
-    return rows;
-  }, [products, search, sort, stockFilter]);
+  const filteredItems = useMemo(
+    () => filterInventoryStockRows(products, { search, sort, stockFilter }),
+    [products, search, sort, stockFilter]
+  );
 
   const categoryWiseItems = useMemo(
     () => filterCategoryWiseItems(products, { search, categoryFilter, sort }),
@@ -606,336 +501,61 @@ export default function InventoryV2() {
   const emptyReportTitle = stockReportMeta?.emptyTitle;
   const emptyReportDescription = stockReportMeta?.emptyDescription;
 
-  const itemTableHeaders = useMemo(() => {
-    if (stockFilter === "low") {
-      return ["HSN Code", "Item Name", "Available Quantity", "Minimum Stock Level", "Stock Value", "Action"];
-    }
-    if (stockFilter === "out") {
-      return ["HSN Code", "Item Name", "Available Quantity", "Stock Value", "Action"];
-    }
-    return ["HSN Code", "Item Name", "Stock Value", "Purchase Price", "Sales Price", "Stock In Hand", "Action"];
-  }, [stockFilter]);
+  const itemTableHeaders = useMemo(() => getInventoryStockItemTableHeaders(stockFilter), [stockFilter]);
 
   return (
     <InventoryPageShell className="space-y-5">
-      {lockedStockFilter ? (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-          <span>KPI filter active — showing {stockFilter === "low" ? "low stock" : "out of stock"} items only.</span>
-          <Link to="/inventory" className="font-semibold text-[var(--color-primary)] hover:underline">
-            View all items
-          </Link>
-        </div>
-      ) : null}
-      <InventoryPageCard>
-        <InventoryTabs
-          active={tab}
-          onChange={setTab}
-          tabs={[
-            { id: "items", label: "Stock Items" },
-            { id: "categories", label: "Category Wise" },
-          ]}
-          action={
-            <Link to="/inventory/settings" className="ui-btn ui-btn-outline inline-flex items-center gap-1.5 text-[13px]">
-              <Settings className="h-4 w-4" />
-              Settings
-            </Link>
-          }
-        />
-
-        <div className="space-y-4 p-4 sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-              <InventorySearchInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search"
-                className="w-full min-w-0 max-w-none flex-1"
-              />
-            </div>
-
-            {tab === "items" ? (
-              <div 
-                ref={toolbarRef}
-                className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <InventoryToolbarButton
-                    onClick={() => {
-                      setSortOpen((v) => !v);
-                      setFilterOpen(false);
-                    }}
-                  >
-                    <ListFilter className="h-4 w-4" />
-                    {sortLabel}
-                    <ChevronDown
-                      className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform ${
-                        sortOpen ? "rotate-180" : ""
-              }`}
-                    />
-                  </InventoryToolbarButton>
-                  <DropdownMenu open={sortOpen}>
-                    {SORT_OPTIONS.map((opt) => (
-                      <RadioRow
-                        key={opt.id}
-                        checked={sort === opt.id}
-                        label={opt.label}
-                        onSelect={() => {
-                          setSort(opt.id);
-                          setSortOpen(false);
-                        }}
-                      />
-                    ))}
-                  </DropdownMenu>
-                </div>
-
-                <div className="relative">
-                  <InventoryToolbarButton
-                    onClick={() => {
-                      setFilterOpen((v) => !v);
-                      setSortOpen(false);
-                    }}
-                  >
-                    <ListFilter className="h-4 w-4" />
-                    Filters
-                    <ChevronDown
-                      className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform ${
-                        filterOpen ? "rotate-180" : ""
-            }`}
-                    />
-                  </InventoryToolbarButton>
-                  <DropdownMenu open={filterOpen}>
-                    {STOCK_FILTERS.map((opt) => (
-                      <RadioRow
-                        key={opt.id}
-                        checked={stockFilter === opt.id}
-                        label={opt.label}
-                        onSelect={() => {
-                          setStockFilter(opt.id);
-                          setFilterOpen(false);
-                        }}
-                      />
-                    ))}
-                  </DropdownMenu>
-                </div>
-
-                <InventoryAddButton onClick={openAddItem}>
-                  Add Items
-                </InventoryAddButton>
-                <ExportDownloadMenu
-                  disabled={!filteredItems.length}
-                  onExport={handleExport}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2 text-[13px] text-[var(--color-text-muted)]">
-                  <span className="sr-only">Filter by category</span>
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text)]"
-                  >
-                    <option value="all">All Categories</option>
-                    {categoryFilterOptions.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <InventoryAddButton type="button" onClick={() => setCategoryModal(true)}>
-                  Add Category
-                </InventoryAddButton>
-              </div>
-            )}
-          </div>
-
-          <div className="ui-table-wrap ui-table-wrap--scroll overflow-hidden rounded-xl">
-            <div className="overflow-x-auto">
-              {tab === "items" ? (
-                <table className="min-w-full border-collapse text-left text-[13px]">
-                  <thead className={inventoryTableHeadClass}>
-                    <tr>
-                      <SerialNumberHeader className={`${inventoryThClass} border-r`} />
-                      {itemTableHeaders.map((h) => (
-                          <th key={h} className={`${inventoryThClass} last:border-r-0`}>
-                            {h}
-                          </th>
-                        ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={itemTableHeaders.length + 1} className="p-0 border-none">
-                          <EmptyState
-                            icon="document"
-                            title={emptyReportTitle || "No records found."}
-                            description={emptyReportDescription || "There is nothing to show here yet."}
-                            className="border-none bg-transparent py-12"
-                          />
-                        </td>
-                      </tr>
-                    ) : (
-                      pageRows.map((row, rowIndex) => (
-                        <tr key={row.id} className={inventoryRowClass}>
-                          <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                          <td className={`${inventoryTdClass} text-[var(--color-text-muted)]`}>{row.hsn_code || "—"}</td>
-                          <td className={`${inventoryTdClass} font-semibold`}>
-                            <button
-                              type="button"
-                              className="text-left hover:underline"
-                              onClick={() => navigate(`/inventory/items/${row.id}`)}
-                            >
-                              {row.name}
-                            </button>
-                          </td>
-                          {stockFilter === "low" ? (
-                            <>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0).toLocaleString("en-IN")}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.min_stock || 0).toLocaleString("en-IN")}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            </>
-                          ) : stockFilter === "out" ? (
-                            <>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0).toLocaleString("en-IN")}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            </>
-                          ) : (
-                            <>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.stock_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.purchase_price || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.selling_price || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className={`${inventoryTdClass} tabular-nums`}>{Number(row.current_stock || 0).toLocaleString("en-IN")}</td>
-                            </>
-                          )}
-                          <td className={inventoryTdClass}>
-                            <div className="flex items-center justify-end whitespace-nowrap">
-                              <InventoryRowActionsMenu
-                                rowId={row.id}
-                                isOpen={openMenuId === row.id}
-                                onOpen={setOpenMenuId}
-                                onClose={() => setOpenMenuId(null)}
-                                showAdd={false}
-                                showAddStock
-                                showRemoveStock
-                                menuWidth={176}
-                                onView={() => handleView(row)}
-                                onEdit={() => handleEditRow(row)}
-                                onAddStock={() => {
-                                  setStockTarget(row);
-                                  setStockMode("add");
-                                }}
-                                onRemoveStock={() => {
-                                  setStockTarget(row);
-                                  setStockMode("remove");
-                                }}
-                                onDelete={() => onDelete(row)}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="min-w-full border-collapse text-left text-[13px]">
-                  <thead className={inventoryTableHeadClass}>
-                    <tr>
-                      <SerialNumberHeader className={`${inventoryThClass} border-r`} />
-                      {CATEGORY_WISE_HEADERS.map((h) => (
-                        <th key={h} className={`${inventoryThClass} last:border-r-0`}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={CATEGORY_WISE_HEADERS.length + 1} className="p-0 border-none">
-                          <EmptyState
-                            icon="document"
-                            title="No stock items found."
-                            description={
-                              categoryFilter === "all"
-                                ? "Add items or adjust your search."
-                                : `No items in ${categoryFilter}.`
-                            }
-                            className="border-none bg-transparent py-12"
-                          />
-                        </td>
-                      </tr>
-                    ) : (
-                      pageRows.map((row, rowIndex) => (
-                        <tr key={row.id} className={inventoryRowClass}>
-                          <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={pageSize} />
-                          <td className={`${inventoryTdClass} text-[var(--color-text-muted)]`}>{row.hsn_code || "—"}</td>
-                          <td className={`${inventoryTdClass} font-semibold`}>
-                            <button
-                              type="button"
-                              className="text-left hover:underline"
-                              onClick={() => handleView(row)}
-                            >
-                              {row.name}
-                            </button>
-                          </td>
-                          <td className={inventoryTdClass}>{normalizeCategoryName(row.category)}</td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>
-                            {Number(row.stock_value || 0).toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>
-                            {Number(row.purchase_price || 0).toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>
-                            {Number(row.selling_price || 0).toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className={`${inventoryTdClass} tabular-nums`}>
-                            {Number(row.current_stock || 0).toLocaleString("en-IN")}
-                          </td>
-                          <td className={inventoryTdClass}>
-                            <div
-                              className="flex items-center justify-end whitespace-nowrap"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <RowActionMenu
-                                rowId={row.id}
-                                openMenu={openMenuId}
-                                setOpenMenu={setOpenMenuId}
-                                items={categoryWiseActionItems(row)}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-
-          <InventoryPagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onPage={setPage}
-            onPageSize={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-          />
-        </div>
-      </InventoryPageCard>
+      <InventoryStockItems
+        lockedStockFilter={lockedStockFilter}
+        stockFilter={stockFilter}
+        onStockFilterChange={setStockFilter}
+        tab={tab}
+        onTabChange={setTab}
+        search={search}
+        onSearchChange={(e) => setSearch(e.target.value)}
+        sort={sort}
+        sortLabel={sortLabel}
+        sortOpen={sortOpen}
+        onSortOpenChange={setSortOpen}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        toolbarRef={toolbarRef}
+        onSortSelect={(id) => {
+          setSort(id);
+          setSortOpen(false);
+        }}
+        itemTableHeaders={itemTableHeaders}
+        emptyReportTitle={emptyReportTitle}
+        emptyReportDescription={emptyReportDescription}
+        pageRows={pageRows}
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        filteredItemsCount={filteredItems.length}
+        onExport={handleExport}
+        onOpenAddItem={openAddItem}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={setCategoryFilter}
+        categoryFilterOptions={categoryFilterOptions}
+        onOpenAddCategory={() => setCategoryModal(true)}
+        openMenuId={openMenuId}
+        onOpenMenuIdChange={setOpenMenuId}
+        onItemNameNavigate={(row) => navigate(`/inventory/items/${row.id}`)}
+        onViewItem={handleView}
+        onEditItem={handleEditRow}
+        onDeleteItem={onDelete}
+        onAddStock={(row) => {
+          setStockTarget(row);
+          setStockMode("add");
+        }}
+        onRemoveStock={(row) => {
+          setStockTarget(row);
+          setStockMode("remove");
+        }}
+        categoryWiseActionItems={categoryWiseActionItems}
+      />
 
       <SelectStockItemCategoryModal
         open={categoryPickOpen}

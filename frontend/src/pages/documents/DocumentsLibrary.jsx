@@ -61,7 +61,12 @@ import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 import { isAdmin, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { formatDocDate, formatFileSize } from "../../utils/documentUtils";
+import { DOCUMENTS_TOOLKIT_KPIS, formatDocumentsKpiValue } from "../../utils/documentsToolkit";
 import "../../styles/documents-library.css";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/documents-library-toolkit.css";
+
+const TOOLKIT_SUBTITLE = "Manufacturing Production Planning & Factory Control Toolkit";
 
 const PAGE_SIZE = 10;
 
@@ -157,7 +162,7 @@ function statusLabel(status) {
   return STATUS_OPTIONS.find((s) => s.value === status)?.label || status || "—";
 }
 
-export default function DocumentsLibrary({ initialDocType = null, title, subtitle }) {
+export default function DocumentsLibrary({ initialDocType = null, title, subtitle, toolkitLayout = false }) {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -508,26 +513,28 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
   const classified = errorObj ? classifyApiError(errorObj) : null;
 
-  return (
-    <ListPageShell className="documents-library-page" stackClassName="documents-library-page__stack">
-      <PageHeader
-        className="documents-library-hero"
-        title={title}
-        showTitle={Boolean(title)}
-        subtitle={
-          subtitle ||
-          "Central document management for purchase, production, quality, finance, and HR files."
-        }
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!enriched.length} onExport={handleExport} />
-            <Button variant="primary" type="button" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" aria-hidden />}>
-              Upload
-            </Button>
-          </div>
-        }
-      />
+  const pageHeading = title || (toolkitLayout ? "Document Library" : undefined);
+  const pageSub =
+    subtitle ||
+    "Central document management for purchase, production, quality, finance, and HR files.";
+  const tableWrapClass = toolkitLayout
+    ? "mtk-table-wrap documents-library-table-wrap ui-table-wrap ui-table-wrap--scroll"
+    : "ui-table-wrap ui-table-wrap--scroll";
+  const tableClass = toolkitLayout
+    ? "mtk-table documents-library-table min-w-full text-left text-sm"
+    : "ui-table documents-library-table min-w-full text-left text-sm";
 
+  const headerActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <ExportDownloadMenu disabled={!enriched.length} onExport={handleExport} />
+      <Button variant="primary" type="button" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" aria-hidden />}>
+        Upload
+      </Button>
+    </div>
+  );
+
+  const alertsBlock = (
+    <>
       {offline && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
           <WifiOff className="h-4 w-4" /> You appear to be offline.
@@ -543,273 +550,297 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
           className="mb-3"
         />
       )}
+    </>
+  );
 
-      <div className="ui-grid-kpi documents-library-kpi">
-        <KpiCard
-          label="Total Documents"
-          value={summaryLoading ? "—" : summary?.total_documents ?? 0}
-          icon={FolderOpen}
-          color="bg-[var(--color-primary)]"
-        />
-        <KpiCard label="PDF Files" value={summary?.pdf_files ?? "—"} icon={FileText} color="bg-rose-600" />
-        <KpiCard label="Images" value={summary?.image_files ?? "—"} icon={FileImage} color="bg-violet-600" />
-        <KpiCard
-          label="Excel Files"
-          value={summary?.excel_files ?? "—"}
-          icon={FileSpreadsheet}
-          color="bg-[var(--color-success)]"
-        />
-        <KpiCard label="Word Files" value={summary?.word_files ?? "—"} icon={FileText} color="bg-sky-600" />
-        <KpiCard label="Recent Uploads" value={summary?.recent_uploads_7d ?? "—"} icon={Plus} color="bg-amber-500" />
-        <KpiCard
-          label="Storage Used"
-          value={summary ? formatFileSize(summary.storage_used_bytes) : "—"}
-          icon={HardDrive}
-          color="bg-[var(--color-surface-hover)]"
+  const filtersBlock = showFilters && (
+    <div
+      className={
+        toolkitLayout
+          ? "documents-library-filters grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
+          : "mt-2 grid grid-cols-1 gap-2 border-t border-[var(--color-border-soft)] pt-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
+      }
+    >
+      <div>
+        <label className="ui-label mb-1 block">Category</label>
+        <select
+          className="ui-select w-full"
+          value={filters.category}
+          onChange={(e) => setFilters({ category: e.target.value, page: 1 })}
+        >
+          <option value="">All</option>
+          {categoryOptions.map((c) => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="ui-label mb-1 block">Department</label>
+        <select
+          className="ui-select w-full"
+          value={filters.department_id}
+          onChange={(e) => setFilters({ department_id: e.target.value, page: 1 })}
+        >
+          <option value="">All</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>{d.name}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="ui-label mb-1 block">File Type</label>
+        <select
+          className="ui-select w-full"
+          value={filters.file_type}
+          onChange={(e) => setFilters({ file_type: e.target.value, page: 1 })}
+        >
+          <option value="">All</option>
+          {FILE_TYPE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="ui-label mb-1 block">Status</label>
+        <select
+          className="ui-select w-full"
+          value={filters.status}
+          onChange={(e) => setFilters({ status: e.target.value, page: 1 })}
+        >
+          <option value="">All</option>
+          {STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="ui-label mb-1 block">From</label>
+        <input
+          type="date"
+          className="ui-input w-full"
+          value={filters.date_from}
+          onChange={(e) => setFilters({ date_from: e.target.value, page: 1 })}
         />
       </div>
+      <div>
+        <label className="ui-label mb-1 block">To</label>
+        <input
+          type="date"
+          className="ui-input w-full"
+          value={filters.date_to}
+          onChange={(e) => setFilters({ date_to: e.target.value, page: 1 })}
+        />
+      </div>
+    </div>
+  );
 
-      <ListPageCard>
-        <ListPageCardBody className="documents-library-toolbar !py-3 sm:!py-3">
-          <ListToolbar
-            start={
-              <SearchBar
-                value={searchDraft}
-                onChange={setSearchDraft}
-                placeholder="Search documents…"
-                aria-label="Search documents"
-                className="documents-library-search w-full min-w-0 max-w-xl"
-                inputClassName="documents-library-search__input"
-              />
-            }
-            end={
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowFilters((v) => !v)}
-                  aria-expanded={showFilters}
-                  leftIcon={<Filter className="h-4 w-4" aria-hidden />}
-                >
-                  Filters
-                </Button>
-              </>
-            }
-          />
-          {showFilters && (
-            <div className="mt-2 grid grid-cols-1 gap-2 border-t border-[var(--color-border-soft)] pt-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-              <div>
-                <label className="ui-label mb-1 block">Category</label>
-                <select
-                  className="ui-select w-full"
-                  value={filters.category}
-                  onChange={(e) => setFilters({ category: e.target.value, page: 1 })}
-                >
-                  <option value="">All</option>
-                  {categoryOptions.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="ui-label mb-1 block">Department</label>
-                <select
-                  className="ui-select w-full"
-                  value={filters.department_id}
-                  onChange={(e) => setFilters({ department_id: e.target.value, page: 1 })}
-                >
-                  <option value="">All</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="ui-label mb-1 block">File Type</label>
-                <select
-                  className="ui-select w-full"
-                  value={filters.file_type}
-                  onChange={(e) => setFilters({ file_type: e.target.value, page: 1 })}
-                >
-                  <option value="">All</option>
-                  {FILE_TYPE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="ui-label mb-1 block">Status</label>
-                <select
-                  className="ui-select w-full"
-                  value={filters.status}
-                  onChange={(e) => setFilters({ status: e.target.value, page: 1 })}
-                >
-                  <option value="">All</option>
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="ui-label mb-1 block">From</label>
-                <input
-                  type="date"
-                  className="ui-input w-full"
-                  value={filters.date_from}
-                  onChange={(e) => setFilters({ date_from: e.target.value, page: 1 })}
-                />
-              </div>
-              <div>
-                <label className="ui-label mb-1 block">To</label>
-                <input
-                  type="date"
-                  className="ui-input w-full"
-                  value={filters.date_to}
-                  onChange={(e) => setFilters({ date_to: e.target.value, page: 1 })}
-                />
-              </div>
-            </div>
-          )}
-        </ListPageCardBody>
-
-      {permissionDenied ? (
-        <PermissionDeniedState description={error || "You do not have access to these documents."} />
-      ) : error && !loading && !rows.length && !summary ? (
-        <ErrorState description={error} onRetry={load} />
-      ) : offline && error && !rows.length ? (
-        <NetworkErrorState onRetry={load} />
-      ) : listError && !loading && !rows.length && !summary ? (
-        <ErrorState description={listError} onRetry={load} />
-      ) : (
-          <ListPageCardBody className="border-t border-[var(--color-border-soft)] p-0">
-            {loading ? (
-              <SkeletonTable rows={6} cols={8} />
+  const listBody = permissionDenied ? (
+    <PermissionDeniedState description={error || "You do not have access to these documents."} />
+  ) : error && !loading && !rows.length && !summary ? (
+    <ErrorState description={error} onRetry={load} />
+  ) : offline && error && !rows.length ? (
+    <NetworkErrorState onRetry={load} />
+  ) : listError && !loading && !rows.length && !summary ? (
+    <ErrorState description={listError} onRetry={load} />
+  ) : loading ? (
+    <div className={toolkitLayout ? "documents-library-loading" : ""}>
+      <SkeletonTable rows={6} cols={8} />
+    </div>
+  ) : (
+    <div className={tableWrapClass}>
+      <table className={tableClass}>
+        <thead className={toolkitLayout ? undefined : "ui-table-head"}>
+          <tr>
+            {toolkitLayout ? (
+              <th>S.No.</th>
             ) : (
-              <div className="ui-table-wrap ui-table-wrap--scroll">
-                <table className="ui-table documents-library-table min-w-full text-left text-sm">
-                  <thead className="ui-table-head">
-                    <tr>
-                      <SerialNumberHeader className="!px-4" />
-                      <th>Document Name</th>
-                      <th>Category</th>
-                      <th>Department</th>
-                      <th>Uploaded By</th>
-                      <th>Version</th>
-                      <th>Status</th>
-                      <th>File Size</th>
-                      <th>Created</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enriched.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="border-none p-0">
-                          {hasActiveFilters ? (
-                            <EmptyState
-                              title="No documents match these filters"
-                              description="Try clearing filters or changing your search."
-                              action={
-                                <Button type="button" variant="secondary" onClick={() => setSearchParams({}, { replace: true })}>
-                                  Reset filters
-                                </Button>
-                              }
-                            />
-                          ) : (
-                            <EmptyState
-                              icon="document"
-                              title="No records found."
-                              description="Upload your first document to get started."
-                              action={
-                                <Button type="button" variant="primary" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" aria-hidden />}>
-                                  Upload your first document
-                                </Button>
-                              }
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    ) : (
-                      enriched.map((doc, rowIndex) => (
-                        <tr key={doc.id}>
-                          <SerialNumberCell rowIndex={rowIndex} page={filters.page} pageSize={PAGE_SIZE} />
-                          <td className="font-semibold">{doc.name}</td>
-                          <td>{doc.category_label}</td>
-                          <td>{doc.department_name || "—"}</td>
-                          <td>{doc.uploaded_by_name || "—"}</td>
-                          <td>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="!px-2 !py-0.5 !text-xs !font-bold"
-                              onClick={() => openVersions(doc)}
-                            >
-                              v{doc.version_number}
-                            </Button>
-                          </td>
-                          <td>
-                            <StatusBadge tone={statusTone(doc.status)}>{statusLabel(doc.status)}</StatusBadge>
-                          </td>
-                          <td>{doc.file_size_label}</td>
-                          <td>{doc.created_label}</td>
-                          <td>
-                            <TableActionButtons
-                              rowId={doc.id}
-                              openMenu={openMenu}
-                              setOpenMenu={setOpenMenu}
-                              viewLabel="Preview"
-                              onView={() => handlePreview(doc)}
-                              showEdit={canUpdateStatus}
-                              onEdit={
-                                canUpdateStatus
-                                  ? () => {
-                                      setStatusEditDoc(doc);
-                                      setStatusEditValue(doc.status || "draft");
-                                    }
-                                  : undefined
-                              }
-                              editLabel="Update status"
-                              extraItems={[
-                                {
-                                  label: "Download",
-                                  icon: <Download className="h-4 w-4" />,
-                                  onClick: () => handleDownload(doc),
-                                },
-                                {
-                                  label: "Version history",
-                                  icon: <Clock className="h-4 w-4" />,
-                                  onClick: () => openVersions(doc),
-                                },
-                              ]}
-                              showDelete={canDelete}
-                              onDelete={canDelete ? () => handleDelete(doc.id) : undefined}
-                              deleteDisabled={busyId === doc.id}
-                            />
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-                {totalRows > PAGE_SIZE && (
-                  <div className="border-t border-[var(--color-border-soft)] p-3">
-                    <Pagination
-                      page={filters.page}
-                      totalPages={totalPages}
-                      onPageChange={(p) => setFilters({ page: p })}
-                      total={totalRows}
-                      pageSize={PAGE_SIZE}
-                    />
-                  </div>
-                )}
-              </div>
+              <SerialNumberHeader className="!px-4" />
             )}
-          </ListPageCardBody>
+            <th>Document Name</th>
+            <th>Category</th>
+            <th>Department</th>
+            <th>Uploaded By</th>
+            <th>Version</th>
+            <th>Status</th>
+            <th>File Size</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {enriched.length === 0 ? (
+            <tr>
+              <td colSpan={10} className="border-none p-0">
+                {hasActiveFilters ? (
+                  <EmptyState
+                    title="No documents match these filters"
+                    description="Try clearing filters or changing your search."
+                    action={
+                      <Button type="button" variant="secondary" onClick={() => setSearchParams({}, { replace: true })}>
+                        Reset filters
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon="document"
+                    title="No records found."
+                    description="Upload your first document to get started."
+                    action={
+                      <Button type="button" variant="primary" onClick={openUpload} leftIcon={<Upload className="h-4 w-4" aria-hidden />}>
+                        Upload your first document
+                      </Button>
+                    }
+                  />
+                )}
+              </td>
+            </tr>
+          ) : (
+            enriched.map((doc, rowIndex) => (
+              <tr key={doc.id}>
+                <SerialNumberCell rowIndex={rowIndex} page={filters.page} pageSize={PAGE_SIZE} />
+                <td className="font-semibold">{doc.name}</td>
+                <td>{doc.category_label}</td>
+                <td>{doc.department_name || "—"}</td>
+                <td>{doc.uploaded_by_name || "—"}</td>
+                <td>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="!px-2 !py-0.5 !text-xs !font-bold"
+                    onClick={() => openVersions(doc)}
+                  >
+                    v{doc.version_number}
+                  </Button>
+                </td>
+                <td>
+                  <StatusBadge tone={statusTone(doc.status)}>{statusLabel(doc.status)}</StatusBadge>
+                </td>
+                <td>{doc.file_size_label}</td>
+                <td>{doc.created_label}</td>
+                <td>
+                  <TableActionButtons
+                    rowId={doc.id}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    viewLabel="Preview"
+                    onView={() => handlePreview(doc)}
+                    showEdit={canUpdateStatus}
+                    onEdit={
+                      canUpdateStatus
+                        ? () => {
+                            setStatusEditDoc(doc);
+                            setStatusEditValue(doc.status || "draft");
+                          }
+                        : undefined
+                    }
+                    editLabel="Update status"
+                    extraItems={[
+                      {
+                        label: "Download",
+                        icon: <Download className="h-4 w-4" />,
+                        onClick: () => handleDownload(doc),
+                      },
+                      {
+                        label: "Version history",
+                        icon: <Clock className="h-4 w-4" />,
+                        onClick: () => openVersions(doc),
+                      },
+                    ]}
+                    showDelete={canDelete}
+                    onDelete={canDelete ? () => handleDelete(doc.id) : undefined}
+                    deleteDisabled={busyId === doc.id}
+                  />
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      {totalRows > PAGE_SIZE && (
+        <div
+          className={
+            toolkitLayout
+              ? "documents-library-pagination"
+              : "border-t border-[var(--color-border-soft)] p-3"
+          }
+        >
+          <Pagination
+            page={filters.page}
+            totalPages={totalPages}
+            onPageChange={(p) => setFilters({ page: p })}
+            total={totalRows}
+            pageSize={PAGE_SIZE}
+          />
+        </div>
       )}
-      </ListPageCard>
+    </div>
+  );
 
+  const legacyKpiBlock = (
+    <div className="ui-grid-kpi documents-library-kpi">
+      <KpiCard
+        label="Total Documents"
+        value={summaryLoading ? "—" : summary?.total_documents ?? 0}
+        icon={FolderOpen}
+        color="bg-[var(--color-primary)]"
+      />
+      <KpiCard label="PDF Files" value={summary?.pdf_files ?? "—"} icon={FileText} color="bg-rose-600" />
+      <KpiCard label="Images" value={summary?.image_files ?? "—"} icon={FileImage} color="bg-violet-600" />
+      <KpiCard
+        label="Excel Files"
+        value={summary?.excel_files ?? "—"}
+        icon={FileSpreadsheet}
+        color="bg-[var(--color-success)]"
+      />
+      <KpiCard label="Word Files" value={summary?.word_files ?? "—"} icon={FileText} color="bg-sky-600" />
+      <KpiCard label="Recent Uploads" value={summary?.recent_uploads_7d ?? "—"} icon={Plus} color="bg-amber-500" />
+      <KpiCard
+        label="Storage Used"
+        value={summary ? formatFileSize(summary.storage_used_bytes) : "—"}
+        icon={HardDrive}
+        color="bg-[var(--color-surface-hover)]"
+      />
+    </div>
+  );
+
+  const toolkitHero = (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{TOOLKIT_SUBTITLE}</span>
+        <div className="mtk-hero__meta">
+          <div>
+            Storage: {summaryLoading ? "—" : summary ? formatFileSize(summary.storage_used_bytes) : "0 B"}
+          </div>
+          {!summaryLoading && summary?.total_documents != null ? (
+            <div>{Number(summary.total_documents).toLocaleString()} documents</div>
+          ) : null}
+        </div>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>{pageHeading || "Document Library"}</h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>{pageSub}</p>
+      </div>
+    </header>
+  );
+
+  const toolkitKpiRow = (
+    <div className="mtk-kpi-row" aria-label="Document library summary">
+      {DOCUMENTS_TOOLKIT_KPIS.map((kpi) => (
+        <div key={kpi.field} className="mtk-kpi">
+          <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+          <div className="mtk-kpi__label">{kpi.label}</div>
+          <div className="mtk-kpi__value">
+            {formatDocumentsKpiValue(summary, kpi, { loading: summaryLoading })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const modalsBlock = (
+    <>
       {uploadOpen && (
         <div className="ui-modal-backdrop">
           <form onSubmit={submitUpload} className="ui-modal w-full max-w-lg space-y-4">
@@ -991,6 +1022,90 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (toolkitLayout) {
+    return (
+      <>
+        <div className="documents-library-page documents-library-page--toolkit min-h-full min-w-0 w-full">
+          <div className="mtk-root mtk-theme--navy">
+            {toolkitHero}
+            {toolkitKpiRow}
+            <div className="mtk-body min-w-0">
+              <div className="documents-library-alerts">{alertsBlock}</div>
+              <section className="mtk-panel min-w-0">
+                <div className="mtk-panel__title">{pageHeading || "Document Library"}</div>
+                <div className="documents-library-panel__toolbar">
+                  <SearchBar
+                    value={searchDraft}
+                    onChange={setSearchDraft}
+                    placeholder="Search documents…"
+                    aria-label="Search documents"
+                    className="documents-library-search w-full min-w-0 max-w-md"
+                    inputClassName="documents-library-search__input"
+                  />
+                  <div className="documents-library-panel__toolbar-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowFilters((v) => !v)}
+                      aria-expanded={showFilters}
+                      leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+                    >
+                      Filters
+                    </Button>
+                    {headerActions}
+                  </div>
+                </div>
+                {filtersBlock}
+                <div className="documents-library-panel__body">{listBody}</div>
+              </section>
+            </div>
+          </div>
+        </div>
+        {modalsBlock}
+      </>
+    );
+  }
+
+  return (
+    <ListPageShell className="documents-library-page">
+      <PageHeader title={pageHeading || "Documents"} subtitle={pageSub} actions={headerActions} />
+      {alertsBlock}
+      {legacyKpiBlock}
+      <ListPageCard>
+        <ListPageCardBody className="documents-library-toolbar !py-3 sm:!py-3">
+          <ListToolbar
+            start={
+              <SearchBar
+                value={searchDraft}
+                onChange={setSearchDraft}
+                placeholder="Search documents…"
+                aria-label="Search documents"
+                className="documents-library-search w-full min-w-0 max-w-xl"
+                inputClassName="documents-library-search__input"
+              />
+            }
+            end={
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowFilters((v) => !v)}
+                aria-expanded={showFilters}
+                leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+              >
+                Filters
+              </Button>
+            }
+          />
+          {filtersBlock}
+        </ListPageCardBody>
+        {listBody}
+      </ListPageCard>
+      {modalsBlock}
     </ListPageShell>
   );
 }

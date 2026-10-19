@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, Cpu } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { PRODUCTION_MANAGER_PAGE_CHROME } from "../../config/productionManagerPageChrome";
 import StatusBadge from "../../components/common/StatusBadge";
 import Button from "../../components/common/Button";
 import { AsyncPageBody } from "../../components/common/states";
@@ -43,7 +44,7 @@ export default function OperatorMyMachine() {
   }, [load]);
 
   return (
-    <ListPageShell>
+    <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.operatorMachine}>
       <PageHeader title="My Machine" subtitle="Assigned equipment and live shop-floor status." />
       <AsyncPageBody loading={loading} error={error} errorObj={errorObj} onRetry={load} skeletonRows={3} skeletonCols={4}>
         {items.length === 0 ? (

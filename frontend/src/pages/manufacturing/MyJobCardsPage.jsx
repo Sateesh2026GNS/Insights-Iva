@@ -50,7 +50,9 @@ import {
 } from "../../utils/jobCardRoutes";
 import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 import { resolveManualJobCardId, scrollToJobCardDocumentPanel } from "../../utils/manualSalesJobCard";
+import { computeProductionJobCardKpis } from "../../utils/productionJobCardQueueKpis";
 import "../../styles/my-job-cards-page.css";
+import "../../styles/manufacturing-toolkit.css";
 import "../../styles/workflow-next-step.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -609,7 +611,9 @@ export default function MyJobCardsPage() {
           ? "No Operator Job Cards"
           : qualityMode
             ? "No Quality Control Job Cards"
-            : "No Job Cards Found";
+            : productionQueueMode
+              ? "No Production Job Cards"
+              : "No Job Cards Found";
   const emptyDescription = hasAppliedFilters
     ? "Try a different Job Card number, customer, or sales order."
     : storeMode
@@ -620,9 +624,16 @@ export default function MyJobCardsPage() {
           ? "Assigned production jobs appear here when ready for shop floor execution."
           : qualityMode
             ? "Completed production jobs appear here when ready for quality inspection."
-            : canCreate
-              ? "No Sales Job Cards have been created yet."
-              : "Job cards appear here when they are created in the manufacturing workflow.";
+            : productionQueueMode
+              ? "Job cards appear here when store releases materials and production workflow is active."
+              : canCreate
+                ? "No Sales Job Cards have been created yet."
+                : "Job cards appear here when they are created in the manufacturing workflow.";
+  const productionKpis = useMemo(
+    () => computeProductionJobCardKpis(filtered),
+    [filtered]
+  );
+
   const sectionTitle = storeMode
     ? "Sales Orders / Job Cards from Sales"
     : billingMode
@@ -631,7 +642,9 @@ export default function MyJobCardsPage() {
         ? "Production Assignments"
         : qualityMode
           ? "Quality Inspection Queue"
-          : "";
+          : productionQueueMode
+            ? ""
+            : "";
   const sectionHint = storeMode
     ? "Review customer order details, acknowledge receipt, and continue material planning."
     : billingMode
@@ -641,6 +654,296 @@ export default function MyJobCardsPage() {
         : qualityMode
           ? "Inspect production output, record parameters, and approve or reject for packing."
           : null;
+
+  const showCreateInQueue =
+    canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode;
+
+  const queueFiltersPanel = searchOpen ? (
+    <div
+      id="my-job-cards-filters-panel"
+      className={
+        productionQueueMode
+          ? "my-job-cards-page__planner-filters"
+          : "my-job-cards-page__filters-panel"
+      }
+    >
+      <JobCardQueueFilters
+        search={draftFilters.search}
+        onSearchChange={(v) => patchDraft("search", v)}
+        customer={draftFilters.customer}
+        onCustomerChange={(v) => patchDraft("customer", v)}
+        salesOrderNo={draftFilters.salesOrderNo}
+        onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
+        customerSelectOptions={customerSelectOptions}
+        salesOrderSelectOptions={salesOrderSelectOptions}
+        erpLayout
+        plannerLayout={productionQueueMode}
+        searching={searching}
+        onClear={clearFilters}
+        onApply={handleApplyFilters}
+        onSearchKeyDown={handleSearchKeyDown}
+      />
+    </div>
+  ) : null;
+
+  const queueTableBlock = (
+    <AsyncPageBody
+      loading={loading}
+      error={loadError}
+      errorObj={loadErrorObj}
+      online={online}
+      onRetry={() => load(false, serverSearchActive ? appliedFilters : null)}
+      loadingVariant="skeleton"
+      skeletonRows={8}
+      skeletonCols={11}
+      errorTitle="Could not load job cards"
+      className={productionQueueMode ? "my-job-cards-page__planner-async" : "p-4"}
+    >
+      <JobCardQueueTable
+        rows={pageRows.map((row, idx) => ({ ...row, __sno: from + idx + 1 }))}
+        selectedOrderId={isSalesListMode ? null : selectedJobCardId || selectedOrderId}
+        onViewDetails={handleViewRow}
+        jobCardLinkForRow={jobCardLinkForRow}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        snoOffset={from}
+        storeMode={storeMode}
+        erpLayout
+        plannerLayout={productionQueueMode}
+        onDelete={
+          storeMode
+            ? undefined
+            : (row) => {
+                setDeleteError("");
+                setDeleteTarget(row);
+              }
+        }
+        onEdit={!storeMode && canUpdate ? handleEditRow : undefined}
+        canEdit={!storeMode && canUpdate}
+        canDelete={!storeMode && canDeleteSalesDocument}
+        onSend={(row) => setSendTarget(row)}
+        canSend={canSendManual}
+      />
+
+      {listTotal > 0 ? (
+        <div
+          className={
+            productionQueueMode
+              ? "my-job-cards-page__planner-pagination"
+              : "my-job-cards-page__pagination"
+          }
+        >
+          <Pagination
+            page={safePage}
+            pageSize={pageSize}
+            total={listTotal}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => {
+              setPageSize(n);
+              setPage(1);
+            }}
+            pageSizes={PAGE_SIZES}
+            summaryMode="entries"
+            showPageSize
+          />
+        </div>
+      ) : null}
+    </AsyncPageBody>
+  );
+
+  const queueSection = productionQueueMode ? (
+    <section className="mtk-panel my-job-cards-page__planner-panel">
+      <div className="mtk-panel__title">Production Job Card Queue</div>
+      <div className="my-job-cards-page__planner-toolbar">
+        <span className="my-job-cards-page__planner-total">Total: {listTotal}</span>
+        <div className="my-job-cards-page__planner-toolbar-actions">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSearchOpen((v) => !v)}
+            aria-expanded={searchOpen}
+            aria-controls="my-job-cards-filters-panel"
+            className={`my-job-cards-page__planner-btn${searchOpen ? " my-job-cards-search-toggle--open" : ""}`}
+            leftIcon={
+              searchOpen ? (
+                <X className="h-4 w-4" aria-hidden />
+              ) : (
+                <Search className="h-4 w-4" aria-hidden />
+              )
+            }
+          >
+            {searchOpen ? "Close Search" : "Search"}
+          </Button>
+          {showCreateInQueue ? (
+            <Button
+              variant="add"
+              size="sm"
+              className="my-job-cards-page__planner-btn"
+              onClick={() => navigate(jobCardCreateUrl())}
+              leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+            >
+              Create Job Card
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      {queueFiltersPanel}
+      {partialWarning ? (
+        <div className="my-job-cards-page__planner-partial">
+          <PartialDataState
+            title="Some filters could not be loaded"
+            description={partialWarning}
+            sections={[
+              { label: "Job cards loaded", ok: true },
+              { label: "Workflow metadata", ok: false },
+            ]}
+            onRetry={reloadQueue}
+            retryLabel="Retry filters"
+          />
+        </div>
+      ) : null}
+      {queueTableBlock}
+    </section>
+  ) : (
+    <div className="ui-card my-job-cards-page__section">
+      <div
+        className={`erp-section-header erp-section-header--row ${
+          !sectionTitle ? "erp-section-header--no-title" : ""
+        }`}
+      >
+        {sectionTitle ? (
+          <div>
+            <h2 className="erp-section-header__title">{sectionTitle}</h2>
+            {sectionHint ? <p className="my-job-cards-page__section-hint">{sectionHint}</p> : null}
+          </div>
+        ) : (
+          <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
+        )}
+        <div className="my-job-cards-page__section-actions">
+          {sectionTitle ? (
+            <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSearchOpen((v) => !v)}
+            aria-expanded={searchOpen}
+            aria-controls="my-job-cards-filters-panel"
+            className={searchOpen ? "my-job-cards-search-toggle--open" : ""}
+            leftIcon={
+              searchOpen ? (
+                <X className="h-4 w-4" aria-hidden />
+              ) : (
+                <Search className="h-4 w-4" aria-hidden />
+              )
+            }
+          >
+            {searchOpen ? "Close Search" : "Search"}
+          </Button>
+          {showCreateInQueue ? (
+            <Button
+              variant="add"
+              size="sm"
+              onClick={() => navigate(jobCardCreateUrl())}
+              leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+            >
+              Create Job Card
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      {queueFiltersPanel}
+      {partialWarning ? (
+        <div className="px-4 pt-4">
+          <PartialDataState
+            title="Some filters could not be loaded"
+            description={partialWarning}
+            sections={[
+              { label: "Job cards loaded", ok: true },
+              { label: "Workflow metadata", ok: false },
+            ]}
+            onRetry={reloadQueue}
+            retryLabel="Retry filters"
+          />
+        </div>
+      ) : null}
+      {queueTableBlock}
+    </div>
+  );
+
+  const modals = (
+    <>
+      <SendJobCardModal
+        open={Boolean(sendTarget)}
+        jobCard={sendTarget}
+        onClose={() => setSendTarget(null)}
+        onSent={reloadQueue}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={deleteTargetCanBeDeleted ? "Delete saved job card?" : "Job card can't be deleted"}
+        message={
+          deleteTargetCanBeDeleted
+            ? `Delete ${deleteTarget?.job_card_no || deleteTarget?.order_number || "this job card"}? This can't be undone.`
+            : "This job card has already been sent and can't be deleted."
+        }
+        error={deleteError}
+        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        cancelLabel={deleteTargetCanBeDeleted ? "Cancel" : "Close"}
+        destructive={deleteTargetCanBeDeleted}
+        loading={deleting}
+        loadingLabel="Deleting…"
+        showConfirm={deleteTargetCanBeDeleted}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteTarget(null);
+            setDeleteError("");
+          }
+        }}
+      />
+    </>
+  );
+
+  if (productionQueueMode) {
+    return (
+      <div className="my-job-cards-page my-job-cards-page--planner min-h-full">
+        <div className="mtk-root mtk-theme--green print:hidden">
+          <header className="mtk-hero">
+            <div className="mtk-hero__row">
+              <span>Manufacturing Production Planning &amp; Factory Control Toolkit</span>
+            </div>
+            <div className="mtk-hero__title">
+              <h1>
+                Manufacturing
+                <span className="mtk-accent"> Production Job Card Queue</span>
+              </h1>
+              <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
+                BOM · Assignment · Progress · Completion
+              </p>
+            </div>
+          </header>
+
+          <div className="mtk-kpi-row" aria-label="Production queue KPIs">
+            {productionKpis.map((kpi) => (
+              <div key={kpi.label} className="mtk-kpi">
+                <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone || "blue"}`}>{kpi.icon || "•"}</div>
+                <div className="mtk-kpi__label">{kpi.label}</div>
+                <div className="mtk-kpi__value">{kpi.value}</div>
+                {kpi.unit ? <div className="mtk-kpi__unit">{kpi.unit}</div> : null}
+              </div>
+            ))}
+          </div>
+
+          <div className="mtk-body">{queueSection}</div>
+        </div>
+        {modals}
+      </div>
+    );
+  }
 
   return (
     <ListPageShell className="my-job-cards-page" stackClassName="my-job-cards-page__stack">
@@ -734,175 +1037,8 @@ export default function MyJobCardsPage() {
         </Link>
       ) : null}
 
-      <div className="ui-card my-job-cards-page__section">
-        <div
-          className={`erp-section-header erp-section-header--row ${
-            !sectionTitle ? "erp-section-header--no-title" : ""
-          }`}
-        >
-          {sectionTitle ? (
-            <div>
-              <h2 className="erp-section-header__title">{sectionTitle}</h2>
-              {sectionHint ? <p className="my-job-cards-page__section-hint">{sectionHint}</p> : null}
-            </div>
-          ) : (
-            <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
-          )}
-          <div className="my-job-cards-page__section-actions">
-            {sectionTitle ? (
-              <span className="my-job-cards-page__section-total">Total: {listTotal}</span>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setSearchOpen((v) => !v)}
-              aria-expanded={searchOpen}
-              aria-controls="my-job-cards-filters-panel"
-              className={searchOpen ? "my-job-cards-search-toggle--open" : ""}
-              leftIcon={
-                searchOpen ? (
-                  <X className="h-4 w-4" aria-hidden />
-                ) : (
-                  <Search className="h-4 w-4" aria-hidden />
-                )
-              }
-            >
-              {searchOpen ? "Close Search" : "Search"}
-            </Button>
-            {canCreate && !storeMode && !billingMode && !operatorMode && !qualityMode ? (
-              <Button
-                variant="add"
-                size="sm"
-                onClick={() => navigate(jobCardCreateUrl())}
-                leftIcon={<Plus className="h-4 w-4" aria-hidden />}
-              >
-                Create Job Card
-              </Button>
-            ) : null}
-          </div>
-        </div>
-
-        {searchOpen ? (
-          <div id="my-job-cards-filters-panel" className="my-job-cards-page__filters-panel">
-            <JobCardQueueFilters
-              search={draftFilters.search}
-              onSearchChange={(v) => patchDraft("search", v)}
-              customer={draftFilters.customer}
-              onCustomerChange={(v) => patchDraft("customer", v)}
-              salesOrderNo={draftFilters.salesOrderNo}
-              onSalesOrderNoChange={(v) => patchDraft("salesOrderNo", v)}
-              customerSelectOptions={customerSelectOptions}
-              salesOrderSelectOptions={salesOrderSelectOptions}
-              erpLayout
-              searching={searching}
-              onClear={clearFilters}
-              onApply={handleApplyFilters}
-              onSearchKeyDown={handleSearchKeyDown}
-            />
-          </div>
-        ) : null}
-
-        {partialWarning ? (
-          <div className="px-4 pt-4">
-            <PartialDataState
-              title="Some filters could not be loaded"
-              description={partialWarning}
-              sections={[
-                { label: "Job cards loaded", ok: true },
-                { label: "Workflow metadata", ok: false },
-              ]}
-              onRetry={reloadQueue}
-              retryLabel="Retry filters"
-            />
-          </div>
-        ) : null}
-
-        <AsyncPageBody
-          loading={loading}
-          error={loadError}
-          errorObj={loadErrorObj}
-          online={online}
-          onRetry={() => load(false, serverSearchActive ? appliedFilters : null)}
-          loadingVariant="skeleton"
-          skeletonRows={8}
-          skeletonCols={11}
-          errorTitle="Could not load job cards"
-          className="p-4"
-        >
-          <JobCardQueueTable
-            rows={pageRows.map((row, idx) => ({ ...row, __sno: from + idx + 1 }))}
-            selectedOrderId={isSalesListMode ? null : selectedJobCardId || selectedOrderId}
-            onViewDetails={handleViewRow}
-            jobCardLinkForRow={jobCardLinkForRow}
-            emptyTitle={emptyTitle}
-            emptyDescription={emptyDescription}
-            snoOffset={from}
-            storeMode={storeMode}
-            erpLayout
-            onDelete={
-              storeMode
-                ? undefined
-                : (row) => {
-                    setDeleteError("");
-                    setDeleteTarget(row);
-                  }
-            }
-            onEdit={!storeMode && canUpdate ? handleEditRow : undefined}
-            canEdit={!storeMode && canUpdate}
-            canDelete={!storeMode && canDeleteSalesDocument}
-            onSend={(row) => setSendTarget(row)}
-            canSend={canSendManual}
-          />
-
-          {listTotal > 0 ? (
-            <div className="my-job-cards-page__pagination">
-              <Pagination
-                page={safePage}
-                pageSize={pageSize}
-                total={listTotal}
-                onPageChange={setPage}
-                onPageSizeChange={(n) => {
-                  setPageSize(n);
-                  setPage(1);
-                }}
-                pageSizes={PAGE_SIZES}
-                summaryMode="entries"
-                showPageSize
-              />
-            </div>
-          ) : null}
-        </AsyncPageBody>
-      </div>
-
-      <SendJobCardModal
-        open={Boolean(sendTarget)}
-        jobCard={sendTarget}
-        onClose={() => setSendTarget(null)}
-        onSent={reloadQueue}
-      />
-
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title={deleteTargetCanBeDeleted ? "Delete saved job card?" : "Job card can't be deleted"}
-        message={deleteTargetCanBeDeleted
-          ? `Delete ${deleteTarget?.job_card_no || deleteTarget?.order_number || "this job card"}? This can't be undone.`
-          : "This job card has already been sent and can't be deleted."}
-        error={deleteError}
-        confirmLabel={deleting ? "Deleting…" : "Delete"}
-        cancelLabel={deleteTargetCanBeDeleted ? "Cancel" : "Close"}
-        destructive={deleteTargetCanBeDeleted}
-        loading={deleting}
-        loadingLabel="Deleting…"
-        showConfirm={deleteTargetCanBeDeleted}
-        onConfirm={handleDeleteConfirm}
-        onClose={() => {
-          if (!deleting) {
-            setDeleteTarget(null);
-            setDeleteError("");
-          }
-        }}
-      />
+      {queueSection}
+      {modals}
     </ListPageShell>
   );
 }

@@ -31,6 +31,19 @@ export function statusPill(statusKey) {
   return STATUS_MAP[statusKey] || STATUS_MAP.on_track;
 }
 
+/** Placeholder KPIs while loading (not shown as real metrics). */
+export function loadingPlannerKpis() {
+  return [
+    { key: "today_plan", label: "Today's Plan", value: "—", unit: "Units", tone: "blue" },
+    { key: "today_actual", label: "Today's Actual", value: "—", unit: "Units", tone: "green" },
+    { key: "achievement", label: "Achievement", value: "—", unit: "%", tone: "orange" },
+    { key: "products", label: "Total Products", value: "—", unit: "Variants", tone: "purple" },
+    { key: "machines", label: "Active Machines", value: "—", unit: "", tone: "red" },
+    { key: "dispatch", label: "Dispatched Today", value: "—", unit: "Units", tone: "teal" },
+    { key: "weekly_target", label: "Weekly Target", value: "—", unit: "Units", tone: "lime" },
+  ];
+}
+
 export function emptyPlannerModel() {
   return {
     kpis: [

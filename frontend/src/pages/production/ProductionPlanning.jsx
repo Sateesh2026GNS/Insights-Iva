@@ -36,6 +36,7 @@ import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
+import ErrorState from "../../components/common/states/ErrorState";
 import StatusBadge from "../../components/common/StatusBadge";
 import CreateProductionOrderModal from "../../components/production/CreateProductionOrderModal";
 import ProductionOrderDetailModal, {
@@ -48,6 +49,10 @@ import { notifyManufacturingSpine, MANUFACTURING_EVENTS } from "../../utils/manu
 import useAuth from "../../hooks/useAuth";
 import useTenantId from "../../hooks/useTenantId";
 import { isOperator } from "../../config/permissions";
+import {
+  isStoreManufacturingToolkitUser,
+  normalizeManufacturingToolkitId,
+} from "../../config/manufacturingToolkitAccess";
 import {
   completeProductionOrder,
   createProductionOrder,
@@ -116,6 +121,17 @@ const PLANNING_EXPORT_COLUMNS = [
 ];
 
 const PAGE_SIZES = [20, 50, 100, 200, 500];
+
+function isServerProductionOrderId(id) {
+  return typeof id === "number" || (typeof id === "string" && /^\d+$/.test(id));
+}
+
+function formatPlanningKpi(value, unavailable = false) {
+  if (unavailable) return "—";
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "number" && Number.isFinite(value)) return value.toLocaleString();
+  return String(value);
+}
 
 function hasReachedPlannedQuantity(row) {
   const planned = Number(row?.planned_quantity || 0);
@@ -454,6 +470,8 @@ export default function ProductionPlanning() {
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [summaryUnavailable, setSummaryUnavailable] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [orders, setOrders] = useState([]);
@@ -526,14 +544,27 @@ export default function ProductionPlanning() {
   const startDateRef = useRef(null);
   const dueDateRef = useRef(null);
 
+  const storeToolkitOnly = isStoreManufacturingToolkitUser(user);
+  const initialToolkitId = searchParams.get("toolkit");
+
   const load = useCallback(async (opts = {}) => {
     const isRefresh = Boolean(opts?.isRefresh);
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
+    if (isStoreManufacturingToolkitUser(user)) {
+      setLoadError(null);
+      setOrders([]);
+      setApiSummary(null);
+      setSummaryUnavailable(false);
+      setPlannerRefreshKey((k) => k + 1);
+      setLoading(false);
+      setRefreshing(false);
+      if (isRefresh) addToast("Inventory toolkit updated.", "success");
+      return;
+    }
     try {
-      const [oRes, sRes, mRes] = await Promise.all([
+      const [oRes, mRes] = await Promise.all([
         getProductionOrders(),
-        getProductionPlanningSummary().catch(() => ({ data: null })),
         getMachines().catch(() => ({ data: [] })),
       ]);
       setMachines(mRes?.data || []);
@@ -553,21 +584,51 @@ export default function ProductionPlanning() {
       });
       setOrders(apiOrders);
       setPlannerRefreshKey((k) => k + 1);
-      setApiSummary(sRes.data || null);
+      setLoadError(null);
+
+      let summary = oRes.summary ?? null;
+      if (!summary) {
+        try {
+          const sRes = await getProductionPlanningSummary();
+          summary = sRes.data ?? null;
+          setSummaryUnavailable(false);
+        } catch {
+          summary = null;
+          setSummaryUnavailable(true);
+        }
+      } else {
+        setSummaryUnavailable(false);
+      }
+      setApiSummary(summary);
+
       if (isRefresh) addToast("Production planning updated.", "success");
     } catch (err) {
-      addToast(err?.response?.data?.detail || "Could not load production planning", "error");
+      const message =
+        err?.response?.data?.detail || err?.message || "Could not load production planning";
+      setLoadError(typeof message === "string" ? message : "Could not load production planning");
+      addToast(typeof message === "string" ? message : "Could not load production planning", "error");
       if (!isRefresh) {
         setOrders([]);
         setApiSummary(null);
+        setSummaryUnavailable(true);
       }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [addToast]);
+  }, [addToast, user]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!storeToolkitOnly) return;
+    const rawToolkit = searchParams.get("toolkit");
+    const normalizedToolkit = normalizeManufacturingToolkitId(user, rawToolkit);
+    if (rawToolkit === normalizedToolkit) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("toolkit", normalizedToolkit);
+    setSearchParams(next, { replace: true });
+  }, [storeToolkitOnly, user, searchParams, setSearchParams]);
 
   useEffect(() => {
     const date_from = searchParams.get("date_from") ?? "";
@@ -778,28 +839,36 @@ export default function ProductionPlanning() {
 
   const summary = useMemo(() => {
     const computed = computePlanningSummary(filteredOrders);
+    const pendingFromFilter = filteredOrders.filter(
+      (order) => String(order.workflow_status || "").toUpperCase() === "READY_FOR_PRODUCTION"
+    ).length;
     const filtersActive = Object.entries(appliedFilters).some(([key, val]) => {
       if (key === "preset" && (!val || val === "all")) return false;
       return Boolean(val);
     });
     if (apiSummary && !filtersActive) {
       return {
-        total_orders: apiSummary.total_orders ?? computed.total_orders,
-        production_pending_orders: apiSummary.production_pending_orders ?? filteredOrders.filter((order) => String(order.workflow_status || "").toUpperCase() === "READY_FOR_PRODUCTION").length,
-        planned_orders: apiSummary.planned_orders ?? computed.planned_orders,
-        in_progress_orders: apiSummary.in_progress_orders ?? computed.in_progress_orders,
-        completed_orders: apiSummary.completed_orders ?? computed.completed_orders,
-        delayed_orders: apiSummary.delayed_orders ?? computed.delayed_orders,
-        cancelled_orders: apiSummary.cancelled_orders ?? computed.cancelled_orders,
-        todays_target: apiSummary.todays_target ?? computed.todays_target,
-        todays_production: apiSummary.todays_production ?? computed.todays_production,
+        total_orders: apiSummary.total_orders,
+        production_pending_orders: apiSummary.production_pending_orders,
+        planned_orders: apiSummary.planned_orders,
+        in_progress_orders: apiSummary.in_progress_orders,
+        completed_orders: apiSummary.completed_orders,
+        delayed_orders: apiSummary.delayed_orders,
+        cancelled_orders: apiSummary.cancelled_orders,
+        todays_target: apiSummary.todays_target,
+        todays_production: apiSummary.todays_production,
+        fromApi: true,
       };
     }
     return {
       ...computed,
-      production_pending_orders: filteredOrders.filter((order) => String(order.workflow_status || "").toUpperCase() === "READY_FOR_PRODUCTION").length,
+      production_pending_orders: pendingFromFilter,
+      todays_production: summaryUnavailable ? null : computed.todays_production,
+      todays_target: summaryUnavailable ? null : computed.todays_target,
+      fromApi: false,
+      summaryUnavailable,
     };
-  }, [apiSummary, filteredOrders, appliedFilters]);
+  }, [apiSummary, filteredOrders, appliedFilters, summaryUnavailable]);
 
   const showTodayStartOrders = () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -927,99 +996,79 @@ export default function ProductionPlanning() {
   };
 
   const handleStartClick = async (order) => {
-    if (typeof order.id === "number") {
-      try {
-        const res = await getProductionOrderStartChecks(order.id);
-        const checks = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        if (checks.length > 0) {
-          setStartChecks(checks);
-          setStartModal(order);
-          return;
-        }
-      } catch (err) {
-        console.warn("Could not load remote start checks, falling back to order details:", err);
-      }
+    if (!isServerProductionOrderId(order.id)) {
+      addToast("Save this production order on the server before starting production.", "warning");
+      return;
     }
-    const hasMachine = Boolean(order.machine_name && order.machine_name !== "—");
-    const hasOperator = Boolean(order.operator_name && order.operator_name !== "—");
-    setStartChecks([
-      { check_type: "material", label: "Material Availability", ready: true, message: "All required materials available" },
-      { check_type: "machine", label: "Machine Availability", ready: hasMachine, message: hasMachine ? `Machine ready (${order.machine_name})` : "No machine assigned" },
-      { check_type: "operator", label: "Operator Availability", ready: hasOperator, message: hasOperator ? `Operator assigned (${order.operator_name})` : "No operator assigned" },
-    ]);
-    setStartModal(order);
+    try {
+      const res = await getProductionOrderStartChecks(order.id);
+      const checks = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setStartChecks(checks);
+      setStartModal(order);
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Could not load production start checks", "error");
+    }
   };
 
   const confirmStart = async () => {
     const order = startModal;
     if (!order) return;
     setStartLoading(true);
-    if (typeof order.id === "number") {
-      try {
-        const res = await startProductionOrder(order.id);
-        if (res.data?.success) {
-          addToast("Production started");
-          load();
-          setStartModal(null);
-        } else {
-          setStartChecks(res.data?.checks || []);
-          addToast(res.data?.message || "Checks failed", "error");
-        }
-      } catch (err) {
-        addToast(err.response?.data?.detail || "Start failed", "error");
-      } finally {
-        setStartLoading(false);
-      }
+    if (!isServerProductionOrderId(order.id)) {
+      addToast("Production order must be saved on the server before starting.", "error");
+      setStartLoading(false);
       return;
     }
-    setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: "in_progress" } : o)));
-    addToast("Production started");
-    setStartModal(null);
-    setStartLoading(false);
+    try {
+      const res = await startProductionOrder(order.id);
+      if (res.data?.success) {
+        addToast("Production started");
+        load();
+        setStartModal(null);
+      } else {
+        setStartChecks(res.data?.checks || []);
+        addToast(res.data?.message || "Checks failed", "error");
+      }
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Start failed", "error");
+    } finally {
+      setStartLoading(false);
+    }
   };
 
   const handlePause = async (order) => {
-    if (typeof order.id === "number") {
-      try {
-        await pauseProductionOrder(order.id);
-        addToast("Production paused");
-        load();
-      } catch {
-        addToast("Pause failed", "error");
-      }
+    if (!isServerProductionOrderId(order.id)) {
+      addToast("Production order must be saved on the server before pausing.", "error");
       return;
     }
-    setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: "planned" } : o)));
-    addToast("Production paused");
+    try {
+      await pauseProductionOrder(order.id);
+      addToast("Production paused");
+      load();
+    } catch {
+      addToast("Pause failed", "error");
+    }
   };
 
   const handleComplete = async (order) => {
-    if (typeof order.id === "number") {
-      try {
-        const res = await completeProductionOrder(order.id);
-        if (res.data?.success) {
-          setCompleteSteps(res.data.steps || []);
-          setCompleteModal(order);
-          addToast(res.data.message || "Completed");
-          load();
-          setSelected(null);
-        } else {
-          addToast(res.data?.message || "Complete failed", "error");
-        }
-      } catch (err) {
-        addToast(err.response?.data?.detail || "Complete failed", "error");
-      }
+    if (!isServerProductionOrderId(order.id)) {
+      addToast("Production order must be saved on the server before completing.", "error");
       return;
     }
-    setCompleteSteps([
-      "Production finished — quality inspection initiated",
-      "Quality inspection passed",
-      "Inventory updated with finished goods",
-      "Order marked completed",
-    ]);
-    setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: "completed", produced_quantity: o.planned_quantity, progress_pct: 100 } : o)));
-    setCompleteModal(order);
-    addToast("Order completed");
+    try {
+      const res = await completeProductionOrder(order.id);
+      if (res.data?.success) {
+        setCompleteSteps(res.data.steps || []);
+        setCompleteModal(order);
+        addToast(res.data.message || "Completed");
+        load();
+        setSelected(null);
+      } else {
+        addToast(res.data?.message || "Complete failed", "error");
+      }
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Complete failed", "error");
+    }
   };
 
   const handleImportFileClick = () => {
@@ -1284,9 +1333,8 @@ export default function ProductionPlanning() {
     },
   ];
 
-  if (loading) return <Loader label="Loading production planning..." />;
-
   const canCreate = !isOperator(user);
+  const kpiUnavailable = summary.summaryUnavailable && !summary.fromApi;
 
   return (
     <>
@@ -1297,9 +1345,20 @@ export default function ProductionPlanning() {
         plannerTab={plannerTab}
         onPlannerTabChange={setPlannerTab}
         plannerRefreshKey={plannerRefreshKey}
+        initialToolkitId={initialToolkitId}
       />
 
-      {plannerTab === "production_data" ? (
+      {!storeToolkitOnly && plannerTab === "production_data" ? (
+      loading && !orders.length && !loadError ? (
+        <Loader label="Loading production planning..." />
+      ) : loadError ? (
+        <ErrorState
+          title="Could not load production planning"
+          description={loadError}
+          onRetry={() => load()}
+          className="mx-4 my-8"
+        />
+      ) : (
       <ListPageShell
         className="print:bg-transparent"
         stackClassName={`min-w-0 w-full space-y-5 pb-4 print:p-0 print:space-y-4 ${
@@ -1333,32 +1392,32 @@ export default function ProductionPlanning() {
                 <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">A quick view of order progress and output</p>
               </div>
               <span className="rounded-full border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-text-muted)]">
-                {summary.total_orders ?? 0} orders
+                {formatPlanningKpi(summary.total_orders, loadError)} orders
               </span>
             </div>
             <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-3 print:hidden">
               <ClickableKpiCard onClick={() => applyPlanningPreset("all")} title="Show all production orders">
-                <KpiCard label="Total Orders" value={summary.total_orders ?? 0} icon={ClipboardList} tone="primary" meta="Click to filter" className="h-full" />
+                <KpiCard label="Total Orders" value={formatPlanningKpi(summary.total_orders, loadError)} icon={ClipboardList} tone="primary" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("production_pending")} title="Show orders Store has released to Production">
-                <KpiCard label="Production Pending" value={summary.production_pending_orders ?? 0} icon={FileText} tone="yellow" meta="Ready from Store · click to filter" className="h-full" />
+                <KpiCard label="Production Pending" value={formatPlanningKpi(summary.production_pending_orders, loadError)} icon={FileText} tone="yellow" meta="Ready from Store · click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("in_progress")} title="Show in-progress orders">
-                <KpiCard label="In Progress" value={summary.in_progress_orders ?? 0} icon={Play} tone="warning" meta="Click to filter" className="h-full" />
+                <KpiCard label="In Progress" value={formatPlanningKpi(summary.in_progress_orders, loadError)} icon={Play} tone="warning" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("completed")} title="Show completed orders">
-                <KpiCard label="Completed" value={summary.completed_orders ?? 0} icon={CheckCircle2} tone="success" meta="Click to filter" className="h-full" />
+                <KpiCard label="Completed" value={formatPlanningKpi(summary.completed_orders, loadError)} icon={CheckCircle2} tone="success" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={() => applyPlanningPreset("delayed")} title="Show delayed orders">
-                <KpiCard label="Delayed" value={summary.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" className="h-full" />
+                <KpiCard label="Delayed" value={formatPlanningKpi(summary.delayed_orders, loadError)} icon={AlertTriangle} tone="danger" meta="Click to filter" className="h-full" />
               </ClickableKpiCard>
               <ClickableKpiCard onClick={showTodayStartOrders} title="Show orders starting today">
                 <KpiCard
                   label="Today's Production"
-                  value={summary.todays_production?.toLocaleString?.() ?? summary.todays_production ?? 0}
+                  value={formatPlanningKpi(summary.todays_production, kpiUnavailable || loadError)}
                   icon={Target}
                   tone="violet"
-                  meta="Click to filter"
+                  meta={kpiUnavailable ? "Daily report total unavailable" : "Click to filter"}
                   className="h-full"
                 />
               </ClickableKpiCard>
@@ -1542,8 +1601,8 @@ export default function ProductionPlanning() {
                 emptyState={
                   <EmptyState
                     icon="document"
-                    title="No records found."
-                    description="There is nothing to show here yet."
+                    title="No production planning records found."
+                    description="Create a production order or adjust filters to see results."
                     className="border-none bg-transparent py-12"
                   />
                 }
@@ -1595,6 +1654,7 @@ export default function ProductionPlanning() {
             </ListPageCardBody>
           </ListPageCard>
       </ListPageShell>
+      )
       ) : null}
 
       {/* Single Item Print View */}

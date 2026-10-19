@@ -1,0 +1,123 @@
+/* Admin Dashboard — aligned with Production Planning → Department Operating Plan (mtk-theme--navy) */
+
+.admin-dashboard-page--toolkit {
+  width: 100%;
+  max-width: none;
+  background: #f4f7fa;
+  font-size: 11px;
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-body {
+  padding: 8px;
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-content.ui-page {
+  max-width: none;
+  padding: 0;
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-content.ui-stack {
+  gap: 8px;
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0;
+}
+
+.admin-dashboard-page--toolkit section.ui-card {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.admin-dashboard-page--toolkit section.ui-card > div:first-child {
+  margin-bottom: 0 !important;
+  padding: 5px 8px !important;
+  background: var(--mtk-head, #1d4ed8);
+  border-bottom: 1px solid var(--mtk-border, #c5d0dc);
+}
+
+.admin-dashboard-page--toolkit section.ui-card > div:first-child h3 {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+}
+
+.admin-dashboard-page--toolkit section.ui-card > div:first-child p {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 9px;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.admin-dashboard-page--toolkit section.ui-card > div:first-child + *,
+.admin-dashboard-page--toolkit section.ui-card > :not(:first-child) {
+  padding: 8px;
+}
+
+.admin-dashboard-page--toolkit .ui-table-wrap {
+  border: none;
+  border-radius: 0;
+}
+
+.admin-dashboard-page--toolkit .ui-table {
+  font-size: 9px;
+  border-collapse: collapse;
+}
+
+.admin-dashboard-page--toolkit .ui-table th,
+.admin-dashboard-page--toolkit .ui-table td {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  padding: 3px 5px;
+}
+
+.admin-dashboard-page--toolkit .ui-table-head th,
+.admin-dashboard-page--toolkit thead th {
+  background: #e8eef4;
+  font-weight: 700;
+  font-size: 9px;
+  color: #1e293b;
+}
+
+.admin-dashboard-page--toolkit .ui-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.admin-dashboard-page--toolkit .ui-table tbody tr:hover td {
+  background: #eff6ff;
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-footer {
+  font-size: 9px;
+  color: #64748b;
+  border-top-color: var(--mtk-border, #c5d0dc);
+  padding-top: 8px;
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi--link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi--link:hover {
+  border-color: #1d4ed8;
+  box-shadow: 0 1px 3px rgba(30, 64, 175, 0.15);
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-loading {
+  padding: 16px 8px;
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-error {
+  margin: 8px;
+  font-size: 10px;
+  border-radius: 2px;
+}

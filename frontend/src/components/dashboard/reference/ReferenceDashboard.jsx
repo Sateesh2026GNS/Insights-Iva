@@ -50,6 +50,14 @@ import DashboardCheckIn from "../DashboardCheckIn";
 import useManufacturingRefresh from "../../../hooks/useManufacturingRefresh";
 import { isAdmin, isOperator, userCanAccessApprovalQueue } from "../../../config/permissions";
 import { CardShell, KpiIconWell, StatusBadge, TrendBadge, getKpiAccent } from "./ReferenceParts";
+import {
+  ADMIN_DASHBOARD_TOOLKIT_SUBTITLE,
+  adminDashboardKpiIcon,
+  adminDashboardKpiTone,
+  formatAdminDashboardHeroDate,
+} from "../../../utils/adminDashboardToolkit";
+import "../../../styles/manufacturing-toolkit.css";
+import "../../../styles/admin-dashboard-toolkit.css";
 
 /** Masters → Products visual tokens (only reference for this dashboard). */
 const YELLOW = "var(--color-cta)";
@@ -355,7 +363,7 @@ const DEFAULT_CARD_LINKS = {
   "todays-target": "/production/planning",
   "completed-today": "/production/work-orders",
   "operator-in-progress": "/production/work-orders",
-  "pending-tasks": "/production/tasks",
+  "pending-tasks": "/production/work-orders",
   "assigned-machine": "/production/machines",
   "machine-status": "/production/machines",
   "material-availability": "/inventory",
@@ -435,6 +443,84 @@ function KpiStrip({ cards = [] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function AdminDashboardToolkitHero({ title, subtitle }) {
+  return (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{ADMIN_DASHBOARD_TOOLKIT_SUBTITLE}</span>
+        <div className="mtk-hero__meta">
+          <div>As of {formatAdminDashboardHeroDate()}</div>
+        </div>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>{title}</h1>
+        {subtitle ? <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>{subtitle}</p> : null}
+      </div>
+    </header>
+  );
+}
+
+function AdminDashboardToolkitKpiRow({ cards = [], t }) {
+  if (!cards.length) {
+    return (
+      <div className="mtk-body admin-dashboard-toolkit-empty px-2 py-4 text-center text-[10px] text-[var(--color-text-muted)]">
+        {t("common.noData", "No data available.")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mtk-kpi-row" aria-label="Admin dashboard KPIs">
+      {cards.map((card, index) => {
+        const titleKey = KPI_TITLE_KEYS[card.id];
+        const cardTitle = titleKey ? t(`refDashboard.${titleKey}`) : card.title;
+        const targetLink = card.link || DEFAULT_CARD_LINKS[card.id];
+        const tone = adminDashboardKpiTone(index);
+        const inner = (
+          <>
+            <div className={`mtk-kpi__icon mtk-kpi__icon--${tone}`}>{adminDashboardKpiIcon(card)}</div>
+            <div className="mtk-kpi__label">{cardTitle}</div>
+            <div className="mtk-kpi__value">{card.value}</div>
+            {card.trend ? <div className="mtk-kpi__unit">{card.trend}</div> : null}
+          </>
+        );
+        if (targetLink) {
+          return (
+            <Link key={card.id} to={targetLink} className="mtk-kpi mtk-kpi--link">
+              {inner}
+            </Link>
+          );
+        }
+        return (
+          <div key={card.id} className="mtk-kpi">
+            {inner}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AdminDashboardToolkitSkeleton() {
+  return (
+    <div className="admin-dashboard-page admin-dashboard-page--toolkit min-h-full w-full">
+      <div className="mtk-root mtk-theme--navy">
+        <AdminDashboardToolkitHero title="Admin Dashboard" subtitle="" />
+        <div className="mtk-body admin-dashboard-toolkit-loading">
+          <div className="ui-page admin-dashboard-toolkit-content ui-stack">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+            <SkeletonChart />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1188,42 +1274,63 @@ export default function ReferenceDashboard() {
     [kpiCardsLive]
   );
 
-  if (loading) return <DashboardSkeleton />;
+  const adminToolkitLayout = profile === "admin";
+
+  if (loading) {
+    return isAdmin(user) ? <AdminDashboardToolkitSkeleton /> : <DashboardSkeleton />;
+  }
 
   if (error) {
     const isAuthErr = error?.toLowerCase().includes("session") || error?.includes("401");
-    return (
-      <div className="min-h-full bg-[var(--color-bg)]">
-        <div className="ui-page mx-auto max-w-[var(--page-max)]">
-          <div
-            className="rounded-xl border border-[#fde8e8] bg-white px-6 py-10 text-center text-sm text-[#ef4444] shadow-sm"
-            role="alert"
-          >
-            <p className="font-medium">{error}</p>
-            <button
-              type="button"
-              onClick={() => {
-                if (isAuthErr) {
-                  window.location.assign("/login");
-                } else {
-                  load(false);
-                }
-              }}
-              className="mt-4 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90"
-              style={{ background: YELLOW }}
-            >
-              {isAuthErr ? "Go to Login" : t("common.retry", "Retry")}
-            </button>
+    const errorPanel = (
+      <div
+        className="rounded-xl border border-[#fde8e8] bg-white px-6 py-10 text-center text-sm text-[#ef4444] shadow-sm admin-dashboard-toolkit-error"
+        role="alert"
+      >
+        <p className="font-medium">{error}</p>
+        <button
+          type="button"
+          onClick={() => {
+            if (isAuthErr) {
+              window.location.assign("/login");
+            } else {
+              load(false);
+            }
+          }}
+          className="mt-4 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90"
+          style={{ background: adminToolkitLayout ? "var(--color-primary)" : YELLOW }}
+        >
+          {isAuthErr ? "Go to Login" : t("common.retry", "Retry")}
+        </button>
+      </div>
+    );
+
+    if (adminToolkitLayout) {
+      return (
+        <div className="admin-dashboard-page admin-dashboard-page--toolkit min-h-full w-full">
+          <div className="mtk-root mtk-theme--navy">
+            <AdminDashboardToolkitHero
+              title={t("refDashboard.manufacturingDashboardTitle", "Admin Dashboard")}
+              subtitle={t("refDashboard.executiveOverview", "Executive Overview")}
+            />
+            <div className="mtk-body admin-dashboard-toolkit-body">
+              <div className="ui-page admin-dashboard-toolkit-content">{errorPanel}</div>
+            </div>
           </div>
         </div>
+      );
+    }
+
+    return (
+      <div className="min-h-full bg-[var(--color-bg)]">
+        <div className="ui-page mx-auto max-w-[var(--page-max)]">{errorPanel}</div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-full bg-[var(--color-bg)]">
-      <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
-        {sectionVisible(sections, "kpi") ? <KpiStrip cards={kpiCardsLive} /> : null}
+  const dashboardStack = (
+    <>
+        {sectionVisible(sections, "kpi") && !adminToolkitLayout ? <KpiStrip cards={kpiCardsLive} /> : null}
 
         {sectionVisible(sections, "kpi") ? (
           <div className="flex justify-end">
@@ -1355,10 +1462,42 @@ export default function ReferenceDashboard() {
           </div>
         )}
 
-        <footer className="flex flex-col items-center justify-between gap-2 border-t border-[#e4e4ea] pt-4 text-center text-[11px] text-[#8a8a96] sm:flex-row sm:text-left">
+        <footer
+          className={`flex flex-col items-center justify-between gap-2 border-t border-[#e4e4ea] pt-4 text-center text-[11px] text-[#8a8a96] sm:flex-row sm:text-left${
+            adminToolkitLayout ? " admin-dashboard-toolkit-footer" : ""
+          }`}
+        >
           <p>{t("refDashboard.copyright")}</p>
           <p>{t("refDashboard.poweredBy")}</p>
         </footer>
+    </>
+  );
+
+  if (adminToolkitLayout) {
+    return (
+      <div className="admin-dashboard-page admin-dashboard-page--toolkit min-h-full w-full">
+        <div className="mtk-root mtk-theme--navy">
+          <AdminDashboardToolkitHero
+            title={t("refDashboard.manufacturingDashboardTitle", "Admin Dashboard")}
+            subtitle={t("refDashboard.executiveOverview", "Executive Overview")}
+          />
+          {sectionVisible(sections, "kpi") ? (
+            <AdminDashboardToolkitKpiRow cards={kpiCardsLive} t={t} />
+          ) : null}
+          <div className="mtk-body admin-dashboard-toolkit-body">
+            <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack admin-dashboard-toolkit-content">
+              {dashboardStack}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-full bg-[var(--color-bg)]">
+      <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack">
+        {dashboardStack}
       </div>
     </div>
   );

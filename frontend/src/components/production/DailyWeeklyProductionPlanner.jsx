@@ -14,9 +14,11 @@ import {
 } from "recharts";
 
 import { getProductionPlannerDashboard } from "../../api/productionApi";
+import ErrorState from "../common/states/ErrorState";
 import {
   dailyTotals,
   emptyPlannerModel,
+  loadingPlannerKpis,
   plannerApiToModel,
   statusPill,
   weeklyDayTotals,
@@ -77,10 +79,16 @@ export default function DailyWeeklyProductionPlanner({
     loadPlanner();
   }, [loadPlanner, refreshToken]);
 
-  const model = useMemo(
-    () => (plannerPayload ? plannerApiToModel(plannerPayload) : emptyPlannerModel()),
-    [plannerPayload]
-  );
+  const model = useMemo(() => {
+    if (loadError) {
+      return { ...emptyPlannerModel(), kpis: loadingPlannerKpis(), dailyRows: [], weeklyRows: [], machines: [], dispatch: [], dailyChart: [], productMix: [], insights: [], actions: [] };
+    }
+    if (loading && !plannerPayload) {
+      return { ...emptyPlannerModel(), kpis: loadingPlannerKpis(), dailyRows: [], weeklyRows: [], machines: [], dispatch: [], dailyChart: [], productMix: [], insights: [], actions: [] };
+    }
+    if (plannerPayload) return plannerApiToModel(plannerPayload);
+    return emptyPlannerModel();
+  }, [plannerPayload, loading, loadError]);
   const dailyTotal = useMemo(() => dailyTotals(model.dailyRows), [model.dailyRows]);
   const weekTotals = useMemo(() => weeklyDayTotals(model.weeklyRows), [model.weeklyRows]);
   const weekGrand = weekTotals.reduce((a, b) => a + b, 0);
@@ -91,7 +99,7 @@ export default function DailyWeeklyProductionPlanner({
     { id: "daily_plan", label: "Daily Plan" },
     { id: "weekly_schedule", label: "Weekly Schedule" },
     { id: "production_data", label: "Production Data" },
-    { id: "machine_status", label: "Machine Status", path: "/production/tasks" },
+    { id: "machine_status", label: "Machine Status", path: "/production/machines" },
     { id: "dispatch", label: "Dispatch", path: "/sales/shipping" },
     { id: "settings", label: "Settings", path: "/settings" },
   ];
@@ -158,14 +166,19 @@ export default function DailyWeeklyProductionPlanner({
       </header>
 
       {loadError ? (
-        <div className="mb-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-          {typeof loadError === "string" ? loadError : "Failed to load planner data."}
-        </div>
+        <ErrorState
+          title="Could not load production planner"
+          description={typeof loadError === "string" ? loadError : "Failed to load planner data."}
+          onRetry={loadPlanner}
+          className="mb-4 py-10"
+        />
       ) : null}
-      {loading ? (
+      {loading && !loadError ? (
         <div className="mb-2 text-center text-xs text-[var(--color-text-muted)]">Loading production planner…</div>
       ) : null}
 
+      {!loadError ? (
+      <>
       <div className="ppt-kpi-row" aria-label="Production KPIs">
         {model.kpis.map((kpi) => (
           <div key={kpi.key} className="ppt-kpi">
@@ -414,6 +427,8 @@ export default function DailyWeeklyProductionPlanner({
           </div>
         </div>
       </div>
+      </>
+      ) : null}
 
       <nav className="ppt-tabs" aria-label="Production planner sections">
         {tabs.map((tab) => (

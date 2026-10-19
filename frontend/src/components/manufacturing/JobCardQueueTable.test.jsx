@@ -58,6 +58,25 @@ describe("JobCardQueueTable ERP job card link", () => {
     expect(tableWrap.scrollLeft).toBe(0);
   });
 
+  it("uses mtk-table when plannerLayout is enabled", () => {
+    const row = {
+      id: 12,
+      sales_order_id: 12,
+      job_card_no: "JC-2026-0003",
+      order_number: "SO-QU-00003",
+      workflow_status: "READY_FOR_PRODUCTION",
+    };
+
+    const { container } = render(
+      <MemoryRouter>
+        <JobCardQueueTable rows={[row]} erpLayout plannerLayout />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector("table.mtk-table")).toBeInTheDocument();
+    expect(container.querySelector("table.ui-table")).not.toBeInTheDocument();
+  });
+
   it("renders empty state without a refresh button even if onRefresh is passed", () => {
     const onRefresh = vi.fn();
     render(

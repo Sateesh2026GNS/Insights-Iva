@@ -111,6 +111,7 @@ const pathLabels = {
   ewaybill: "E-Waybill",
   "expense-settings": "Expense Settings",
   "export-invoices": "Export Invoices",
+  "export-packing-list": "Export Packing List",
   "export-proforma-invoices": "Export Proforma Invoices",
   final: "Final QC",
   finance: "Finance",

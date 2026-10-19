@@ -84,14 +84,6 @@ export default function AppRoutes() {
       <Route path="/verify-email" element={<P.VerifyEmail />} />
       <Route path="/e-quotation/:token" element={<P.PublicEQuotationPage />} />
       <Route
-        path="/contact"
-        element={
-          <ProtectedRoute>
-            <P.ContactUs />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/"
         element={
           <ProtectedRoute>
@@ -212,14 +204,6 @@ export default function AppRoutes() {
         element={<Navigate to="/production/reports" replace />}
       />
       <Route
-        path="/production/batch-tracking"
-        element={
-          <ProtectedRoute>
-            <P.BatchTracking />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/production/create"
         element={
           <ProtectedRoute>
@@ -232,14 +216,6 @@ export default function AppRoutes() {
         element={<Navigate to="/production/work-orders" replace />}
       />
       <Route
-        path="/production/tasks"
-        element={
-          <ProtectedRoute>
-            <P.MachineAllocation />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         element={
           <ProtectedRoute>
             <InventoryLayout />
@@ -250,8 +226,8 @@ export default function AppRoutes() {
         path="/inventory"
         element={<P.InventoryV2 />}
       />
-      <Route path="/inventory/low-stock" element={<P.InventoryV2 />} />
-      <Route path="/inventory/out-of-stock" element={<P.InventoryV2 />} />
+      <Route path="/inventory/low-stock" element={<P.LowStockItemsPage />} />
+      <Route path="/inventory/out-of-stock" element={<P.OutOfStockItemsPage />} />
       <Route
         path="/inventory/pending-inventory-checks"
         element={<P.PendingInventoryChecks />}
@@ -733,6 +709,14 @@ export default function AppRoutes() {
       <Route path="/sales/proforma-invoices/:id/copy" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
       <Route path="/sales/proforma-invoices/:id/edit" element={<ProtectedRoute><P.ProformaInvoiceForm /></ProtectedRoute>} />
       <Route path="/sales/export-invoices" element={<ProtectedRoute><P.ExportInvoices /></ProtectedRoute>} />
+      <Route
+        path="/sales/export-packing-list"
+        element={
+          <ProtectedRoute>
+            <P.ExportPackingListGenerator />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/sales/export-invoices/create" element={<ProtectedRoute><P.ExportInvoiceForm /></ProtectedRoute>} />
       <Route path="/sales/export-invoices/:id/edit" element={<ProtectedRoute><P.ExportInvoiceForm /></ProtectedRoute>} />
       <Route path="/sales/export-invoices/:id" element={<ProtectedRoute><P.InvoiceCopyPage /></ProtectedRoute>} />
@@ -915,7 +899,6 @@ export default function AppRoutes() {
       <Route path="/masters/departments" element={<ProtectedRoute><P.DepartmentManagement /></ProtectedRoute>} />
       <Route path="/production/schedule" element={<ProtectedRoute><P.ProductionSchedule /></ProtectedRoute>} />
       <Route path="/production/my-machine" element={<ProtectedRoute><P.OperatorMyMachine /></ProtectedRoute>} />
-      <Route path="/production/my-entry" element={<ProtectedRoute><P.OperatorProductionEntry /></ProtectedRoute>} />
       <Route path="/procurement/rfq" element={<ProtectedRoute><P.RFQ /></ProtectedRoute>} />
       <Route path="/finance/accounts-payable" element={<ProtectedRoute><Navigate to="/accounts/accounts-payable" replace /></ProtectedRoute>} />
       <Route path="/finance/accounts-receivable" element={<ProtectedRoute><P.AccountsReceivable /></ProtectedRoute>} />

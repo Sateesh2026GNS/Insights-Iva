@@ -21,6 +21,7 @@ import app.models.department  # noqa: F401
 import app.models.dispatch_address  # noqa: F401
 import app.models.document  # noqa: F401
 import app.models.erp_document  # noqa: F401
+import app.models.export_packing  # noqa: F401
 import app.models.erp_notification  # noqa: F401
 import app.models.file_storage  # noqa: F401
 import app.models.hr  # noqa: F401

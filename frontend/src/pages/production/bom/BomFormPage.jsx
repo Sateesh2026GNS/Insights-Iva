@@ -7,6 +7,7 @@ import Button from "../../../components/common/Button";
 import FieldError from "../../../components/common/states/FieldError";
 import { PermissionDeniedState } from "../../../components/common/states";
 import { ListPageShell } from "../../../components/common/ListPageShell";
+import { PRODUCTION_MANAGER_PAGE_CHROME } from "../../../config/productionManagerPageChrome";
 import { useToast } from "../../../context/ToastContext";
 import useAuth from "../../../hooks/useAuth";
 import { userCanEditBom } from "../../../config/permissions";
@@ -89,7 +90,7 @@ export default function BomFormPage() {
 
   if (!canEdit) {
     return (
-      <ListPageShell>
+      <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bomForm}>
         <PermissionDeniedState description="You do not have permission to edit BOMs." />
       </ListPageShell>
     );
@@ -143,7 +144,7 @@ export default function BomFormPage() {
   };
 
   return (
-    <ListPageShell>
+    <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bomForm}>
       <div className="ui-card p-4 space-y-4 max-w-4xl">
         <div>
           <label className="text-sm font-medium">Name</label>

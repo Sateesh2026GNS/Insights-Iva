@@ -11,6 +11,7 @@ export default function AnalyticsChartCard({
   sourceLink,
   sourceLabel,
   height = "h-[280px]",
+  variant = "default",
 }) {
   const hasData = Array.isArray(data) && data.length > 0 && data.some((d) => {
     const entry = d && typeof d === "object" ? d : {};
@@ -19,6 +20,23 @@ export default function AnalyticsChartCard({
     const hasValue2 = entry.value2 !== undefined && entry.value2 !== null && entry.value2 !== "";
     return hasLabel || hasValue || hasValue2;
   });
+
+  if (variant === "toolkit") {
+    return (
+      <section className="mtk-panel production-analytics-chart-panel min-w-0">
+        <div className="mtk-panel__title">{title}</div>
+        <div className="production-analytics-chart-panel__head">
+          <span>{subtitle || "\u00a0"}</span>
+          {hasData ? <ChartExportMenu chartId={id} title={title} data={data} dataKeys={dataKeys} /> : null}
+        </div>
+        <div id={id} className={`production-analytics-chart-panel__body${hasData ? "" : " flex items-center justify-center"}`}>
+          {hasData ? children : (
+            <AnalyticsEmptyChart title={`No ${title} data`} sourceLink={sourceLink} sourceLabel={sourceLabel} />
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="ui-card ui-card--padded min-w-0">

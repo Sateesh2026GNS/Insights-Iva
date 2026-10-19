@@ -22,9 +22,6 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
   "/production/planning",
   "/production/work-orders",
   "/production/schedule",
-  "/production/tasks",
-  "/production/my-entry",
-  "/production/batch-tracking",
   "/production/reports",
   "/my-job-cards",
   "/masters/bom",
@@ -74,13 +71,11 @@ export const PRODUCTION_MANAGER_ALLOWED_CHILDREN = new Set([
 /** Operator-facing production shortcuts; management pages remain manager-only. */
 export const OPERATOR_ALLOWED_CHILDREN = new Set([
   "/production/my-machine",
-  "/production/my-entry",
 ]);
 
 export const OPERATOR_BLOCKED_CHILDREN = new Set([
   "/production/planning",
   "/production/schedule",
-  "/production/tasks",
   "/production/reports",
 ]);
 
@@ -94,7 +89,6 @@ export const OPERATOR_ALLOWED_PATHS = new Set([
   // The Work Orders page switches operators to their server-scoped assignments.
   "/production/work-orders",
   "/production/my-machine",
-  "/production/my-entry",
   "/factory-monitor/machine-status",
   "/factory-monitor/production-lines",
   "/factory-monitor/live-production",

@@ -2,13 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  AlertTriangle,
   Boxes,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   ClipboardList,
   Eye,
   FileText,
@@ -18,19 +14,16 @@ import {
   Plus,
   Printer,
   Square,
-  Star,
   Trash2,
 } from "lucide-react";
 
 import Button, { IconButton } from "../../components/common/Button";
 import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { operatorJobCardUrl } from "../../utils/jobCardRoutes";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
-import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import StatusBadge from "../../components/common/StatusBadge";
 import { calculateProgressPct } from "../../data/productionPlanningMasterData";
@@ -78,8 +71,19 @@ import {
 import { asArray, apiErrorMessage } from "../../utils/apiError";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { cleanProductLabel } from "../../utils/productLabel";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/work-orders-toolkit.css";
 
 const PAGE_SIZES = [20, 50, 100, 200, 500];
+
+const WO_TOOLKIT_KPIS = [
+  { preset: "all", label: "Total Work Orders", tone: "blue", icon: "WO", field: "total_work_orders" },
+  { preset: "planned", label: "Planned", tone: "green", icon: "P", field: "planned_orders" },
+  { preset: "in_progress", label: "In Progress", tone: "orange", icon: "▶", field: "in_progress_orders" },
+  { preset: "completed", label: "Completed", tone: "teal", icon: "✓", field: "completed_orders" },
+  { preset: "delayed", label: "Delayed", tone: "red", icon: "!", field: "delayed_orders" },
+  { preset: "high_priority", label: "High Priority", tone: "purple", icon: "★", field: "high_priority_orders" },
+];
 
 function isServerWoId(id) {
   return typeof id === "number" || (typeof id === "string" && /^\d+$/.test(id));
@@ -1027,7 +1031,50 @@ export default function WorkOrders() {
     },
   ];
 
-  if (loading) return <Loader label="Loading work orders..." />;
+  const toolkitHero = (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>Plan Work · Assign Resources · Track Completion</span>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>WORK ORDERS</h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
+          Manufacturing Production Planning &amp; Factory Control Toolkit
+        </p>
+      </div>
+    </header>
+  );
+
+  const toolkitKpiRow = (
+    <div className="mtk-kpi-row" aria-label="Work order summary KPIs">
+      {WO_TOOLKIT_KPIS.map((kpi) => (
+        <button
+          key={kpi.preset}
+          type="button"
+          className="mtk-kpi mtk-kpi--button"
+          onClick={() => applyWorkOrderPreset(kpi.preset)}
+          title={`Show ${kpi.label.toLowerCase()}`}
+        >
+          <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+          <div className="mtk-kpi__label">{kpi.label}</div>
+          <div className="mtk-kpi__value">{summary[kpi.field] ?? 0}</div>
+        </button>
+      ))}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="work-orders-page work-orders-page--toolkit min-h-full">
+        <div className="mtk-root mtk-theme--teal">
+          {toolkitHero}
+          <div className="mtk-body work-orders-loading">
+            <Loader label="Loading work orders..." />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleListExport = (format) => {
     if (format === "pdf") {
@@ -1043,12 +1090,328 @@ export default function WorkOrders() {
 
   return (
     <>
-      <ListPageShell
-        className="print:bg-transparent"
-        stackClassName={`min-w-0 w-full space-y-5 pb-4 print:p-0 print:space-y-4 ${
-          printDetailWorkOrder ? "hidden print:hidden" : "print:m-0 print:block"
+      <div
+        className={`work-orders-page work-orders-page--toolkit min-h-full min-w-0 w-full print:hidden ${
+          printDetailWorkOrder ? "hidden" : ""
         }`}
       >
+        <div className="mtk-root mtk-theme--teal">
+          {toolkitHero}
+          {toolkitKpiRow}
+          <div className="mtk-body min-w-0">
+            {pendingView && (
+              <div className="work-orders-pending-banner flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-warning-soft)] bg-[var(--color-warning-soft)] px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-warning)] text-white text-xs font-bold">
+                    {filtered.length}
+                  </span>
+                  <span className="font-semibold text-[var(--color-warning)]">Pending Orders</span>
+                  <span className="text-[var(--color-warning)]">
+                    — showing only <strong>Planned</strong> and <strong>In Progress</strong> work orders
+                  </span>
+                </div>
+                <Button variant="secondary" to="/production/work-orders">
+                  View All Orders
+                </Button>
+              </div>
+            )}
+
+            <section className="mtk-panel min-w-0">
+              <div className="mtk-panel__title">Work Orders</div>
+
+              <div className="work-orders-panel__toolbar">
+                <SearchBar
+                  value={filters.search}
+                  onChange={(val) => {
+                    setFilters((f) => ({ ...f, search: val }));
+                    setAppliedFilters((f) => ({ ...f, search: val }));
+                  }}
+                  placeholder="Search"
+                  className="w-full max-w-md"
+                />
+                <div className="work-orders-panel__toolbar-end">
+                  <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
+                    {showAdvanced ? "Hide Filters" : "Filters"}
+                  </Button>
+                  <ExportDownloadMenu disabled={!filtered.length} onExport={handleListExport} />
+                  <Button variant="secondary" type="button" onClick={handleGlobalPrint} title="Print">
+                    <Printer className="h-4 w-4" />
+                    <span className="hidden sm:inline">Print</span>
+                  </Button>
+                  {!isOperator(user) && (
+                    <Button
+                      variant="add"
+                      type="button"
+                      onClick={() => setShowQuickModal(true)}
+                      leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+                    >
+                      New Work Order
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {showAdvanced && (
+                <div className="work-orders-filters">
+                  <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                      Department
+                      <select
+                        value={filters.department}
+                        onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))}
+                        className="ui-select mt-1 w-full"
+                      >
+                        <option value="">All departments</option>
+                        {DEPARTMENTS.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                      Priority
+                      <select
+                        value={filters.priority}
+                        onChange={(e) => setFilters((f) => ({ ...f, priority: e.target.value }))}
+                        className="ui-select mt-1 w-full"
+                      >
+                        <option value="">All priorities</option>
+                        {PRIORITIES.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
+                      Status
+                      <select
+                        value={filters.status}
+                        onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                        className="ui-select mt-1 w-full"
+                      >
+                        <option value="">All statuses</option>
+                        {WO_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {woStatusLabel(s)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button variant="primary" type="button" onClick={handleApplyFilters}>
+                      Apply Filters
+                    </Button>
+                    <Button variant="secondary" type="button" onClick={handleClearFilters}>
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="work-orders-mobile md:hidden">
+                {paginatedWorkOrders.length === 0 ? (
+                  <EmptyState
+                    icon="document"
+                    title="No records found."
+                    description="There is nothing to show here yet."
+                    className="border-none bg-transparent py-12"
+                  />
+                ) : (
+                  paginatedWorkOrders.map((r) => {
+                    const product = cleanProductLabel(r.product_name);
+                    const planned = Number(r.planned_quantity || 0);
+                    const produced = Number(r.produced_quantity ?? r.actual_quantity ?? 0);
+                    const pct = planned > 0 ? Math.min(Math.round((produced / planned) * 100), 100) : 0;
+                    return (
+                      <div
+                        key={r.id || r.work_order_number}
+                        className="ui-card mb-3 p-3.5 space-y-2.5 transition hover:border-[var(--color-primary-soft)]"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-[var(--color-primary)]">
+                                {r.work_order_number || "—"}
+                              </span>
+                              <StatusBadge tone={woStatusTone({ ...r, is_delayed: false })}>
+                                {woStatusLabel(r.status)}
+                              </StatusBadge>
+                              {r.is_delayed ? <StatusBadge tone="danger">Delayed</StatusBadge> : null}
+                              <PriorityPill priority={r.priority} />
+                            </div>
+                            {r.production_order_number && (
+                              <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+                                PO: {r.production_order_number}
+                              </p>
+                            )}
+                            <h3 className="mt-1 font-semibold text-xs sm:text-sm text-[var(--color-text)] truncate">
+                              {product}
+                            </h3>
+                          </div>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <WoRowActions
+                              row={r}
+                              onView={openWo}
+                              onIssue={handleIssueMaterials}
+                              onStart={handleStartClick}
+                              onPause={handlePause}
+                              onStop={handleStop}
+                              onPrint={handlePrintRow}
+                              onPdf={(row) =>
+                                exportToPdf([row], exportCols, `WO ${row.work_order_number}`, row.work_order_number)
+                              }
+                              onDelete={(row) => setDeleteTarget(row)}
+                              canDelete={!isOperator(user)}
+                              issuing={issuingId === r.id}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1 rounded-lg bg-[var(--color-surface-muted)] p-2.5 text-xs">
+                          <div className="flex items-center justify-between font-medium">
+                            <span className="text-[var(--color-text-muted)]">Production Progress</span>
+                            <span className="font-bold text-[var(--color-text)]">
+                              {pct}% ({produced}/{planned})
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                pct >= 100 ? "bg-emerald-500" : pct > 0 ? "bg-blue-500" : "bg-slate-400"
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs border-t border-[var(--color-border-soft)] pt-2 text-[var(--color-text-secondary)]">
+                          <div>
+                            <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                              Machine
+                            </span>
+                            <span className="font-medium truncate block">{r.machine_name || "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                              Operator
+                            </span>
+                            <span className="font-medium truncate block">{r.operator_name || "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                              Due Date
+                            </span>
+                            <span className="font-medium">{formatDate(r.planned_end || r.planned_start)}</span>
+                          </div>
+                          <div>
+                            <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
+                              Customer
+                            </span>
+                            <span className="font-medium truncate block">{r.customer_name || "—"}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
+                          {canWoStart(r.status) && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => handleStartClick(r)}
+                              leftIcon={<Play className="h-3.5 w-3.5" />}
+                            >
+                              Start
+                            </Button>
+                          )}
+                          {canWoPause(r.status) && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handlePause(r)}
+                              leftIcon={<Pause className="h-3.5 w-3.5 text-amber-600" />}
+                            >
+                              Pause
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openWo(r)}
+                            leftIcon={<Eye className="h-3.5 w-3.5" />}
+                          >
+                            Details
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="hidden md:block">
+                <DataTable
+                  columns={columns}
+                  data={paginatedWorkOrders}
+                  wrapClassName="work-orders-table__wrap mtk-table-wrap"
+                  tableClassName="mtk-table work-orders-table"
+                  showSearch={false}
+                  showPagination={false}
+                  emptyState={
+                    <EmptyState
+                      icon="document"
+                      title="No records found."
+                      description="There is nothing to show here yet."
+                      className="border-none bg-transparent py-12"
+                    />
+                  }
+                />
+              </div>
+
+              <div className="work-orders-pagination ui-pagination justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-xs sm:text-[13px]">
+                  <span>Rows per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="ui-pagination-select"
+                  >
+                    {PAGE_SIZES.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="ui-page-btn"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button type="button" className="ui-page-btn ui-page-btn--active">
+                    {page}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="ui-page-btn"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <div className={`min-w-0 w-full print:p-0 ${printDetailWorkOrder ? "hidden print:block" : "hidden print:block"}`}>
         <div className="mb-4 hidden border-b pb-4 print:block print-header-container">
           <div className="flex justify-between items-center mb-2 text-xs text-slate-600 print-header-top">
             <span className="font-bold text-blue-600 text-xs tracking-wide">Production · Work Orders</span>
@@ -1099,352 +1462,7 @@ export default function WorkOrders() {
             </tbody>
           </table>
         </div>
-
-        {pendingView && (
-          <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-warning-soft)] bg-[var(--color-warning-soft)] px-4 py-3 text-[var(--text-sm)] print:hidden">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-warning)] text-white text-xs font-bold">
-                {filtered.length}
-              </span>
-              <span className="font-semibold text-[var(--color-warning)]">Pending Orders</span>
-              <span className="text-[var(--color-warning)]">— showing only <strong>Planned</strong> and <strong>In Progress</strong> work orders</span>
-            </div>
-            <Button variant="secondary" to="/production/work-orders">
-              View All Orders
-            </Button>
-          </div>
-        )}
-
-        <div className="ui-grid-kpi print:hidden">
-          <KpiCard
-            label="Total Work Orders"
-            value={summary.total_work_orders}
-            icon={ClipboardList}
-            tone="primary"
-            onClick={() => applyWorkOrderPreset("all")}
-            title="Show all work orders"
-          />
-          <KpiCard
-            label="Planned"
-            value={summary.planned_orders}
-            icon={FileText}
-            tone="info"
-            onClick={() => applyWorkOrderPreset("planned")}
-            title="Show planned work orders"
-          />
-          <KpiCard
-            label="In Progress"
-            value={summary.in_progress_orders}
-            icon={Play}
-            tone="warning"
-            onClick={() => applyWorkOrderPreset("in_progress")}
-            title="Show in-progress work orders"
-          />
-          <KpiCard
-            label="Completed"
-            value={summary.completed_orders}
-            icon={CheckCircle2}
-            tone="success"
-            onClick={() => applyWorkOrderPreset("completed")}
-            title="Show completed work orders"
-          />
-          <KpiCard
-            label="Delayed"
-            value={summary.delayed_orders}
-            icon={AlertTriangle}
-            tone="danger"
-            onClick={() => applyWorkOrderPreset("delayed")}
-            title="Show delayed work orders"
-          />
-          <KpiCard
-            label="High Priority"
-            value={summary.high_priority_orders}
-            icon={Star}
-            tone="violet"
-            onClick={() => applyWorkOrderPreset("high_priority")}
-            title="Show high priority work orders"
-          />
-        </div>
-
-        <ListPageCard className="min-w-0 print:border-0 print:bg-transparent print:shadow-none">
-          <ListPageCardBody className="print:p-0">
-          <div className="ui-list-toolbar mb-0 print:hidden">
-            <div className="ui-list-toolbar__start">
-              <SearchBar
-                value={filters.search}
-                onChange={(val) => {
-                  setFilters((f) => ({ ...f, search: val }));
-                  setAppliedFilters((f) => ({ ...f, search: val }));
-                }}
-                placeholder="Search"
-                className="w-full max-w-md"
-              />
-            </div>
-            <div className="ui-list-toolbar__end flex flex-wrap gap-2">
-              <Button variant="secondary" type="button" onClick={() => setShowAdvanced(!showAdvanced)}>
-                {showAdvanced ? "Hide Filters" : "Filters"}
-              </Button>
-              <ExportDownloadMenu disabled={!filtered.length} onExport={handleListExport} />
-              <Button variant="secondary" type="button" onClick={handleGlobalPrint} title="Print">
-                <Printer className="h-4 w-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
-              {!isOperator(user) && (
-                <Button variant="add" type="button" onClick={() => setShowQuickModal(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-                  New Work Order
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {showAdvanced && (
-            <div className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3 print:hidden">
-              <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
-                  Department
-                  <select
-                    value={filters.department}
-                    onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))}
-                    className="ui-select mt-1 w-full"
-                  >
-                    <option value="">All departments</option>
-                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </label>
-                <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
-                  Priority
-                  <select
-                    value={filters.priority}
-                    onChange={(e) => setFilters((f) => ({ ...f, priority: e.target.value }))}
-                    className="ui-select mt-1 w-full"
-                  >
-                    <option value="">All priorities</option>
-                    {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </label>
-                <label className="block min-w-0 text-xs font-medium text-[var(--color-text-muted)]">
-                  Status
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-                    className="ui-select mt-1 w-full"
-                  >
-                    <option value="">All statuses</option>
-                    {WO_STATUSES.map((s) => <option key={s} value={s}>{woStatusLabel(s)}</option>)}
-                  </select>
-                </label>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <Button variant="primary" type="button" onClick={handleApplyFilters}>
-                  Apply Filters
-                </Button>
-                <Button variant="secondary" type="button" onClick={handleClearFilters}>
-                  Clear
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Mobile Work Order Cards View */}
-          <div className="space-y-3 md:hidden print:hidden">
-            {paginatedWorkOrders.length === 0 ? (
-              <EmptyState
-                icon="document"
-                title="No records found."
-                description="There is nothing to show here yet."
-                className="border-none bg-transparent py-12"
-              />
-            ) : (
-              paginatedWorkOrders.map((r) => {
-                const product = cleanProductLabel(r.product_name);
-                const planned = Number(r.planned_quantity || 0);
-                const produced = Number(r.produced_quantity ?? r.actual_quantity ?? 0);
-                const pct = planned > 0 ? Math.min(Math.round((produced / planned) * 100), 100) : 0;
-                return (
-                  <div
-                    key={r.id || r.work_order_number}
-                    className="ui-card p-3.5 space-y-2.5 transition hover:border-[var(--color-primary-soft)]"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-[var(--color-primary)]">
-                            {r.work_order_number || "—"}
-                          </span>
-                          <StatusBadge tone={woStatusTone({ ...r, is_delayed: false })}>
-                            {woStatusLabel(r.status)}
-                          </StatusBadge>
-                          {r.is_delayed ? <StatusBadge tone="danger">Delayed</StatusBadge> : null}
-                          <PriorityPill priority={r.priority} />
-                        </div>
-                        {r.production_order_number && (
-                          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                            PO: {r.production_order_number}
-                          </p>
-                        )}
-                        <h3 className="mt-1 font-semibold text-xs sm:text-sm text-[var(--color-text)] truncate">
-                          {product}
-                        </h3>
-                      </div>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <WoRowActions
-                          row={r}
-                          onView={openWo}
-                          onIssue={handleIssueMaterials}
-                          onStart={handleStartClick}
-                          onPause={handlePause}
-                          onStop={handleStop}
-                          onPrint={handlePrintRow}
-                          onPdf={(row) => exportToPdf([row], exportCols, `WO ${row.work_order_number}`, row.work_order_number)}
-                          onDelete={(row) => setDeleteTarget(row)}
-                          canDelete={!isOperator(user)}
-                          issuing={issuingId === r.id}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Progress & Quantities */}
-                    <div className="space-y-1 rounded-lg bg-[var(--color-surface-muted)] p-2.5 text-xs">
-                      <div className="flex items-center justify-between font-medium">
-                        <span className="text-[var(--color-text-muted)]">Production Progress</span>
-                        <span className="font-bold text-[var(--color-text)]">{pct}% ({produced}/{planned})</span>
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            pct >= 100 ? "bg-emerald-500" : pct > 0 ? "bg-blue-500" : "bg-slate-400"
-                          }`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-[var(--color-border-soft)] pt-2 text-[var(--color-text-secondary)]">
-                      <div>
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
-                          Machine
-                        </span>
-                        <span className="font-medium truncate block">{r.machine_name || "—"}</span>
-                      </div>
-                      <div>
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
-                          Operator
-                        </span>
-                        <span className="font-medium truncate block">{r.operator_name || "—"}</span>
-                      </div>
-                      <div>
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
-                          Due Date
-                        </span>
-                        <span className="font-medium">{formatDate(r.planned_end || r.planned_start)}</span>
-                      </div>
-                      <div>
-                        <span className="text-[var(--color-text-muted)] text-[10px] block uppercase font-semibold">
-                          Customer
-                        </span>
-                        <span className="font-medium truncate block">{r.customer_name || "—"}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border-soft)] pt-2">
-                      {canWoStart(r.status) && (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => handleStartClick(r)}
-                          leftIcon={<Play className="h-3.5 w-3.5" />}
-                        >
-                          Start
-                        </Button>
-                      )}
-                      {canWoPause(r.status) && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handlePause(r)}
-                          leftIcon={<Pause className="h-3.5 w-3.5 text-amber-600" />}
-                        >
-                          Pause
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => openWo(r)}
-                        leftIcon={<Eye className="h-3.5 w-3.5" />}
-                      >
-                        Details
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Desktop Table View */}
-          <div className="planning-table-panel hidden md:block print:hidden">
-            <DataTable
-              columns={columns}
-              data={paginatedWorkOrders}
-              tableClassName="production-planning-table work-orders-table"
-              showSearch={false}
-              showPagination={false}
-              emptyState={
-                <EmptyState
-                  icon="document"
-                  title="No records found."
-                  description="There is nothing to show here yet."
-                  className="border-none bg-transparent py-12"
-                />
-              }
-            />
-          </div>
-
-          {/* Pagination Bar */}
-          <div className="mt-4 ui-pagination justify-between flex-wrap gap-2 print:hidden">
-            <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-xs sm:text-[13px]">
-              <span>Rows per page:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="ui-pagination-select"
-              >
-                {PAGE_SIZES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-              <span>{total === 0 ? "0–0 of 0" : `${from}–${to} of ${total}`}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="ui-page-btn"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button type="button" className="ui-page-btn ui-page-btn--active">
-                {page}
-              </button>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="ui-page-btn"
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          </ListPageCardBody>
-        </ListPageCard>
-      </ListPageShell>
+      </div>
 
       {/* Single Item Print View */}
       {printDetailWorkOrder && (

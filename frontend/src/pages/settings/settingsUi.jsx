@@ -35,12 +35,19 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import useSettings from "../../context/SettingsContext";
 import { filterAccessibleSettingsCategories } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
+import {
+  SETTINGS_PRODUCTION_TOOLKIT_SUBTITLE,
+  formatSettingsToolkitHeroDate,
+  useProductionManagerSettingsToolkit,
+} from "../../utils/settingsProductionToolkit";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/settings-production-toolkit.css";
 import Button from "../../components/common/Button";
 import LogoutConfirmModal from "../../components/common/LogoutConfirmModal";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -88,15 +95,73 @@ export function resolveSettingsIcon(name) {
 /** Re-export for consumers that import from settingsUi */
 export { SETTINGS_ICON };
 
-export function SettingsPageShell({ children }) {
+const SettingsToolkitContext = createContext(false);
+
+export function useSettingsToolkitLayout() {
+  return useContext(SettingsToolkitContext);
+}
+
+function SettingsToolkitHero() {
   return (
-    <div className="settings-page min-h-full">
-      <div className="ui-page">{children}</div>
-    </div>
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{SETTINGS_PRODUCTION_TOOLKIT_SUBTITLE}</span>
+        <div className="mtk-hero__meta">{formatSettingsToolkitHeroDate()}</div>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>
+          Production <span className="mtk-accent">Settings</span>
+        </h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
+          Workspace preferences, notifications, appearance, and production options available to your role.
+        </p>
+      </div>
+    </header>
+  );
+}
+
+export function SettingsPageShell({ children }) {
+  const { user } = useAuth();
+  const toolkit = useProductionManagerSettingsToolkit(user);
+
+  if (!toolkit) {
+    return (
+      <div className="settings-page min-h-full">
+        <div className="ui-page">{children}</div>
+      </div>
+    );
+  }
+
+  return (
+    <SettingsToolkitContext.Provider value={true}>
+      <div className="settings-page settings-page--toolkit min-h-full w-full">
+        <div className="mtk-root mtk-theme--navy settings-toolkit-root print:hidden">
+          <SettingsToolkitHero />
+          <div className="mtk-body settings-toolkit-body min-w-0">
+            <div className="ui-page settings-toolkit-content">{children}</div>
+          </div>
+        </div>
+      </div>
+    </SettingsToolkitContext.Provider>
   );
 }
 
 export function SettingsHero({ title = "Settings", subtitle, actions, children }) {
+  const toolkit = useSettingsToolkitLayout();
+
+  if (toolkit) {
+    return (
+      <section className="mtk-panel settings-toolkit-search-panel min-w-0">
+        <div className="mtk-panel__title">Find a setting</div>
+        <div className="settings-toolkit-search-panel__body flex flex-col gap-3 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">{children}</div>
+          {actions}
+        </div>
+        {subtitle ? <p className="settings-toolkit-section-intro px-2 pb-2 text-[var(--color-text-muted)]">{subtitle}</p> : null}
+      </section>
+    );
+  }
+
   return (
     <div className="ui-card overflow-hidden">
       <div className="settings-hero relative px-5 py-4 sm:px-6 sm:py-5">
@@ -114,6 +179,19 @@ export function SettingsHero({ title = "Settings", subtitle, actions, children }
 }
 
 export function SettingsGroupPanel({ title, children }) {
+  const toolkit = useSettingsToolkitLayout();
+
+  if (toolkit) {
+    return (
+      <section className="mtk-panel settings-toolkit-panel min-w-0 overflow-hidden">
+        <div className="mtk-panel__title">{title}</div>
+        <div className="settings-toolkit-panel__body divide-y divide-[var(--mtk-border,#c5d0dc)] bg-white">
+          {children}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="ui-card overflow-hidden">
       <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-2.5 sm:px-5">
@@ -214,13 +292,16 @@ function isCategoryActive(cat, pathname) {
 export function SettingsSidebarNav() {
   const { pathname } = useLocation();
   const { user } = useAuth();
+  const toolkit = useSettingsToolkitLayout();
   const groups = buildNavGroups(user);
 
+  const navClass = toolkit
+    ? "settings-toolkit-sidebar mtk-panel sticky top-[calc(var(--navbar-height,4rem)+0.75rem)]"
+    : "ui-card sticky top-[calc(var(--navbar-height,4rem)+0.75rem)] max-h-[calc(100vh-var(--navbar-height,4rem)-2rem)] overflow-y-auto";
+
   return (
-    <nav
-      aria-label="Settings sections"
-      className="ui-card sticky top-[calc(var(--navbar-height,4rem)+0.75rem)] max-h-[calc(100vh-var(--navbar-height,4rem)-2rem)] overflow-y-auto"
-    >
+    <nav aria-label="Settings sections" className={navClass}>
+      {toolkit ? <div className="mtk-panel__title">Sections</div> : null}
       <div className="border-b border-[var(--color-border)] px-3 py-2.5">
         <Link
           to="/settings"
@@ -297,8 +378,23 @@ export function SettingsMobileNav() {
 }
 
 export function SettingsSectionHeader({ category }) {
+  const toolkit = useSettingsToolkitLayout();
   const Icon = resolveSettingsIcon(category.icon);
   const chipClass = category.soft || SETTINGS_ICON.default;
+
+  if (toolkit) {
+    return (
+      <section className="mtk-panel settings-toolkit-section-header min-w-0">
+        <div className="mtk-panel__title">{category.title}</div>
+        <div className="flex items-start gap-3 px-2 py-2">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${chipClass}`}>
+            <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </div>
+          <p className="ui-subtitle mt-0 max-w-2xl text-[10px]">{category.description}</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <header className="flex items-start gap-4">
@@ -402,6 +498,22 @@ export function SettingsSwitch({ checked, onChange, label }) {
 }
 
 export function PanelShell({ title, description, children, actions, eyebrow = null }) {
+  const toolkit = useSettingsToolkitLayout();
+
+  if (toolkit && title) {
+    return (
+      <section className="mtk-panel min-w-0 space-y-0">
+        <div className="mtk-panel__title">{title}</div>
+        <div className="space-y-4 px-2 py-3">
+          {eyebrow ? <p className="ui-eyebrow text-[var(--color-primary)]">{eyebrow}</p> : null}
+          {description ? <p className="ui-subtitle mt-0 text-[var(--color-text-muted)]">{description}</p> : null}
+          {actions ? <div className="ui-toolbar shrink-0">{actions}</div> : null}
+          {children}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -422,6 +534,17 @@ export function PanelShell({ title, description, children, actions, eyebrow = nu
 }
 
 export function SectionCard({ title, children, className = "" }) {
+  const toolkit = useSettingsToolkitLayout();
+
+  if (toolkit && title) {
+    return (
+      <section className={`mtk-panel min-w-0 ${className}`}>
+        <div className="mtk-panel__title">{title}</div>
+        <div className="px-2 py-3 sm:px-3">{children}</div>
+      </section>
+    );
+  }
+
   return (
     <section className={`ui-card p-5 sm:p-6 ${className}`}>
       {title ? (
@@ -496,6 +619,45 @@ export function SettingsSignOutSection() {
       setLogoutOpen(false);
     }
   };
+
+  const toolkit = useSettingsToolkitLayout();
+
+  if (toolkit) {
+    return (
+      <>
+        <section className="settings-toolkit-signout mtk-panel min-w-0" aria-label="Sign out">
+          <div className="mtk-panel__title">Sign out</div>
+          <div className="flex flex-col gap-3 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold text-[var(--color-text)]">Sign out of Insights Iva</p>
+              <p className="mt-0.5 text-[9px] text-[var(--color-text-muted)]">
+                End your session on this device. You will need to sign in again to access the ERP.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              className="shrink-0 gap-2"
+              onClick={() => setLogoutOpen(true)}
+              aria-label="Sign out"
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              Sign out
+            </Button>
+          </div>
+        </section>
+        <LogoutConfirmModal
+          open={logoutOpen}
+          busy={loggingOut}
+          onCancel={() => {
+            if (!loggingOut) setLogoutOpen(false);
+          }}
+          onConfirm={handleConfirmLogout}
+        />
+      </>
+    );
+  }
 
   return (
     <>

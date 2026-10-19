@@ -64,8 +64,26 @@ function flattenProductionOrders(orders) {
 }
 
 function applyWorkOrderTracker(config, orders) {
-  const rows = flattenProductionOrders(orders);
-  if (!rows.length) return config;
+  const rows = flattenProductionOrders(orders || []);
+  if (!rows.length) {
+    config.kpis = [
+      { label: "Total WOs", value: "0", tone: "blue", icon: "0" },
+      { label: "Released", value: "0", tone: "teal", icon: "R" },
+      { label: "In Process", value: "0", tone: "orange", icon: "P" },
+      { label: "Completed", value: "0", tone: "green", icon: "✓" },
+      { label: "Delayed", value: "0", tone: "red", icon: "!" },
+      { label: "Pending Qty", value: "0", tone: "purple", icon: "Q" },
+      { label: "Schedule Adherence", value: "—", unit: "%", tone: "lime", icon: "%" },
+    ];
+    const tableSection = findFirstTable(config.layout);
+    if (tableSection) tableSection.rows = [];
+    const donut = findFirstChart(config.layout, "donut");
+    if (donut) {
+      donut.donutCenter = "0 Work Orders";
+      donut.data = [];
+    }
+    return config;
+  }
 
   const summary = computePlanningSummary(orders);
   const statusCounts = { released: 0, in_progress: 0, completed: 0, delay: 0, pending: 0 };
@@ -246,6 +264,40 @@ function applyToolkitDashboardFromApi(config, toolkitId, ctx) {
   const notes = findSectionByType(config.layout, "notes");
   if (notes && overlay.notes?.length) notes.items = overlay.notes;
 
+  return config;
+}
+
+function walkLayout(sections, visitor) {
+  for (const section of sections || []) {
+    visitor(section);
+    if (section?.type === "row" && section.children?.length) {
+      walkLayout(section.children, visitor);
+    }
+  }
+}
+
+/** Remove reference KPIs, table rows, and chart series from toolkit layout shells. */
+export function stripReferenceMetrics(config) {
+  if (!config) return config;
+  config.kpis = [];
+  walkLayout(config.layout, (section) => {
+    if (section.type === "table") {
+      section.rows = [];
+      delete section.totalRow;
+    }
+    if (section.type === "chart") {
+      section.data = [];
+      if (section.donutCenter !== undefined) section.donutCenter = "—";
+    }
+    if (section.type === "insights") section.items = [];
+    if (section.type === "actions") section.items = [];
+    if (section.type === "notes") section.items = [];
+    if (section.type === "timeline") section.events = [];
+    if (section.type === "matrix") {
+      section.rows = [];
+      section.columns = section.columns || [];
+    }
+  });
   return config;
 }
 
@@ -965,8 +1017,9 @@ const LIVE_HANDLERS = {
 export function resolveToolkitConfig(id, context = {}) {
   const base = getToolkitConfig(id);
   if (!base) return null;
-  const config = cloneConfig(base);
+  const config = stripReferenceMetrics(cloneConfig(base));
   const handler = LIVE_HANDLERS[id];
   if (handler) return handler(config, context);
+  config.kpis = [{ label: "Status", value: "—", tone: "neutral", icon: "—" }];
   return config;
 }

@@ -13,6 +13,7 @@ import {
   getSettingsSectionIdFromPath,
   getSettingsSectionModule,
 } from "./settingsAccess";
+import { storeManagerMayAccessProductionPlanning } from "./manufacturingToolkitAccess";
 
 export const ROLES = [
   { id: "admin", name: "Admin", description: "Full system access" },
@@ -326,6 +327,7 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/documents/purchase",
   "/meetings",
   "/manufacturing/workflow",
+  "/production/planning",
   "/my-job-cards",
   "/hr/attendance",
   "/hr/attendance/approval",
@@ -548,6 +550,7 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/meetings")) return true;
   if (path.startsWith("/sales/customers")) return true;
   if (path.startsWith("/production/bom")) return true;
+  if (path.startsWith("/production/planning")) return true;
   return false;
 }
 
@@ -634,8 +637,11 @@ export function userCanAccessAnalyticsPath(user, pathname) {
 
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
-  // Contact Us is a shared support page available to every signed-in role.
-  if ((pathname || "").replace(/\/$/, "") === "/contact") return true;
+  const pathEarly = (pathname || "").replace(/\/$/, "") || "/";
+  // Store Manager: inventory register & raw material tracker only (same Production Planning shell).
+  if (pathEarly.startsWith("/production/planning") && storeManagerMayAccessProductionPlanning(user)) {
+    return true;
+  }
   if (isMySubscriptionSettingsPath(pathname)) {
     return userCanAccessMySubscription(user);
   }

@@ -1,4 +1,4 @@
-/** Production planning demo data and helpers. */
+/** Production planning UI constants and API row helpers. */
 
 import { cleanProductLabel } from "../utils/productLabel";
 
@@ -62,19 +62,6 @@ export const IMPORT_TEMPLATE_HEADERS = [
   "order_number", "product", "customer", "planned_quantity", "priority",
   "department", "shift", "start_date", "due_date", "status",
 ];
-
-export const DEMO_PRODUCTION_ORDERS = [];
-
-export const DEMO_SUMMARY = {
-  total_orders: 0,
-  planned_orders: 0,
-  in_progress_orders: 0,
-  completed_orders: 0,
-  delayed_orders: 0,
-  cancelled_orders: 0,
-  todays_target: 0,
-  todays_production: 0,
-};
 
 export function calculateProgressPct(row) {
   if (!row) return 0;
@@ -148,15 +135,24 @@ export function enrichApiOrder(row, index = 0) {
 
   return {
     ...row,
-    order_number: row.order_number || `PO-${row.id || index + 1}`,
-    product_name: cleanProductLabel(row.product_name || `Product #${row.product_id}`),
+    order_number: row.order_number || (row.id != null ? `PO-${row.id}` : "—"),
+    product_name: row.product_name
+      ? cleanProductLabel(row.product_name)
+      : row.product_id
+        ? `Product #${row.product_id}`
+        : "—",
     customer_name: row.customer_name || "—",
     priority: row.priority || "medium",
-    bom_version: row.bom_version || "BOM v1.0",
+    bom_version: row.bom_version || "—",
     work_order_number: row.work_order_number || null,
     machine_name: row.machine_name || "—",
-    department: row.department || "Production",
-    shift: typeof row.shift === "object" ? (row.shift?.label || row.shift?.id || "General") : (row.shift || "General"),
+    department: row.department || "—",
+    shift:
+      typeof row.shift === "object"
+        ? row.shift?.label || row.shift?.id || "—"
+        : row.shift
+          ? String(row.shift)
+          : "—",
     status: status,
     planned_quantity: planned,
     produced_quantity: produced,

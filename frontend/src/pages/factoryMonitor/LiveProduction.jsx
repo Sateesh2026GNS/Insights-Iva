@@ -118,7 +118,7 @@ export default function LiveProduction() {
             View
           </Link>
         ) : (
-          <Link to="/production/tasks" className="text-xs font-semibold text-amber-600 hover:underline">
+          <Link to="/production/machines" className="text-xs font-semibold text-amber-600 hover:underline">
             Assign
           </Link>
         ),

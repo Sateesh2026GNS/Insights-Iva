@@ -14,6 +14,7 @@ import Button from "../../../components/common/Button";
 import ConfirmationDialog from "../../../components/common/ConfirmationDialog";
 import DataTable from "../../../components/common/DataTable";
 import { ListPageShell } from "../../../components/common/ListPageShell";
+import { PRODUCTION_MANAGER_PAGE_CHROME } from "../../../config/productionManagerPageChrome";
 import ManufacturingPageHeader from "../../../components/manufacturing/ManufacturingPageHeader";
 import StatusBadge from "../../../components/common/StatusBadge";
 import { AsyncPageBody, PartialDataState, PermissionDeniedState } from "../../../components/common/states";
@@ -117,7 +118,7 @@ export default function BomDetailPage() {
   const isDraft = ver?.status === "draft";
 
   return (
-    <ListPageShell>
+    <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bomDetail}>
       <ManufacturingPageHeader
         title={detail?.name || "BOM"}
         subtitle={

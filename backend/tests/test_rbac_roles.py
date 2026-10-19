@@ -260,6 +260,26 @@ def test_store_manager_role_includes_settings_module(client, register_admin):
     assert "settings" in perms, f"Store Manager permissions missing settings: {perms}"
 
 
+def test_store_manager_inventory_reads_for_manufacturing_toolkit(client, register_admin):
+    """Store Manager can load inventory APIs used by Production Planning toolkits."""
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    store = _create_role_user(client, tenant_id, "Store Manager")
+    headers = {"Authorization": f"Bearer {store['access_token']}"}
+
+    dash = client.get("/inventory/dashboard", headers=headers)
+    assert dash.status_code == 200, dash.text
+
+    rm_summary = client.get("/inventory/raw-materials/summary", headers=headers)
+    assert rm_summary.status_code == 200, rm_summary.text
+
+    rm_list = client.get("/inventory/raw-materials", headers=headers)
+    assert rm_list.status_code == 200, rm_list.text
+
+    planning = client.get("/api/production/planning", headers=headers)
+    assert planning.status_code == 403, planning.text
+
+
 def test_store_manager_can_load_account_settings(client, register_admin):
     admin = register_admin()
     tenant_id = admin["user"]["tenant_id"]

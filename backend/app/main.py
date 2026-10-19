@@ -56,6 +56,7 @@ from app.api.rbac_api import router as rbac_api_router
 from app.middleware.audit_middleware import AuditMiddleware
 from app.middleware.security import ApiRateLimitMiddleware
 from app.api.dispatch import router as dispatch_router
+from app.api.export_packing_api import router as export_packing_router
 from app.api.dispatch_addresses_api import router as dispatch_addresses_router
 from app.api.documents import router as documents_router
 from app.api.files_api import router as files_router
@@ -611,6 +612,8 @@ app.include_router(documents_router, prefix="/api")
 app.include_router(files_router)
 app.include_router(files_router, prefix="/api")
 app.include_router(dispatch_router)
+app.include_router(export_packing_router)
+app.include_router(export_packing_router, prefix="/api")
 app.include_router(dispatch_addresses_router)
 app.include_router(factory_monitor_router)
 app.include_router(forecasting_router)

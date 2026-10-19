@@ -32,6 +32,7 @@ import Loader from "../../components/common/Loader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import PageHeader from "../../components/common/PageHeader";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { PRODUCTION_MANAGER_PAGE_CHROME } from "../../config/productionManagerPageChrome";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import EmptyState, { DocumentEmptyIcon } from "../../components/common/EmptyState";
 import Button, { IconButton } from "../../components/common/Button";
@@ -3377,7 +3378,7 @@ export default function JobCard() {
     };
 
     return (
-      <ListPageShell stackClassName="space-y-5 pb-4">
+      <ListPageShell stackClassName="space-y-5 pb-4" plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.jobCard}>
         <PageHeader
           title="Job Cards"
           subtitle="Shop-floor documents linked to live work orders"
@@ -3444,7 +3445,7 @@ export default function JobCard() {
   const view = operatorMode ? "form" : viewParam;
 
   return (
-    <ListPageShell stackClassName="space-y-4 pb-4 print:p-0">
+    <ListPageShell stackClassName="space-y-4 pb-4 print:p-0" plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.jobCard}>
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
           {!operatorMode ? (

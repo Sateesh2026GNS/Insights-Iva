@@ -61,4 +61,14 @@ describe("storeManagerNavConfig inventory submenu", () => {
     expect(paths).toContain("/inventory/material-requests");
     expect(paths).toContain("/inventory/issue-materials");
   });
+
+  it("includes manufacturing toolkit links for inventory register and raw materials", () => {
+    const links = children.filter((c) => c.to?.startsWith("/production/planning"));
+    expect(links.map((c) => c.label)).toEqual(["Inventory Register", "Raw Material Tracker"]);
+    expect(links[0].to).toBe("/production/planning?toolkit=inventory_register");
+    expect(links[1].to).toBe("/production/planning?toolkit=raw_material_tracker");
+    const toolkitNav = inventory.children.filter((c) => c.to?.startsWith("/production/planning"));
+    expect(toolkitNav[0].activeToolkit).toBe("inventory_register");
+    expect(toolkitNav[1].activeToolkit).toBe("raw_material_tracker");
+  });
 });

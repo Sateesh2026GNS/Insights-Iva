@@ -1,26 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import {
-  Bell,
-  ChevronDown,
-  ClipboardList,
-  FileText,
-  IndianRupee,
-  Percent,
-  Plus,
-  ShoppingCart,
-  Target,
-  Truck,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bell, ChevronDown, Plus, UserPlus, X } from "lucide-react";
 
-import KpiCard from "../../components/common/KpiCard";
 import Button from "../../components/common/Button";
-import PageHeader from "../../components/common/PageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
-import { ListPageShell } from "../../components/common/ListPageShell";
 import { AsyncPageBody, EmptyState } from "../../components/common/states";
 import RecentTransactionsPeriodSelect from "../../components/accounts/RecentTransactionsPeriodSelect";
 import DashboardReportExport from "../../components/common/DashboardReportExport";
@@ -46,6 +30,18 @@ import {
   salesDashboardKpiNavLabel,
 } from "../../utils/salesDashboardKpis";
 import { salesDashboardRangeParams } from "../../utils/salesDashboardPeriod";
+import {
+  SALES_DASHBOARD_CHART_GRID,
+  SALES_DASHBOARD_CHART_STROKE,
+  SALES_DASHBOARD_CHART_TICK,
+  SALES_DASHBOARD_CHART_TOOLTIP,
+  SALES_DASHBOARD_TOOLKIT_SUBTITLE,
+  SALES_DASHBOARD_TOOLKIT_TAGLINE,
+  salesDashboardKpiIcon,
+  salesDashboardKpiTone,
+} from "../../utils/salesDashboardToolkit";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/sales-dashboard-toolkit.css";
 import {
   PERIOD_RECENT,
   buildRecentTransactionsPeriodOptions,
@@ -192,6 +188,30 @@ const PIPELINE_STAGE_LINK = {
   dispatch: (links) => links.dispatchPending || "/sales/dispatch?status=pending_dispatch",
   completed: (links) => links.totalOrders || "/sales/orders",
 };
+
+function SalesToolkitKpi({ kpi }) {
+  const inner = (
+    <>
+      <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+      <div className="mtk-kpi__label">{kpi.label}</div>
+      <div className="mtk-kpi__value">{kpi.value}</div>
+      {kpi.unit ? <div className="mtk-kpi__unit">{kpi.unit}</div> : null}
+    </>
+  );
+  const className = `mtk-kpi mtk-kpi--link${kpi.emphasized ? " mtk-kpi--emphasized" : ""}`;
+  if (!kpi.to) {
+    return (
+      <div className={className} title={kpi.title}>
+        {inner}
+      </div>
+    );
+  }
+  return (
+    <Link to={kpi.to} className={className} title={kpi.title} aria-label={kpi.navAriaLabel}>
+      {inner}
+    </Link>
+  );
+}
 
 const PIPELINE_STAGES = [
   { key: "leads", label: "Leads", to: "/sales/leads" },
@@ -463,6 +483,78 @@ export default function SalesDashboard() {
     [user, kpiRange]
   );
 
+  const toolkitKpis = useMemo(
+    () =>
+      [
+        {
+          key: "monthlyRevenue",
+          label: "Revenue",
+          value: formatInr(hub.monthly_revenue),
+          unit: periodMeta,
+          title: "Total sales revenue in the selected reporting period",
+          to: kpiLinks.monthlyRevenue,
+        },
+        {
+          key: "totalOrders",
+          label: "Total Orders",
+          value: hub.total_orders,
+          unit: `${periodMeta} (excl. cancelled)`,
+          to: kpiLinks.totalOrders,
+        },
+        {
+          key: "pendingOrders",
+          label: "Pending Orders",
+          value: hub.pending_orders,
+          unit: periodMeta,
+          emphasized: true,
+          to: kpiLinks.pendingOrders,
+        },
+        {
+          key: "dispatchPending",
+          label: "Dispatch Pending",
+          value: hub.dispatch_pending,
+          unit: periodMeta,
+          to: kpiLinks.dispatchPending,
+        },
+        {
+          key: "openLeads",
+          label: "Open Leads",
+          value: hub.open_leads,
+          unit: `${periodMeta} · open leads created`,
+          to: kpiLinks.openLeads,
+        },
+        {
+          key: "openQuotations",
+          label: "Open Quotations",
+          value: hub.open_quotations,
+          unit: `${periodMeta} · ${formatInr(hub.open_quotations_value)} open value`,
+          to: kpiLinks.openQuotations,
+        },
+        {
+          key: "conversionRate",
+          label: "Conversion Rate",
+          value: `${Number(hub.conversion_rate || 0).toFixed(1)}%`,
+          unit: `Quotations in ${periodMeta}`,
+          title: "Accepted or converted quotations divided by all quotations dated in the period",
+          to: kpiLinks.conversionRate,
+        },
+        {
+          key: "outstandingPayments",
+          label: "Outstanding Payments",
+          value: formatInr(hub.outstanding_payments),
+          unit: "Current receivables (as of today)",
+          to: kpiLinks.outstandingPayments,
+        },
+      ].map((kpi, index) => ({
+        ...kpi,
+        tone: salesDashboardKpiTone(index),
+        icon: salesDashboardKpiIcon(kpi.key),
+        navAriaLabel: salesDashboardKpiNavLabel(kpi.key),
+        title: kpi.title || `${kpi.label}. ${kpi.unit || ""}`.trim(),
+      })),
+    [hub, periodMeta, kpiLinks]
+  );
+
   const quoteTiles = [
     { label: "Draft", value: quoteSummary?.draft ?? 0, tone: "neutral" },
     {
@@ -519,27 +611,17 @@ export default function SalesDashboard() {
             </Button>
 
             {showMore ? (
-              <div
-                className="absolute right-0 top-full mt-2 z-50 w-[440px] sm:w-[460px] max-w-[95vw] rounded-2xl bg-white p-4.5 text-slate-800 shadow-2xl border border-slate-200/90 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <div className="mb-3.5 pb-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                    More
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowMore(false)}
-                    className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
-                    aria-label="Close menu"
-                  >
-                    <X className="h-4 w-4" />
+              <div className="sales-dash-more-menu" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="sales-dash-more-menu__head">
+                  <span>More</span>
+                  <button type="button" onClick={() => setShowMore(false)} aria-label="Close menu">
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                <div>
                   <div>
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    <span className="mb-1.5 block text-[10px] font-semibold text-slate-500">
                       Export &amp; Share
                     </span>
                     <DashboardReportExport
@@ -558,14 +640,37 @@ export default function SalesDashboard() {
     </>
   );
 
+  const toolkitHero = (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{SALES_DASHBOARD_TOOLKIT_TAGLINE}</span>
+        <span className="hidden sm:inline">{reportingLabel}</span>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>Sales Dashboard</h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
+          Revenue, pipeline, and quotations for {reportingLabel}. Due follow-ups and outstanding receivables use live
+          tenant snapshots.
+        </p>
+        <p style={{ fontSize: 9, opacity: 0.85, margin: "4px 0 0" }}>{SALES_DASHBOARD_TOOLKIT_SUBTITLE}</p>
+      </div>
+    </header>
+  );
+
   return (
-    <ListPageShell stackClassName="sales-dash sales-dash--surface space-y-4 sm:space-y-5 pb-8">
-      <PageHeader
-        title="Sales Dashboard"
-        showTitle
-        subtitle={`Revenue, pipeline, and quotations for ${reportingLabel}. Due follow-ups and outstanding receivables use live tenant snapshots.`}
-        action={headerActions}
-      />
+    <div className="sales-dash sales-dash-page--toolkit min-h-full min-w-0 w-full">
+      <div className="mtk-root mtk-theme--teal">
+        {toolkitHero}
+        {!loading && !loadError ? (
+          <div className="mtk-kpi-row" aria-label="Sales dashboard KPIs">
+            {toolkitKpis.map((kpi) => (
+              <SalesToolkitKpi key={kpi.key} kpi={kpi} />
+            ))}
+          </div>
+        ) : null}
+
+        <div className="mtk-body min-w-0">
+      <div className="sales-dash-toolbar">{headerActions}</div>
 
       <fieldset
         className="sales-dash__period-bar"
@@ -587,6 +692,7 @@ export default function SalesDashboard() {
       <SalesDashboardMyWork />
 
       <AsyncPageBody
+        className="sales-dash-async"
         loading={loading}
         error={loadError}
         errorObj={loadErrorObj}
@@ -596,95 +702,18 @@ export default function SalesDashboard() {
         loadingLabel="Loading sales dashboard..."
         errorTitle="Could not load sales dashboard"
       >
-        <div className="space-y-4 sm:space-y-5">
+        <div className="sales-dash-sections">
           <p className="sales-dash__period-context" data-testid="sales-dash-period-context">
             Hub KPIs, pipeline, charts, and summary use{" "}
-            <span className="font-semibold text-[var(--sales-text)]">{reportingLabel}</span>
+            <span className="font-semibold">{reportingLabel}</span>
             {hub.period_from && hub.period_to ? (
-              <span className="text-[var(--sales-muted)]">
+              <span>
                 {" "}
                 ({hub.period_from} – {hub.period_to})
               </span>
             ) : null}
             . Outstanding payments and alerts may include all-time receivables.
           </p>
-          <div className="sales-dash__kpi-grid">
-            <KpiCard
-              label="Revenue"
-              value={formatInr(hub.monthly_revenue)}
-              icon={IndianRupee}
-              tone="teal"
-              meta={periodMeta}
-              title="Total sales revenue in the selected reporting period"
-              to={kpiLinks.monthlyRevenue}
-              navAriaLabel={salesDashboardKpiNavLabel("monthlyRevenue")}
-            />
-            <KpiCard
-              label="Total Orders"
-              value={hub.total_orders}
-              icon={ShoppingCart}
-              tone="info"
-              meta={`${periodMeta} (excl. cancelled)`}
-              to={kpiLinks.totalOrders}
-              navAriaLabel={salesDashboardKpiNavLabel("totalOrders")}
-            />
-            <KpiCard
-              label="Pending Orders"
-              value={hub.pending_orders}
-              icon={ClipboardList}
-              tone="warning"
-              emphasized
-              meta={periodMeta}
-              to={kpiLinks.pendingOrders}
-              navAriaLabel={salesDashboardKpiNavLabel("pendingOrders")}
-            />
-            <KpiCard
-              label="Dispatch Pending"
-              value={hub.dispatch_pending}
-              icon={Truck}
-              tone="violet"
-              meta={periodMeta}
-              to={kpiLinks.dispatchPending}
-              navAriaLabel={salesDashboardKpiNavLabel("dispatchPending")}
-            />
-            <KpiCard
-              label="Open Leads"
-              value={hub.open_leads}
-              icon={Target}
-              tone="success"
-              meta={`${periodMeta} · open leads created`}
-              to={kpiLinks.openLeads}
-              navAriaLabel={salesDashboardKpiNavLabel("openLeads")}
-            />
-            <KpiCard
-              label="Open Quotations"
-              value={hub.open_quotations}
-              icon={FileText}
-              tone="info"
-              meta={`${periodMeta} · ${formatInr(hub.open_quotations_value)} open value`}
-              to={kpiLinks.openQuotations}
-              navAriaLabel={salesDashboardKpiNavLabel("openQuotations")}
-            />
-            <KpiCard
-              label="Conversion Rate"
-              value={`${Number(hub.conversion_rate || 0).toFixed(1)}%`}
-              icon={Percent}
-              tone="teal"
-              meta={`Quotations in ${periodMeta}`}
-              title="Accepted or converted quotations divided by all quotations dated in the period"
-              to={kpiLinks.conversionRate}
-              navAriaLabel={salesDashboardKpiNavLabel("conversionRate")}
-            />
-            <KpiCard
-              label="Outstanding Payments"
-              value={formatInr(hub.outstanding_payments)}
-              icon={IndianRupee}
-              tone="danger"
-              meta="Current receivables (as of today)"
-              to={kpiLinks.outstandingPayments}
-              navAriaLabel={salesDashboardKpiNavLabel("outstandingPayments")}
-            />
-          </div>
 
           <div className="sales-dash-card">
             <div className="sales-dash-card__head">
@@ -732,23 +761,25 @@ export default function SalesDashboard() {
                 </div>
                 <span className="text-[11px] font-medium text-[var(--color-text-muted)]">{periodMeta}</span>
               </div>
-              <div className="sales-dash-card__body h-[220px] min-h-[160px]">
+              <div className="sales-dash-card__body sales-dash-revenue-chart">
                 {revenueChartReady ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={revenueSeries} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                       <defs>
                         <linearGradient id="salesRevFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="var(--sales-primary)" stopOpacity={0.28} />
-                          <stop offset="100%" stopColor="var(--sales-primary)" stopOpacity={0.02} />
+                          <stop offset="0%" stopColor={SALES_DASHBOARD_CHART_STROKE} stopOpacity={0.28} />
+                          <stop offset="100%" stopColor={SALES_DASHBOARD_CHART_STROKE} stopOpacity={0.02} />
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)} />
-                      <Tooltip formatter={(v) => formatInr(v)} />
+                      <CartesianGrid {...SALES_DASHBOARD_CHART_GRID} />
+                      <XAxis dataKey="label" tick={SALES_DASHBOARD_CHART_TICK} interval="preserveStartEnd" />
+                      <YAxis tick={SALES_DASHBOARD_CHART_TICK} tickFormatter={(v) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)} />
+                      <Tooltip {...SALES_DASHBOARD_CHART_TOOLTIP} formatter={(v) => formatInr(v)} />
                       <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="var(--sales-primary)"
+                        name="Revenue"
+                        stroke={SALES_DASHBOARD_CHART_STROKE}
                         strokeWidth={2}
                         fill="url(#salesRevFill)"
                       />
@@ -1070,6 +1101,8 @@ export default function SalesDashboard() {
           </div>
         </div>
       </AsyncPageBody>
-    </ListPageShell>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -352,6 +352,7 @@ export default function JobCardQueueTable({
   onSend,
   canSend = false,
   erpLayout = false,
+  plannerLayout = false,
   jobCardLinkForRow = null,
 }) {
   const { user } = useAuth();
@@ -386,30 +387,37 @@ export default function JobCardQueueTable({
   }
 
   if (erpLayout) {
+    const tableWrapClass = plannerLayout
+      ? "mtk-table-wrap my-job-cards-table my-job-cards-table--planner hidden md:block"
+      : "my-job-cards-table ui-table-wrap ui-table-wrap--scroll hidden md:block";
+    const tableClass = plannerLayout ? "mtk-table" : "ui-table min-w-full text-left";
+    const headClass = plannerLayout ? undefined : "ui-table-head";
+    const thBase = plannerLayout ? "" : "whitespace-nowrap px-3 py-2 font-semibold";
+    const tdBase = plannerLayout ? "" : "whitespace-nowrap px-3 py-2.5";
+    const tdRight = plannerLayout ? "" : "whitespace-nowrap px-2 py-2.5 text-right tabular-nums";
+    const thRight = plannerLayout ? "" : "whitespace-nowrap px-2 py-2 text-right font-semibold";
+    const left = plannerLayout ? "mtk-left" : "";
     return (
       <>
-        <div
-          ref={erpTableWrapRef}
-          className="my-job-cards-table ui-table-wrap ui-table-wrap--scroll hidden md:block"
-        >
-          <table className="ui-table min-w-full text-left">
-            <thead className="ui-table-head">
+        <div ref={erpTableWrapRef} className={tableWrapClass}>
+          <table className={tableClass}>
+            <thead className={headClass}>
               <tr>
-                <SerialNumberHeader label="S.No." />
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Job Card No.</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Date</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Sales Order No.</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Customer PO No.</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Product</th>
-                <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Quantity</th>
-                <th className="whitespace-nowrap px-2 py-2 font-semibold">UOM</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Delivery Date</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
-                <th className="whitespace-nowrap px-2 py-2 font-semibold">Priority</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Created By</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Received Date</th>
-                <th className="my-job-cards-table__actions-col whitespace-nowrap px-2 py-2 font-semibold">Actions</th>
+                {plannerLayout ? <th>S.No.</th> : <SerialNumberHeader label="S.No." />}
+                <th className={`${thBase} ${left}`.trim()}>Job Card No.</th>
+                <th className={thBase}>Date</th>
+                <th className={thBase}>Sales Order No.</th>
+                <th className={`${thBase} ${left}`.trim()}>Customer</th>
+                <th className={thBase}>Customer PO No.</th>
+                <th className={`${thBase} ${left}`.trim()}>Product</th>
+                <th className={thRight}>Quantity</th>
+                <th className={thBase}>UOM</th>
+                <th className={thBase}>Delivery Date</th>
+                <th className={thBase}>Status</th>
+                <th className={thBase}>Priority</th>
+                <th className={`${thBase} ${left}`.trim()}>Created By</th>
+                <th className={thBase}>Received Date</th>
+                <th className={`my-job-cards-table__actions-col ${thBase}`.trim()}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -433,16 +441,27 @@ export default function JobCardQueueTable({
                   storeMode,
                   user,
                 });
+                const selectedClass = isSelected
+                  ? plannerLayout
+                    ? "my-job-cards-table__row--selected-planner"
+                    : "bg-[var(--color-primary-soft)]/40"
+                  : "";
+                const muted = plannerLayout ? "" : "text-[var(--color-text-secondary)]";
+                const linkClass = plannerLayout
+                  ? "font-semibold text-[#14532d] underline-offset-2 hover:underline"
+                  : "font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline";
                 return (
                   <tr
                     key={rowKey}
                     onClick={() => (onViewDetails ? onViewDetails(row) : onSelect?.(orderId))}
-                    className={`cursor-pointer transition-colors ${
-                      isSelected ? "bg-[var(--color-primary-soft)]/40" : ""
-                    }`}
+                    className={`cursor-pointer transition-colors ${selectedClass}`}
                   >
-                    <SerialNumberCell rowIndex={idx} serialOffset={snoOffset} />
-                    <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-[var(--color-primary)]">
+                    {plannerLayout ? (
+                      <td>{snoOffset + idx + 1}</td>
+                    ) : (
+                      <SerialNumberCell rowIndex={idx} serialOffset={snoOffset} />
+                    )}
+                    <td className={`${tdBase} ${left} ${linkClass}`.trim()}>
                       {jobCardLinkForRow && row.job_card_no ? (
                         <Link
                           to={jobCardLinkForRow(row)}
@@ -453,7 +472,7 @@ export default function JobCardQueueTable({
                               onViewDetails(row);
                             }
                           }}
-                          className="text-[var(--color-primary)] underline-offset-2 hover:underline"
+                          className={linkClass}
                         >
                           {row.job_card_no}
                         </Link>
@@ -461,23 +480,23 @@ export default function JobCardQueueTable({
                         row.job_card_no || "—"
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                    <td className={`${tdBase} ${muted}`.trim()}>
                       {fmtErpDate(row.job_card_date || row.order_date || row.received_at)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                    <td className={`${tdBase} ${muted}`.trim()}>
                       {row.order_number || "—"}
                     </td>
-                    <td className="px-3 py-2.5">
-                      <TruncateCell value={row.customer_name} className="text-[var(--color-text-secondary)]" />
+                    <td className={`${tdBase} ${left}`.trim()}>
+                      <TruncateCell value={row.customer_name} className={muted || undefined} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                    <td className={`${tdBase} ${muted}`.trim()}>
                       {rowCustomerPo(row)}
                     </td>
-                    <td className="my-job-cards-table__product-cell px-3 py-2.5">
+                    <td className={`my-job-cards-table__product-cell ${tdBase} ${left}`.trim()}>
                       <TruncateCell
                         value={fmtListProduct(row)}
-                        maxWidthClass="max-w-[220px]"
-                        className="text-[var(--color-text-secondary)]"
+                        maxWidthClass={plannerLayout ? "max-w-[160px]" : "max-w-[220px]"}
+                        className={muted || undefined}
                         title={
                           Array.isArray(row?.sales_document?.product_lines)
                             ? row.sales_document.product_lines.map((l) => l.product_name).filter(Boolean).join(", ")
@@ -485,28 +504,31 @@ export default function JobCardQueueTable({
                         }
                       />
                     </td>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-[var(--color-text)]">
+                    <td className={`${tdRight || tdBase} ${plannerLayout ? "" : "text-[var(--color-text)]"}`.trim()}>
                       {fmtListQuantity(row)}
                     </td>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-[var(--color-text-secondary)]">
+                    <td className={`${tdBase} ${muted}`.trim()}>
                       {fmtListUom(row)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                    <td className={`${tdBase} ${muted}`.trim()}>
                       {fmtDeliveryDisplay(row.delivery_date)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5">
+                    <td className={tdBase}>
                       <CommonStatusBadge tone={erpStatus.tone}>{erpStatus.label}</CommonStatusBadge>
                     </td>
-                    <td className="whitespace-nowrap px-2 py-2.5">
+                    <td className={tdBase}>
                       <PriorityBadge priority={row.priority || "medium"} showDot={false} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                    <td className={`${tdBase} ${left} ${muted}`.trim()}>
                       <TruncateCell value={row.created_by} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-text-secondary)]">
+                    <td className={`${tdBase} ${muted}`.trim()}>
                       {fmtErpDate(row.received_at)}
                     </td>
-                    <td className="my-job-cards-table__actions-col px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className={`my-job-cards-table__actions-col ${plannerLayout ? "" : "px-2 py-2.5"}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="my-job-cards-table__actions-wrap">
                         <RowActionMenu
                           rowId={String(rowKey)}

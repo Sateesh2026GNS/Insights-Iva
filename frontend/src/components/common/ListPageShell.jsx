@@ -4,7 +4,17 @@
  */
 import { forwardRef } from "react";
 
-export function ListPageShell({ children, className = "", stackClassName = "" }) {
+import ProductionPlannerPageChrome from "../production/ProductionPlannerPageChrome";
+
+export function ListPageShell({ children, className = "", stackClassName = "", plannerChrome = null }) {
+  if (plannerChrome) {
+    return (
+      <ProductionPlannerPageChrome {...plannerChrome} className={className}>
+        <div className={`ui-list-page__stack min-w-0 space-y-4 ${stackClassName}`.trim()}>{children}</div>
+      </ProductionPlannerPageChrome>
+    );
+  }
+
   return (
     <div className={`ui-list-page min-h-full ${className}`.trim()}>
       <div className={`ui-list-page__stack ${stackClassName}`.trim()}>{children}</div>

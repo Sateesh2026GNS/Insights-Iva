@@ -25,7 +25,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Plus,
-  PhoneCall,
   Zap,
   X,
 } from "lucide-react";
@@ -241,6 +240,7 @@ function buildStoreManagerSidebarNav() {
           to: c.to,
           module: c.module || sectionModule,
           end: c.end,
+          activeToolkit: c.activeToolkit,
         })),
       };
     }
@@ -536,10 +536,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       }
       return section;
     });
-    return [
-      ...roleNav,
-      { key: "contactUs", label: "Contact Us", to: "/contact", icon: PhoneCall, end: true },
-    ];
+    return roleNav;
   }, [apiNav, user, storeMode, salesMode]);
 
   const createActions = useMemo(
@@ -639,7 +636,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
   const submenuPanelClass =
     "mb-1 space-y-0.5 overflow-x-hidden rounded-b-xl border border-t-0 border-white/10 bg-black/15 p-1.5";
 
-  const linkIsActive = (node) => () => isSidebarLinkActive(location, node);
+  const linkIsActive = (node) => (navState) =>
+    isSidebarLinkActive(navState?.location ?? location, node);
 
   const nestedGroupClass = (isOpen, hasActive) =>
     `relative flex w-full min-w-0 items-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${

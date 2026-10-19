@@ -72,6 +72,7 @@ import {
 } from "../../utils/fileUploadPipeline";
 import { apiErrorMessage } from "../../utils/apiError";
 import { useToast } from "../../context/ToastContext";
+import { avatarToneIndex, isConversationPeerOnline } from "../../utils/workChatUi";
 import "../../styles/work-chat.css";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🎉", "🙏", "🔥"];
@@ -84,6 +85,20 @@ function initials(name) {
     .map((p) => p[0])
     .join("")
     .toUpperCase();
+}
+
+function WorkChatAvatar({ name, sm = false, className = "", online = false }) {
+  const tone = avatarToneIndex(name);
+  return (
+    <span
+      className={`work-chat-avatar work-chat-avatar--tone-${tone}${sm ? " work-chat-avatar--sm" : ""}${
+        online ? " work-chat-avatar--online" : ""
+      } ${className}`.trim()}
+      aria-hidden
+    >
+      {initials(name)}
+    </span>
+  );
 }
 
 function formatTime(iso) {
@@ -604,7 +619,7 @@ function ForwardModal({ message, conversations, onClose, onForward }) {
                           onClick={() => toggleSelect(u.id)}
                         >
                           <div className="min-w-0 flex-1 flex items-center gap-2">
-                            <span className="work-chat-avatar work-chat-avatar--sm shrink-0">{initials(u.name)}</span>
+                            <WorkChatAvatar name={u.name} sm className="shrink-0" />
                             <div className="min-w-0 flex-1">
                               <span className="truncate block font-medium">{u.name}</span>
                               <span className="text-[11px] text-[var(--color-text-muted)] block truncate">{u.sub}</span>
@@ -661,7 +676,7 @@ function ChatInfoModal({ conversation, onClose }) {
           </button>
         </div>
         <div className="p-4 text-center border-b border-[var(--color-border-soft)]">
-          <div className="work-chat-avatar mx-auto mb-2 text-lg h-14 w-14">{initials(conversation.name)}</div>
+          <WorkChatAvatar name={conversation.name} className="work-chat-avatar--lg mx-auto mb-2" />
           <h4 className="font-bold text-base text-[var(--color-text)]">{conversation.name}</h4>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             {isGroup ? `${conversation.members?.length || 0} members` : "Direct conversation"}
@@ -678,7 +693,7 @@ function ChatInfoModal({ conversation, onClose }) {
             {(conversation.members || []).map((m) => (
               <li key={m.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="work-chat-avatar work-chat-avatar--sm">{initials(m.full_name)}</span>
+                  <WorkChatAvatar name={m.full_name} sm />
                   <span className="font-medium text-[var(--color-text)]">{m.full_name}</span>
                 </div>
                 {m.role === "admin" ? (
@@ -1000,6 +1015,11 @@ export default function WorkChat() {
   const activeConv = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
     [conversations, activeId]
+  );
+
+  const activePeerOnline = useMemo(
+    () => isConversationPeerOnline(activeConv, user?.id),
+    [activeConv, user?.id]
   );
 
   const sortedConversations = useMemo(() => {
@@ -1743,7 +1763,10 @@ export default function WorkChat() {
                       className={`work-chat-conv-item ${c.id === activeId ? "work-chat-conv-item--active" : ""}`}
                       onClick={() => selectConversation(c.id)}
                     >
-                      <span className="work-chat-avatar" aria-hidden>{initials(c.name)}</span>
+                      <WorkChatAvatar
+                        name={c.name}
+                        online={c.type !== "group" && isConversationPeerOnline(c, user?.id)}
+                      />
                       <span className="min-w-0 flex-1 text-left">
                         <span className="flex items-center justify-between gap-2">
                           <span className="truncate font-semibold text-sm text-[var(--color-text)] flex items-center gap-1">
@@ -1796,17 +1819,30 @@ export default function WorkChat() {
                   Back
                 </button>
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-base font-bold text-[var(--color-text)] flex items-center gap-1.5">
+                  <h2 className="work-chat-thread-title truncate text-base font-bold flex items-center gap-1.5">
                     {activeConv.name}
                     {mutedConvs.has(activeConv.id) ? (
-                      <BellOff className="h-3.5 w-3.5 text-[var(--color-text-muted)]" title="Muted" />
+                      <BellOff className="h-3.5 w-3.5 text-white/80" title="Muted" />
                     ) : null}
                     {lockedConvs.has(activeConv.id) ? (
                       <Lock className="h-3.5 w-3.5 text-amber-500" title="Locked" />
                     ) : null}
                   </h2>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    {activeConv.type === "group" ? `${activeConv.members?.length || 0} members` : "Direct message"}
+                  <p className="work-chat-thread-subtitle text-xs">
+                    {activeConv.type === "group" ? (
+                      `${activeConv.members?.length || 0} members`
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        {activePeerOnline ? (
+                          <>
+                            <span className="work-chat-online-dot" aria-hidden />
+                            <span>Online</span>
+                          </>
+                        ) : (
+                          "Direct message"
+                        )}
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -2362,7 +2398,7 @@ export default function WorkChat() {
                           bottomRef.current?.scrollIntoView({ behavior: "smooth" });
                         }}
                       >
-                        <ChevronDown className="h-5 w-5 text-[#475569]" />
+                        <ChevronDown className="h-5 w-5" />
                       </button>
                     )}
                   </div>

@@ -1,0 +1,113 @@
+/* Production Manager Settings — aligned with Production Planning → Process Checklist (mtk-theme--navy) */
+
+.settings-page--toolkit {
+  width: 100%;
+  max-width: none;
+  background: #f4f7fa;
+  font-size: 11px;
+}
+
+.settings-page--toolkit .settings-toolkit-body {
+  padding: 8px;
+}
+
+.settings-page--toolkit .settings-toolkit-content {
+  min-width: 0;
+}
+
+.settings-page--toolkit .settings-toolkit-content.ui-page {
+  padding: 0;
+}
+
+.settings-page--toolkit .settings-toolkit-search-panel__body,
+.settings-page--toolkit .settings-toolkit-section-intro {
+  font-size: 10px;
+}
+
+.settings-page--toolkit .settings-toolkit-panel__body .group {
+  font-size: 10px;
+}
+
+.settings-page--toolkit .settings-toolkit-panel__body .group .text-sm {
+  font-size: 11px;
+}
+
+.settings-page--toolkit .settings-toolkit-panel__body .group .text-xs {
+  font-size: 9px;
+}
+
+.settings-page--toolkit .settings-toolkit-sidebar.mtk-panel nav {
+  max-height: calc(100vh - var(--navbar-height, 4rem) - 8rem);
+  overflow-y: auto;
+}
+
+.settings-page--toolkit .settings-toolkit-sidebar a {
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.settings-page--toolkit .settings-toolkit-sidebar .text-\[10px\] {
+  font-size: 8px;
+}
+
+.settings-page--toolkit .ui-select,
+.settings-page--toolkit .ui-input,
+.settings-page--toolkit .settings-search input {
+  font-size: 10px;
+}
+
+.settings-page--toolkit .ui-btn {
+  font-size: 10px;
+  min-height: 28px;
+}
+
+.settings-page--toolkit .settings-toolkit-signout.mtk-panel .ui-btn {
+  min-height: 28px;
+}
+
+.settings-page--toolkit .ui-card:not(.mtk-panel) {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  box-shadow: none;
+  font-size: 10px;
+}
+
+.settings-page--toolkit .SectionCard,
+.settings-page--toolkit section.ui-card {
+  padding: 8px 10px;
+}
+
+.settings-page--toolkit .ui-section-title,
+.settings-page--toolkit .ui-page-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.settings-page--toolkit .ui-subtitle,
+.settings-page--toolkit .ui-caption,
+.settings-page--toolkit .ui-hint {
+  font-size: 9px;
+}
+
+.settings-page--toolkit label.ui-label,
+.settings-page--toolkit .ui-label {
+  font-size: 9px;
+}
+
+.settings-page--toolkit .ToggleRow {
+  border-radius: 2px;
+  border-color: var(--mtk-border, #c5d0dc);
+  padding: 6px 8px;
+  font-size: 10px;
+}
+
+.settings-page--toolkit .settings-toolkit-section-header .flex.h-12 {
+  height: 2.25rem;
+  width: 2.25rem;
+  border-radius: 4px;
+}
+
+.settings-page--toolkit .settings-toolkit-section-header h2 {
+  font-size: 12px;
+  font-weight: 700;
+}

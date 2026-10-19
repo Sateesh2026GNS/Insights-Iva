@@ -1,3 +1,13 @@
+.work-chat-page {
+  --work-chat-canvas: #f1f5f9;
+  --work-chat-panel: #ffffff;
+  --work-chat-received: #ffffff;
+  --work-chat-received-border: #e2e8f0;
+  --work-chat-sent: color-mix(in srgb, var(--color-primary) 16%, #ffffff);
+  --work-chat-sent-border: color-mix(in srgb, var(--color-primary) 32%, #e2e8f0);
+  --work-chat-online: #16a34a;
+}
+
 .work-chat-page__head {
   display: flex;
   flex-wrap: wrap;
@@ -14,10 +24,11 @@
   height: calc(100vh - 165px);
   min-height: 480px;
   max-height: 850px;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
   border-radius: 12px;
   overflow: hidden;
-  background: var(--color-surface);
+  background: var(--work-chat-canvas);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .work-chat-panel {
@@ -26,7 +37,12 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border-soft);
+  background: var(--work-chat-panel);
+}
+
+.work-chat-panel--list {
+  background: color-mix(in srgb, var(--color-primary) 3%, #ffffff);
 }
 
 .work-chat-panel--main {
@@ -43,6 +59,7 @@
   flex-shrink: 0;
   padding: 0.75rem;
   border-bottom: 1px solid var(--color-border-soft);
+  background: var(--work-chat-panel);
 }
 
 .work-chat-conv-list {
@@ -90,10 +107,10 @@
   width: 2.6rem;
   height: 2.6rem;
   border-radius: 9999px;
-  background: #ffffff;
-  color: #475569;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  background: var(--color-primary);
+  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 80%, #000);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 35%, transparent);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
   animation: fadeIn 0.15s ease-out;
@@ -101,9 +118,9 @@
 
 .work-chat-scroll-bottom-btn:hover {
   transform: translateY(-2px) scale(1.06);
-  background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  background: var(--color-primary-hover);
+  color: #ffffff;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-primary) 45%, transparent);
 }
 
 .work-chat-conv-item {
@@ -117,14 +134,20 @@
   background: transparent;
   cursor: pointer;
   border-bottom: 1px solid var(--color-border-muted);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.work-chat-conv-item:hover,
+.work-chat-conv-item:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+}
+
 .work-chat-conv-item--active {
-  background: var(--color-primary-soft);
+  background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 .work-chat-avatar {
+  position: relative;
   display: grid;
   place-items: center;
   width: 2.25rem;
@@ -133,8 +156,40 @@
   background: var(--color-primary);
   color: #fff;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.work-chat-avatar--tone-0 {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.work-chat-avatar--tone-1 {
+  background: #0d9488;
+  color: #ffffff;
+}
+
+.work-chat-avatar--tone-2 {
+  background: #059669;
+  color: #ffffff;
+}
+
+.work-chat-avatar--tone-3 {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.work-chat-avatar--tone-4 {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.work-chat-avatar--tone-5 {
+  background: #0369a1;
+  color: #ffffff;
 }
 
 .work-chat-avatar--sm {
@@ -143,16 +198,45 @@
   font-size: 0.6rem;
 }
 
+.work-chat-avatar--lg {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: 1rem;
+}
+
+.work-chat-avatar--online::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--work-chat-online);
+  border: 2px solid var(--work-chat-panel);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--work-chat-online) 40%, transparent);
+}
+
+.work-chat-online-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--work-chat-online);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--work-chat-online) 25%, transparent);
+}
+
 .work-chat-unread {
   min-width: 1.25rem;
-  padding: 0 0.35rem;
+  padding: 0 0.4rem;
   border-radius: 999px;
   background: var(--color-primary);
   color: #fff;
   font-size: 0.65rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.25rem;
   text-align: center;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, #ffffff);
 }
 
 .work-chat-empty {
@@ -175,8 +259,26 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-border-soft);
-  background: var(--color-surface-muted);
+  border-bottom: none;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    color-mix(in srgb, var(--color-primary) 82%, #0d9488) 100%
+  );
+  color: #ffffff;
+}
+
+.work-chat-thread-title,
+.work-chat-thread-subtitle {
+  color: #ffffff;
+}
+
+.work-chat-thread-subtitle {
+  opacity: 0.92;
+}
+
+.work-chat-thread-head .work-chat-back {
+  color: #ffffff;
 }
 
 .work-chat-back {
@@ -190,7 +292,7 @@
   min-height: 0;
   overflow-y: auto;
   padding: 1rem;
-  background: var(--color-bg);
+  background: var(--work-chat-canvas);
 }
 
 .work-chat-bubble-row {
@@ -207,9 +309,15 @@
   max-width: min(85%, 520px);
   padding: 0.55rem 1.85rem 0.55rem 0.75rem;
   border-radius: 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-soft);
+  background: var(--work-chat-received);
+  border: 1px solid var(--work-chat-received-border);
   color: var(--color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.work-chat-bubble-row:not(.work-chat-bubble-row--own) .work-chat-bubble:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 20%, var(--work-chat-received-border));
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
 }
 
 .work-chat-bubble-chevron {
@@ -253,8 +361,14 @@
 }
 
 .work-chat-bubble--own {
-  background: var(--color-primary-soft);
-  border-color: color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
+  background: var(--work-chat-sent);
+  border-color: var(--work-chat-sent-border);
+  color: #0f172a;
+}
+
+.work-chat-bubble-row--own .work-chat-bubble:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--work-chat-sent-border));
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .work-chat-erp-link {
@@ -275,7 +389,7 @@
   gap: 0.5rem;
   padding: 0.75rem;
   border-top: 1px solid var(--color-border-soft);
-  background: var(--color-surface);
+  background: var(--work-chat-panel);
 }
 
 .work-chat-composer__input {
@@ -292,8 +406,9 @@
 }
 
 .work-chat-composer__input:focus {
-  outline: 2px solid var(--color-focus-ring, rgba(49, 87, 213, 0.35));
+  outline: none;
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 .work-chat-send {
@@ -323,9 +438,17 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 10px;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  background: var(--color-surface);
+  color: var(--color-primary);
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.work-chat-attach-btn:hover {
+  background: var(--color-primary-soft);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  color: var(--color-primary-hover);
 }
 
 .work-chat-pending-files {
@@ -757,6 +880,20 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+.work-chat-thread-head .work-chat-header-btn {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.work-chat-thread-head .work-chat-header-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.work-chat-thread-head .work-chat-header-btn--active {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
 .work-chat-header-btn:hover {
   background: var(--color-surface);
   color: var(--color-text);
@@ -827,6 +964,10 @@
 }
 
 /* Chat Themes */
+.work-chat-messages--default {
+  background: var(--work-chat-canvas) !important;
+}
+
 .work-chat-messages--whatsapp {
   background-color: #efeae2 !important;
   background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 0);

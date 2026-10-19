@@ -1,18 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  AlertTriangle,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  ClipboardList,
-  Package,
-  PackageX,
-  Truck,
-} from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 
-import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import DashboardReportExport from "../../components/common/DashboardReportExport";
-import PageHeader from "../../components/common/PageHeader";
 import { metricExportRows } from "../../utils/dashboardExportRows";
 import StatusBadge from "../../components/common/StatusBadge";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
@@ -23,6 +13,14 @@ import { getStoreDashboard } from "../../api/inventoryApi";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
+import {
+  STORE_DASHBOARD_TOOLKIT_SUBTITLE,
+  STORE_DASHBOARD_TOOLKIT_TAGLINE,
+  storeDashboardKpiIcon,
+  storeDashboardKpiTone,
+} from "../../utils/storeDashboardToolkit";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/store-dashboard-toolkit.css";
 
 function pendingMaterialCheckHref(row) {
   const jcId = row?.job_card_id;
@@ -60,18 +58,56 @@ const TRANSFER_LABEL = {
   cancelled: "Cancelled",
 };
 
+const STORE_DASH_SUBTITLE = "Store work control center — stock, checks, and pending actions";
+
+function StoreDashboardHero() {
+  return (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{STORE_DASHBOARD_TOOLKIT_TAGLINE}</span>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>
+          Store
+          <span className="mtk-accent"> Dashboard</span>
+        </h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>{STORE_DASH_SUBTITLE}</p>
+        <p style={{ fontSize: 9, opacity: 0.85, margin: "4px 0 0" }}>{STORE_DASHBOARD_TOOLKIT_SUBTITLE}</p>
+      </div>
+    </header>
+  );
+}
+
+function StoreToolkitShell({ children }) {
+  return (
+    <div className="store-dashboard-page store-dashboard-page--toolkit min-h-full min-w-0 w-full">
+      <div className="mtk-root mtk-theme--green">
+        <StoreDashboardHero />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function StoreToolkitKpi({ kpi }) {
+  return (
+    <Link to={kpi.to} className="mtk-kpi mtk-kpi--link" title={kpi.title}>
+      <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+      <div className="mtk-kpi__label">{kpi.label}</div>
+      <div className="mtk-kpi__value">{kpi.value}</div>
+      {kpi.unit ? <div className="mtk-kpi__unit">{kpi.unit}</div> : null}
+    </Link>
+  );
+}
+
 function SectionCard({ title, viewAllTo, children }) {
   return (
-    <section className="ui-card overflow-hidden p-0">
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border-soft)] px-4 py-3">
-        <h3 className="text-sm font-semibold text-[var(--color-text)]">{title}</h3>
-        {viewAllTo ? (
-          <Link to={viewAllTo} className="text-xs font-semibold text-[var(--color-action-teal)] hover:underline">
-            View All
-          </Link>
-        ) : null}
+    <section className="mtk-panel">
+      <div className="mtk-panel__title store-dash-panel__title">
+        <h3>{title}</h3>
+        {viewAllTo ? <Link to={viewAllTo}>View All</Link> : null}
       </div>
-      {children}
+      <div className="store-dash-panel__body">{children}</div>
     </section>
   );
 }
@@ -140,27 +176,26 @@ export default function InventoryDashboard() {
 
   if (loading && !dash) {
     return (
-      <div className="space-y-5 pb-4">
+      <StoreToolkitShell>
         <StoreManagerNav />
-        <LoadingState label="Loading store dashboard" description="Fetching inventory work items for your store." />
-      </div>
+        <div className="mtk-body store-dash-loading">
+          <LoadingState label="Loading store dashboard" description="Fetching inventory work items for your store." />
+        </div>
+      </StoreToolkitShell>
     );
   }
 
   if (error && !dash) {
     return (
-      <div className="space-y-5 pb-4">
+      <StoreToolkitShell>
         <StoreManagerNav />
-        <PageHeader variant="inventory" subtitle="Store work control center" />
-        <ErrorState title="Dashboard unavailable" description={error} />
-        <button
-          type="button"
-          onClick={() => load()}
-          className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
-        >
-          Try again
-        </button>
-      </div>
+        <div className="mtk-body store-dash-error">
+          <ErrorState title="Dashboard unavailable" description={error} />
+          <button type="button" onClick={() => load()} className="store-dash-retry">
+            Try again
+          </button>
+        </div>
+      </StoreToolkitShell>
     );
   }
 
@@ -191,144 +226,126 @@ export default function InventoryDashboard() {
     { label: "Stock out today", value: kpiValue(failed, movement.stock_out) },
   ]);
 
-  const compactTableClass = "w-full table-fixed text-left text-[13px]";
-  const thClass = "px-3 py-2 font-medium text-[var(--color-text-muted)]";
-  const tdClass = "px-3 py-2.5 align-middle";
+  const compactTableClass = "store-dash-table";
+  const thClass = "";
+  const tdClass = "";
+
+  const toolkitKpis = [
+        {
+          key: "totalItems",
+          label: "Total Items",
+          value: kpiValue(failed, totalItems),
+          unit: "Active catalog items",
+          to: "/inventory",
+          title: "View all inventory items",
+        },
+        {
+          key: "lowStock",
+          label: "Low Stock Items",
+          value: kpiValue(failed, lowStock),
+          unit: "At or below reorder level",
+          to: "/inventory/low-stock",
+          title: "View low stock items",
+        },
+        {
+          key: "outOfStock",
+          label: "Out of Stock",
+          value: kpiValue(failed, outOfStock),
+          unit: "Zero available stock",
+          to: "/inventory/out-of-stock",
+          title: "View out of stock items",
+        },
+        {
+          key: "pendingJobCards",
+          label: "Pending Job Cards",
+          value: kpiValue(failed, dash?.store_pending ?? dash?.pending_inventory_checks),
+          unit: "Job cards awaiting store review",
+          to: "/my-job-cards?dept=inventory&bucket=store_pending",
+          title: "Pending job cards",
+        },
+        {
+          key: "pendingMaterialRequests",
+          label: "Pending Material Requests",
+          value: kpiValue(failed, dash?.pending_material_requests),
+          unit: "Awaiting approval or issue",
+          to: "/procurement/material-requests?kpi=pending_approval",
+          title: "Pending material requests",
+        },
+        {
+          key: "pendingTransfers",
+          label: "Pending Stock Transfers",
+          value: kpiValue(failed, dash?.pending_transfers),
+          unit: "Draft or in transit",
+          to: "/inventory/stock-transfer?status=pending",
+          title: "Pending stock transfers",
+        },
+        {
+          key: "stockIn",
+          label: "Today's Stock In",
+          value: kpiValue(failed, movement.stock_in_quantity),
+          unit: `${kpiValue(failed, movement.stock_in_count)} transactions`,
+          to: stockInAltLink,
+          title: "Today's stock in",
+        },
+        {
+          key: "stockOut",
+          label: "Today's Stock Out",
+          value: kpiValue(failed, movement.stock_out_quantity),
+          unit: `${kpiValue(failed, movement.stock_out_count)} transactions`,
+          to: stockOutLink,
+          title: "Today's stock out",
+        },
+      ].map((kpi, index) => ({
+        ...kpi,
+        tone: storeDashboardKpiTone(index),
+        icon: storeDashboardKpiIcon(kpi.key),
+      }));
 
   return (
-    <div className="space-y-5 pb-4">
+    <StoreToolkitShell>
       <StoreManagerNav />
-
-      <PageHeader
-        variant="inventory"
-        subtitle="Store work control center — stock, checks, and pending actions"
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            {refreshing ? (
-              <span className="text-xs text-[var(--color-text-muted)]">Refreshing…</span>
-            ) : null}
-            <DashboardReportExport
-              title="Store Dashboard"
-              filename="store-dashboard"
-              rows={storeExportRows}
-              disabled={failed && !dash}
-              module="inventory"
-            />
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
-        <ClickableKpiCard to="/inventory" title="View all inventory items">
-          <KpiCard
-            label="Total Items"
-            value={kpiValue(failed, totalItems)}
-            icon={Package}
-            tone="primary"
-            meta="Active catalog items"
-          />
-        </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory/low-stock" title="View low stock items">
-          <KpiCard
-            label="Low Stock Items"
-            value={kpiValue(failed, lowStock)}
-            icon={AlertTriangle}
-            tone="warning"
-            meta="At or below reorder level"
-          />
-        </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory/out-of-stock" title="View out of stock items">
-          <KpiCard
-            label="Out of Stock"
-            value={kpiValue(failed, outOfStock)}
-            icon={PackageX}
-            tone="danger"
-            meta="Zero available stock"
-          />
-        </ClickableKpiCard>
-        <ClickableKpiCard to="/my-job-cards?dept=inventory&bucket=store_pending" title="Pending job cards">
-          <KpiCard
-            label="Pending Job Cards"
-            value={kpiValue(failed, dash?.store_pending ?? dash?.pending_inventory_checks)}
-            icon={ClipboardList}
-            tone="warning"
-            meta="Job cards awaiting store review"
-          />
-        </ClickableKpiCard>
-        <ClickableKpiCard to="/procurement/material-requests?kpi=pending_approval" title="Pending material requests">
-          <KpiCard
-            label="Pending Material Requests"
-            value={kpiValue(failed, dash?.pending_material_requests)}
-            icon={ClipboardList}
-            tone="info"
-            meta="Awaiting approval or issue"
-          />
-        </ClickableKpiCard>
-        <ClickableKpiCard to="/inventory/stock-transfer?status=pending" title="Pending stock transfers">
-          <KpiCard
-            label="Pending Stock Transfers"
-            value={kpiValue(failed, dash?.pending_transfers)}
-            icon={Truck}
-            tone="info"
-            meta="Draft or in transit"
-          />
-        </ClickableKpiCard>
-        <ClickableKpiCard to={stockInAltLink} title="Today's stock in">
-          <KpiCard
-            label="Today's Stock In"
-            value={kpiValue(failed, movement.stock_in_quantity)}
-            icon={ArrowDownToLine}
-            tone="success"
-            meta={`${kpiValue(failed, movement.stock_in_count)} transactions`}
-          />
-        </ClickableKpiCard>
-        <ClickableKpiCard to={stockOutLink} title="Today's stock out">
-          <KpiCard
-            label="Today's Stock Out"
-            value={kpiValue(failed, movement.stock_out_quantity)}
-            icon={ArrowUpFromLine}
-            tone="danger"
-            meta={`${kpiValue(failed, movement.stock_out_count)} transactions`}
-          />
-        </ClickableKpiCard>
+      <div className="mtk-kpi-row" aria-label="Store dashboard KPIs">
+        {toolkitKpis.map((kpi) => (
+          <StoreToolkitKpi key={kpi.key} kpi={kpi} />
+        ))}
       </div>
+      <div className="mtk-body">
+        <div className="store-dash-toolbar">
+          {refreshing ? <span>Refreshing…</span> : null}
+          <DashboardReportExport
+            title="Store Dashboard"
+            filename="store-dashboard"
+            rows={storeExportRows}
+            disabled={failed && !dash}
+            module="inventory"
+          />
+        </div>
 
-      <section className="ui-card p-4 sm:p-5">
-        <h3 className="text-sm font-semibold text-[var(--color-text)]">Today&apos;s Stock Movement</h3>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Link
-            to={stockInLink}
-            className="flex items-center justify-between rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 px-4 py-3 transition hover:border-[var(--color-action-teal)]"
-          >
-            <div className="flex items-center gap-3">
-              <ArrowDownToLine className="h-5 w-5 text-[#16a34a]" aria-hidden />
+        <div className="store-dash-stack">
+      <section className="mtk-panel">
+        <div className="mtk-panel__title store-dash-panel__title">
+          <h3>Today&apos;s Stock Movement</h3>
+        </div>
+        <div className="store-dash-movement">
+          <Link to={stockInLink} className="store-dash-movement__link">
+            <div className="flex items-center gap-2">
+              <ArrowDownToLine className="h-3.5 w-3.5 text-[#16a34a]" aria-hidden />
               <div>
-                <p className="text-xs font-medium text-[var(--color-text-muted)]">Stock In Today</p>
-                <p className="text-lg font-bold tabular-nums text-[var(--color-text)]">
-                  {kpiValue(failed, movement.stock_in_quantity)}
-                </p>
+                <p className="store-dash-movement__label">Stock In Today</p>
+                <p className="store-dash-movement__value">{kpiValue(failed, movement.stock_in_quantity)}</p>
               </div>
             </div>
-            <span className="text-xs font-semibold text-[var(--color-action-teal)]">
-              {kpiValue(failed, movement.stock_in_count)} txns
-            </span>
+            <span className="store-dash-movement__meta">{kpiValue(failed, movement.stock_in_count)} txns</span>
           </Link>
-          <Link
-            to={stockOutLink}
-            className="flex items-center justify-between rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/30 px-4 py-3 transition hover:border-[var(--color-action-teal)]"
-          >
-            <div className="flex items-center gap-3">
-              <ArrowUpFromLine className="h-5 w-5 text-[#ef4444]" aria-hidden />
+          <Link to={stockOutLink} className="store-dash-movement__link">
+            <div className="flex items-center gap-2">
+              <ArrowUpFromLine className="h-3.5 w-3.5 text-[#ef4444]" aria-hidden />
               <div>
-                <p className="text-xs font-medium text-[var(--color-text-muted)]">Stock Out Today</p>
-                <p className="text-lg font-bold tabular-nums text-[var(--color-text)]">
-                  {kpiValue(failed, movement.stock_out_quantity)}
-                </p>
+                <p className="store-dash-movement__label">Stock Out Today</p>
+                <p className="store-dash-movement__value">{kpiValue(failed, movement.stock_out_quantity)}</p>
               </div>
             </div>
-            <span className="text-xs font-semibold text-[var(--color-action-teal)]">
-              {kpiValue(failed, movement.stock_out_count)} txns
-            </span>
+            <span className="store-dash-movement__meta">{kpiValue(failed, movement.stock_out_count)} txns</span>
           </Link>
         </div>
       </section>
@@ -346,8 +363,8 @@ export default function InventoryDashboard() {
             <thead className="ui-table-head">
               <tr>
                 <th className={thClass}>Job Card</th>
-                <th className={`${thClass} !text-center`}>Required Items</th>
-                <th className={`${thClass} !text-right`}>Status</th>
+                <th className={`${thClass}`}>Required Items</th>
+                <th className={`${thClass}`}>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -364,10 +381,10 @@ export default function InventoryDashboard() {
                       {row.job_card_no || (row.sales_order_id ? `SO #${row.sales_order_id}` : "Job Card")}
                     </Link>
                   </td>
-                  <td className={`${tdClass} truncate !text-center text-[var(--color-text-secondary)]`} title={row.required_items_summary}>
+                  <td className={`${tdClass} truncate text-[var(--color-text-secondary)]`} title={row.required_items_summary}>
                     {row.required_items_summary}
                   </td>
-                  <td className={`${tdClass} !text-right`}>
+                  <td className={`${tdClass}`}>
                     {(() => {
                       const status = materialCheckStatus(row.status_label);
                       return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
@@ -380,7 +397,7 @@ export default function InventoryDashboard() {
         )}
       </SectionCard>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="store-dash-split">
         <SectionCard title="Pending Material Requests" viewAllTo="/procurement/material-requests?status=pending">
           {materialRequests.length === 0 ? (
             <EmptyState className="py-6" title="No pending material requests" description="Open requests will show here for store follow-up." />
@@ -390,7 +407,7 @@ export default function InventoryDashboard() {
                 <tr>
                   <th className={`${thClass} w-[26%]`}>Request No.</th>
                   <th className={`${thClass} w-[24%]`}>Department</th>
-                  <th className={`${thClass} w-[18%] !text-right`}>Items</th>
+                  <th className={`${thClass} w-[18%]`}>Items</th>
                   <th className={`${thClass} w-[32%]`}>Status</th>
                 </tr>
               </thead>
@@ -406,7 +423,7 @@ export default function InventoryDashboard() {
                       </Link>
                     </td>
                     <td className={`${tdClass} truncate text-[var(--color-text-secondary)]`}>{row.department || "—"}</td>
-                    <td className={`${tdClass} !text-right tabular-nums`}>{row.items_count}</td>
+                    <td className={`${tdClass} tabular-nums`}>{row.items_count}</td>
                     <td className={tdClass}>
                       <StatusBadge tone="warning">{String(row.status || "pending").replace(/_/g, " ")}</StatusBadge>
                     </td>
@@ -471,8 +488,8 @@ export default function InventoryDashboard() {
             <thead className="ui-table-head">
               <tr>
                 <th className={`${thClass} w-[50%]`}>Item</th>
-                <th className={`${thClass} w-[25%] whitespace-nowrap !text-center`}>Current Stock</th>
-                <th className={`${thClass} w-[25%] whitespace-nowrap !text-center`}>Reorder Level</th>
+                <th className={`${thClass} w-[25%] whitespace-nowrap`}>Current Stock</th>
+                <th className={`${thClass} w-[25%] whitespace-nowrap`}>Reorder Level</th>
               </tr>
             </thead>
             <tbody>
@@ -487,10 +504,10 @@ export default function InventoryDashboard() {
                       {row.item_name}
                     </Link>
                   </td>
-                  <td className={`${tdClass} !text-center tabular-nums text-[var(--color-text)]`}>
+                  <td className={`${tdClass} tabular-nums text-[var(--color-text)]`}>
                     {formatQty(row.current_stock, row.unit)}
                   </td>
-                  <td className={`${tdClass} !text-center tabular-nums text-[var(--color-text-muted)]`}>
+                  <td className={`${tdClass} tabular-nums text-[var(--color-text-muted)]`}>
                     {row.reorder_level != null ? formatQty(row.reorder_level, row.unit) : "—"}
                   </td>
                 </tr>
@@ -510,7 +527,7 @@ export default function InventoryDashboard() {
                 <th className={`${thClass} w-[22%]`}>Time</th>
                 <th className={`${thClass} w-[22%]`}>Activity</th>
                 <th className={`${thClass} w-[36%]`}>Item</th>
-                <th className={`${thClass} w-[20%] !text-right`}>Quantity</th>
+                <th className={`${thClass} w-[20%]`}>Quantity</th>
               </tr>
             </thead>
             <tbody>
@@ -527,7 +544,7 @@ export default function InventoryDashboard() {
                   <td className={`${tdClass} truncate text-[var(--color-text)]`} title={row.item_name}>
                     {row.item_name}
                   </td>
-                  <td className={`${tdClass} !text-right tabular-nums font-medium text-[var(--color-text)]`}>
+                  <td className={`${tdClass} tabular-nums font-medium text-[var(--color-text)]`}>
                     {Number(row.quantity || 0).toLocaleString("en-IN")}
                   </td>
                 </tr>
@@ -536,6 +553,8 @@ export default function InventoryDashboard() {
           </table>
         )}
       </SectionCard>
-    </div>
+        </div>
+      </div>
+    </StoreToolkitShell>
   );
 }

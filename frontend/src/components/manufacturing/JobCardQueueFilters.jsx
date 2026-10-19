@@ -73,6 +73,7 @@ export default function JobCardQueueFilters({
   storeMode = false,
   autoApply = false,
   erpLayout = false,
+  plannerLayout = false,
   salesOrderOptions = [],
   customerSelectOptions = [],
   salesOrderSelectOptions = [],
@@ -110,7 +111,9 @@ export default function JobCardQueueFilters({
   if (erpLayout) {
     if (!open) return null;
     return (
-      <div className="my-job-cards-filters--erp-fields">
+      <div
+        className={`my-job-cards-filters--erp-fields${plannerLayout ? " my-job-cards-filters--planner" : ""}`}
+      >
         <div className="my-job-cards-filters--erp-fields-grid">
           <div>
             <FilterLabel erp>Job Card No.</FilterLabel>

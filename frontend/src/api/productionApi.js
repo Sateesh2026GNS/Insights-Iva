@@ -34,7 +34,16 @@ export const getProducts = () => apiGet("/api/masters/products");
 
 export const getProductionOrders = async () => {
   const res = await apiGet("/api/production/planning");
-  return { ...res, data: res.data?.orders ?? res.data ?? [] };
+  const payload = res.data;
+  if (payload && typeof payload === "object" && !Array.isArray(payload) && "orders" in payload) {
+    return {
+      ...res,
+      data: Array.isArray(payload.orders) ? payload.orders : [],
+      summary: payload.summary ?? null,
+    };
+  }
+  const rows = Array.isArray(payload) ? payload : payload?.orders ?? [];
+  return { ...res, data: rows, summary: payload?.summary ?? null };
 };
 
 export const getProductionPlanningSummary = () => apiGet("/api/production/planning/summary");

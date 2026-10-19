@@ -285,7 +285,8 @@
   border-radius: 0 0 4px 4px;
 }
 
-.ppt-tabs button {
+.ppt-tabs button,
+.ppt-tabs a {
   flex: 1;
   min-width: 80px;
   padding: 8px 6px;
@@ -296,19 +297,119 @@
   background: transparent;
   color: #475569;
   cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.ppt-tabs button:last-child {
+.ppt-tabs button:last-child,
+.ppt-tabs a:last-child {
   border-right: none;
 }
 
-.ppt-tabs button.ppt-tabs__active {
+.ppt-tabs button.ppt-tabs__active,
+.ppt-tabs a.ppt-tabs__active {
   background: #fff;
   color: #0f172a;
   box-shadow: inset 0 -2px 0 #16a34a;
 }
 
-.ppt-tabs button:focus-visible {
+.ppt-tabs button:focus-visible,
+.ppt-tabs a:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: -2px;
+}
+
+.ppt-panel__body {
+  padding: 6px 8px 8px;
+  min-width: 0;
+}
+
+.ppt-panel__body--flush {
+  padding: 0;
+}
+
+/* Nested cards inside planner panels (e.g. machine control on production dashboard) */
+.ppt-machine-embed > div {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 6px 8px 8px !important;
+}
+
+.ppt-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.ppt-link-row:hover {
+  background: #f1f5f9;
+}
+
+.ppt-module-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--ppt-border);
+  border-radius: 2px;
+  background: #f8fafc;
+  font-size: 10px;
+  font-weight: 600;
+  color: #334155;
+  text-decoration: none;
+}
+
+.ppt-module-link:hover {
+  border-color: #16a34a;
+  background: #ecfdf5;
+  color: #14532d;
+}
+
+.ppt-flow {
+  border: 1px solid var(--ppt-border);
+  background: #f8fafc;
+  padding: 8px;
+  font-size: 10px;
+}
+
+.ppt-flow__label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.ppt-flow__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ppt-flow__chip {
+  padding: 3px 8px;
+  border: 1px solid var(--ppt-border);
+  border-radius: 2px;
+  background: #fff;
+  color: #166534;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ppt-flow__chip:hover {
+  border-color: #16a34a;
+  background: #ecfdf5;
 }

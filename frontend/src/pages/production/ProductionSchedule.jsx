@@ -6,20 +6,16 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   GanttChart,
   LayoutGrid,
   Plus,
   Table2,
-  Target,
   X,
 } from "lucide-react";
 
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import Loader from "../../components/common/Loader";
 import Button, { IconButton } from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -54,6 +50,11 @@ import {
 } from "../../data/productionScheduleMasterData";
 import { runListExport } from "../../utils/listExport";
 import { cleanProductLabel } from "../../utils/productLabel";
+import { SCHEDULE_TOOLKIT_KPIS, formatScheduleKpiValue } from "../../utils/productionScheduleToolkit";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/production-schedule-toolkit.css";
+
+const TOOLKIT_SUBTITLE = "Manufacturing Production Planning & Factory Control Toolkit";
 
 const VIEWS = [
   { id: "timeline", label: "Timeline", icon: GanttChart },
@@ -97,7 +98,33 @@ function StatusDot({ status }) {
   return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${color}`} aria-hidden />;
 }
 
-function ViewTabs({ view, onChange }) {
+function ViewTabs({ view, onChange, variant = "default" }) {
+  if (variant === "toolkit") {
+    return (
+      <nav
+        className="mtk-tabs production-schedule-view-tabs"
+        role="tablist"
+        aria-label="Schedule views"
+      >
+        {VIEWS.map((v) => {
+          const active = view === v.id;
+          return (
+            <button
+              key={v.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(v.id)}
+              className={active ? "mtk-tabs__active" : ""}
+            >
+              {v.label}
+            </button>
+          );
+        })}
+      </nav>
+    );
+  }
+
   return (
     <div
       className="inline-flex w-max max-w-full shrink-0 flex-nowrap overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-1"
@@ -1036,166 +1063,230 @@ export default function ProductionSchedule() {
   const showFloorStrip =
     !operatorMode && (liveMachines.length > 0 || queue.length > 0 || shifts.length > 0 || materials.length > 0);
 
-  if (loading) return <Loader label="Loading production schedule…" />;
-
-  return (
-    <ListPageShell>
-      <div className="ui-grid-kpi">
-        <ClickableKpiCard onClick={() => applySchedulePreset("all")} title="Show all production targets">
-          <KpiCard label="Target Quantity" value={(dashboard.production_target ?? 0).toLocaleString()} icon={Target} tone="primary" meta="Click to filter" />
-        </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applySchedulePreset("completed")} title="Show completed orders">
-          <KpiCard label="Completed Orders" value={(dashboard.completed ?? 0).toLocaleString()} icon={CheckCircle2} tone="success" meta="Click to filter" />
-        </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applySchedulePreset("pending")} title="Show pending orders">
-          <KpiCard label="Pending Orders" value={(dashboard.pending ?? 0).toLocaleString()} icon={ClipboardList} tone="warning" meta="Click to filter" />
-        </ClickableKpiCard>
-        <ClickableKpiCard onClick={() => applySchedulePreset("delayed")} title="Show delayed orders">
-          <KpiCard label="Delayed Orders" value={dashboard.delayed_orders ?? 0} icon={AlertTriangle} tone="danger" meta="Click to filter" />
-        </ClickableKpiCard>
+  const toolkitHero = (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{TOOLKIT_SUBTITLE}</span>
+        <div className="mtk-hero__meta">
+          <div>Today: {formatScheduleDate(dashboard.today)}</div>
+          {dashboard.machine_utilization_pct != null ? (
+            <div>Utilization: {dashboard.machine_utilization_pct}%</div>
+          ) : null}
+        </div>
       </div>
-      <p className="-mt-3 text-xs text-[var(--color-text-muted)]">
-        Target is measured in units. The other summary cards count work orders; the timeline shows active work orders assigned to machines.
-      </p>
+      <div className="mtk-hero__title">
+        <h1>Manufacturing Production Schedule</h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>{TOOLKIT_SUBTITLE}</p>
+      </div>
+    </header>
+  );
 
-      {conflicts.length > 0 ? (
-        <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--color-warning)]/40 bg-[var(--color-warning-soft)] px-4 py-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-warning)]" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[var(--color-text)]">
-              {conflicts.length} schedule conflict{conflicts.length > 1 ? "s" : ""}
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
-              {CONFLICT_LABELS[conflicts[0].conflict_type] || conflicts[0].conflict_type}: {conflicts[0].message}
-              {conflicts.length > 1 ? ` · +${conflicts.length - 1} more` : ""}
-            </p>
+  const toolkitKpiRow = (
+    <div className="mtk-kpi-row" aria-label="Schedule summary KPIs">
+      {SCHEDULE_TOOLKIT_KPIS.map((kpi) => {
+        const value = formatScheduleKpiValue(dashboard, kpi);
+        if (kpi.preset) {
+          return (
+            <button
+              key={kpi.label}
+              type="button"
+              className="mtk-kpi mtk-kpi--button"
+              onClick={() => applySchedulePreset(kpi.preset)}
+              title={`Filter: ${kpi.label}`}
+            >
+              <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+              <div className="mtk-kpi__label">{kpi.label}</div>
+              <div className="mtk-kpi__value">{value}</div>
+            </button>
+          );
+        }
+        return (
+          <div key={kpi.label} className="mtk-kpi">
+            <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+            <div className="mtk-kpi__label">{kpi.label}</div>
+            <div className="mtk-kpi__value">{value}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="production-schedule-page production-schedule-page--toolkit min-h-full">
+        <div className="mtk-root mtk-theme--red">
+          {toolkitHero}
+          <div className="mtk-body production-schedule-loading">
+            <Loader label="Loading production schedule…" />
           </div>
         </div>
-      ) : null}
+      </div>
+    );
+  }
 
-      <ListPageCard>
-        <ListPageCardBody>
-        <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
-            <ViewTabs view={view} onChange={setView} />
-            <p className="min-w-0 text-xs leading-5 text-[var(--color-text-muted)]">
+  return (
+    <div className="production-schedule-page production-schedule-page--toolkit min-h-full min-w-0">
+      <div className="mtk-root mtk-theme--red">
+        {toolkitHero}
+        {toolkitKpiRow}
+        <p className="production-schedule-kpi-hint">
+          Target is measured in units. Other cards count work orders; the timeline shows active work orders assigned to
+          machines.
+        </p>
+
+        <div className="mtk-body min-w-0">
+          {conflicts.length > 0 ? (
+            <div className="production-schedule-conflicts flex items-start gap-3 border border-[var(--color-warning)]/40 bg-[var(--color-warning-soft)] px-3 py-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-warning)]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[var(--color-text)]">
+                  {conflicts.length} schedule conflict{conflicts.length > 1 ? "s" : ""}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
+                  {CONFLICT_LABELS[conflicts[0].conflict_type] || conflicts[0].conflict_type}: {conflicts[0].message}
+                  {conflicts.length > 1 ? ` · +${conflicts.length - 1} more` : ""}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <section className="mtk-panel min-w-0">
+            <div className="mtk-panel__title">Production Schedule</div>
+
+            <div className="production-schedule-panel__toolbar">
+              <ViewTabs view={view} onChange={setView} variant="toolkit" />
+              <div className="production-schedule-panel__toolbar-end">
+                <ExportDownloadMenu
+                  disabled={!(filteredTable.length ? filteredTable : tableRows).length}
+                  onExport={handleExport}
+                />
+                {openCreate ? (
+                  <Button
+                    type="button"
+                    variant="add"
+                    onClick={openCreate}
+                    leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+                  >
+                    New Schedule
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            <p className="production-schedule-panel__meta">
               Today · {formatScheduleDate(dashboard.today)}
               {dashboard.machine_utilization_pct != null ? ` · ${dashboard.machine_utilization_pct}% util.` : ""}
               {runningMachines ? ` · ${runningMachines} running` : ""}
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap xl:justify-self-end">
-            <ExportDownloadMenu
-              disabled={!(filteredTable.length ? filteredTable : tableRows).length}
-              onExport={handleExport}
-            />
-            {openCreate ? (
-              <Button type="button" variant="add" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-                New Schedule
-              </Button>
-            ) : null}
-          </div>
-        </div>
 
-        {view === "timeline" ? (
-          <TimelineView rows={timeline} onDrop={handleReschedule} onCreate={openCreate} />
-        ) : null}
-        {view === "calendar" ? <CalendarView events={calendarEvents} onCreate={openCreate} /> : null}
-        {view === "kanban" ? <KanbanView items={kanban} onCreate={openCreate} /> : null}
-        {view === "table" ? (
-          <div>
-            <SearchBar
-              value={tableSearch}
-              onChange={setTableSearch}
-              placeholder="Search"
-              className="mb-4 w-full"
-            />
-            {filteredTable.length === 0 ? (
-              <ScheduleEmpty
-                message="No schedule rows yet. Create a schedule or assign work orders to machines."
-                onCreate={openCreate}
-              />
-            ) : (
-              <DataTable
-                columns={tableColumns}
-                data={filteredTable}
-                searchKeys={["work_order_number", "product_name", "machine_name"]}
-                showSearch={false}
-              />
-            )}
-          </div>
-        ) : null}
-        </ListPageCardBody>
-      </ListPageCard>
+            <div className="production-schedule-panel__body">
+              {view === "timeline" ? (
+                <TimelineView rows={timeline} onDrop={handleReschedule} onCreate={openCreate} />
+              ) : null}
+              {view === "calendar" ? <CalendarView events={calendarEvents} onCreate={openCreate} /> : null}
+              {view === "kanban" ? <KanbanView items={kanban} onCreate={openCreate} /> : null}
+              {view === "table" ? (
+                <div>
+                  <SearchBar
+                    value={tableSearch}
+                    onChange={setTableSearch}
+                    placeholder="Search"
+                    className="mb-3 w-full max-w-md"
+                  />
+                  {filteredTable.length === 0 ? (
+                    <ScheduleEmpty
+                      message="No schedule rows yet. Create a schedule or assign work orders to machines."
+                      onCreate={openCreate}
+                    />
+                  ) : (
+                    <DataTable
+                      columns={tableColumns}
+                      data={filteredTable}
+                      searchKeys={["work_order_number", "product_name", "machine_name"]}
+                      showSearch={false}
+                      wrapClassName="mtk-table-wrap production-schedule-table__wrap"
+                      tableClassName="mtk-table production-schedule-table"
+                    />
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </section>
 
-      {showFloorStrip ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {liveMachines.length > 0 ? (
-            <section className="ui-card p-4">
-              <h3 className="mb-3 text-sm font-semibold text-[var(--color-text)]">Machines</h3>
-              <ul className="space-y-2">
-                {liveMachines.slice(0, 6).map((m) => (
-                  <li key={m.machine_id} className="flex items-center gap-2 text-sm">
-                    <StatusDot status={m.status} />
-                    <span className="min-w-0 flex-1 truncate font-medium text-[var(--color-text)]">{m.machine_name}</span>
-                    <span className="shrink-0 capitalize text-xs text-[var(--color-text-muted)]">{m.status}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+          {showFloorStrip ? (
+            <div className="production-schedule-floor lg:grid-cols-3">
+              {liveMachines.length > 0 ? (
+                <section className="mtk-panel">
+                  <div className="mtk-panel__title">Machines</div>
+                  <ul className="mtk-panel__body space-y-2">
+                    {liveMachines.slice(0, 6).map((m) => (
+                      <li key={m.machine_id} className="flex items-center gap-2">
+                        <StatusDot status={m.status} />
+                        <span className="min-w-0 flex-1 truncate font-medium text-[var(--color-text)]">
+                          {m.machine_name}
+                        </span>
+                        <span className="shrink-0 capitalize text-[var(--color-text-muted)]">{m.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
 
-          {queue.length > 0 ? (
-            <section className="ui-card p-4">
-              <h3 className="mb-3 text-sm font-semibold text-[var(--color-text)]">Queue</h3>
-              <ol className="space-y-2">
-                {queue.slice(0, 5).map((q) => (
-                  <li key={q.position} className="flex items-start gap-2 text-sm">
-                    <span className="font-bold tabular-nums text-[var(--color-action-teal)]">{q.position}.</span>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-[var(--color-text)]">{cleanProductLabel(q.product_name)}</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">{q.quantity} qty</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          ) : null}
+              {queue.length > 0 ? (
+                <section className="mtk-panel">
+                  <div className="mtk-panel__title">Queue</div>
+                  <ol className="mtk-panel__body space-y-2">
+                    {queue.slice(0, 5).map((q) => (
+                      <li key={q.position} className="flex items-start gap-2">
+                        <span className="font-bold tabular-nums text-[var(--color-danger)]">{q.position}.</span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-[var(--color-text)]">
+                            {cleanProductLabel(q.product_name)}
+                          </p>
+                          <p className="text-[var(--color-text-muted)]">{q.quantity} qty</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              ) : null}
 
-          {shifts.length > 0 ? (
-            <section className="ui-card p-4">
-              <h3 className="mb-3 text-sm font-semibold text-[var(--color-text)]">Shifts</h3>
-              <ul className="space-y-2">
-                {shifts.slice(0, 5).map((s, i) => (
-                  <li key={i} className="text-sm">
-                    <p className="font-medium text-[var(--color-text)]">{s.shift_name}</p>
-                    <p className="truncate text-xs text-[var(--color-text-muted)]">
-                      {s.machine_name} · {cleanProductLabel(s.product_name)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+              {shifts.length > 0 ? (
+                <section className="mtk-panel">
+                  <div className="mtk-panel__title">Shifts</div>
+                  <ul className="mtk-panel__body space-y-2">
+                    {shifts.slice(0, 5).map((s, i) => (
+                      <li key={i}>
+                        <p className="font-medium text-[var(--color-text)]">{s.shift_name}</p>
+                        <p className="truncate text-[var(--color-text-muted)]">
+                          {s.machine_name} · {cleanProductLabel(s.product_name)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
 
-          {materials.length > 0 ? (
-            <section className="ui-card p-4 lg:col-span-3">
-              <h3 className="mb-3 text-sm font-semibold text-[var(--color-text)]">Materials</h3>
-              <div className="flex flex-wrap gap-2">
-                {materials.map((m) => (
-                  <StatusBadge key={m.product_name} tone={m.available ? "success" : "warning"}>
-                    {cleanProductLabel(m.product_name)} · {m.available ? "Issued" : "Pending"}
-                  </StatusBadge>
-                ))}
-              </div>
-            </section>
+              {materials.length > 0 ? (
+                <section className="mtk-panel lg:col-span-3">
+                  <div className="mtk-panel__title">Materials</div>
+                  <div className="mtk-panel__body flex flex-wrap gap-2">
+                    {materials.map((m) => (
+                      <StatusBadge key={m.product_name} tone={m.available ? "success" : "warning"}>
+                        {cleanProductLabel(m.product_name)} · {m.available ? "Issued" : "Pending"}
+                      </StatusBadge>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </div>
           ) : null}
         </div>
-      ) : null}
+      </div>
 
       {!operatorMode && showNewModal ? (
         <NewScheduleModal onClose={() => setShowNewModal(false)} onSuccess={load} />
       ) : null}
-    </ListPageShell>
+    </div>
   );
 }
