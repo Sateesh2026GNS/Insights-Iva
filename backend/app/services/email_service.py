@@ -436,18 +436,24 @@ async def _send_via_fastapi_mail(
 ) -> None:
     _require_smtp()
     s = _settings()
-    use_ssl = _smtp_use_implicit_ssl(s)
+    host = (s.smtp_host or "").strip()
+    is_gmail = "gmail.com" in host.lower()
+    port = int(s.smtp_port)
+    if is_gmail and port == 587:
+        port = 465
+    use_ssl = (port == 465)
     conf = ConnectionConfig(
         MAIL_USERNAME=s.smtp_user,
         MAIL_PASSWORD=s.smtp_password,
         MAIL_FROM=s.smtp_from_email,
-        MAIL_PORT=s.smtp_port,
-        MAIL_SERVER=s.smtp_host,
+        MAIL_PORT=port,
+        MAIL_SERVER=host,
         MAIL_FROM_NAME="Insights Iva",
         MAIL_STARTTLS=not use_ssl,
         MAIL_SSL_TLS=use_ssl,
         USE_CREDENTIALS=True,
         VALIDATE_CERTS=True,
+        TIMEOUT=8,
     )
     message = MessageSchema(
         subject=subject,
@@ -456,7 +462,7 @@ async def _send_via_fastapi_mail(
         subtype=MessageType.html if html else MessageType.plain,
     )
     try:
-        await FastMail(conf).send_message(message)
+        await asyncio.wait_for(FastMail(conf).send_message(message), timeout=10.0)
     except Exception as exc:
         raise _classify_delivery_failure(exc) from exc
 
@@ -485,11 +491,14 @@ async def send_email_async(
         try:
             await _send_via_fastapi_mail(to, subject, body, html=html)
             return
-        except EmailDeliveryError:
-            raise
         except Exception as exc:
             logger.warning("fastapi_mail_failed_falling_back_to_smtplib to=%s: %s", to, exc)
-    await asyncio.to_thread(_send_via_smtplib, to, subject, body, html=html, attachments=attachments)
+    try:
+        await asyncio.to_thread(_send_via_smtplib, to, subject, body, html=html, attachments=attachments)
+    except Exception as exc:
+        if require_smtp:
+            raise
+        logger.warning("smtplib_send_failed to=%s: %s", to, exc)
 
 
 def send_email(

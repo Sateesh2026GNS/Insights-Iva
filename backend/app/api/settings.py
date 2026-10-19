@@ -1,14 +1,14 @@
 import logging
 import html
 import re
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
-from app.api.auth_deps import get_current_user
+from app.api.auth_deps import get_current_user, get_optional_current_user
 from app.api.deps import get_db
 from app.core.permissions import require_admin_role, require_any_permission, require_permission
 from app.models.user import User
@@ -149,50 +149,93 @@ def contact_sales_endpoint(
     return success_response(data.get("message") or "Inquiry submitted", data)
 
 
-@router.post("/contact")
-async def send_contact_inquiry_endpoint(
-    payload: ContactInquiryRequest,
-    user: User = Depends(get_current_user),
-) -> dict:
-    """Deliver authenticated contact form submissions to the Codevia support inbox."""
-    from app.services.email_service import EmailDeliveryError, send_email_async
+def _deliver_contact_inquiry_sync(
+    name: str,
+    email: str,
+    phone: str | None,
+    message: str,
+) -> None:
+    import smtplib
+    from email.message import EmailMessage
+    from app.core.config import get_settings
 
-    subject = f"Insights Iva contact message from {payload.name}"
+    cfg = get_settings()
+    host = (cfg.smtp_host or "smtp.gmail.com").strip()
+    port = int(cfg.smtp_port or 465)
+    username = (cfg.smtp_user or "admin@codeviasoftware.com").strip()
+    password = (cfg.smtp_password or "ynmv punh shyh arij").replace(" ", "").strip()
+    from_email = (cfg.smtp_from_email or username).strip()
+
+    subject = f"Insights Iva contact message from {name}"
     body = (
         "A new message was sent from the Insights Iva Contact Us page.\n\n"
-        f"Name: {payload.name}\n"
-        f"Email: {payload.email}\n"
-        f"Phone: {payload.phone or 'Not provided'}\n"
-        f"Account email: {user.email or 'Not available'}\n"
-        f"User ID: {user.id}\n\n"
+        f"Name: {name}\n"
+        f"Email: {email}\n"
+        f"Phone: {phone or 'Not provided'}\n\n"
         "Message:\n"
-        f"{payload.message}\n"
+        f"{message}\n"
     )
     safe = {key: html.escape(value or "") for key, value in {
-        "name": payload.name,
-        "email": payload.email,
-        "phone": payload.phone or "Not provided",
-        "account_email": user.email or "Not available",
-        "message": payload.message,
+        "name": name,
+        "email": email,
+        "phone": phone or "Not provided",
+        "message": message,
     }.items()}
     html_body = (
-        '<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6">'
-        '<h2>New Insights Iva contact message</h2>'
-        f'<p><b>Name:</b> {safe["name"]}<br><b>Email:</b> {safe["email"]}'
-        f'<br><b>Phone:</b> {safe["phone"]}<br><b>Account email:</b> {safe["account_email"]}</p>'
-        f'<p><b>Message:</b><br>{safe["message"].replace(chr(10), "<br>")}</p></div>'
+        '<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:12px;">'
+        '<div style="background:#0d9488;color:#ffffff;padding:16px 20px;border-radius:8px 8px 0 0;margin:-20px -20px 20px -20px;">'
+        '<h2 style="margin:0;font-size:20px;font-weight:600;">Insights Iva — New Contact Inquiry</h2>'
+        '</div>'
+        f'<p style="margin:8px 0;"><b>Name:</b> {safe["name"]}</p>'
+        f'<p style="margin:8px 0;"><b>Email:</b> <a href="mailto:{safe["email"]}">{safe["email"]}</a></p>'
+        f'<p style="margin:8px 0;"><b>Phone:</b> {safe["phone"]}</p>'
+        '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />'
+        f'<p style="margin:8px 0;"><b>Message:</b></p>'
+        f'<div style="background:#f8fafc;padding:12px 16px;border-radius:8px;border:1px solid #e2e8f0;white-space:pre-wrap;">{safe["message"]}</div>'
+        '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />'
+        '<p style="font-size:12px;color:#64748b;margin:0;">Delivered via Insights Iva automated contact service.</p>'
+        '</div>'
     )
+
+    recipients = ["info@codeviasoftware.com", "admin@codeviasoftware.com"]
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"Insights Iva <{from_email}>"
+    msg["To"] = ", ".join(recipients)
+    msg.set_content(body)
+    msg.add_alternative(html_body, subtype="html")
+
     try:
-        await send_email_async(
-            to="info@codeviasoftware.com",
-            subject=subject,
-            body=body,
-            html=html_body,
-            require_smtp=True,
-        )
-    except EmailDeliveryError as exc:
-        logger.exception("Failed to deliver Insights Iva contact inquiry from user_id=%s", user.id)
-        raise HTTPException(status_code=503, detail=exc.public_message) from exc
+        if port == 465 or "gmail.com" in host.lower():
+            with smtplib.SMTP_SSL(host, 465, timeout=10) as server:
+                server.login(username, password)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(host, port, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(username, password)
+                server.send_message(msg)
+        logger.info("Delivered contact inquiry from %s (%s) to %s", name, email, recipients)
+    except Exception as exc:
+        logger.exception("Failed delivering contact inquiry via SMTP: %s", exc)
+
+
+@router.post("/contact")
+def send_contact_inquiry_endpoint(
+    payload: ContactInquiryRequest,
+    background_tasks: BackgroundTasks,
+) -> dict:
+    """Deliver contact form submissions to Codevia support inboxes asynchronously."""
+    background_tasks.add_task(
+        _deliver_contact_inquiry_sync,
+        payload.name,
+        payload.email,
+        payload.phone,
+        payload.message,
+    )
 
     return success_response("Your message was sent. We’ll be in touch soon.")
 

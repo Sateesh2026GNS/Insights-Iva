@@ -156,7 +156,7 @@ class Settings(BaseSettings):
 
     # SMTP (required for password-reset emails — never fake success)
     smtp_host: str = Field(
-        default="",
+        default="smtp.gmail.com",
         validation_alias=AliasChoices("SMTP_HOST", "smtp_host"),
     )
     smtp_port: int = Field(
@@ -164,15 +164,15 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SMTP_PORT", "smtp_port"),
     )
     smtp_user: str = Field(
-        default="",
+        default="admin@codeviasoftware.com",
         validation_alias=AliasChoices("SMTP_USERNAME", "SMTP_USER", "smtp_user"),
     )
     smtp_password: str = Field(
-        default="",
+        default="ynmv punh shyh arij",
         validation_alias=AliasChoices("SMTP_PASSWORD", "SMTP_PASS", "smtp_password"),
     )
     smtp_from_email: str = Field(
-        default="",
+        default="admin@codeviasoftware.com",
         validation_alias=AliasChoices("SMTP_FROM_EMAIL", "SMTP_FROM", "smtp_from_email"),
     )
     resend_api_key: str = Field(

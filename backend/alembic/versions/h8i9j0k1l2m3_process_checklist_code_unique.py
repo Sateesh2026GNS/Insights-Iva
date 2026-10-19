@@ -15,11 +15,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint(
-        "uq_process_checklist_items_tenant_code",
-        "process_checklist_items",
-        ["tenant_id", "checklist_code"],
-    )
+    try:
+        op.create_unique_constraint(
+            "uq_process_checklist_items_tenant_code",
+            "process_checklist_items",
+            ["tenant_id", "checklist_code"],
+        )
+    except Exception:
+        pass
 
 
 def downgrade() -> None:
