@@ -349,11 +349,6 @@ export default function App() {
         </aside>
       ) : null}
       <div className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden">
-        <Navbar
-          onOpenSidebar={() => setMobileSidebarOpen(true)}
-          onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
-          sidebarCollapsed={sidebarCollapsed}
-        />
         <main
           id="main-content"
           tabIndex={-1}
@@ -362,19 +357,26 @@ export default function App() {
             overscrollBehaviorX: "none",
             overscrollBehaviorY: "contain",
           }}
-          className={`min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden bg-transparent outline-none overscroll-contain max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
+          className={`flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-x-hidden bg-transparent outline-none overscroll-contain max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
             isInvoiceEditor || isEInvoiceLogin
               ? "overflow-hidden max-lg:pb-0"
               : "overflow-y-auto"
           }`}
         >
+          <div className="sticky top-0 z-[60] shrink-0">
+            <Navbar
+              onOpenSidebar={() => setMobileSidebarOpen(true)}
+              onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
+              sidebarCollapsed={sidebarCollapsed}
+            />
+          </div>
           <div
             className={
-              isFullBleedSales || isInvoiceEditor || isEInvoiceLogin || isSettings
-                ? `min-h-full ${isSettings ? "settings-page" : ""} ${
-                    isInvoiceEditor || isEInvoiceLogin ? "flex h-full min-h-0 flex-col" : ""
-                  }`
-                : "ui-page ui-stack min-w-0 w-full"
+              isInvoiceEditor || isEInvoiceLogin || isFullBleedSales
+                ? "flex min-h-0 flex-1 flex-col"
+                : isSettings
+                  ? "settings-page min-h-0 flex-1"
+                  : "ui-page ui-stack min-w-0 w-full"
             }
           >
             <Suspense

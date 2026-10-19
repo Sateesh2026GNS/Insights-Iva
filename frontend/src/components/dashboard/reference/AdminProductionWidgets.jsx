@@ -33,11 +33,11 @@ function FiscalChartCard({ title, totalLabel, chartData, total, emptyMessage, lo
   const hasData = chartData?.some((row) => Number(row.count) > 0);
 
   return (
-    <section className="ui-card flex h-full flex-col overflow-hidden p-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
+    <section className="ui-card admin-fiscal-chart-card flex h-full flex-col overflow-hidden p-0">
+      <div className="admin-fiscal-chart-card__header flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
         <h3 className="text-sm font-bold text-[#1e3a5f] sm:text-[15px]">{title}</h3>
         <select
-          className="rounded-md border border-[var(--color-border-soft)] bg-white px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)]"
+          className="admin-fiscal-chart-card__period rounded-md border border-[var(--color-border-soft)] bg-white px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)]"
           defaultValue="fiscal"
           aria-label={t("refDashboard.thisFiscalYear", "This Fiscal Year")}
         >

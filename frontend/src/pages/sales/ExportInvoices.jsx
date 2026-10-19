@@ -108,43 +108,31 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, tone, onClick }) {
-  const toneStyles = {
-    blue: {
-      active: "border-[var(--color-primary)] text-[var(--color-primary)]",
-      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
-    },
-    purple: {
-      active: "border-[var(--color-primary)] text-[var(--color-primary)]",
-      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
-    },
-    green: {
-      active: "border-[#16a34a] text-[#16a34a]",
-      hover: "hover:border-[#16a34a] hover:text-[#16a34a]",
-    },
-    orange: {
-      active: "border-[#ea580c] text-[#ea580c]",
-      hover: "hover:border-[#ea580c] hover:text-[#ea580c]",
-    },
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", label: "text-blue-700", count: "text-blue-500", value: "text-blue-700", ring: "focus-visible:ring-blue-600", hover: "hover:text-blue-700" },
+    amber: { border: "border-amber-500", label: "text-amber-700", count: "text-amber-600", value: "text-amber-800", ring: "focus-visible:ring-amber-500", hover: "hover:text-amber-700" },
+    emerald: { border: "border-emerald-600", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-800", ring: "focus-visible:ring-emerald-600", hover: "hover:text-emerald-700" },
+    violet: { border: "border-violet-600", label: "text-violet-700", count: "text-violet-600", value: "text-violet-800", ring: "focus-visible:ring-violet-600", hover: "hover:text-violet-700" },
   };
-  const currentTone = toneStyles[tone] || toneStyles.purple;
-
+  const colors = tones[tone] || tones.blue;
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      style={{ boxSizing: "border-box", width: 255, minWidth: 255, flex: "0 0 255px" }}
-      className={`min-w-[125px] shrink-0 border-b-[3px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`relative min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${colors.ring} ${
         active
-          ? `bg-[var(--color-surface)] ${currentTone.active}`
-          : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
+          ? `${colors.border} bg-[var(--color-surface)] shadow-sm`
+          : `border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80 ${colors.hover}`
       }`}
     >
-      <p className={`text-[12px] sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
-        {label}{" "}
-        <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
+        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
       </p>
-      <p className={`mt-1 text-[15px] sm:text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -306,44 +294,45 @@ export default function ExportInvoices() {
           <Button
             variant="add"
             to="/sales/export-invoices/create"
-            className="h-[42px] w-full justify-center sm:w-auto"
+            className="h-[42px] justify-center sm:w-auto"
             leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
           >
             Export Invoice
           </Button>
         </div>
-        <div className="w-full max-w-[1020px] overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
           <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Export invoice payment status">
           <SummaryTab
             label="Total Sales"
             count={kpis.all.count}
             amount={formatInr(kpis.all.amount)}
+            tone="blue"
             active={kpiFilter === "all"}
-            tone="purple"
             onClick={() => setKpiFilter("all")}
           />
           <SummaryTab
             label="Unpaid"
             count={kpis.unpaid.count}
             amount={formatInr(kpis.unpaid.amount)}
+            tone="amber"
             active={kpiFilter === "unpaid"}
-            tone="purple"
             onClick={() => setKpiFilter("unpaid")}
           />
           <SummaryTab
             label="Paid"
             count={kpis.paid.count}
             amount={formatInr(kpis.paid.amount)}
+            tone="emerald"
             active={kpiFilter === "paid"}
-            tone="green"
             onClick={() => setKpiFilter("paid")}
           />
           <SummaryTab
             label="Partially Paid"
             count={kpis.partial.count}
             amount={formatInr(kpis.partial.amount)}
+            tone="violet"
             active={kpiFilter === "partial"}
-            tone="orange"
             onClick={() => setKpiFilter("partial")}
           />
         </div>

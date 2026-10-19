@@ -1,7 +1,7 @@
 import logging
 import html
 import re
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -160,11 +160,13 @@ def _deliver_contact_inquiry_sync(
     from app.core.config import get_settings
 
     cfg = get_settings()
-    host = (cfg.smtp_host or "smtp.gmail.com").strip()
-    port = int(cfg.smtp_port or 465)
-    username = (cfg.smtp_user or "admin@codeviasoftware.com").strip()
-    password = (cfg.smtp_password or "ynmv punh shyh arij").replace(" ", "").strip()
+    host = (cfg.smtp_host or "").strip()
+    port = int(cfg.smtp_port or 587)
+    username = (cfg.smtp_user or "").strip()
+    password = (cfg.smtp_password or "").strip()
     from_email = (cfg.smtp_from_email or username).strip()
+    if not all((host, username, password, from_email)):
+        raise RuntimeError("Contact email delivery is not configured")
 
     subject = f"Insights Iva contact message from {name}"
     body = (
@@ -197,7 +199,7 @@ def _deliver_contact_inquiry_sync(
         '</div>'
     )
 
-    recipients = ["info@codeviasoftware.com", "admin@codeviasoftware.com"]
+    recipients = ["info@codeviasoftware.com"]
 
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -207,8 +209,8 @@ def _deliver_contact_inquiry_sync(
     msg.add_alternative(html_body, subtype="html")
 
     try:
-        if port == 465 or "gmail.com" in host.lower():
-            with smtplib.SMTP_SSL(host, 465, timeout=10) as server:
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=10) as server:
                 server.login(username, password)
                 server.send_message(msg)
         else:
@@ -221,21 +223,27 @@ def _deliver_contact_inquiry_sync(
         logger.info("Delivered contact inquiry from %s (%s) to %s", name, email, recipients)
     except Exception as exc:
         logger.exception("Failed delivering contact inquiry via SMTP: %s", exc)
+        raise
 
 
 @router.post("/contact")
 def send_contact_inquiry_endpoint(
     payload: ContactInquiryRequest,
-    background_tasks: BackgroundTasks,
 ) -> dict:
-    """Deliver contact form submissions to Codevia support inboxes asynchronously."""
-    background_tasks.add_task(
-        _deliver_contact_inquiry_sync,
-        payload.name,
-        payload.email,
-        payload.phone,
-        payload.message,
-    )
+    """Deliver contact form submissions and only acknowledge successful delivery."""
+    try:
+        _deliver_contact_inquiry_sync(
+            payload.name,
+            payload.email,
+            payload.phone,
+            payload.message,
+        )
+    except Exception as exc:
+        logger.exception("Could not deliver contact inquiry")
+        raise HTTPException(
+            status_code=503,
+            detail="We couldn’t send your message right now. Please try again later.",
+        ) from exc
 
     return success_response("Your message was sent. We’ll be in touch soon.")
 

@@ -457,7 +457,11 @@ function AdminDashboardToolkitHero({ title, subtitle }) {
         </div>
       </div>
       <div className="mtk-hero__title">
-        <h1>{title}</h1>
+        <h1>
+          {title === "Admin Dashboard" ? (
+            <>Admin <span className="mtk-accent">Dashboard</span></>
+          ) : title}
+        </h1>
         {subtitle ? <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>{subtitle}</p> : null}
       </div>
     </header>

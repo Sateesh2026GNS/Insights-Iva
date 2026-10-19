@@ -32,6 +32,9 @@ CSRF_EXEMPT_PREFIXES = (
     "/platform/auth/login",
     "/api/auth/refresh",
     "/api/auth/logout",
+    # Public contact form submissions do not use the authenticated session.
+    "/settings/contact",
+    "/api/settings/contact",
     # Upload-token PUTs are authenticated by the token in the path, not the session.
     "/api/files/local-upload",
     "/api/files/local-upload-part",

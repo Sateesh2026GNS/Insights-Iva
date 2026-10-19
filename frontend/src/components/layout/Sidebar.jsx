@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
+  PhoneCall,
   Zap,
   X,
 } from "lucide-react";
@@ -40,6 +41,7 @@ import {
   userCanAccessApprovalQueue,
   userCanAccessPath,
   userCanViewBom,
+  isAdmin,
   isStoreManager,
   isProductionManager,
   isOperator,
@@ -535,8 +537,10 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       }
       return section;
     });
-    return roleNav;
-  }, [apiNav, user, storeMode, salesMode]);
+    return isAdmin(user)
+      ? [...roleNav, { key: "contactUs", label: "Contact Us", to: "/contact", icon: PhoneCall, end: true }]
+      : roleNav;
+  }, [apiNav, user, storeMode, salesMode, productionMode, qualityMode]);
 
   const createActions = useMemo(
     () => getGlobalCreateActionsForUser(user, visibleNav),
@@ -863,13 +867,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
               if (collapsed && !createPinnedRef.current) setCreateOpen(true);
             }}
             onMouseLeave={scheduleCreateClose}
-            className={`mb-3 flex min-h-11 w-full items-center rounded-xl bg-[var(--color-nav-active)] px-3 text-sm font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)] ${collapsed ? "justify-center" : "justify-center gap-2.5"}`}
+            className={`relative mb-1 flex min-h-[46px] w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${createOpen ? "border-white/15 bg-white/[0.12] text-white" : "border-white/10 bg-white/[0.06] text-slate-300 hover:border-white/15 hover:bg-white/[0.1] hover:text-white"}`}
             aria-label="Create"
             aria-expanded={createOpen}
             aria-haspopup="menu"
             title={collapsed ? "Create" : undefined}
           >
-            <Zap className="h-5 w-5 fill-current" strokeWidth={2} aria-hidden />
+            <Zap className="h-4 w-4 fill-current" strokeWidth={2} aria-hidden />
             {!collapsed && <span>Create</span>}
           </button>
         )}

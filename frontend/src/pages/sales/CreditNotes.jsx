@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -20,6 +19,8 @@ import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import { ListPageShell } from "../../components/common/ListPageShell";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
@@ -106,22 +107,30 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", label: "text-blue-700", count: "text-blue-500", value: "text-blue-700", ring: "focus-visible:ring-blue-600", hover: "hover:text-blue-700" },
+    amber: { border: "border-amber-500", label: "text-amber-700", count: "text-amber-600", value: "text-amber-800", ring: "focus-visible:ring-amber-500", hover: "hover:text-amber-700" },
+    violet: { border: "border-violet-600", label: "text-violet-700", count: "text-violet-600", value: "text-violet-800", ring: "focus-visible:ring-violet-600", hover: "hover:text-violet-700" },
+    emerald: { border: "border-emerald-600", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-800", ring: "focus-visible:ring-emerald-600", hover: "hover:text-emerald-700" },
+  };
+  const colors = tones[tone] || tones.blue;
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
+      className={`min-w-0 border-b-[3px] px-5 py-2 text-left transition duration-150 cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 ${colors.ring} ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          ? `${colors.border} bg-[var(--color-surface)]`
+          : `border-transparent bg-[var(--color-surface-muted)] text-[var(--color-text)] hover:bg-[var(--color-surface)]/80 ${colors.hover}`
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
-        {label}{" "}
-        <span className={active ? "opacity-70" : "text-[#a0a0ab]"}>({count})</span>
+      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
+        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
       </p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -257,15 +266,29 @@ export default function CreditNotes() {
   }
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="space-y-4 p-4 sm:p-6">
+    <ListPageShell stackClassName="!gap-0 space-y-0">
+      <div className="flex flex-col gap-4">
+        <div className="sm:ml-2 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="credit-note-from-date"
+            toId="credit-note-to-date"
+            onFromChange={(value) => { setDateFrom(value); setPage(1); }}
+            onToChange={(value) => { setDateTo(value); setPage(1); }}
+          />
+          <Button variant="add" to="/sales/credit-notes/create" className="w-full justify-center sm:w-auto" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            Create Credit Note
+          </Button>
+        </div>
 
-        <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-          <div className="flex flex-wrap">
+        <div className="mb-0 w-fit max-w-full overflow-x-auto rounded-xl border border-[var(--color-table-border)] bg-[var(--color-table-border)] p-px scrollbar-none sm:-ml-2">
+          <div className="grid w-[768px] grid-cols-4 gap-px overflow-hidden rounded-[11px]" role="tablist" aria-label="Credit note settlement status">
             <SummaryTab
               label="All Credit Notes"
               count={tabStats.all.count}
               amount={formatInr(tabStats.all.amount)}
+              tone="blue"
               active={kpiFilter === "all"}
               onClick={() => setKpiFilter("all")}
             />
@@ -273,6 +296,7 @@ export default function CreditNotes() {
               label="Unsettled"
               count={tabStats.unsettled.count}
               amount={formatInr(tabStats.unsettled.amount)}
+              tone="amber"
               active={kpiFilter === "unsettled"}
               onClick={() => setKpiFilter("unsettled")}
             />
@@ -280,6 +304,7 @@ export default function CreditNotes() {
               label="Partially Settled"
               count={tabStats.partial.count}
               amount={formatInr(tabStats.partial.amount)}
+              tone="violet"
               active={kpiFilter === "partial"}
               onClick={() => setKpiFilter("partial")}
             />
@@ -287,6 +312,7 @@ export default function CreditNotes() {
               label="Settled"
               count={tabStats.settled.count}
               amount={formatInr(tabStats.settled.amount)}
+              tone="emerald"
               active={kpiFilter === "settled"}
               onClick={() => setKpiFilter("settled")}
             />
@@ -294,78 +320,56 @@ export default function CreditNotes() {
         </div>
       </div>
 
-      <div className="rounded-t-2xl border border-[var(--color-border)] border-b-0 bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-col gap-3 border-b border-[var(--color-border)] pb-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className="ui-list-card space-y-4 p-4 sm:p-5 sm:-ml-2">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <SearchBar value={search} onChange={setSearch} placeholder="Search" />
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)]">
-              <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-faint)]" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
-              />
-              <span className="text-[var(--color-text-faint)]">→</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
-              />
-            </div>
-            <Button variant="add" to="/sales/credit-notes/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              Create Credit Note
-            </Button>
-          </div>
-        </div>
-
-        <div className="relative mb-3 flex justify-end gap-2 border-b border-[var(--color-border)] pb-3">
-          <button
-            type="button"
-            onClick={() => {
-              setDraftFilters(filters);
-              setShowFilters(true);
-            }}
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
-          >
-            <Filter className="h-4 w-4" /> Filters
-          </button>
-          <div className="relative">
+          <div className="flex items-center justify-end gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => setShowSort((v) => !v)}
+              onClick={() => {
+                setDraftFilters(filters);
+                setShowFilters(true);
+              }}
               className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
             >
-              <ListFilter className="h-4 w-4" /> Sort by
+              <Filter className="h-4 w-4" /> Filters
             </button>
-            {showSort ? (
-              <>
-                <button
-                  type="button"
-                  className="fixed inset-0 z-10 cursor-default"
-                  aria-label="Close sort"
-                  onClick={() => setShowSort(false)}
-                />
-                <div className="absolute right-0 z-20 mt-1.5 w-[280px] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
-                  {SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        setSortId(opt.id);
-                        setShowSort(false);
-                      }}
-                      className={`block w-full border-b border-[#f0f0f3] px-4 py-2.5 text-left text-[13px] last:border-b-0 hover:bg-[var(--color-surface-hover)] ${
-                        sortId === opt.id ? "font-semibold" : "text-[var(--color-text-secondary)]"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowSort((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
+              >
+                <ListFilter className="h-4 w-4" /> Sort by
+              </button>
+              {showSort ? (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-label="Close sort"
+                    onClick={() => setShowSort(false)}
+                  />
+                  <div className="absolute right-0 z-20 mt-1.5 w-[280px] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg">
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setSortId(opt.id);
+                          setShowSort(false);
+                        }}
+                        className={`block w-full border-b border-[#f0f0f3] px-4 py-2.5 text-left text-[13px] last:border-b-0 hover:bg-[var(--color-surface-hover)] ${
+                          sortId === opt.id ? "font-semibold" : "text-[var(--color-text-secondary)]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -530,7 +534,7 @@ export default function CreditNotes() {
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {showFilters ? (
         <div
@@ -669,6 +673,6 @@ export default function CreditNotes() {
           </aside>
         </div>
       ) : null}
-    </div>
+    </ListPageShell>
   );
 }

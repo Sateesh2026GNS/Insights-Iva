@@ -107,7 +107,7 @@ function SummaryTab({ label, count, amount, active, onClick, tone }) {
       aria-selected={active}
       onClick={onClick}
       style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
-      className={`border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:px-5 sm:py-2 ${
+      className={`relative border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:px-5 sm:py-2 ${
         active
           ? `${colors.border} ${colors.surface} ${colors.label} shadow-sm`
           : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"

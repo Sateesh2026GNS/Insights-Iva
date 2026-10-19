@@ -1809,7 +1809,7 @@ export default function WorkChat() {
             </div>
           ) : (
             <>
-              {/* Thread Header with Search & 3-Dots Dropdown Menu matching user screenshots */}
+              {/* Thread Header actions */}
               <div className="work-chat-thread-head">
                 <button
                   type="button"
@@ -1846,16 +1846,8 @@ export default function WorkChat() {
                   </p>
                 </div>
 
-                {/* Search & 3-Dots Menu Container */}
+                {/* Conversation actions */}
                 <div className="work-chat-thread-actions" ref={menuRef}>
-                  <button
-                    type="button"
-                    className={`work-chat-header-btn ${showSearchThread ? "work-chat-header-btn--active" : ""}`}
-                    title="Search in chat"
-                    onClick={() => setShowSearchThread((p) => !p)}
-                  >
-                    <Search className="h-5 w-5" />
-                  </button>
                   <button
                     type="button"
                     className={`work-chat-header-btn ${showMenu ? "work-chat-header-btn--active" : ""}`}

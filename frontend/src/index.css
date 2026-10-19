@@ -483,6 +483,26 @@ body:has(.app-shell),
   overscroll-behavior-y: contain !important;
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #e5e7eb;
+}
+
+#main-content::-webkit-scrollbar {
+  width: 12px;
+}
+
+#main-content::-webkit-scrollbar-track {
+  background: #e5e7eb;
+}
+
+#main-content::-webkit-scrollbar-thumb {
+  border: 2px solid #e5e7eb;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+#main-content::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* Selection – primary tint */

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -22,13 +21,23 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import { ListPageShell } from "../../components/common/ListPageShell";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { useToast } from "../../context/ToastContext";
 import { cancelInvoice, getInvoicesV2 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr } from "../../data/salesMasterData";
+import { runListExport } from "../../utils/listExport";
+import { InlineNativeDateRange } from "../../design-system/dateControls";
 
-const YELLOW = "var(--color-primary)";
-const PAGE_BG = "var(--color-bg)";
+const CHALLAN_EXPORT_COLUMNS = [
+  { key: "challan_no", label: "Challan No." },
+  { key: "challan_date", label: "Date" },
+  { key: "buyer_name", label: "Buyer Name" },
+  { key: "amount", label: "Amount" },
+  { key: "status", label: "Status" },
+];
+
 const PAGE_SIZES = [10, 20, 25, 50];
 
 const SORT_OPTIONS = [
@@ -97,19 +106,31 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, amount, active, onClick }) {
+function SummaryTab({ label, count, amount, active, onClick, tone }) {
+  const tones = {
+    blue: { border: "border-blue-600", surface: "bg-blue-100", label: "text-blue-700", count: "text-blue-500", value: "text-blue-900" },
+    amber: { border: "border-amber-500", surface: "bg-amber-100", label: "text-amber-700", count: "text-amber-600", value: "text-amber-900" },
+    emerald: { border: "border-emerald-600", surface: "bg-emerald-100", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-900" },
+    rose: { border: "border-rose-600", surface: "bg-rose-100", label: "text-rose-700", count: "text-rose-600", value: "text-rose-900" },
+  };
+  const colors = tones[tone] || tones.blue;
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`min-w-0 flex-1 border-b-[3px] px-5 py-3.5 text-left transition duration-150 cursor-pointer ${
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`relative min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-surface)] text-[var(--color-primary)]"
-          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          ? `${colors.border} ${colors.surface} ${colors.label} shadow-sm`
+          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <p className={`text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>{label}</p>
-      <p className={`mt-1 text-[18px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
+      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
+        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
+      </p>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -183,11 +204,28 @@ export default function DeliveryChallans() {
     const delivered = rows.filter((r) => deliveryStatus(r) === "delivered");
     const undelivered = rows.filter((r) => deliveryStatus(r) === "undelivered");
     return {
-      all: { amount: sum(rows) },
-      delivered: { amount: sum(delivered) },
-      undelivered: { amount: sum(undelivered) },
+      all: { count: rows.length, amount: sum(rows) },
+      delivered: { count: delivered.length, amount: sum(delivered) },
+      undelivered: { count: undelivered.length, amount: sum(undelivered) },
     };
   }, [rows]);
+
+  const handleExport = (format) => {
+    const exportRows = filteredSorted.map((r) => ({
+      challan_no: r.invoice_number,
+      challan_date: fmtDate(r.issue_date),
+      buyer_name: r.customer_name || "—",
+      amount: r.grand_total ?? r.total_amount ?? 0,
+      status: deliveryStatus(r),
+    }));
+    runListExport(format, {
+      data: exportRows,
+      columns: CHALLAN_EXPORT_COLUMNS,
+      filename: "delivery-challans",
+      title: "Delivery Challans",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
 
   const filteredSorted = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -240,83 +278,100 @@ export default function DeliveryChallans() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" style={{ background: PAGE_BG }}>
-        <Loader label="Loading delivery challans..." />
-      </div>
+      <ListPageShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader label="Loading delivery challans..." />
+        </div>
+      </ListPageShell>
     );
   }
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="space-y-4 p-4 sm:p-6">
-        <div className="overflow-hidden rounded-xl bg-[var(--color-surface-muted)]">
-          <div className="flex flex-wrap">
+    <ListPageShell stackClassName="!gap-0 space-y-0">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="delivery-challan-from-date"
+            toId="delivery-challan-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <Link
+            to="/sales/delivery-challans/create"
+            className="inline-flex h-[42px] px-3.5 items-center justify-center gap-1 rounded-lg bg-[var(--color-primary,#2563eb)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            Delivery Challan
+          </Link>
+        </div>
+
+        <div className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Delivery challan status">
             <SummaryTab
               label="All Challans"
+              count={tabStats.all.count}
               amount={formatInr(tabStats.all.amount)}
+              tone="blue"
               active={kpiFilter === "all"}
               onClick={() => setKpiFilter("all")}
             />
             <SummaryTab
               label="Delivered"
+              count={tabStats.delivered.count}
               amount={formatInr(tabStats.delivered.amount)}
+              tone="emerald"
               active={kpiFilter === "delivered"}
-              onClick={() => setKpiFilter("delivered")}
+              onClick={() => setKpiFilter((c) => (c === "delivered" ? "all" : "delivered"))}
             />
             <SummaryTab
               label="Undelivered"
+              count={tabStats.undelivered.count}
               amount={formatInr(tabStats.undelivered.amount)}
+              tone="amber"
               active={kpiFilter === "undelivered"}
-              onClick={() => setKpiFilter("undelivered")}
+              onClick={() => setKpiFilter((c) => (c === "undelivered" ? "all" : "undelivered"))}
             />
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2.5">
-          <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-secondary)] shadow-sm">
-            <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-faint)]" />
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
-            />
-            <span className="text-[var(--color-text-faint)]">→</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-[118px] border-0 bg-transparent p-0 text-[13px] focus:outline-none"
-            />
-          </div>
-          <Button variant="add" to="/sales/delivery-challans/create" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            Delivery Challan
-          </Button>
         </div>
       </div>
 
-      <div className="rounded-t-2xl bg-[var(--color-surface)] px-4 pb-6 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="ui-list-card mt-3 space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <SearchBar value={search} onChange={setSearch} placeholder="Search" />
-          <div className="relative flex gap-2">
-            <button
+          <div className="flex items-center gap-2 shrink-0">
+            <ExportDownloadMenu disabled={!filteredSorted.length} onExport={handleExport} />
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
+              className="flex-1 sm:flex-initial"
               onClick={() => {
                 setDraftFilters(filters);
                 setShowFilters(true);
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
+              leftIcon={<Filter className="h-4 w-4" aria-hidden />}
             >
-              <Filter className="h-4 w-4" /> Filters
-            </button>
-            <div className="relative">
-              <button
+              Filters
+            </Button>
+            <div className="relative flex-1 sm:flex-initial">
+              <Button
                 type="button"
+                variant={showSort ? "outline" : "secondary"}
+                size="sm"
+                className="w-full"
                 onClick={() => setShowSort((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-text-secondary)]"
+                leftIcon={<ListFilter className="h-4 w-4" aria-hidden />}
               >
-                <ListFilter className="h-4 w-4" /> Sort by
-              </button>
+                Sort by
+              </Button>
               {showSort ? (
                 <>
                   <button
@@ -335,7 +390,7 @@ export default function DeliveryChallans() {
                           setShowSort(false);
                         }}
                         className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-[var(--color-surface-hover)] ${
-                          sortId === opt.id ? "font-semibold" : "text-[var(--color-text-secondary)]"
+                          sortId === opt.id ? "font-semibold text-[var(--color-primary)]" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {opt.label}
@@ -482,7 +537,7 @@ export default function DeliveryChallans() {
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {showFilters ? (
         <div
@@ -602,6 +657,6 @@ export default function DeliveryChallans() {
           </aside>
         </div>
       ) : null}
-    </div>
+    </ListPageShell>
   );
 }

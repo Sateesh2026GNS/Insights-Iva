@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { FileText, Receipt, ShoppingBag, Package, Users, BriefcaseBusiness, Factory } from "lucide-react";
+import { FileText, Receipt, ShoppingBag, Package, Users, BriefcaseBusiness, Factory, X } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
 import { getGlobalCreateActionsForUser } from "../../config/globalCreateActions";
@@ -38,7 +38,7 @@ export default function GlobalCreateMenu({
     const sideWidth = window.innerWidth - sideLeft - 16;
     const openBesideAnchor = palette && sideWidth >= 320;
     const menuWidth = palette
-      ? Math.min(760, openBesideAnchor ? sideWidth : window.innerWidth - 32)
+      ? Math.min(680, openBesideAnchor ? sideWidth : window.innerWidth - 32)
       : 220;
     let left = rect.left + rect.width / 2 - menuWidth / 2;
     if (palette) {
@@ -127,18 +127,35 @@ export default function GlobalCreateMenu({
         top: pos.top,
         left: pos.left,
         bottom: pos.bottom,
-        width: pos.width,
+        width: pos.width || (palette ? "min(680px, calc(100vw - 32px))" : 220),
+        maxWidth: "min(680px, calc(100vw - 32px))",
         maxHeight: pos.maxHeight,
         zIndex: 200,
       }}
     >
       {palette ? (
         <div className="space-y-5">
-          {Object.entries(groupedItems).map(([group, groupItems]) => {
+          {Object.entries(groupedItems).map(([group, groupItems], groupIndex) => {
             const GroupIcon = groupIcons[group] || BriefcaseBusiness;
             return (
               <section key={group} aria-label={group}>
-                <h2 className="mb-2.5 px-1 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{group}</h2>
+                <div className="mb-2.5 flex min-h-10 items-center justify-between gap-3 px-1">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{group}</h2>
+                  {groupIndex === 0 && (
+                    <button
+                      type="button"
+                      aria-label="Close create menu"
+                      title="Close"
+                      onClick={() => {
+                        onOpenChange?.(false);
+                        anchorRef?.current?.focus();
+                      }}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                    >
+                      <X className="h-5 w-5" aria-hidden />
+                    </button>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {groupItems.map((item, index) => {
                     const accentColors = [

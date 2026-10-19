@@ -20,8 +20,10 @@ import {
 
 import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
+import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
+import { ListPageShell } from "../../components/common/ListPageShell";
 import ConfirmationDialog from "../../components/common/ConfirmationDialog";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
@@ -30,7 +32,17 @@ import { deleteInvoice, getInvoicesV2 } from "../../api/salesApi";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatInr, statusColor } from "../../data/salesMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { runListExport } from "../../utils/listExport";
 import { InlineNativeDateRange } from "../../design-system/dateControls";
+
+const INVOICE_COLUMNS = [
+  { key: "invoice_number", label: "Invoice No." },
+  { key: "issue_date", label: "Date" },
+  { key: "buyer_name", label: "Buyer Name" },
+  { key: "due_in", label: "Due in" },
+  { key: "amount", label: "Amount" },
+  { key: "status", label: "Status" },
+];
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -97,31 +109,43 @@ function FilterSection({ label, children }) {
   );
 }
 
-function SummaryTab({ label, count, amount, active, onClick, tone }) {
-  const tones = {
-    blue: { border: "border-blue-600", surface: "bg-blue-100", label: "text-blue-700", count: "text-blue-500", value: "text-blue-900" },
-    amber: { border: "border-amber-500", surface: "bg-amber-100", label: "text-amber-700", count: "text-amber-600", value: "text-amber-900" },
-    emerald: { border: "border-emerald-600", surface: "bg-emerald-100", label: "text-emerald-700", count: "text-emerald-600", value: "text-emerald-900" },
-    violet: { border: "border-violet-600", surface: "bg-violet-100", label: "text-violet-700", count: "text-violet-600", value: "text-violet-900" },
+function SummaryTab({ label, count, amount, active, tone, onClick }) {
+  const toneStyles = {
+    blue: {
+      active: "border-[var(--color-primary)] text-[var(--color-primary)]",
+      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
+    },
+    purple: {
+      active: "border-[var(--color-primary)] text-[var(--color-primary)]",
+      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
+    },
+    green: {
+      active: "border-[#16a34a] text-[#16a34a]",
+      hover: "hover:border-[#16a34a] hover:text-[#16a34a]",
+    },
+    orange: {
+      active: "border-[#ea580c] text-[#ea580c]",
+      hover: "hover:border-[#ea580c] hover:text-[#ea580c]",
+    },
   };
-  const colors = tones[tone];
+  const currentTone = toneStyles[tone] || toneStyles.purple;
+
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={active}
       onClick={onClick}
-      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
-      className={`border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:px-5 sm:py-2 ${
+      style={{ boxSizing: "border-box", width: 255, minWidth: 255, flex: "0 0 255px" }}
+      className={`relative min-w-[125px] shrink-0 border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer ${
         active
-          ? `${colors.border} ${colors.surface} ${colors.label} shadow-sm`
-          : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"
+          ? `bg-[var(--color-surface)] ${currentTone.active}`
+          : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
       }`}
     >
-      <p className={`text-xs sm:text-[13px] ${active ? `font-semibold ${colors.label}` : "font-medium text-[var(--color-text)]"}`}>
-        {label} <span className={`${active ? colors.count : "text-[var(--color-text-muted)]"} font-normal`}>({count})</span>
+      <p className={`text-[12px] sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+        {label}{" "}
+        <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
       </p>
-      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums ${active ? colors.value : "text-[var(--color-text)]"}`}>
+      <p className={`mt-0.5 text-base sm:text-[17px] font-bold tabular-nums transition-colors ${active ? "text-inherit" : "text-[var(--color-text)]"}`}>
         {amount}
       </p>
     </button>
@@ -143,7 +167,7 @@ export default function InvoiceDashboard() {
   });
   const [searchParams] = useSearchParams();
   const [kpiFilter, setKpiFilter] = useState("all");
-  const [selectedKpi, setSelectedKpi] = useState(null);
+  const [selectedKpi, setSelectedKpi] = useState("all");
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
@@ -160,6 +184,7 @@ export default function InvoiceDashboard() {
     const payment = searchParams.get("payment");
     if (payment && ["all", "unpaid", "paid", "partial"].includes(payment)) {
       setKpiFilter(payment);
+      setSelectedKpi(payment);
     }
     const invoiceStatus = searchParams.get("invoice_status");
     if (invoiceStatus) {
@@ -249,66 +274,101 @@ export default function InvoiceDashboard() {
     setShowSort(false);
   };
 
-  if (loading && rows.length === 0) return <Loader label="Loading invoices…" />;
+  const handleExport = (format) => {
+    const exportRows = rows.map((r) => ({
+      invoice_number: r.invoice_number,
+      issue_date: fmtDisplayDate(r.issue_date || r.due_date),
+      buyer_name: r.buyer_name || r.customer_name || "",
+      due_in: r.due_in || daysUntilDue(r.due_date),
+      amount: r.amount,
+      status: r.payment_status || r.status || "",
+    }));
+    runListExport(format, {
+      data: exportRows,
+      columns: INVOICE_COLUMNS,
+      filename: "invoices",
+      title: "Invoices",
+    });
+    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+  };
+
+  if (loading && rows.length === 0) {
+    return (
+      <ListPageShell stackClassName="!gap-0 space-y-0">
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader label="Loading invoices…" />
+        </div>
+      </ListPageShell>
+    );
+  }
 
   return (
-    <div className="min-h-full bg-[var(--color-bg)] px-3 py-4 sm:px-6 sm:py-5">
-      {/* Date range and create action aligned like the Quotations toolbar */}
-      <div className="mb-3 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-        <InlineNativeDateRange
-          from={dateFrom}
-          to={dateTo}
-          fromId="invoice-from-date"
-          toId="invoice-to-date"
-          onFromChange={(value) => {
-            setDateFrom(value);
-            setPage(1);
-          }}
-          onToChange={(value) => {
-            setDateTo(value);
-            setPage(1);
-          }}
-        />
-        <Button variant="add" to="/sales/invoices/create" className="w-full justify-center sm:w-auto" leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-          Create Invoice
-        </Button>
-      </div>
+    <ListPageShell stackClassName="!gap-0 space-y-0">
+      <div className="flex flex-col gap-3">
+        <div className="sm:ml-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <InlineNativeDateRange
+            from={dateFrom}
+            to={dateTo}
+            fromId="invoice-from-date"
+            toId="invoice-to-date"
+            onFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
+          <Button
+            variant="add"
+            to="/sales/invoices/create"
+            className="h-[42px] w-full justify-center sm:w-auto"
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+          >
+            Create Invoice
+          </Button>
+        </div>
 
-      {/* KPI strip */}
-      <div className="mb-0 w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]">
-        <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Invoice payment status">
-          <SummaryTab
-            label="Total Sales"
-            count={kpis.all.count}
-            amount={formatInr(kpis.all.amount)}
-            tone="blue"
-            active={selectedKpi === "all"}
-            onClick={() => { setKpiFilter("all"); setSelectedKpi("all"); }}
-          />
-          <SummaryTab
-            label="Unpaid"
-            count={kpis.unpaid.count}
-            amount={formatInr(kpis.unpaid.amount)}
-            tone="amber"
-            active={selectedKpi === "unpaid"}
-            onClick={() => { setKpiFilter("unpaid"); setSelectedKpi("unpaid"); }}
-          />
-          <SummaryTab
-            label="Paid"
-            count={kpis.paid.count}
-            amount={formatInr(kpis.paid.amount)}
-            tone="emerald"
-            active={selectedKpi === "paid"}
-            onClick={() => { setKpiFilter("paid"); setSelectedKpi("paid"); }}
-          />
-          <SummaryTab
-            label="Partially Paid"
-            count={kpis.partial.count}
-            amount={formatInr(kpis.partial.amount)}
-            tone="violet"
-            active={selectedKpi === "partial"}
-            onClick={() => { setKpiFilter("partial"); setSelectedKpi("partial"); }}
-          />
+        {/* KPI strip */}
+        <div
+          className="w-[1020px] max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]"
+          style={{ width: 1020, maxWidth: "100%" }}
+        >
+          <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Invoice payment status">
+            <SummaryTab
+              label="Total Sales"
+              count={kpis.all.count}
+              amount={formatInr(kpis.all.amount)}
+              active={kpiFilter === "all"}
+              tone="purple"
+              onClick={() => { setKpiFilter("all"); setSelectedKpi("all"); }}
+            />
+            <SummaryTab
+              label="Unpaid"
+              count={kpis.unpaid.count}
+              amount={formatInr(kpis.unpaid.amount)}
+              active={kpiFilter === "unpaid"}
+              tone="purple"
+              onClick={() => { setKpiFilter("unpaid"); setSelectedKpi("unpaid"); }}
+            />
+            <SummaryTab
+              label="Paid"
+              count={kpis.paid.count}
+              amount={formatInr(kpis.paid.amount)}
+              active={kpiFilter === "paid"}
+              tone="green"
+              onClick={() => { setKpiFilter("paid"); setSelectedKpi("paid"); }}
+            />
+            <SummaryTab
+              label="Partially Paid"
+              count={kpis.partial.count}
+              amount={formatInr(kpis.partial.amount)}
+              active={kpiFilter === "partial"}
+              tone="orange"
+              onClick={() => { setKpiFilter("partial"); setSelectedKpi("partial"); }}
+            />
+          </div>
         </div>
       </div>
 
@@ -316,7 +376,8 @@ export default function InvoiceDashboard() {
       <section className="ui-list-card space-y-4 p-4 sm:p-5">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <SearchBar value={search} onChange={setSearch} placeholder="Search" />
-          <div className="flex items-center justify-end gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <ExportDownloadMenu disabled={!rows.length} onExport={handleExport} />
             <button
               type="button"
               onClick={openFilters}
@@ -759,6 +820,6 @@ export default function InvoiceDashboard() {
           if (!deleteLoading) setDeleteTarget(null);
         }}
       />
-    </div>
+    </ListPageShell>
   );
 }

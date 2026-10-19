@@ -141,7 +141,7 @@ function SummaryTab({ label, count, amount, active, onClick, tone }) {
       type="button"
       onClick={onClick}
       style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
-      className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 text-left transition duration-150 cursor-pointer ${
+      className={`relative min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden text-left transition duration-150 cursor-pointer ${
         active
           ? `${colors.border} ${colors.surface} ${colors.label}`
           : `border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80 ${colors.hoverBorder}`

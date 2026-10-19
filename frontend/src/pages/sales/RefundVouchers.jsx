@@ -119,7 +119,7 @@ function SummaryTab({ label, count, amount, active, tone = "blue", onClick }) {
       type="button"
       onClick={onClick}
       style={{ boxSizing: "border-box", width: 255, minWidth: 255, flex: "0 0 255px" }}
-      className={`min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer ${
+      className={`relative min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer ${
         active
           ? activeTone
           : "border-transparent bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]/80"

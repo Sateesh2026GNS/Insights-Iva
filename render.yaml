@@ -43,7 +43,7 @@ services:
       - key: SMTP_USERNAME
         value: "admin@codeviasoftware.com"
       - key: SMTP_PASSWORD
-        value: "ynmv punh shyh arij"
+        sync: false
       - key: SMTP_FROM_EMAIL
         value: "admin@codeviasoftware.com"
       # OpenAI / AI Assistant — set OPENAI_API_KEY in Render dashboard (Environment tab)

@@ -7,8 +7,106 @@
   font-size: 11px;
 }
 
+.admin-dashboard-page--toolkit .mtk-hero {
+  margin: 12px 12px 10px;
+  border-radius: 6px;
+  padding: 10px 14px 12px;
+}
+
+@media (max-width: 640px) {
+  .admin-dashboard-page--toolkit .mtk-hero {
+    margin: 10px 10px 8px;
+  }
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi-row {
+  margin: 0 12px 10px;
+  width: calc(100% - 24px);
+  box-sizing: border-box;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi {
+  min-width: 0;
+  height: 136px;
+  min-height: 136px;
+  box-sizing: border-box;
+  padding: 12px 8px;
+  border: 1px solid #dfe6f1;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi__icon {
+  order: 0;
+  flex: 0 0 46px;
+  margin: 0 auto 8px;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  min-height: 46px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi__label {
+  order: 1;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi__value {
+  order: 2;
+  margin-top: 5px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.15;
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi__unit {
+  order: 3;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+@media (max-width: 1100px) {
+  .admin-dashboard-page--toolkit .mtk-kpi-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .admin-dashboard-page--toolkit .mtk-kpi-row {
+    margin: 0 10px 8px;
+    width: calc(100% - 20px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0;
+  }
+
+  .admin-dashboard-page--toolkit .mtk-kpi { min-height: 128px; padding: 10px 6px; }
+}
+
 .admin-dashboard-page--toolkit .admin-dashboard-toolkit-body {
-  padding: 8px;
+  padding: 0 12px 16px;
 }
 
 .admin-dashboard-page--toolkit .admin-dashboard-toolkit-content.ui-page {
@@ -48,6 +146,51 @@
   font-weight: 700;
   text-align: center;
   width: 100%;
+}
+
+.admin-dashboard-page--toolkit section.ui-card.admin-fiscal-chart-card > div.admin-fiscal-chart-card__header {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-dashboard-page--toolkit section.ui-card.admin-fiscal-chart-card > div.admin-fiscal-chart-card__header h3 {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.admin-dashboard-page--toolkit section.ui-card.admin-fiscal-chart-card > div.admin-fiscal-chart-card__header select {
+  flex: 0 0 auto;
+  width: 160px;
+  max-width: 48%;
+  height: 38px;
+  min-height: 38px;
+  padding: 6px 30px 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  background-position: right 10px center;
+  background-size: 12px 12px;
+}
+
+@media (max-width: 480px) {
+  .admin-dashboard-page--toolkit section.ui-card.admin-fiscal-chart-card > div.admin-fiscal-chart-card__header {
+    flex-wrap: wrap;
+  }
+
+  .admin-dashboard-page--toolkit section.ui-card.admin-fiscal-chart-card > div.admin-fiscal-chart-card__header h3 {
+    flex-basis: 100%;
+  }
+
+  .admin-dashboard-page--toolkit section.ui-card.admin-fiscal-chart-card > div.admin-fiscal-chart-card__header select {
+    width: 150px;
+    max-width: 100%;
+  }
 }
 
 .admin-dashboard-page--toolkit section.ui-card > div:first-child p {
@@ -107,13 +250,37 @@
   display: block;
 }
 
-.admin-dashboard-page--toolkit .mtk-kpi--link:hover {
-  border-color: #1d4ed8;
-  box-shadow: 0 1px 3px rgba(30, 64, 175, 0.15);
+.admin-dashboard-page--toolkit .mtk-kpi:has(.mtk-kpi__icon--blue) { --kpi-accent: #2563eb; }
+.admin-dashboard-page--toolkit .mtk-kpi:has(.mtk-kpi__icon--green) { --kpi-accent: #16a34a; }
+.admin-dashboard-page--toolkit .mtk-kpi:has(.mtk-kpi__icon--orange) { --kpi-accent: #ea580c; }
+.admin-dashboard-page--toolkit .mtk-kpi:has(.mtk-kpi__icon--purple) { --kpi-accent: #7c3aed; }
+.admin-dashboard-page--toolkit .mtk-kpi:has(.mtk-kpi__icon--red) { --kpi-accent: #dc2626; }
+.admin-dashboard-page--toolkit .mtk-kpi:has(.mtk-kpi__icon--teal) { --kpi-accent: #0d9488; }
+
+.admin-dashboard-page--toolkit .mtk-kpi--link:hover,
+.admin-dashboard-page--toolkit .mtk-kpi--link:focus-visible {
+  border-color: var(--kpi-accent, #2563eb);
+  box-shadow: 0 0 0 1px var(--kpi-accent, #2563eb), 0 4px 10px color-mix(in srgb, var(--kpi-accent, #2563eb) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.admin-dashboard-page--toolkit .mtk-kpi--link:focus-visible {
+  outline: 2px solid var(--kpi-accent, #2563eb);
+  outline-offset: 2px;
 }
 
 .admin-dashboard-page--toolkit .admin-dashboard-toolkit-loading {
   padding: 16px 8px;
+}
+
+.admin-dashboard-page--toolkit .admin-dashboard-toolkit-loading .grid {
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .admin-dashboard-page--toolkit .admin-dashboard-toolkit-loading .grid {
+    gap: 12px;
+  }
 }
 
 .admin-dashboard-page--toolkit .admin-dashboard-toolkit-error {
