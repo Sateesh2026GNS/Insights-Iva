@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import { setApiErrorHandler } from "../api/axiosConfig";
 import OperationErrorDialog from "../components/common/OperationErrorDialog";
 import { formatApiError } from "../utils/apiError";
-import { resolveOperationErrorDialog } from "../utils/operationError";
+import { isHighlightedFieldsMessage, resolveOperationErrorDialog } from "../utils/operationError";
 
 const ToastContext = createContext(null);
 
@@ -143,6 +143,9 @@ export function ToastProvider({ children }) {
     text = formatSimpleToastMessage(text, isError, type);
     const lower = String(text || "").toLowerCase();
 
+    // Field validation is already shown beside the inputs; don't replace it with a global error popup/toast.
+    if (isError && isHighlightedFieldsMessage(text)) return;
+
     // Prevent noisy unauthenticated / unauthorized toast notifications on login or public routes
     if (
       lower.includes("not authenticated") ||
@@ -216,6 +219,8 @@ export function ToastProvider({ children }) {
         lower.includes("access to") ||
         lower.includes("not allowed") ||
         lower.includes("network error") ||
+        lower.includes("unable to connect") ||
+        lower.includes("check your internet connection") ||
         lower.includes("failed to fetch") ||
         lower.includes("not authenticated") ||
         lower.includes("unauthorized") ||

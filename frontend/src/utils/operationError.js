@@ -19,14 +19,27 @@ const RAW_DETAIL_MARKERS = [
 
 const VALIDATION_TOAST_MESSAGE = "Enter valid inputs";
 
+export function isHighlightedFieldsMessage(text) {
+  const lower = String(text || "")
+    .toLowerCase()
+    .replace(/[.!?]+$/, "");
+  return lower.includes("please fix") && lower.includes("highlighted field");
+}
+
 export function isValidationToastMessage(text) {
-  const raw = String(text || "").trim();
+  const raw = String(text || "")
+    .trim()
+    .replace(/[.!?]+$/, "")
+    .trim();
   if (!raw) return false;
-  if (raw === VALIDATION_TOAST_MESSAGE) return true;
   const lower = raw.toLowerCase();
+  if (lower === VALIDATION_TOAST_MESSAGE.toLowerCase()) return true;
   return (
-    lower === "please fix the highlighted fields" ||
-    lower.includes("check the highlighted field")
+    isHighlightedFieldsMessage(raw) ||
+    lower.includes("check the highlighted field") ||
+    lower.includes("correct the highlighted field") ||
+    lower.includes("validation failed") ||
+    lower.includes("validation error")
   );
 }
 

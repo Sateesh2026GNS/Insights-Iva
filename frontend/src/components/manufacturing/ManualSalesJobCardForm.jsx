@@ -622,7 +622,6 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     if (Object.keys(validation).length) {
       setErrors(validation);
       scrollToFirstManualFormError(validation);
-      addToast("Please fix the highlighted fields.", "error");
       return;
     }
     setSaving(true);

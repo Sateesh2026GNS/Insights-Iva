@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  CalendarDays,
   Clock,
   Download,
   File,
@@ -170,6 +171,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
     () => parseFilters(searchParams, initialDocType),
     [searchParams, initialDocType]
   );
+  const [draftFilters, setDraftFilters] = useState(filters);
 
   const [departments, setDepartments] = useState([]);
   const [rows, setRows] = useState([]);
@@ -303,6 +305,10 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   useEffect(() => {
     setSearchDraft(filters.search);
   }, [filters.search]);
+
+  useEffect(() => {
+    setDraftFilters(filters);
+  }, [filters]);
 
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -563,19 +569,14 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   );
 
   const filtersBlock = showFilters && (
-    <div
-      className={
-        toolkitLayout
-          ? "documents-library-filters grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
-          : "mt-2 grid grid-cols-1 gap-2 border-t border-[var(--color-border-soft)] pt-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
-      }
-    >
+    <div className={toolkitLayout ? "documents-library-filters" : "mt-2 border-t border-[var(--color-border-soft)] pt-2"}>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
       <div>
         <label className="ui-label mb-1 block">Category</label>
         <select
           className="ui-select w-full"
-          value={filters.category}
-          onChange={(e) => setFilters({ category: e.target.value, page: 1 })}
+          value={draftFilters.category}
+          onChange={(e) => setDraftFilters((current) => ({ ...current, category: e.target.value }))}
         >
           <option value="">All</option>
           {categoryOptions.map((c) => (
@@ -587,8 +588,8 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         <label className="ui-label mb-1 block">Department</label>
         <select
           className="ui-select w-full"
-          value={filters.department_id}
-          onChange={(e) => setFilters({ department_id: e.target.value, page: 1 })}
+          value={draftFilters.department_id}
+          onChange={(e) => setDraftFilters((current) => ({ ...current, department_id: e.target.value }))}
         >
           <option value="">All</option>
           {departments.map((d) => (
@@ -600,8 +601,8 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         <label className="ui-label mb-1 block">File Type</label>
         <select
           className="ui-select w-full"
-          value={filters.file_type}
-          onChange={(e) => setFilters({ file_type: e.target.value, page: 1 })}
+          value={draftFilters.file_type}
+          onChange={(e) => setDraftFilters((current) => ({ ...current, file_type: e.target.value }))}
         >
           <option value="">All</option>
           {FILE_TYPE_OPTIONS.map((o) => (
@@ -613,8 +614,8 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         <label className="ui-label mb-1 block">Status</label>
         <select
           className="ui-select w-full"
-          value={filters.status}
-          onChange={(e) => setFilters({ status: e.target.value, page: 1 })}
+          value={draftFilters.status}
+          onChange={(e) => setDraftFilters((current) => ({ ...current, status: e.target.value }))}
         >
           <option value="">All</option>
           {STATUS_OPTIONS.map((o) => (
@@ -624,21 +625,76 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
       </div>
       <div>
         <label className="ui-label mb-1 block">From</label>
-        <input
-          type="date"
-          className="ui-input w-full"
-          value={filters.date_from}
-          onChange={(e) => setFilters({ date_from: e.target.value, page: 1 })}
-        />
+        <div className="relative">
+          <input
+            type="date"
+            className="ui-input ui-date-indicator-trailing documents-library-date-input w-full"
+            value={draftFilters.date_from}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, date_from: e.target.value }))}
+          />
+          <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+        </div>
       </div>
       <div>
         <label className="ui-label mb-1 block">To</label>
-        <input
-          type="date"
-          className="ui-input w-full"
-          value={filters.date_to}
-          onChange={(e) => setFilters({ date_to: e.target.value, page: 1 })}
-        />
+        <div className="relative">
+          <input
+            type="date"
+            className="ui-input ui-date-indicator-trailing documents-library-date-input w-full"
+            value={draftFilters.date_to}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, date_to: e.target.value }))}
+          />
+          <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+        </div>
+      </div>
+      </div>
+      <div className="mt-3 flex justify-start gap-2">
+        <Button
+          type="button"
+          variant="primary"
+          className="rounded-xl px-4 py-2 text-sm font-semibold"
+          style={{ backgroundColor: "#3156d8", borderColor: "#3156d8", color: "#fff" }}
+          onClick={() => {
+            if (draftFilters.date_from && draftFilters.date_to && draftFilters.date_from > draftFilters.date_to) {
+              addToast("The From date must be before the To date.", "error");
+              return;
+            }
+            setFilters({
+              category: draftFilters.category,
+              department_id: draftFilters.department_id,
+              file_type: draftFilters.file_type,
+              status: draftFilters.status,
+              date_from: draftFilters.date_from,
+              date_to: draftFilters.date_to,
+              page: 1,
+            });
+          }}
+        >
+          Apply Filters
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800"
+          style={{ borderColor: "#e2e8f0", backgroundColor: "#fff", color: "#1e293b" }}
+          onClick={() => {
+            const cleared = {
+              ...draftFilters,
+              category: initialDocType || "",
+              department_id: "",
+              uploaded_by: "",
+              file_type: "",
+              status: "",
+              date_from: "",
+              date_to: "",
+              page: 1,
+            };
+            setDraftFilters(cleared);
+            setFilters(cleared);
+          }}
+        >
+          Clear
+        </Button>
       </div>
     </div>
   );

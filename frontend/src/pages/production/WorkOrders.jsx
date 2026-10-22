@@ -1412,52 +1412,66 @@ export default function WorkOrders() {
         </div>
       </div>
 
-      <div className={`min-w-0 w-full print:p-0 ${printDetailWorkOrder ? "hidden print:block" : "hidden print:block"}`}>
-        <div className="mb-4 hidden border-b pb-4 print:block print-header-container">
-          <div className="flex justify-between items-center mb-2 text-xs text-slate-600 print-header-top">
+      <div className={`min-w-0 w-full print:p-0 ${printDetailWorkOrder ? "hidden print:hidden" : "hidden print:block"} work-orders-print-container`}>
+        <div className="mb-3 hidden border-b pb-3 print:block print-header-container">
+          <div className="flex justify-between items-center mb-1 text-xs text-slate-600 print-header-top">
             <span className="font-bold text-blue-600 text-xs tracking-wide">Production · Work Orders</span>
             <span className="font-bold text-blue-600 text-xs tracking-wide">Insights Iva</span>
           </div>
-          <h1 className="text-xl font-bold text-black print-header-title">Work Orders Report</h1>
-          <p className="text-xs text-slate-600 mt-1 print-header-meta">
+          <h1 className="text-xl font-bold text-slate-900 print-header-title">Work Orders Report</h1>
+          <p className="text-xs text-slate-600 mt-0.5 print-header-meta">
             Generated on: {new Date().toLocaleDateString("en-GB")} | Total Work Orders: {filtered.length}
             {(user?.full_name || user?.name) ? ` | Printed By: ${user.full_name || user.name}` : ""}
           </p>
         </div>
 
         <div className="hidden print:block work-orders-print-report">
-          <table>
+          <table className="work-orders-print-table">
+            <colgroup>
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "6%" }} />
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "7%" }} />
+            </colgroup>
             <thead>
               <tr>
-                <th>Work Order</th>
-                <th>Production Order</th>
-                <th>Product</th>
-                <th>Customer</th>
-                <th>Status</th>
-                <th>Planned Qty</th>
-                <th>Produced Qty</th>
-                <th>Remaining Qty</th>
-                <th>Priority</th>
-                <th>Due Date</th>
-                <th>Machine</th>
-                <th>Operator</th>
+                <th className="th-wo">Work Order</th>
+                <th className="th-po">Prod Order</th>
+                <th className="th-prod">Product</th>
+                <th className="th-cust">Customer</th>
+                <th className="th-status">Status</th>
+                <th className="th-qty">Plan Qty</th>
+                <th className="th-qty">Prod Qty</th>
+                <th className="th-qty">Rem Qty</th>
+                <th className="th-priority">Priority</th>
+                <th className="th-date">Due Date</th>
+                <th className="th-machine">Machine</th>
+                <th className="th-operator">Operator</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((row) => (
                 <tr key={row.id || row.work_order_number}>
-                  <td>{row.work_order_number || "—"}</td>
-                  <td>{row.production_order_number || "—"}</td>
-                  <td>{cleanProductLabel(row.product_name) || "—"}</td>
-                  <td>{row.customer_name || "—"}</td>
-                  <td>{workOrderExportStatus(row)}</td>
-                  <td>{Number(row.planned_quantity || 0)}</td>
-                  <td>{Number(row.produced_quantity ?? row.actual_quantity ?? 0)}</td>
-                  <td>{Number(row.remaining_quantity ?? Math.max(Number(row.planned_quantity || 0) - Number(row.produced_quantity ?? row.actual_quantity ?? 0), 0))}</td>
-                  <td>{row.priority || "Medium"}</td>
-                  <td>{formatDate(row.planned_end || row.planned_start)}</td>
-                  <td>{row.machine_name || "Unassigned"}</td>
-                  <td>{row.operator_name || "—"}</td>
+                  <td className="td-wo">{row.work_order_number || "—"}</td>
+                  <td className="td-po">{row.production_order_number || "—"}</td>
+                  <td className="td-prod">{cleanProductLabel(row.product_name) || "—"}</td>
+                  <td className="td-cust">{row.customer_name || "—"}</td>
+                  <td className="td-status">{workOrderExportStatus(row)}</td>
+                  <td className="td-qty">{Number(row.planned_quantity || 0)}</td>
+                  <td className="td-qty">{Number(row.produced_quantity ?? row.actual_quantity ?? 0)}</td>
+                  <td className="td-qty">{Number(row.remaining_quantity ?? Math.max(Number(row.planned_quantity || 0) - Number(row.produced_quantity ?? row.actual_quantity ?? 0), 0))}</td>
+                  <td className="td-priority">{row.priority || "Medium"}</td>
+                  <td className="td-date">{formatDate(row.planned_end || row.planned_start)}</td>
+                  <td className="td-machine">{row.machine_name || "Unassigned"}</td>
+                  <td className="td-operator">{row.operator_name || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -1618,10 +1632,14 @@ export default function WorkOrders() {
 
       {/* Global CSS for Print Optimization */}
       <style>{`
+        @page {
+          size: landscape;
+          margin: 8mm;
+        }
         @media print {
           @page {
-            size: A4 landscape;
-            margin: 6mm;
+            size: landscape;
+            margin: 8mm;
           }
           *, *::before, *::after {
             box-shadow: none !important;
@@ -1645,11 +1663,18 @@ export default function WorkOrders() {
             float: none !important;
             display: block !important;
           }
+          .work-orders-print-container {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
           .print-header-container {
             display: block !important;
             width: 100% !important;
-            margin-bottom: 12px !important;
-            padding-bottom: 8px !important;
+            margin-bottom: 8px !important;
+            padding-bottom: 6px !important;
             border-bottom: 1.5px solid #cbd5e1 !important;
           }
           .print-header-top {
@@ -1657,57 +1682,116 @@ export default function WorkOrders() {
             justify-content: space-between !important;
             align-items: center !important;
             width: 100% !important;
-            margin-bottom: 4px !important;
+            margin-bottom: 2px !important;
           }
           .print-header-title {
-            font-size: 18pt !important;
+            font-size: 16pt !important;
             font-weight: 800 !important;
             color: #0f172a !important;
             text-transform: none !important;
             line-height: 1.2 !important;
-            margin: 4px 0 !important;
+            margin: 2px 0 !important;
             white-space: nowrap !important;
           }
           .print-header-meta {
-            font-size: 9pt !important;
+            font-size: 8pt !important;
             color: #475569 !important;
-            margin-top: 2px !important;
+            margin-top: 1px !important;
           }
-          table, .ui-table {
+
+          /* Work Orders Print Table */
+          .work-orders-print-report {
+            display: block !important;
             width: 100% !important;
             max-width: 100% !important;
+            overflow: visible !important;
+          }
+          .work-orders-print-report table,
+          table.work-orders-print-table {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 100% !important;
+            table-layout: fixed !important;
             border-collapse: collapse !important;
-            font-size: 9pt !important;
-            table-layout: auto !important;
-            margin-top: 8px !important;
+            margin-top: 4px !important;
+            margin-bottom: 0 !important;
+            font-size: 7.5pt !important;
+            background: #ffffff !important;
           }
-          th, td {
+          .work-orders-print-report th,
+          .work-orders-print-report td,
+          table.work-orders-print-table th,
+          table.work-orders-print-table td {
             border: 1px solid #cbd5e1 !important;
-            padding: 6px 8px !important;
-            white-space: normal !important;
-            word-break: break-word !important;
-            font-size: 9pt !important;
+            padding: 4px 4px !important;
+            font-size: 7.5pt !important;
+            line-height: 1.25 !important;
+            vertical-align: middle !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
           }
-          th {
+          .work-orders-print-report th,
+          table.work-orders-print-table th {
             background-color: #f1f5f9 !important;
             font-weight: 700 !important;
             text-transform: uppercase !important;
             text-align: left !important;
             color: #0f172a !important;
+            letter-spacing: 0.02em !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          td {
+          .work-orders-print-report td,
+          table.work-orders-print-table td {
             color: #1e293b !important;
-            vertical-align: middle !important;
           }
-          tr {
+          .work-orders-print-report tr,
+          table.work-orders-print-table tr {
             page-break-inside: avoid !important;
           }
-          .print\\:hidden, th.print\\:hidden, td.print\\:hidden, [class*="print:hidden"] {
+          .work-orders-print-report thead,
+          table.work-orders-print-table thead {
+            display: table-header-group !important;
+          }
+
+          /* Column alignments & formatting */
+          .work-orders-print-report .td-wo,
+          .work-orders-print-report .td-po {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+            font-size: 6.8pt !important;
+            word-break: break-all !important;
+            line-height: 1.2 !important;
+          }
+          .work-orders-print-report .td-prod,
+          .work-orders-print-report .td-cust,
+          .work-orders-print-report .td-machine,
+          .work-orders-print-report .td-operator {
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+          }
+          .work-orders-print-report .th-status,
+          .work-orders-print-report .td-status,
+          .work-orders-print-report .th-qty,
+          .work-orders-print-report .td-qty,
+          .work-orders-print-report .th-priority,
+          .work-orders-print-report .td-priority,
+          .work-orders-print-report .th-date,
+          .work-orders-print-report .td-date {
+            text-align: center !important;
+            white-space: nowrap !important;
+          }
+          .work-orders-print-report .td-status {
+            text-transform: capitalize !important;
+            font-weight: 500 !important;
+          }
+          .work-orders-print-report .td-priority {
+            text-transform: capitalize !important;
+          }
+
+          .print\:hidden, th.print\:hidden, td.print\:hidden, [class*="print:hidden"] {
             display: none !important;
           }
-          .print\\:block {
+          .print\:block {
             display: block !important;
           }
         }

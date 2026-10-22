@@ -205,6 +205,7 @@ export default function BankReconciliation() {
         onBranchChange={setBranch}
         search={search}
         onSearchChange={setSearch}
+        searchLabel="Search"
       />
 
       <div className="ui-grid-kpi">

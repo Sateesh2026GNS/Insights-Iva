@@ -112,6 +112,8 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/settings/subscription": "settings",
   "/masters/departments": "masters",
   "/masters/products": "masters",
+  "/masters/categories": "masters",
+  "/inventory/categories": "masters",
   "/master/products": "masters",
   "/products": "masters",
   "/masters/bom": "production",
@@ -317,6 +319,8 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/purchases/debit-notes",
   "/masters/vendors",
   "/masters/products",
+  "/masters/categories",
+  "/inventory/categories",
   "/production/bom",
   "/sales/customers",
   "/settings",
@@ -481,6 +485,8 @@ export function salesManagerPathAllowed(pathname) {
   if (path.startsWith("/chat")) return true;
   if (path.startsWith("/settings")) return true;
   if (path.startsWith("/masters/products")) return true;
+  if (path.startsWith("/masters/categories")) return true;
+  if (path.startsWith("/inventory/categories")) return true;
   if (path.startsWith("/procurement/vendors")) return true;
   if (path.startsWith("/masters/vendors")) return true;
   if (path === "/products" || path.startsWith("/products/")) return true;
@@ -538,6 +544,8 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/accounts/ledger")) return true;
   if (path.startsWith("/accounts/expenses")) return true;
   if (path.startsWith("/masters/products")) return true;
+  if (path.startsWith("/masters/categories")) return true;
+  if (path.startsWith("/inventory/categories")) return true;
   if (path.startsWith("/procurement/goods-receipt")) return true;
   if (path.startsWith("/procurement/material-requests")) return true;
   if (path.startsWith("/procurement/vendors")) return true;

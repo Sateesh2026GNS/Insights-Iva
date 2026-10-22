@@ -593,3 +593,60 @@ def delete_category(db: Session, tenant_id: int, category_id: int) -> bool:
     db.delete(row)
     db.commit()
     return True
+
+
+def update_category(db: Session, tenant_id: int, category_id: int, name: str) -> dict:
+    from app.models.inventory import InventoryItem
+
+    clean = name.strip()
+    if not clean:
+        raise HTTPException(400, detail="Category name is required")
+    row = db.scalars(
+        select(InventoryCategory).where(
+            InventoryCategory.id == category_id,
+            InventoryCategory.tenant_id == tenant_id,
+        )
+    ).first()
+    if not row:
+        raise HTTPException(404, detail="Category not found")
+    if row.name.lower() == "no category":
+        raise HTTPException(400, detail="Cannot rename default category")
+
+    exists = db.scalars(
+        select(InventoryCategory).where(
+            InventoryCategory.tenant_id == tenant_id,
+            InventoryCategory.id != category_id,
+            func.lower(InventoryCategory.name) == clean.lower(),
+        )
+    ).first()
+    if exists:
+        raise HTTPException(400, detail="Category name already exists")
+
+    old_name = row.name
+    row.name = clean
+
+    products = list(
+        db.scalars(
+            select(Product).where(
+                Product.tenant_id == tenant_id,
+                func.lower(Product.category) == old_name.lower(),
+            )
+        ).all()
+    )
+    for p in products:
+        p.category = clean
+
+    items = list(
+        db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.tenant_id == tenant_id,
+                func.lower(InventoryItem.category) == old_name.lower(),
+            )
+        ).all()
+    )
+    for i in items:
+        i.category = clean
+
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "name": row.name, "stock": len(products)}

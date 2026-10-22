@@ -20,9 +20,10 @@ import {
   Users,
   Wallet,
   Wrench,
-  ChevronLeft,
   ChevronDown,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Plus,
   PhoneCall,
   Zap,
@@ -797,14 +798,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="app-sidebar__collapse-btn absolute z-20 hidden lg:flex items-center justify-center rounded-l-lg border border-white/35 bg-[var(--color-nav-bg-hover)] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)]"
+          className={`app-sidebar__collapse-btn absolute z-20 hidden lg:flex items-center justify-center border-y border-white/20 bg-[var(--color-nav-bg)] text-white shadow-md transition-colors hover:bg-[var(--color-nav-bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-nav-bg)] ${collapsed ? "is-collapsed rounded-r-md border-r" : "rounded-l-md border-l"}`}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
-            <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
+            <ChevronsRight className="h-4 w-4" strokeWidth={2.25} />
           ) : (
-            <ChevronLeft className="h-4 w-4" strokeWidth={2.25} />
+            <ChevronsLeft className="h-4 w-4" strokeWidth={2.25} />
           )}
         </button>
       ) : null}

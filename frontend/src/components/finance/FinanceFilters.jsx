@@ -22,6 +22,7 @@ export default function FinanceFilters({
   branch,
   onBranchChange,
   searchPlaceholder = "Search",
+  searchLabel = "",
   children,
 }) {
   const filters = [
@@ -79,6 +80,7 @@ export default function FinanceFilters({
       search={search}
       onSearchChange={onSearchChange}
       searchPlaceholder={searchPlaceholder}
+      searchLabel={searchLabel}
       filters={filters}
       layout="wrap"
     >

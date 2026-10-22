@@ -63,6 +63,7 @@ SUPPLIER_WRITE_FIELDS = {
     "payment_terms",
     "currency",
     "credit_limit",
+    "outstanding",
     "credit_days",
     "lead_time_days",
     "minimum_order_quantity",
@@ -281,6 +282,7 @@ def _to_list_read(
 ) -> VendorListRead:
     data = VendorListRead.model_validate(supplier)
     data.vendor_code = _vendor_code(supplier)
+    data.opening_balance = float(supplier.outstanding or 0)
     if outstanding_map is not None:
         data.outstanding = outstanding_map.get(supplier.id, 0.0)
     else:
@@ -465,6 +467,7 @@ def get_vendor_detail(db: Session, tenant_id: int, vendor_id: int) -> VendorDeta
 
     detail = VendorDetailRead.model_validate(supplier)
     detail.vendor_code = _vendor_code(supplier)
+    detail.opening_balance = float(supplier.outstanding or 0)
     detail.outstanding = _outstanding_for_supplier(db, tenant_id, vendor_id)
     detail.preferred_vendor = bool(getattr(supplier, "preferred_vendor", False))
     detail.product_ids = _product_ids(db, tenant_id, vendor_id)

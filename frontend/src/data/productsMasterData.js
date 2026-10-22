@@ -151,14 +151,22 @@ export function enrichApiProduct(apiRow) {
 
 
 
+export function isProductLowStock(product) {
+  if (!product) return false;
+  const stock = Number(product.current_stock ?? product.quantity) || 0;
+  const min = Number(product.min_stock) || 0;
+  return (stock > 0 && stock <= min) || stock <= 0;
+}
+
 export function computeSummary(products) {
-  const categories = new Set(products.map((p) => p.category));
+  const safeProducts = Array.isArray(products) ? products : [];
+  const categories = new Set(safeProducts.map((p) => p.category));
   return {
-    total: products.length,
-    active: products.filter((p) => String(p.status || "").trim().toLowerCase() === "active").length,
-    inactive: products.filter((p) => String(p.status || "").trim().toLowerCase() === "inactive").length,
-    lowStock: products.filter((p) => p.current_stock > 0 && p.current_stock <= p.min_stock).length,
-    outOfStock: products.filter((p) => p.current_stock === 0).length,
+    total: safeProducts.length,
+    active: safeProducts.filter((p) => String(p.status || '').trim().toLowerCase() === 'active').length,
+    inactive: safeProducts.filter((p) => String(p.status || '').trim().toLowerCase() === 'inactive').length,
+    lowStock: safeProducts.filter((p) => isProductLowStock(p)).length,
+    outOfStock: safeProducts.filter((p) => (Number(p.current_stock ?? p.quantity) || 0) <= 0).length,
     categories: categories.size,
   };
 }

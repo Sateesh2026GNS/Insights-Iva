@@ -392,10 +392,10 @@ export default function VendorBills() {
       />
 
       <div className="ui-grid-kpi">
-        <KpiCard label="Bills" value={summary.total_bills} icon={FileText} color="bg-[var(--color-primary)]" />
-        <KpiCard label="Due Bills" value={summary.due_bills} icon={FileText} color="bg-amber-500" />
-        <KpiCard label="Paid" value={summary.paid} icon={FileText} color="bg-[var(--color-success)]" />
-        <KpiCard label="Outstanding" value={formatInr(summary.outstanding)} icon={IndianRupee} color="bg-red-500" />
+        <KpiCard label="Bills" value={summary.total_bills} icon={FileText} color="bg-[var(--color-primary)]" hoverBorder title="" />
+        <KpiCard label="Due Bills" value={summary.due_bills} icon={FileText} color="bg-amber-500" hoverBorder title="" />
+        <KpiCard label="Paid" value={summary.paid} icon={FileText} color="bg-[var(--color-success)]" hoverBorder title="" />
+        <KpiCard label="Outstanding" value={formatInr(summary.outstanding)} icon={IndianRupee} color="bg-red-500" hoverBorder title="" />
       </div>
 
       <WorkflowStrip />

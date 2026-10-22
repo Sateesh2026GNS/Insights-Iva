@@ -52,22 +52,49 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
     unit: "mm",
     format: "a4",
   });
-  const marginX = 10;
+  const marginX = options.marginX ?? (landscape && colCount > 12 ? 8 : 10);
   const headers = columns.map((c) => sanitizePdfText(c.pdfLabel || (typeof c.label === "string" ? c.label : c.key)));
   const rows = rowsData.map((row) => columns.map((c) => formatPdfCell(row, c)));
 
   const isProductionDashboard = options.variant === "production-dashboard";
   const isProductionPlanning = options.variant === "production-planning";
   const isProductionWorkOrders = options.variant === "production-work-orders";
+
+  const baseFontSize = options.fontSize || (
+    colCount > 14 ? (landscape ? 6.5 : 5.5) :
+    colCount > 10 ? (landscape ? 7 : 6) :
+    colCount > 7 ? 7.5 : 8
+  );
+  const headFontSize = options.headFontSize || (
+    colCount > 14 ? (landscape ? 6.5 : 6) :
+    colCount > 10 ? (landscape ? 7 : 6.5) : 8
+  );
+  const cellPad = options.cellPadding || (
+    colCount > 14 ? { top: 1.8, right: 1, bottom: 1.8, left: 1 } :
+    colCount > 10 ? { top: 2, right: 1.2, bottom: 2, left: 1.2 } :
+    2
+  );
+  const headPad = options.headPadding || (
+    colCount > 14 ? { top: 2.2, right: 1, bottom: 2.2, left: 1 } :
+    colCount > 10 ? { top: 2.5, right: 1.2, bottom: 2.5, left: 1.2 } :
+    2.5
+  );
+
   let tableStartY = 28;
   let tableMargin = { left: marginX, right: marginX };
   let tableStyles = {
-    fontSize: landscape && colCount > 10 ? 7 : 8,
-    cellPadding: 2,
+    fontSize: baseFontSize,
+    cellPadding: cellPad,
     overflow: "linebreak",
-    valign: "top",
+    valign: "middle",
   };
-  let tableHeadStyles = { fillColor: [45, 42, 74], fontSize: 8, textColor: 255 };
+  let tableHeadStyles = {
+    fillColor: [45, 42, 74],
+    fontSize: headFontSize,
+    textColor: 255,
+    cellPadding: headPad,
+    valign: "middle",
+  };
   let tableColumnStyles = {};
   let didParseCell;
 
@@ -194,12 +221,64 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
   const wideKeys = new Set(["name", "description", "product_name", "customer_name"]);
   const columnStyles = { ...tableColumnStyles };
   columns.forEach((c, i) => {
-    if ((isProductionPlanning || isProductionWorkOrders) && c.pdfWidth) return;
-    if (wideKeys.has(c.key)) columnStyles[i] = { cellWidth: landscape ? 42 : 36 };
-    else if (String(c.key).includes("price") || String(c.key).includes("total") || c.key === "amount") {
-      columnStyles[i] = { cellWidth: 22, halign: "right" };
+    const colStyle = { ...(columnStyles[i] || {}) };
+
+    if (c.pdfWidth != null) {
+      colStyle.cellWidth = c.pdfWidth;
+    } else if (!colStyle.cellWidth || colStyle.cellWidth === "auto") {
+      if (wideKeys.has(c.key)) {
+        colStyle.cellWidth = colCount > 14 ? (landscape ? 28 : 22) : colCount > 10 ? (landscape ? 34 : 26) : (landscape ? 42 : 36);
+      } else if (
+        String(c.key).includes("price") ||
+        String(c.key).includes("total") ||
+        c.key === "amount" ||
+        String(c.key).includes("cost")
+      ) {
+        colStyle.cellWidth = colCount > 14 ? (landscape ? 16 : 13) : colCount > 10 ? (landscape ? 18 : 15) : 22;
+      }
     }
+
+    if (c.pdfAlign) {
+      colStyle.halign = c.pdfAlign;
+    } else if (!colStyle.halign) {
+      if (
+        String(c.key).includes("price") ||
+        String(c.key).includes("total") ||
+        c.key === "amount" ||
+        String(c.key).includes("cost")
+      ) {
+        colStyle.halign = "right";
+      } else if (c.key === "hsn_code" || c.key === "unit" || c.key === "gst_percent" || c.key === "cess_percent") {
+        colStyle.halign = "center";
+      }
+    }
+
+    if (c.pdfFontSize) {
+      colStyle.fontSize = c.pdfFontSize;
+    }
+
+    columnStyles[i] = colStyle;
   });
+
+  const customDidParseCell = didParseCell;
+  const finalDidParseCell = (hook) => {
+    if (customDidParseCell) customDidParseCell(hook);
+    if (hook.section === "head") {
+      const colStyle = columnStyles[hook.column.index];
+      if (colStyle?.halign) {
+        hook.cell.styles.halign = colStyle.halign;
+      }
+    }
+  };
+
+  const allColumnsHaveWidth = columns.every((c, i) => columnStyles[i]?.cellWidth && columnStyles[i]?.cellWidth !== "auto");
+  const totalTableWidth = allColumnsHaveWidth ? columns.reduce((acc, c, i) => acc + columnStyles[i].cellWidth, 0) : null;
+  const docPageWidth = doc.internal.pageSize.getWidth();
+  if (allColumnsHaveWidth && totalTableWidth && totalTableWidth <= (docPageWidth - marginX * 2)) {
+    const centeredMarginX = Math.max(marginX, (docPageWidth - totalTableWidth) / 2);
+    tableMargin = { ...tableMargin, left: centeredMarginX, right: centeredMarginX };
+  }
+  const resolvedTableWidth = options.tableWidth || (allColumnsHaveWidth ? "wrap" : "auto");
 
   autoTable(doc, {
     head: [headers],
@@ -211,8 +290,8 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
     columnStyles,
     showHead: "everyPage",
     rowPageBreak: "auto",
-    tableWidth: "auto",
-    didParseCell,
+    tableWidth: resolvedTableWidth,
+    didParseCell: finalDidParseCell,
     didDrawPage: isProductionDashboard
       ? ({ pageNumber }) => {
           const pageHeight = doc.internal.pageSize.getHeight();

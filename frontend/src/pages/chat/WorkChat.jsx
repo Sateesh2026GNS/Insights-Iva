@@ -87,7 +87,7 @@ function initials(name) {
     .toUpperCase();
 }
 
-function WorkChatAvatar({ name, sm = false, className = "", online = false }) {
+function WorkChatAvatar({ name, avatar, sm = false, className = "", online = false }) {
   const tone = avatarToneIndex(name);
   return (
     <span
@@ -97,8 +97,27 @@ function WorkChatAvatar({ name, sm = false, className = "", online = false }) {
       aria-hidden
     >
       {initials(name)}
+      {avatar ? (
+        <img
+          src={avatar}
+          alt=""
+          className="work-chat-avatar__image"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
     </span>
   );
+}
+
+function conversationPeer(conversation, currentUserId) {
+  if (!conversation || conversation.type === "group") return null;
+  return (conversation.members || []).find((member) => String(member.id) !== String(currentUserId)) || null;
+}
+
+function profileRole(profile) {
+  return profile?.profile_role || profile?.designation || profile?.department || "";
 }
 
 function formatTime(iso) {
@@ -660,9 +679,10 @@ function ForwardModal({ message, conversations, onClose, onForward }) {
   );
 }
 
-function ChatInfoModal({ conversation, onClose }) {
+function ChatInfoModal({ conversation, peerProfile, onClose }) {
   if (!conversation) return null;
   const isGroup = conversation.type === "group";
+  const peer = isGroup ? null : peerProfile;
 
   return (
     <div className="work-chat-modal-backdrop" role="dialog" aria-modal="true">
@@ -676,10 +696,16 @@ function ChatInfoModal({ conversation, onClose }) {
           </button>
         </div>
         <div className="p-4 text-center border-b border-[var(--color-border-soft)]">
-          <WorkChatAvatar name={conversation.name} className="work-chat-avatar--lg mx-auto mb-2" />
+          <WorkChatAvatar
+            name={conversation.name}
+            avatar={peer?.avatar}
+            className="work-chat-avatar--lg mx-auto mb-2"
+          />
           <h4 className="font-bold text-base text-[var(--color-text)]">{conversation.name}</h4>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            {isGroup ? `${conversation.members?.length || 0} members` : "Direct conversation"}
+            {isGroup
+              ? `${conversation.members?.length || 0} members`
+              : profileRole(peer) || "Direct conversation"}
           </p>
           {conversation.description ? (
             <p className="text-xs text-[var(--color-text-muted)] mt-2 bg-[var(--color-surface-muted)] p-2 rounded-lg">
@@ -693,8 +719,13 @@ function ChatInfoModal({ conversation, onClose }) {
             {(conversation.members || []).map((m) => (
               <li key={m.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <WorkChatAvatar name={m.full_name} sm />
-                  <span className="font-medium text-[var(--color-text)]">{m.full_name}</span>
+                  <WorkChatAvatar name={m.full_name} avatar={m.avatar} sm />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-[var(--color-text)]">{m.full_name}</span>
+                    {profileRole(m) ? (
+                      <span className="block truncate text-[11px] text-[var(--color-text-muted)]">{profileRole(m)}</span>
+                    ) : null}
+                  </span>
                 </div>
                 {m.role === "admin" ? (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Admin</span>
@@ -943,6 +974,7 @@ export default function WorkChat() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
+  const [conversationLoadError, setConversationLoadError] = useState("");
   const [convSearch, setConvSearch] = useState("");
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -1021,6 +1053,10 @@ export default function WorkChat() {
     () => isConversationPeerOnline(activeConv, user?.id),
     [activeConv, user?.id]
   );
+  const activePeer = useMemo(
+    () => conversationPeer(activeConv, user?.id),
+    [activeConv, user?.id]
+  );
 
   const sortedConversations = useMemo(() => {
     const q = convSearch.trim().toLowerCase();
@@ -1042,9 +1078,12 @@ export default function WorkChat() {
   const loadConversations = useCallback(async () => {
     try {
       const data = await listConversations({ search: appliedConvSearch || undefined });
-      setConversations(data?.items || []);
-    } catch {
-      addToast("Could not load conversations.", "error");
+      const items = Array.isArray(data?.items) ? data.items : [];
+      setConversations(items);
+      setConversationLoadError("");
+    } catch (error) {
+      const message = apiErrorMessage(error, "Could not load conversations.");
+      setConversationLoadError(message);
     } finally {
       setLoading(false);
     }
@@ -1746,6 +1785,14 @@ export default function WorkChat() {
           </div>
           {loading ? (
             <div className="p-6"><Loader /></div>
+          ) : conversationLoadError ? (
+            <div className="work-chat-empty px-5 py-8 text-center">
+              <p className="font-semibold text-[var(--color-text)]">Couldn’t load conversations</p>
+              <p className="mt-1 max-w-sm text-sm text-[var(--color-text-muted)]">{conversationLoadError}</p>
+              <Button type="button" variant="secondary" className="mt-4" onClick={loadConversations}>
+                Try again
+              </Button>
+            </div>
           ) : conversations.length === 0 ? (
             <div className="work-chat-empty">
               <MessageSquare className="h-8 w-8 text-[var(--color-text-icon)]" aria-hidden />
@@ -1756,6 +1803,7 @@ export default function WorkChat() {
             <ul className="work-chat-conv-list" role="list">
               {sortedConversations.map((c) => {
                 const isFav = favConvs.has(c.id);
+                const peer = conversationPeer(c, user?.id);
                 return (
                   <li key={c.id}>
                     <button
@@ -1765,12 +1813,13 @@ export default function WorkChat() {
                     >
                       <WorkChatAvatar
                         name={c.name}
+                        avatar={peer?.avatar}
                         online={c.type !== "group" && isConversationPeerOnline(c, user?.id)}
                       />
                       <span className="min-w-0 flex-1 text-left">
                         <span className="flex items-center justify-between gap-2">
-                          <span className="truncate font-semibold text-sm text-[var(--color-text)] flex items-center gap-1">
-                            {c.name}
+                          <span className="flex min-w-0 items-center gap-1">
+                            <span className="truncate font-semibold text-sm text-[var(--color-text)]">{c.name}</span>
                             {lockedConvs.has(c.id) ? <Lock className="h-3.5 w-3.5 text-amber-500 inline shrink-0" title="Locked chat" /> : null}
                             {isFav ? <Heart className="h-3 w-3 fill-red-500 text-red-500 inline shrink-0" /> : null}
                           </span>
@@ -1778,6 +1827,11 @@ export default function WorkChat() {
                             {formatTime(c.last_message_at)}
                           </span>
                         </span>
+                        {c.type !== "group" && profileRole(peer) ? (
+                          <span className="mt-0.5 block truncate text-[11px] font-medium text-[var(--color-primary)]">
+                            {profileRole(peer)}
+                          </span>
+                        ) : null}
                         <span className="mt-0.5 block truncate text-xs text-[var(--color-text-muted)]">
                           {c.last_message_preview || "No messages yet"}
                         </span>
@@ -1819,15 +1873,25 @@ export default function WorkChat() {
                   Back
                 </button>
                 <div className="min-w-0 flex-1">
-                  <h2 className="work-chat-thread-title truncate text-base font-bold flex items-center gap-1.5">
-                    {activeConv.name}
-                    {mutedConvs.has(activeConv.id) ? (
-                      <BellOff className="h-3.5 w-3.5 text-white/80" title="Muted" />
-                    ) : null}
-                    {lockedConvs.has(activeConv.id) ? (
-                      <Lock className="h-3.5 w-3.5 text-amber-500" title="Locked" />
-                    ) : null}
-                  </h2>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <WorkChatAvatar
+                      name={activeConv.name}
+                      avatar={activePeer?.avatar}
+                      online={activePeerOnline}
+                      className="work-chat-avatar--sm border border-white/35"
+                    />
+                    <div className="min-w-0">
+                      <h2 className="work-chat-thread-title flex items-center gap-1.5 truncate text-base font-bold">
+                        {activeConv.name}
+                        {mutedConvs.has(activeConv.id) ? (
+                          <BellOff className="h-3.5 w-3.5 shrink-0 text-white/80" title="Muted" />
+                        ) : null}
+                        {lockedConvs.has(activeConv.id) ? (
+                          <Lock className="h-3.5 w-3.5 shrink-0 text-amber-500" title="Locked" />
+                        ) : null}
+                      </h2>
+                    </div>
+                  </div>
                   <p className="work-chat-thread-subtitle text-xs">
                     {activeConv.type === "group" ? (
                       `${activeConv.members?.length || 0} members`
@@ -1836,10 +1900,10 @@ export default function WorkChat() {
                         {activePeerOnline ? (
                           <>
                             <span className="work-chat-online-dot" aria-hidden />
-                            <span>Online</span>
+                            <span>{profileRole(activePeer) ? `${profileRole(activePeer)} · Online` : "Online"}</span>
                           </>
                         ) : (
-                          "Direct message"
+                          profileRole(activePeer) || "Direct message"
                         )}
                       </span>
                     )}
@@ -2638,6 +2702,7 @@ export default function WorkChat() {
       {showInfoModal && (
         <ChatInfoModal
           conversation={activeConv}
+          peerProfile={activePeer}
           onClose={() => setShowInfoModal(false)}
         />
       )}

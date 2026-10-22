@@ -44,6 +44,11 @@
   padding: 4px 6px;
 }
 
+.documents-library-page--toolkit .documents-library-filters input.documents-library-date-input {
+  min-width: 0;
+  padding-right: 2.75rem !important;
+}
+
 .documents-library-page--toolkit .documents-library-table-wrap {
   border: none;
   border-radius: 0;

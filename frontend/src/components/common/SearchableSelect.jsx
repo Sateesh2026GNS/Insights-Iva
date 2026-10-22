@@ -68,6 +68,8 @@ export default function SearchableSelect({
   value = "",
   onChange,
   options = [],
+  headerOptions = [],
+  onHeaderPick,
   footerOptions = [],
   onFooterPick,
   stickyFooter = true,
@@ -102,6 +104,7 @@ export default function SearchableSelect({
     );
 
   const normalized = useMemo(() => normalizeOptions(options), [options]);
+  const normalizedHeader = useMemo(() => normalizeOptions(headerOptions), [headerOptions]);
   const normalizedFooter = useMemo(() => normalizeOptions(footerOptions), [footerOptions]);
 
   const selectedLabel =
@@ -151,6 +154,12 @@ export default function SearchableSelect({
     } else {
       onChange?.(opt.value);
     }
+    setOpen(false);
+  };
+
+  const pickHeader = (opt) => {
+    if (onHeaderPick) onHeaderPick(opt);
+    else onChange?.(opt.value);
     setOpen(false);
   };
 
@@ -229,6 +238,17 @@ export default function SearchableSelect({
                   }
                 }}
               />
+            </div>
+          ) : null}
+          {normalizedHeader.length > 0 ? (
+            <div
+              className="shrink-0 border-b border-[var(--color-border-muted)] bg-[var(--color-surface)]"
+              role="group"
+              aria-label="Dropdown actions"
+            >
+              {normalizedHeader.map((opt) => (
+                <FooterActionButton key={opt.value} opt={opt} onPick={pickHeader} />
+              ))}
             </div>
           ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto py-1">

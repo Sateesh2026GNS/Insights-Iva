@@ -177,7 +177,7 @@ export const SIDEBAR_NAV = [
     labelKey: "erpNav.maintenance",
     icon: Wrench,
     children: [
-      { labelKey: "erpNav.maintenanceDashboard", to: "/maintenance", module: "maintenance" },
+      { labelKey: "erpNav.maintenanceDashboard", to: "/maintenance", end: true, module: "maintenance" },
       { labelKey: "erpNav.equipmentSpareParts", to: "/maintenance/equipment", module: "maintenance" },
       { labelKey: "erpNav.preventiveMaintenance", to: "/maintenance/preventive", module: "maintenance" },
       { labelKey: "erpNav.breakdownMaintenance", to: "/maintenance/breakdowns", module: "maintenance" },

@@ -82,6 +82,8 @@ class VendorBase(BaseModel):
     payment_terms: str | None = None
     currency: str | None = "INR"
     credit_limit: float | None = Field(default=None, ge=0.0)
+    # Opening balance is stored in the legacy suppliers.outstanding column.
+    outstanding: float = Field(default=0.0, ge=0.0)
     credit_days: int | None = Field(default=None, ge=0)
     lead_time_days: int | None = Field(default=None, ge=0)
     minimum_order_quantity: float | None = Field(default=None, ge=0.0)
@@ -284,6 +286,7 @@ class VendorUpdate(BaseModel):
     payment_terms: str | None = None
     currency: str | None = None
     credit_limit: float | None = Field(default=None, ge=0.0)
+    outstanding: float | None = Field(default=None, ge=0.0)
     credit_days: int | None = Field(default=None, ge=0)
     lead_time_days: int | None = Field(default=None, ge=0)
     minimum_order_quantity: float | None = Field(default=None, ge=0.0)
@@ -477,6 +480,7 @@ class VendorListRead(BaseModel):
     minimum_order_value: float | None = None
     preferred_vendor: bool = False
     outstanding: float = 0
+    opening_balance: float = 0
     rating: float | None = None
     quality_score: float | None = None
     delivery_score: float | None = None

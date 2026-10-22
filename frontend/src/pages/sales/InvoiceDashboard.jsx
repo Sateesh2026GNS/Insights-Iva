@@ -113,19 +113,18 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
   const toneStyles = {
     blue: {
       active: "border-[var(--color-primary)] text-[var(--color-primary)]",
-      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
     },
     purple: {
       active: "border-[var(--color-primary)] text-[var(--color-primary)]",
-      hover: "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
+    },
+    brown: {
+      active: "border-[#8b5e34] text-[#8b5e34]",
     },
     green: {
       active: "border-[#16a34a] text-[#16a34a]",
-      hover: "hover:border-[#16a34a] hover:text-[#16a34a]",
     },
     orange: {
       active: "border-[#ea580c] text-[#ea580c]",
-      hover: "hover:border-[#ea580c] hover:text-[#ea580c]",
     },
   };
   const currentTone = toneStyles[tone] || toneStyles.purple;
@@ -134,14 +133,16 @@ function SummaryTab({ label, count, amount, active, tone, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      style={{ boxSizing: "border-box", width: 255, minWidth: 255, flex: "0 0 255px" }}
-      className={`relative min-w-[125px] shrink-0 border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer ${
+      role="tab"
+      aria-selected={active}
+      style={{ boxSizing: "border-box", width: 170, minWidth: 170, flex: "0 0 170px" }}
+      className={`relative min-w-[125px] flex-none border-b-[3px] px-4 py-2.5 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:hidden sm:px-5 sm:py-2 text-left transition duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
         active
           ? `bg-[var(--color-surface)] ${currentTone.active}`
-          : `border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80 ${currentTone.hover}`
+          : "border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]/80"
       }`}
     >
-      <p className={`text-[12px] sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
+      <p className={`text-xs sm:text-[13px] font-medium transition-colors ${active ? "" : "text-[var(--color-text-muted)]"}`}>
         {label}{" "}
         <span className={active ? "opacity-70" : "text-[var(--color-text-faint)]"}>({count})</span>
       </p>
@@ -167,7 +168,7 @@ export default function InvoiceDashboard() {
   });
   const [searchParams] = useSearchParams();
   const [kpiFilter, setKpiFilter] = useState("all");
-  const [selectedKpi, setSelectedKpi] = useState("all");
+  const [selectedKpi, setSelectedKpi] = useState(null);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dateFrom, setDateFrom] = useState("2026-04-01");
@@ -332,23 +333,22 @@ export default function InvoiceDashboard() {
 
         {/* KPI strip */}
         <div
-          className="w-[1020px] max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]"
-          style={{ width: 1020, maxWidth: "100%" }}
+          className="w-fit max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface-muted)]"
         >
           <div className="flex overflow-x-auto scrollbar-none" role="tablist" aria-label="Invoice payment status">
             <SummaryTab
               label="Total Sales"
               count={kpis.all.count}
               amount={formatInr(kpis.all.amount)}
-              active={kpiFilter === "all"}
-              tone="purple"
+              active={selectedKpi === "all"}
+              tone="brown"
               onClick={() => { setKpiFilter("all"); setSelectedKpi("all"); }}
             />
             <SummaryTab
               label="Unpaid"
               count={kpis.unpaid.count}
               amount={formatInr(kpis.unpaid.amount)}
-              active={kpiFilter === "unpaid"}
+              active={selectedKpi === "unpaid"}
               tone="purple"
               onClick={() => { setKpiFilter("unpaid"); setSelectedKpi("unpaid"); }}
             />
@@ -356,7 +356,7 @@ export default function InvoiceDashboard() {
               label="Paid"
               count={kpis.paid.count}
               amount={formatInr(kpis.paid.amount)}
-              active={kpiFilter === "paid"}
+              active={selectedKpi === "paid"}
               tone="green"
               onClick={() => { setKpiFilter("paid"); setSelectedKpi("paid"); }}
             />
@@ -364,7 +364,7 @@ export default function InvoiceDashboard() {
               label="Partially Paid"
               count={kpis.partial.count}
               amount={formatInr(kpis.partial.amount)}
-              active={kpiFilter === "partial"}
+              active={selectedKpi === "partial"}
               tone="orange"
               onClick={() => { setKpiFilter("partial"); setSelectedKpi("partial"); }}
             />

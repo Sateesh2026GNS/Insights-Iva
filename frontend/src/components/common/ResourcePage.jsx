@@ -153,7 +153,6 @@ export default function ResourcePage({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      addToast("Please fix the highlighted fields", "error");
       return;
     }
     setSaving(true);

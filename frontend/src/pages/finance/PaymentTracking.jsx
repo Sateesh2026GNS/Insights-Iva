@@ -180,10 +180,9 @@ export default function PaymentTracking() {
   return (
     <div className="space-y-5 pb-4">
       <PageHeader
-        subtitle="Customer receipts and vendor payments — UPI, NEFT, RTGS, cash, and bank transfers."
+        className="erp-hero-header--compact inventory-hero-header--compact"
         action={
-          <>
-            <Button
+          <Button
             variant="add"
             type="button"
             onClick={() => setShowPaymentModal(true)}
@@ -191,7 +190,6 @@ export default function PaymentTracking() {
           >
             Record Payment
           </Button>
-          </>
         }
       />
 

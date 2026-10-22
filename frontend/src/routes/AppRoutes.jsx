@@ -887,6 +887,10 @@ export default function AppRoutes() {
         <Route path="documents/:legacySub" element={<Navigate to="/settings/documents" replace />} />
       </Route>
       <Route path="/masters/products" element={<ProtectedRoute><P.ProductsMaster /></ProtectedRoute>} />
+      <Route path="/masters/categories" element={<Navigate to="/masters/products?tab=categories" replace />} />
+      <Route path="/inventory/categories" element={<Navigate to="/masters/products?tab=categories" replace />} />
+      <Route path="/masters/products/active" element={<ProtectedRoute><P.ProductsMaster forcedFilter="active" /></ProtectedRoute>} />
+      <Route path="/masters/products/low-stock" element={<ProtectedRoute><P.ProductsMaster forcedFilter="low_stock" /></ProtectedRoute>} />
       <Route path="/inventory/products" element={<Navigate to="/masters/products" replace />} />
       <Route path="/inventory/product-catalog" element={<Navigate to="/masters/products" replace />} />
       <Route path="/inventory/material-pricing" element={<Navigate to="/masters/products" replace />} />

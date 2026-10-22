@@ -568,6 +568,49 @@ input[type="time"]:not(.ui-input) {
 .ui-card:hover {
   box-shadow: var(--shadow-card-hover);
 }
+.product-kpi-card {
+  border-color: transparent;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+.product-kpi-card--red:hover,
+.product-kpi-card--red:focus-visible {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgb(239 68 68 / 14%), var(--shadow-card-hover);
+}
+.product-kpi-card--purple:hover,
+.product-kpi-card--purple:focus-visible {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 2px rgb(168 85 247 / 14%), var(--shadow-card-hover);
+}
+.product-kpi-card--green:hover,
+.product-kpi-card--green:focus-visible {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgb(16 185 129 / 14%), var(--shadow-card-hover);
+}
+.product-kpi-card--amber:hover,
+.product-kpi-card--amber:focus-visible {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgb(245 158 11 / 16%), var(--shadow-card-hover);
+}
+.product-kpi-card__value {
+  transition: color 180ms ease;
+}
+.product-kpi-card--red .product-kpi-card__value,
+.product-kpi-card--red:focus-visible .product-kpi-card__value {
+  color: #dc2626;
+}
+.product-kpi-card--purple .product-kpi-card__value,
+.product-kpi-card--purple:focus-visible .product-kpi-card__value {
+  color: #9333ea;
+}
+.product-kpi-card--green .product-kpi-card__value,
+.product-kpi-card--green:focus-visible .product-kpi-card__value {
+  color: #059669;
+}
+.product-kpi-card--amber .product-kpi-card__value,
+.product-kpi-card--amber:focus-visible .product-kpi-card__value {
+  color: #d97706;
+}
 .ui-card--padded {
   padding: var(--card-padding);
 }
@@ -1310,6 +1353,18 @@ input[type="datetime-local"].ui-input,
 input[type="month"].ui-input,
 input[type="time"].ui-input {
   padding-right: 2.5rem;
+}
+
+input[type="date"].quality-date-input {
+  min-width: 0;
+  padding-right: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input[type="date"].quality-date-input::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
 }
 
 /* Standardise the native calendar picker indicator size & alignment */
@@ -2064,6 +2119,18 @@ input.pl-8 {
 .ui-kpi.cursor-pointer.ui-kpi--neutral:hover,
 .ui-kpi.cursor-pointer[data-tone="neutral"]:hover {
   border-color: #64748b !important;
+}
+.ui-kpi[data-hover-border="true"][data-tone="teal"]:hover {
+  border-color: #036f71 !important;
+  box-shadow: 0 0 0 1px rgb(3 111 113 / 18%), var(--shadow-card-hover);
+}
+.ui-kpi[data-hover-border="true"][data-tone="warning"]:hover {
+  border-color: #d97706 !important;
+  box-shadow: 0 0 0 1px rgb(217 119 6 / 18%), var(--shadow-card-hover);
+}
+.ui-kpi[data-hover-border="true"][data-tone="danger"]:hover {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1px rgb(220 38 38 / 18%), var(--shadow-card-hover);
 }
 .ui-kpi__top {
   display: flex;
@@ -3271,8 +3338,11 @@ table > tbody > tr:first-child:has(th) {
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  width: 2.125rem;
-  height: 3.375rem; /* ~54px */
+  width: 2rem;
+  height: 3rem;
+}
+.app-sidebar__collapse-btn.is-collapsed {
+  right: -1rem;
 }
 
 /* Lift FAB cluster when a page renders a measured sticky footer (Material Pricing, etc.) */
@@ -3738,16 +3808,16 @@ html.has-sticky-page-footer .app-shell-fab-stack {
     width: 100% !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card),
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) thead,
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) tbody,
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) tr,
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) th,
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) td {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table),
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) thead,
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) tbody,
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) tr,
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) th,
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) td {
     border-radius: 0 !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) {
     width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
@@ -3759,8 +3829,8 @@ html.has-sticky-page-footer .app-shell-fab-stack {
     box-shadow: none !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) th,
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) td {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) th,
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) td {
     border: 1px solid #cbd5e1 !important;
     padding: 8px 12px !important;
     text-align: left !important;
@@ -3771,7 +3841,7 @@ html.has-sticky-page-footer .app-shell-fab-stack {
     border-radius: 0 !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) th {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) th {
     background-color: #f8fafc !important;
     font-weight: 600 !important;
     white-space: nowrap !important;
@@ -3790,7 +3860,7 @@ html.has-sticky-page-footer .app-shell-fab-stack {
     display: none !important;
   }
 
-  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card) tr {
+  table:not(.erp-doc *):not(.erp-doc):not(.gst-invoice *):not(.payslip-card *):not(.payslip-card):not(.work-orders-print-report *):not(.work-orders-print-report):not(.work-orders-print-table *):not(.work-orders-print-table) tr {
     page-break-inside: avoid !important;
   }
 

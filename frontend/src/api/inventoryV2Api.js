@@ -53,3 +53,6 @@ export const createInventoryV2Category = async (name) =>
 
 export const deleteInventoryV2Category = async (id) =>
   unwrap(await api.delete(`/inventory/v2/categories/${id}`));
+
+export const updateInventoryV2Category = async (id, name) =>
+  unwrap(await api.put(`/inventory/v2/categories/${id}`, { name }));

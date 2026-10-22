@@ -152,3 +152,14 @@ def delete_inventory_v2_category(
     if not svc.delete_category(db, user.tenant_id, category_id):
         raise HTTPException(404, detail="Category not found")
     return success_response("Category deleted", {"id": category_id})
+
+
+@router.put("/categories/{category_id}")
+def update_inventory_v2_category(
+    category_id: int,
+    payload: InventoryCategoryCreate,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    data = svc.update_category(db, user.tenant_id, category_id, payload.name)
+    return success_response("Category updated", data)

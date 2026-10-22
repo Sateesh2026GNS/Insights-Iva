@@ -13,8 +13,22 @@ function OutlinedField({ label, children }) {
   );
 }
 
-export default function AddInventoryCategoryModal({ open, name, onNameChange, onClose, onSubmit, busy }) {
+export default function AddInventoryCategoryModal({
+  open,
+  name,
+  onNameChange,
+  onClose,
+  onSubmit,
+  busy,
+  title,
+  isEdit = false,
+}) {
   if (!open) return null;
+
+  const headerTitle = title || (isEdit ? "Edit Category" : "Add Category");
+  const saveLabel = busy
+    ? (isEdit ? "Saving..." : "Creating Category...")
+    : (isEdit ? "Save Changes" : "Save");
 
   return createPortal(
     <div
@@ -32,7 +46,7 @@ export default function AddInventoryCategoryModal({ open, name, onNameChange, on
       >
         <div className="mb-5 flex items-center justify-between">
           <h3 id="add-inventory-category-title" className="text-[17px] font-bold text-[#1a1a1f]">
-            Add Category
+            {headerTitle}
           </h3>
           <button
             type="button"
@@ -62,7 +76,7 @@ export default function AddInventoryCategoryModal({ open, name, onNameChange, on
             Cancel
           </Button>
           <Button type="button" variant="primary" className="flex-1" disabled={busy} loading={busy} onClick={onSubmit}>
-            {busy ? "Creating Category..." : "Save"}
+            {saveLabel}
           </Button>
         </div>
       </div>

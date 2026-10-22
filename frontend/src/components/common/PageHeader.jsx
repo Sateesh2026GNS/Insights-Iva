@@ -26,31 +26,38 @@ export default function PageHeader({
     const heroTitle = (showTitle && title) || title || null;
     const heroSubtitle = subtitle;
     const supportingOnly = !heroTitle && Boolean(heroSubtitle);
+    const hasHeroLeft = Boolean(backTo || eyebrow || heroTitle || heroSubtitle);
     if (!heroTitle && !heroSubtitle && !toolbar) return null;
     return (
       <header className={`erp-hero-header inventory-hero-header ${className}`.trim()}>
-        <div className="min-w-0 flex-1">
-          {backTo ? (
-            <Link to={backTo} className="erp-hero-header__back inventory-hero-header__back">
-              <ArrowLeft className="h-4 w-4" aria-hidden />
-              {backLabel}
-            </Link>
-          ) : null}
-          {eyebrow ? <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{eyebrow}</p> : null}
-          {heroTitle ? <h2 className="erp-hero-header__title inventory-hero-header__title">{heroTitle}</h2> : null}
-          {heroSubtitle ? (
-            <p
-              className={
-                supportingOnly
-                  ? "erp-hero-header__subtitle erp-hero-header__subtitle--supporting-only inventory-hero-header__subtitle"
-                  : "erp-hero-header__subtitle inventory-hero-header__subtitle"
-              }
-            >
-              {heroSubtitle}
-            </p>
-          ) : null}
-        </div>
-        {toolbar ? <div className="erp-hero-header__actions inventory-hero-header__actions">{toolbar}</div> : null}
+        {hasHeroLeft ? (
+          <div className="min-w-0 flex-1">
+            {backTo ? (
+              <Link to={backTo} className="erp-hero-header__back inventory-hero-header__back">
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                {backLabel}
+              </Link>
+            ) : null}
+            {eyebrow ? <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{eyebrow}</p> : null}
+            {heroTitle ? <h2 className="erp-hero-header__title inventory-hero-header__title">{heroTitle}</h2> : null}
+            {heroSubtitle ? (
+              <p
+                className={
+                  supportingOnly
+                    ? "erp-hero-header__subtitle erp-hero-header__subtitle--supporting-only inventory-hero-header__subtitle"
+                    : "erp-hero-header__subtitle inventory-hero-header__subtitle"
+                }
+              >
+                {heroSubtitle}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {toolbar ? (
+          <div className={`erp-hero-header__actions inventory-hero-header__actions ${hasHeroLeft ? "" : "sm:ml-auto"}`.trim()}>
+            {toolbar}
+          </div>
+        ) : null}
       </header>
     );
   }

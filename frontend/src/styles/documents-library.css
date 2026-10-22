@@ -45,3 +45,8 @@
   padding-left: 1rem;
   padding-right: 1rem;
 }
+
+.documents-library-filters input.documents-library-date-input {
+  min-width: 0;
+  padding-right: 2.75rem;
+}

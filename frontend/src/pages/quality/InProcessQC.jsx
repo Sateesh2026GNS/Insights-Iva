@@ -432,15 +432,7 @@ export default function InProcessQC() {
             aria-label="Search in-process QC records"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex h-11 min-h-0 w-[13.5rem] items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm">
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none"
-                aria-label="Select date"
-              />
+            <div className="inline-flex min-h-[var(--control-h)] min-w-[11rem] items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
               <button
                 type="button"
                 aria-label="Open date picker"
@@ -454,6 +446,14 @@ export default function InProcessQC() {
               >
                 <CalendarDays className="h-4 w-4" />
               </button>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="quality-date-input min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none"
+                aria-label="Select date"
+              />
             </div>
             <Button
               type="button"

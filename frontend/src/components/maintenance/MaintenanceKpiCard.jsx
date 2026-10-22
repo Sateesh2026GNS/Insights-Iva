@@ -33,6 +33,17 @@ const KPI_TONES = {
   },
 };
 
+const TONE_HOVER_BORDER = {
+  primary: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
+  violet: "hover:border-[#7c3aed] hover:ring-1 hover:ring-[#7c3aed]",
+  success: "hover:border-[#059669] hover:ring-1 hover:ring-[#059669]",
+  orange: "hover:border-[#ea580c] hover:ring-1 hover:ring-[#ea580c]",
+  info: "hover:border-[#0751b2] hover:ring-1 hover:ring-[#0751b2]",
+  danger: "hover:border-[#dc2626] hover:ring-1 hover:ring-[#dc2626]",
+  teal: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
+  neutral: "hover:border-[#64748b] hover:ring-1 hover:ring-[#64748b]",
+};
+
 /**
  * Reference-style KPI card — icon well on the left, matched tone bar on top.
  * trend: { pct, dir: 'up'|'down', positive?: boolean } | null
@@ -47,6 +58,7 @@ export default function MaintenanceKpiCard({
   meta,
   footer,
   className = "",
+  onClick,
 }) {
   const styles = KPI_TONES[tone] || KPI_TONES.primary;
   let trendClass = "text-slate-500";
@@ -59,32 +71,30 @@ export default function MaintenanceKpiCard({
     trendText = `${up ? "↑" : "↓"} ${trend.pct}% vs last month`;
   }
 
-const TONE_HOVER_BORDER = {
-  primary: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
-  violet: "hover:border-[#7c3aed] hover:ring-1 hover:ring-[#7c3aed]",
-  success: "hover:border-[#059669] hover:ring-1 hover:ring-[#059669]",
-  orange: "hover:border-[#ea580c] hover:ring-1 hover:ring-[#ea580c]",
-  info: "hover:border-[#0751b2] hover:ring-1 hover:ring-[#0751b2]",
-  danger: "hover:border-[#dc2626] hover:ring-1 hover:ring-[#dc2626]",
-  teal: "hover:border-[#036f71] hover:ring-1 hover:ring-[#036f71]",
-  neutral: "hover:border-[#64748b] hover:ring-1 hover:ring-[#64748b]",
-};
-
   return (
-    <article className={`relative min-h-[9rem] overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${TONE_HOVER_BORDER[tone] || TONE_HOVER_BORDER.primary} ${className}`}>
+    <article
+      onClick={onClick}
+      className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+        onClick ? "cursor-pointer" : ""
+      } ${TONE_HOVER_BORDER[tone] || TONE_HOVER_BORDER.primary} ${className}`}
+    >
       <span className={`absolute inset-x-0 top-0 h-0.5 ${styles.bar}`} aria-hidden />
-      {Icon ? (
-        <div className={`absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full ${styles.iconBg}`}>
-          <Icon className="h-4 w-4" aria-hidden />
+      <div className="flex items-start gap-2.5">
+        {Icon ? (
+          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${styles.iconBg}`}>
+            <Icon className="h-4.5 w-4.5" aria-hidden />
+          </div>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-medium text-slate-500 leading-tight truncate" title={label}>
+            {label}
+          </p>
+          <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-slate-900">{value}</p>
         </div>
-      ) : null}
-      <div className="flex min-h-[2.25rem] items-start pr-10">
-        <p className="text-[11px] font-medium leading-4 text-slate-500">{label}</p>
       </div>
-      <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-slate-900">{value}</p>
-      <div className="mt-1 min-h-[2rem] text-[11px] font-medium leading-4">
+      <div className="mt-2 min-h-[16px] text-[11px] font-medium leading-tight">
         {trendText ? <p className={trendClass}>{trendText}</p> : null}
-        {!trendText && meta ? <p className="text-slate-500">{meta}</p> : null}
+        {!trendText && meta ? <p className="text-slate-500 truncate">{meta}</p> : null}
         {footer ? <div>{footer}</div> : null}
       </div>
     </article>

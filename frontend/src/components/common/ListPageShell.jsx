@@ -23,7 +23,12 @@ export function ListPageShell({ children, className = "", stackClassName = "", p
 }
 
 export function ListPageCard({ children, className = "" }) {
-  return <section className={`ui-list-card overflow-hidden ${className}`.trim()}>{children}</section>;
+  const hasOverflow = /\boverflow-\w+\b/.test(className);
+  return (
+    <section className={`ui-list-card ${hasOverflow ? "" : "overflow-hidden"} ${className}`.trim()}>
+      {children}
+    </section>
+  );
 }
 
 export const ListPageCardBody = forwardRef(function ListPageCardBody({ children, className = "" }, ref) {

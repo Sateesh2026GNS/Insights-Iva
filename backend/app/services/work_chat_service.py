@@ -66,11 +66,13 @@ def _require_member(db: Session, user: User, conversation_id: int) -> WorkChatMe
 def _user_brief(u: User | None) -> dict | None:
     if not u or not u.is_active:
         return None
+    role_names = [role.name for role in (u.roles or []) if role.name]
     return {
         "id": u.id,
         "full_name": u.full_name,
         "email": u.email,
         "avatar": u.avatar,
+        "profile_role": ", ".join(role_names) or u.designation or u.department,
     }
 
 

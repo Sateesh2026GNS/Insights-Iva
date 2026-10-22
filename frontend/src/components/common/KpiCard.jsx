@@ -66,6 +66,7 @@ export default function KpiCard({
   navAriaLabel,
   active = false,
   emphasized = false,
+  hoverBorder = false,
 }) {
   const resolved = resolveTone(tone, color);
   const supporting = meta ?? sub ?? trend;
@@ -82,7 +83,7 @@ export default function KpiCard({
     ? "ring-2 ring-[var(--color-primary)] border-[var(--color-primary)] shadow-md"
     : "";
   const isInteractive = Boolean(to || onClick);
-  const cardClass = `ui-kpi ui-kpi--${resolved} group ${emphasized ? "ui-kpi--emphasized" : ""} ${isInteractive ? "cursor-pointer" : ""} transition-all duration-200 ${isInteractive ? "hover:-translate-y-0.5 hover:shadow-md" : ""} focus-visible:outline-none ${isInteractive ? hoverBorderClass : ""} ${activeClass} ${className}`.trim();
+  const cardClass = `ui-kpi ui-kpi--${resolved} group ${emphasized ? "ui-kpi--emphasized" : ""} ${isInteractive ? "cursor-pointer" : ""} transition-all duration-200 ${isInteractive ? "hover:-translate-y-0.5 hover:shadow-md" : ""} focus-visible:outline-none ${isInteractive || hoverBorder ? hoverBorderClass : ""} ${activeClass} ${className}`.trim();
 
   const inner = (
     <>
@@ -119,6 +120,7 @@ export default function KpiCard({
         aria-label={linkLabel}
         onClick={onClick}
         data-tone={resolved}
+        data-hover-border={hoverBorder ? "true" : undefined}
       >
         {inner}
       </Link>
@@ -137,6 +139,7 @@ export default function KpiCard({
         onClick={onClick}
         aria-label={buttonLabel}
         data-tone={resolved}
+        data-hover-border={hoverBorder ? "true" : undefined}
       >
         {inner}
       </button>
@@ -144,7 +147,7 @@ export default function KpiCard({
   }
 
   return (
-    <article className={cardClass} title={tip} data-tone={resolved}>
+    <article className={cardClass} title={tip} data-tone={resolved} data-hover-border={hoverBorder ? "true" : undefined}>
       {inner}
     </article>
   );

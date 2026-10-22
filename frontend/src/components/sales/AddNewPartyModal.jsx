@@ -101,11 +101,14 @@ function toInitial(party, variant = "customer") {
     basic: {
       ...EMPTY_BASIC,
       opening_balance:
-        party.outstanding != null
+        party.opening_balance != null
+          ? String(party.opening_balance)
+          : party.outstanding != null
           ? String(party.outstanding)
           : party.credit_limit != null
             ? String(party.credit_limit)
             : "",
+      balance_type: party.balance_type || party.party_basic_details?.balance_type || "to_receive",
       email: party.email || "",
     },
     other: {
@@ -124,7 +127,11 @@ function formatBasicSummary(basic) {
   if (basic.payment_terms_days) parts.push(`${basic.payment_terms_days} days credit`);
   if (basic.opening_balance) {
     const dir = basic.balance_type === "to_pay" ? "To Pay" : "To Receive";
-    parts.push(`₹${basic.opening_balance} (${dir})`);
+    const amount = Number(basic.opening_balance);
+    const formatted = Number.isFinite(amount)
+      ? amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })
+      : basic.opening_balance;
+    parts.push(`₹${formatted} (${dir})`);
   }
   return parts.join(" · ");
 }
@@ -518,7 +525,7 @@ export default function AddNewPartyModal({
     try {
       const opening = basicDetails?.opening_balance
         ? Number(basicDetails.opening_balance)
-        : Number(party?.outstanding || 0);
+        : Number(party?.opening_balance ?? party?.outstanding ?? 0);
 
       if (isVendor) {
         const email = basicDetails?.email?.trim() || party?.email || null;

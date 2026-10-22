@@ -171,14 +171,7 @@ _cors_kwargs = {
     "allow_origins": settings.cors_origin_list,
     "allow_credentials": True,
     "allow_methods": ["*"],
-    "allow_headers": [
-        "Authorization",
-        "Content-Type",
-        "X-CSRF-Token",
-        "X-Requested-With",
-        "Accept",
-        "Origin",
-    ],
+    "allow_headers": ["*"],
 }
 _cors_regex = settings.cors_allow_origin_regex
 if _cors_regex:
@@ -468,9 +461,20 @@ def on_startup():
             with engine.begin() as conn:
                 inspector = inspect(conn)
                 db_tables = set(inspector.get_table_names())
+                # Batch query all existing columns in a single round-trip for fast startup
+                cols_by_table = {}
+                if conn.dialect.name == "postgresql":
+                    res = conn.execute(
+                        text("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'")
+                    ).fetchall()
+                    for t_name, c_name in res:
+                        cols_by_table.setdefault(t_name, set()).add(c_name)
+
                 for table_name, table in Base.metadata.tables.items():
                     if table_name in db_tables:
-                        existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
+                        existing_cols = cols_by_table.get(table_name)
+                        if existing_cols is None:
+                            existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
                         for col in table.columns:
                             if col.name not in existing_cols:
                                 col_type = col.type.compile(engine.dialect)
