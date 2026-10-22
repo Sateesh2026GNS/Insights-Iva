@@ -120,6 +120,8 @@ export default function Table({
               const alignDir = columnAlign(col);
               const align =
                 alignDir === "right" ? "text-right" : alignDir === "center" ? "text-center" : "text-left";
+              const headerJustify =
+                alignDir === "right" ? "justify-end" : alignDir === "center" ? "justify-center" : "justify-start";
               const colClass = col.className || "";
               return (
                 <th
@@ -132,7 +134,9 @@ export default function Table({
                   style={col.width ? { width: col.width, minWidth: col.minWidth } : col.minWidth ? { minWidth: col.minWidth } : undefined}
                   onClick={() => col.sortable !== false && sortable && handleSort(col.key)}
                 >
-                  <span className="inline-flex items-center gap-1">{col.label}</span>
+                  <span className={`flex w-full items-center gap-1 ${headerJustify}`}>
+                    {col.label}
+                  </span>
                 </th>
               );
             })}

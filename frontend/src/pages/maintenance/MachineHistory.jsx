@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Eye,
   FileText,
+  Filter,
   LayoutDashboard,
   MoreVertical,
   Package,
@@ -203,6 +204,7 @@ export default function MachineHistory() {
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [page, setPage] = useState(1);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -313,14 +315,18 @@ export default function MachineHistory() {
 
   if (loading) return <Loader label="Loading machine history..." />;
 
-  const handleExport = (format) => {
+  const handleExport = async (format) => {
     const data = mapHistoryExportRows(filtered);
-    if (format === "pdf") {
-      exportToPdf(data, HISTORY_EXPORT_COLUMNS, "Machine History", "machine-history");
-    } else {
-      exportToExcel(data, HISTORY_EXPORT_COLUMNS, "machine-history");
+    try {
+      if (format === "pdf") {
+        await exportToPdf(data, HISTORY_EXPORT_COLUMNS, "Machine History", "machine-history");
+      } else {
+        await exportToExcel(data, HISTORY_EXPORT_COLUMNS, "machine-history");
+      }
+      addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    } catch {
+      addToast(`Could not export machine history to ${format === "pdf" ? "PDF" : "Excel"}`, "error");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   return (
@@ -330,7 +336,7 @@ export default function MachineHistory() {
         subtitle="Track machine usage, maintenance, breakdowns, and activities"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <div className="relative" ref={moreMenuRef}>
               <Button
                 variant="secondary"
@@ -403,69 +409,88 @@ export default function MachineHistory() {
         <HistoryKpiCard label="Inspections" value={counts.inspections} icon={ClipboardCheck} tone="violet" trend={trends.inspections} />
       </div>
 
-      <div className="ui-card ui-card--padded">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] lg:items-end">
-          <div className="sm:col-span-2 lg:col-span-2">
-            <SearchBar
-              value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
-              placeholder="Search"
-              className="w-full"
-            />
-          </div>
-          <div>
-            <label className="ui-label mb-1 block">All Machines</label>
-            <select value={machineFilter} onChange={(e) => { setMachineFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
-              <option value="">All Machines</option>
-              {machines.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="ui-label mb-1 block">All Activity Types</label>
-            <select value={activityFilter} onChange={(e) => { setActivityFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
-              <option value="">All Activity Types</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="breakdowns">Breakdown</option>
-              <option value="repairs">Repair</option>
-              <option value="inspections">Inspection</option>
-              <option value="parts">Parts Replaced</option>
-            </select>
-          </div>
-          <div>
-            <label className="ui-label mb-1 block">All Status</label>
-            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
-              <option value="">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="resolved">Resolved</option>
-              <option value="in_progress">In Progress</option>
-              <option value="reported">Reported</option>
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="ui-label mb-1 block">Date Range</label>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative min-w-[9.5rem] flex-1">
-                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${filterSelectClass} min-w-[9rem] pl-9`} />
+      <div className="ui-card ui-card--padded space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <SearchBar
+            value={search}
+            onChange={(v) => { setSearch(v); setPage(1); }}
+            placeholder="Search machine history"
+            className="w-full sm:max-w-sm"
+          />
+          <Button
+            type="button"
+            variant={showFilters ? "primary" : "secondary"}
+            onClick={() => setShowFilters((open) => !open)}
+            leftIcon={<Filter className="h-4 w-4" aria-hidden />}
+            rightIcon={<ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? "rotate-180" : ""}`} aria-hidden />}
+            aria-expanded={showFilters}
+            aria-controls="machine-history-filters"
+          >
+            Filters
+          </Button>
+        </div>
+
+        {showFilters ? (
+          <div id="machine-history-filters" className="border-t border-[var(--color-border-soft)] pt-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 xl:items-end">
+              <div>
+                <label className="ui-label mb-1 block">Machine</label>
+                <select value={machineFilter} onChange={(e) => { setMachineFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
+                  <option value="">All Machines</option>
+                  {machines.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
               </div>
-              <span className="text-[var(--color-text-muted)]">–</span>
-              <div className="relative min-w-[9.5rem] flex-1">
-                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${filterSelectClass} min-w-[9rem] pl-9`} />
+              <div className="xl:col-span-1">
+                <label className="ui-label mb-1 block">Activity Type</label>
+                <select value={activityFilter} onChange={(e) => { setActivityFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
+                  <option value="">All Activity Types</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="breakdowns">Breakdown</option>
+                  <option value="repairs">Repair</option>
+                  <option value="inspections">Inspection</option>
+                  <option value="parts">Parts Replaced</option>
+                </select>
+              </div>
+              <div>
+                <label className="ui-label mb-1 block">Status</label>
+                <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className={filterSelectClass}>
+                  <option value="">All Status</option>
+                  <option value="completed">Completed</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="reported">Reported</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2 xl:col-span-2">
+                <label className="ui-label mb-1 block">Date Range</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative min-w-[9.5rem] flex-1">
+                    <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                    <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${filterSelectClass} min-w-[9rem] pl-9`} />
+                  </div>
+                  <span className="text-[var(--color-text-muted)]">–</span>
+                  <div className="relative min-w-[9.5rem] flex-1">
+                    <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                    <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${filterSelectClass} min-w-[9rem] pl-9`} />
+                  </div>
+                </div>
               </div>
             </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--color-border-soft)] pt-3">
+              <Button type="button" variant="primary" onClick={() => load(true)}>
+                Apply Filters
+              </Button>
+              <Button type="button" variant="secondary" onClick={resetFilters}>
+                Reset
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setShowFilters(false)}>
+                Hide Filters
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button type="button" variant="primary" onClick={() => load(true)}>
-            Filter
-          </Button>
-          <Button type="button" variant="secondary" onClick={resetFilters}>
-            Reset
-          </Button>
-        </div>
+        ) : null}
       </div>
 
       <div className="border-b border-[var(--color-border-soft)]">

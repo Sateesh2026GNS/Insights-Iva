@@ -123,7 +123,7 @@ export default function PreventiveMaintenance() {
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
 
-  const handleExport = (format) => {
+  const handleExport = async (format) => {
     const data = filtered.map((r) => ({
       machine_id: r.machine_id,
       machine_name: r.machine_name,
@@ -146,12 +146,16 @@ export default function PreventiveMaintenance() {
       { key: "status", label: "Status" },
       { key: "next_due_date", label: "Next Due Date" },
     ];
-    if (format === "pdf") {
-      exportToPdf(data, cols, "Preventive Maintenance Tasks", "preventive-maintenance-tasks");
-    } else {
-      exportToExcel(data, cols, "preventive-maintenance-tasks");
+    try {
+      if (format === "pdf") {
+        await exportToPdf(data, cols, "Preventive Maintenance Tasks", "preventive-maintenance-tasks");
+      } else {
+        await exportToExcel(data, cols, "preventive-maintenance-tasks");
+      }
+      addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    } catch {
+      addToast(`Could not export preventive maintenance tasks to ${format === "pdf" ? "PDF" : "Excel"}`, "error");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const handleCreateTask = async (e) => {
@@ -235,7 +239,7 @@ export default function PreventiveMaintenance() {
             <Button variant="add" type="button" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
               New Maintenance Task
             </Button>
-            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <div className="relative" ref={moreMenuRef}>
               <Button
                 variant="secondary"

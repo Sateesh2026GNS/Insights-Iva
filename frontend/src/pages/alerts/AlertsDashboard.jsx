@@ -138,6 +138,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   const reportMachineName = searchParams.get("machine_name") || (reportMachineId ? `Machine #${reportMachineId}` : "");
   const canReportMachineIssue = Boolean(reportMachineId && isOperator(user));
   const canCreateAlert = canCreate || canReportMachineIssue;
+  const isLowStockAlertsPage = initialAlertType === "low_stock";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -405,13 +406,16 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
     acknowledged_date: r.acknowledged_date,
   }));
 
-  const handleExport = (format) => {
-    if (format === "pdf") {
-      exportToPdf(exportRows, EXPORT_COLUMNS, "Alerts Report", "alerts");
-      addToast("Exported to PDF", "success");
-    } else {
-      exportToExcel(exportRows, EXPORT_COLUMNS, "alerts");
-      addToast("Exported to Excel", "success");
+  const handleExport = async (format) => {
+    try {
+      if (format === "pdf") {
+        await exportToPdf(exportRows, EXPORT_COLUMNS, "Alerts Report", "alerts");
+      } else {
+        await exportToExcel(exportRows, EXPORT_COLUMNS, "alerts");
+      }
+      addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    } catch {
+      addToast(`Could not export alerts to ${format === "pdf" ? "PDF" : "Excel"}`, "error");
     }
   };
 
@@ -441,7 +445,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         subtitle={subtitle || "Monitor, acknowledge, and resolve system alerts across modules."}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            {canWrite && (
+            {canWrite && !isLowStockAlertsPage && (
               <Button
                 variant="secondary"
                 type="button"
@@ -458,8 +462,8 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                 Mark all read
               </Button>
             )}
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            {canCreateAlert && !reportMachineId && (
+            <ExportDownloadMenu onExport={handleExport} />
+            {canCreateAlert && !reportMachineId && !isLowStockAlertsPage && (
               <Button variant="add" type="button" onClick={() => setShowCreate(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
                 {canReportMachineIssue ? "Report Machine Issue" : "New Alert"}
               </Button>

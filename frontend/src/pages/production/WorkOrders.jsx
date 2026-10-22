@@ -944,8 +944,8 @@ export default function WorkOrders() {
       width: "9rem",
       minWidth: "9rem",
       render: (r) => (
-        <div className="flex min-w-[8rem] flex-col items-start gap-1">
-          <div className="flex flex-wrap items-center gap-1">
+        <div className="flex min-w-[8rem] flex-col items-center gap-1 text-center">
+          <div className="flex flex-wrap items-center justify-center gap-1">
             <StatusBadge tone={woStatusTone({ ...r, is_delayed: false })}>
               {woStatusLabel(r.status)}
             </StatusBadge>

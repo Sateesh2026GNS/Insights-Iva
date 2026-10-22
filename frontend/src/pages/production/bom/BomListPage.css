@@ -1,0 +1,12 @@
+.bom-list-page .bom-list-toolbar {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.bom-list-page .bom-list-empty {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}

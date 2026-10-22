@@ -146,15 +146,11 @@ function MultiSelectDropdown({
     onChange(normalizedOptions.map((opt) => opt.value));
   };
 
-  const clearAll = () => {
-    onChange([]);
-  };
-
   const count = selected.length;
   const triggerLabel = count > 0 ? `${label} (${count})` : `All ${label}`;
 
   return (
-    <div className="relative w-full" ref={wrapRef}>
+    <div className={`relative w-full ${open ? "z-50" : ""}`} ref={wrapRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -165,7 +161,7 @@ function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-64 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-max min-w-[10rem] max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
           {normalizedOptions.length > 5 && (
             <div className="mb-2 px-1">
               <SearchBar
@@ -178,20 +174,13 @@ function MultiSelectDropdown({
             </div>
           )}
 
-          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-2 py-1 text-[11px]">
+          <div className="flex items-center border-b border-[var(--color-border-soft)] px-2 py-1 text-[11px]">
             <button
               type="button"
               onClick={selectAll}
               className="font-medium text-[var(--color-primary)] hover:underline cursor-pointer"
             >
               Select All
-            </button>
-            <button
-              type="button"
-              onClick={clearAll}
-              className="text-[var(--color-text-muted)] hover:text-red-600 cursor-pointer"
-            >
-              Clear
             </button>
           </div>
 
@@ -518,57 +507,61 @@ export default function EquipmentSpareParts() {
     }
   };
 
-  const handleExport = (format) => {
-    if (activeTab === "equipment") {
-      const rows = filteredEquipment.map((m) => ({
-        code: m.code || `EQ-${m.id}`,
-        name: m.name,
-        type: m.machine_type || "Machining",
-        manufacturer: m.manufacturer || "Haas",
-        location: m.location || "Floor A",
-        status: m.display_status || m.status || "Running",
-      }));
-      const cols = [
-        { key: "code", label: "Equipment ID" },
-        { key: "name", label: "Equipment Name" },
-        { key: "type", label: "Category" },
-        { key: "manufacturer", label: "Manufacturer" },
-        { key: "location", label: "Location" },
-        { key: "status", label: "Status" },
-      ];
-      if (format === "pdf") {
-        exportToPdf(rows, cols, "Equipment Inventory", "equipment-inventory");
+  const handleExport = async (format) => {
+    try {
+      if (activeTab === "equipment") {
+        const rows = filteredEquipment.map((m) => ({
+          code: m.code || `EQ-${m.id}`,
+          name: m.name,
+          type: m.machine_type || "Machining",
+          manufacturer: m.manufacturer || "Haas",
+          location: m.location || "Floor A",
+          status: m.display_status || m.status || "Running",
+        }));
+        const cols = [
+          { key: "code", label: "Equipment ID" },
+          { key: "name", label: "Equipment Name" },
+          { key: "type", label: "Category" },
+          { key: "manufacturer", label: "Manufacturer" },
+          { key: "location", label: "Location" },
+          { key: "status", label: "Status" },
+        ];
+        if (format === "pdf") {
+          await exportToPdf(rows, cols, "Equipment Inventory", "equipment-inventory");
+        } else {
+          await exportToExcel(rows, cols, "equipment-inventory");
+        }
       } else {
-        exportToExcel(rows, cols, "equipment-inventory");
+        const rows = filteredSpares.map((p) => ({
+          part_number: p.part_number,
+          spare_name: p.spare_name,
+          category: p.category || "Mechanical",
+          stock: p.stock,
+          minimum_stock: p.minimum_stock,
+          vendor: p.vendor || "Approved Supplier",
+          location: p.location || "Warehouse",
+          status: p.is_low_stock ? "Low Stock" : "In Stock",
+        }));
+        const cols = [
+          { key: "part_number", label: "Part Number" },
+          { key: "spare_name", label: "Spare Part Name" },
+          { key: "category", label: "Category" },
+          { key: "stock", label: "Stock" },
+          { key: "minimum_stock", label: "Min Stock" },
+          { key: "vendor", label: "Vendor" },
+          { key: "location", label: "Location" },
+          { key: "status", label: "Status" },
+        ];
+        if (format === "pdf") {
+          await exportToPdf(rows, cols, "Spare Parts Inventory", "spare-parts-inventory");
+        } else {
+          await exportToExcel(rows, cols, "spare-parts-inventory");
+        }
       }
-    } else {
-      const rows = filteredSpares.map((p) => ({
-        part_number: p.part_number,
-        spare_name: p.spare_name,
-        category: p.category || "Mechanical",
-        stock: p.stock,
-        minimum_stock: p.minimum_stock,
-        vendor: p.vendor || "Approved Supplier",
-        location: p.location || "Warehouse",
-        status: p.is_low_stock ? "Low Stock" : "In Stock",
-      }));
-      const cols = [
-        { key: "part_number", label: "Part Number" },
-        { key: "spare_name", label: "Spare Part Name" },
-        { key: "category", label: "Category" },
-        { key: "stock", label: "Stock" },
-        { key: "minimum_stock", label: "Min Stock" },
-        { key: "vendor", label: "Vendor" },
-        { key: "location", label: "Location" },
-        { key: "status", label: "Status" },
-      ];
-      if (format === "pdf") {
-        exportToPdf(rows, cols, "Spare Parts Inventory", "spare-parts-inventory");
-      } else {
-        exportToExcel(rows, cols, "spare-parts-inventory");
-      }
+      addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    } catch {
+      addToast(`Could not export ${activeTab === "equipment" ? "equipment" : "spare parts"} to ${format === "pdf" ? "PDF" : "Excel"}`, "error");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   const totalEquipment = machines.length;
@@ -665,7 +658,6 @@ export default function EquipmentSpareParts() {
               {activeTab === "equipment" ? "Add Machine" : "Add Spare Part"}
             </Button>
             <ExportDownloadMenu
-              disabled={activeTab === "equipment" ? !filteredEquipment.length : !filteredSpares.length}
               onExport={handleExport}
             />
             <div className="relative" ref={moreMenuRef}>
@@ -761,10 +753,11 @@ export default function EquipmentSpareParts() {
         </div>
       </div>
 
-      <ListPageCard>
+      <ListPageCard className="relative z-20 !overflow-visible">
         <ListPageCardBody>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] lg:items-end">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 items-end gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="min-w-0 md:col-span-2 xl:col-span-1">
+            <label className="ui-label mb-1">Search</label>
             <SearchBar
               value={search}
               onChange={(v) => { setSearch(v); setPage(1); }}
@@ -772,7 +765,7 @@ export default function EquipmentSpareParts() {
               className="w-full"
             />
           </div>
-          <div className="lg:col-span-2">
+          <div className="min-w-0">
             <label className="ui-label mb-1">Status</label>
             <MultiSelectDropdown
               label="Status"
@@ -784,7 +777,7 @@ export default function EquipmentSpareParts() {
           </div>
           {activeTab === "equipment" ? (
             <>
-              <div className="lg:col-span-2">
+              <div className="min-w-0">
                 <label className="ui-label mb-1">Categories</label>
                 <MultiSelectDropdown
                   label="Categories"
@@ -794,7 +787,7 @@ export default function EquipmentSpareParts() {
                   placeholder="Search categories..."
                 />
               </div>
-              <div className="lg:col-span-2">
+              <div className="min-w-0">
                 <label className="ui-label mb-1">Locations</label>
                 <MultiSelectDropdown
                   label="Locations"
@@ -804,7 +797,7 @@ export default function EquipmentSpareParts() {
                   placeholder="Search locations..."
                 />
               </div>
-              <div className="lg:col-span-3">
+              <div className="min-w-0">
                 <label className="ui-label mb-1">Brands / Branches</label>
                 <MultiSelectDropdown
                   label="Brands"
@@ -816,14 +809,14 @@ export default function EquipmentSpareParts() {
               </div>
             </>
           ) : null}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button type="button" variant="primary" onClick={() => load(true)}>
-            Filter
-          </Button>
-          <Button type="button" variant="secondary" onClick={resetFilters}>
-            Reset
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="primary" onClick={() => load(true)}>
+              Filter
+            </Button>
+            <Button type="button" variant="secondary" onClick={resetFilters}>
+              Reset
+            </Button>
+          </div>
         </div>
         </ListPageCardBody>
       </ListPageCard>

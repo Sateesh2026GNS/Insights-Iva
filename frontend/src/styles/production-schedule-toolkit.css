@@ -7,6 +7,15 @@
   font-size: 11px;
 }
 
+.production-schedule-date-popover .ui-date-calendar {
+  min-width: 0;
+}
+
+.production-schedule-date-popover .ui-date-calendar-day {
+  height: 2rem;
+  border-radius: 0.5rem;
+}
+
 .production-schedule-page--toolkit .mtk-kpi--button {
   cursor: pointer;
   border: 1px solid var(--mtk-border, #c5d0dc);

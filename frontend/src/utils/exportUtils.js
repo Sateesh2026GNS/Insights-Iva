@@ -7,10 +7,9 @@
  * Export data to Excel (dynamically loads xlsx only when user clicks export)
  */
 export async function exportToExcel(data, columns, filename = "report") {
-  if (!data?.length) return;
   const XLSX = await import("xlsx");
   const headers = columns.map((c) => (typeof c.label === "string" ? c.label : c.key));
-  const rows = data.map((row) =>
+  const rows = (Array.isArray(data) ? data : []).map((row) =>
     columns.map((c) => {
       const val = row[c.key];
       if (c.render && typeof c.render === "function") return c.render(row);

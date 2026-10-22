@@ -19,6 +19,7 @@ import useAuth from "../../../hooks/useAuth";
 import { userCanEditBom, userCanViewBom, userCanViewBomCost } from "../../../config/permissions";
 import { apiErrorMessage } from "../../../utils/apiError";
 import { formatIndianCurrencyField } from "../../../utils/numberFormat";
+import "./BomListPage.css";
 
 function KpiTile({ label, value, icon: Icon, onClick, active }) {
   const clickable = typeof onClick === "function";
@@ -166,7 +167,7 @@ export default function BomListPage() {
 
   if (!canView) {
     return (
-      <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bom}>
+      <ListPageShell className="bom-list-page" plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bom}>
         <ManufacturingPageHeader
           title="Bill of Materials (BOM)"
           crumbs={[
@@ -182,7 +183,7 @@ export default function BomListPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
 
   return (
-    <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bom}>
+    <ListPageShell className="bom-list-page" plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bom}>
       <div className="grid gap-3 sm:grid-cols-3 mb-4">
         <KpiTile label="Total BOMs" value={summary?.total_boms} icon={Layers} />
         <KpiTile
@@ -209,7 +210,7 @@ export default function BomListPage() {
       ) : null}
       <ListPageCard>
         <ListPageCardBody>
-          <div className="ui-list-toolbar mb-3">
+          <div className="ui-list-toolbar bom-list-toolbar mb-3">
             <div className="ui-list-toolbar__start">
               <SearchBar
                 value={search}
@@ -251,6 +252,8 @@ export default function BomListPage() {
           <AsyncPageBody loading={loading} error={error} errorObj={errorObj} online={online} onRetry={load}>
             {!rows.length ? (
               <EmptyState
+                compact
+                className="bom-list-empty"
                 title="No BOMs yet"
                 description="Create your first bill of materials for a finished good."
                 action={canEdit ? <Button to="/production/bom/new" variant="add" leftIcon={<Plus className="h-4 w-4" />}>Create your first BOM</Button> : null}
