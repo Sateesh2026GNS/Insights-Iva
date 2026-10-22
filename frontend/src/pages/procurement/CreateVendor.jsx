@@ -105,8 +105,8 @@ function clientValidate(form, t) {
   }
   if (form.gstin.trim()) {
     const gst = form.gstin.replace(/\s+/g, "").toUpperCase();
-    if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gst)) {
-      errors.gstin = "GST Number format is invalid.";
+    if (gst.length !== 15 || !/^(?=.*[0-9])(?=.*[A-Z])[A-Z0-9]{15}$/.test(gst)) {
+      errors.gstin = "GST Number must be 15 alphanumeric characters with at least one letter and one number.";
     }
   }
   if (form.pan.trim()) {

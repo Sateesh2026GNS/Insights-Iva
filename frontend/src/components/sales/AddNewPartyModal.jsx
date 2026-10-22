@@ -532,6 +532,8 @@ export default function AddNewPartyModal({
         return;
       }
     }
+    const parsedTenantId = Number(tenantId);
+    const validTenantId = Number.isInteger(parsedTenantId) && parsedTenantId > 0 ? parsedTenantId : 1;
     setSaving(true);
     try {
       const opening = basicDetails?.opening_balance
@@ -543,8 +545,7 @@ export default function AddNewPartyModal({
         const creditDays = Number(basicDetails?.payment_terms_days) || (party?.credit_days ? Number(party.credit_days) : null);
         let paymentTerms = creditDays ? `Net ${creditDays}` : (party?.payment_terms || null);
 
-        const parsedTenantId = Number(tenantId);
-        const validTenantId = Number.isInteger(parsedTenantId) && parsedTenantId > 0 ? parsedTenantId : 1;
+        
 
         // Auto-generate fallback email if none provided so older strict servers accept the payload
         const cleanSlug = (form.name || "vendor").toLowerCase().replace(/[^a-z0-9]/g, "") || "vendor";
@@ -623,7 +624,7 @@ export default function AddNewPartyModal({
       }
 
       const payload = {
-        tenant_id: tenantId,
+        tenant_id: validTenantId,
         name: form.name.trim(),
         company_name: form.name.trim(),
         company: form.name.trim(),
@@ -690,15 +691,16 @@ export default function AddNewPartyModal({
       const raw = hasFieldErrors
         ? t("validation.fixHighlightedFields")
         : apiErrorMessage(err, isVendor ? "Failed to save vendor" : "Failed to save customer");
+      const errDetail =
+        typeof err?.response?.data?.detail === "string"
+          ? err.response.data.detail
+          : (Array.isArray(err?.response?.data?.errors) ? err.response.data.errors[0] : "");
       const isGst =
         String(raw).toLowerCase().includes("gst") ||
-        String(err?.response?.data?.detail || "")
-          .toString()
-          .toLowerCase()
-          .includes("gst");
-      const toastMsg = isGst ? "Enter a valid GSTIN." : raw;
+        String(errDetail).toLowerCase().includes("gst");
+      const toastMsg = errDetail || raw || (isGst ? "Enter a valid GSTIN." : (isVendor ? "Failed to save vendor" : "Failed to save customer"));
       if (isGst) {
-        setFieldErrors((prev) => ({ ...prev, gstin: "Enter a valid GSTIN." }));
+        setFieldErrors((prev) => ({ ...prev, gstin: errDetail || "Enter a valid GSTIN." }));
       }
       addToast(toastMsg, "error");
     } finally {

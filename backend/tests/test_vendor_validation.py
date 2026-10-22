@@ -201,3 +201,38 @@ def test_vendor_create_without_email_and_custom_net_terms():
     assert vendor.payment_terms == "Net 7"
     assert vendor.credit_days == 7
     assert vendor.outstanding == 8000.0
+
+def test_gstin_15_char_alphanumeric_validation():
+    from app.schemas.sales import CustomerCreate
+    from app.schemas.lead_form import _validate_gst
+    from app.utils.gst import validate_gstin
+
+    # Accept any 15-character alphanumeric containing at least one digit and one letter
+    valid_gstins = [
+        "36CDEFG3456H1Z7",
+        "27AAAAA0000A1Z5",
+        "07AAAAA0000A1Z5",
+        "99ZZZZZ9999Z9Z9",
+        "ABCDEFGHIJKLMN1",
+        "12345678901234A",
+    ]
+    for g in valid_gstins:
+        assert validate_gstin(g) == g
+        assert _validate_gst(g) == g
+
+    customer = CustomerCreate(
+        tenant_id=1,
+        name="Test Customer",
+        company_name="Test Company",
+        gstin="36CDEFG3456H1Z7",
+        phone="9876543210",
+    )
+    assert customer.gstin == "36CDEFG3456H1Z7"
+
+    # Reject if length is not 15 or purely numeric or purely alphabetic
+    with pytest.raises(ValueError):
+        validate_gstin("123456789012345")  # all digits
+    with pytest.raises(ValueError):
+        validate_gstin("ABCDEFGHIJKLMNO")  # all letters
+    with pytest.raises(ValueError):
+        validate_gstin("SHORT123")  # not 15

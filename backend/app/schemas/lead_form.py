@@ -4,10 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-GSTIN_RE = re.compile(
-    r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$",
-    re.IGNORECASE,
-)
+GSTIN_RE = re.compile(r"^(?=.*[0-9])(?=.*[A-Z])[A-Z0-9]{15}$", re.IGNORECASE)
 PINCODE_RE = re.compile(r"^[1-9][0-9]{5}$")
 MOBILE_RE = re.compile(r"^(\+91[\-\s]?)?[6-9]\d{9}$")
 LANDLINE_RE = re.compile(r"^0\d{2,4}[\-\s]?\d{6,8}$")
