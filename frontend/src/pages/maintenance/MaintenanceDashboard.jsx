@@ -11,7 +11,6 @@ import {
   History,
   IndianRupee,
   Layers,
-  MoreVertical,
   Plus,
   RefreshCw,
   Timer,
@@ -115,7 +114,7 @@ export default function MaintenanceDashboard() {
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
 
-  const handleExport = (format) => {
+  const handleExport = async (format) => {
     const rows = (hub.recent_requests || []).map((r) => ({
       code: r.code || r.id,
       machine: r.machine_name || r.machine || `Machine ${r.machine_id}`,
@@ -134,12 +133,16 @@ export default function MaintenanceDashboard() {
       { key: "due_date", label: "Due Date" },
       { key: "status", label: "Status" },
     ];
-    if (format === "pdf") {
-      exportToPdf(rows, columns, "Maintenance Overview", "maintenance-overview");
-      addToast("Maintenance overview exported to PDF", "success");
-    } else {
-      exportToExcel(rows, columns, "maintenance-overview");
-      addToast("Maintenance overview exported to Excel", "success");
+    try {
+      if (format === "pdf") {
+        await exportToPdf(rows, columns, "Maintenance Overview", "maintenance-overview");
+        addToast("Maintenance overview exported to PDF", "success");
+      } else {
+        await exportToExcel(rows, columns, "maintenance-overview");
+        addToast("Maintenance overview exported to Excel", "success");
+      }
+    } catch {
+      addToast(`Could not export maintenance overview to ${format === "pdf" ? "PDF" : "Excel"}`, "error");
     }
   };
 
@@ -176,7 +179,7 @@ export default function MaintenanceDashboard() {
             <Button variant="add" to="/maintenance/preventive" leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
               New Maintenance Request
             </Button>
-            <ExportDownloadMenu disabled={!(hub.recent_requests || []).length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <div className="relative" ref={moreMenuRef}>
               <Button
                 variant="secondary"
@@ -184,7 +187,6 @@ export default function MaintenanceDashboard() {
                 onClick={() => setShowMoreMenu((v) => !v)}
                 rightIcon={<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showMoreMenu ? "rotate-180" : ""}`} aria-hidden />}
               >
-                <MoreVertical className="h-4 w-4" aria-hidden />
                 More Actions
               </Button>
               {showMoreMenu && (

@@ -20,6 +20,8 @@ import Loader from "../../components/common/Loader";
 import Button, { IconButton } from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
+import { MonthCalendar, formatDisplayDate } from "../../design-system/dateControls";
+import { addMonths, parseIsoDate } from "../../utils/dateUtils";
 import { useToast } from "../../context/ToastContext";
 import {
   getScheduleCalendar,
@@ -571,6 +573,113 @@ function KanbanView({ items, onCreate }) {
 
 // ─── New Schedule Modal ───────────────────────────────────────────────────────
 
+function ScheduleDateTimePicker({ label, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selectedDate = value?.slice(0, 10) || "";
+  const selectedTime = value?.slice(11, 16) || "09:00";
+  const [monthDate, setMonthDate] = useState(() => parseIsoDate(selectedDate) || new Date());
+  const pickerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event) => {
+      if (!pickerRef.current?.contains(event.target)) setOpen(false);
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const updateValue = (date, time = selectedTime) => onChange(`${date}T${time}`);
+
+  return (
+    <div ref={pickerRef} className="relative">
+      <button
+        type="button"
+        className="ui-input flex w-full items-center justify-between gap-3 text-left"
+        aria-label={`${label}: ${selectedDate ? formatDisplayDate(selectedDate) : "Select date"}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
+          if (selectedDate) setMonthDate(parseIsoDate(selectedDate) || new Date());
+          setOpen((current) => !current);
+        }}
+      >
+        <span className={selectedDate ? "text-[var(--color-text)]" : "text-[var(--color-text-placeholder)]"}>
+          {selectedDate ? formatDisplayDate(selectedDate) : "Select date and time"}
+          {selectedDate ? ` · ${selectedTime}` : ""}
+        </span>
+        <Calendar className="h-4 w-4 shrink-0 text-[var(--color-text-icon)]" aria-hidden />
+      </button>
+
+      {open ? (
+        <div
+          role="dialog"
+          aria-label={`${label} calendar`}
+          className="production-schedule-date-popover absolute left-0 top-full z-[70] mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-xl"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+              aria-label="Previous month"
+              onClick={() => setMonthDate((current) => addMonths(current, -1))}
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </button>
+            <span className="text-sm font-semibold text-[var(--color-text)]">
+              {monthDate.toLocaleString("en-IN", { month: "long", year: "numeric" })}
+            </span>
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+              aria-label="Next month"
+              onClick={() => setMonthDate((current) => addMonths(current, 1))}
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          <MonthCalendar
+            monthDate={monthDate}
+            rangeFrom={selectedDate}
+            rangeTo={selectedDate}
+            single
+            hideMonthTitle
+            onPick={(date) => updateValue(date)}
+          />
+          <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-soft)] pt-3">
+            <label className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
+              Time
+              <input
+                type="time"
+                value={selectedTime}
+                disabled={!selectedDate}
+                onChange={(event) => updateValue(selectedDate, event.target.value)}
+                className="ui-input h-8 w-[6.5rem] px-2 text-xs"
+                style={{ colorScheme: "light" }}
+                aria-label={`${label} time`}
+              />
+            </label>
+            <button
+              type="button"
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]"
+              onClick={() => setOpen(false)}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function NewScheduleModal({ onClose, onSuccess }) {
   const tenantId = useTenantId();
   const { addToast } = useToast();
@@ -640,7 +749,6 @@ function NewScheduleModal({ onClose, onSuccess }) {
   };
 
   const labelCls = "ui-label";
-  const inputCls = "ui-input";
   const selectCls = "ui-select";
 
   return createPortal(
@@ -712,11 +820,19 @@ function NewScheduleModal({ onClose, onSuccess }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Planned Start</label>
-                <input type="datetime-local" name="planned_start" value={form.planned_start} onChange={handleChange} className={inputCls} />
+                <ScheduleDateTimePicker
+                  label="Planned Start"
+                  value={form.planned_start}
+                  onChange={(value) => setForm((previous) => ({ ...previous, planned_start: value }))}
+                />
               </div>
               <div>
                 <label className={labelCls}>Planned End</label>
-                <input type="datetime-local" name="planned_end" value={form.planned_end} onChange={handleChange} className={inputCls} />
+                <ScheduleDateTimePicker
+                  label="Planned End"
+                  value={form.planned_end}
+                  onChange={(value) => setForm((previous) => ({ ...previous, planned_end: value }))}
+                />
               </div>
             </div>
 

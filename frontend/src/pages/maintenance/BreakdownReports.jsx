@@ -301,13 +301,17 @@ export default function BreakdownReports() {
     status: String(r.status || "").replace(/_/g, " "),
   }));
 
-  const handleExport = (format) => {
-    if (format === "pdf") {
-      exportToPdf(exportRows, BREAKDOWN_EXPORT_COLUMNS, "Breakdown Reports", "breakdown-reports");
-    } else {
-      exportToExcel(exportRows, BREAKDOWN_EXPORT_COLUMNS, "breakdown-reports");
+  const handleExport = async (format) => {
+    try {
+      if (format === "pdf") {
+        await exportToPdf(exportRows, BREAKDOWN_EXPORT_COLUMNS, "Breakdown Reports", "breakdown-reports");
+      } else {
+        await exportToExcel(exportRows, BREAKDOWN_EXPORT_COLUMNS, "breakdown-reports");
+      }
+      addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    } catch {
+      addToast(`Could not export breakdown reports to ${format === "pdf" ? "PDF" : "Excel"}`, "error");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   return (
@@ -317,7 +321,7 @@ export default function BreakdownReports() {
         subtitle="Critical production breakdowns — downtime tracking, MTTR, and repair workflow."
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <Button variant="add" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               Report Breakdown
             </Button>

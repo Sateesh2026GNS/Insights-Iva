@@ -835,7 +835,6 @@ export default function StockTransfer() {
         <ListPageCardBody>
         <div className="mb-4 flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-            <h2 className="shrink-0 text-sm font-semibold text-[var(--color-text)] lg:w-full xl:w-auto">Recent Transfers</h2>
             <SearchBar
               value={search}
               onChange={setSearch}
@@ -848,6 +847,15 @@ export default function StockTransfer() {
                 <Filter className="h-4 w-4" /> Filters
               </Button>
             </div>
+            <Button
+              type="button"
+              variant="add"
+              className="shrink-0 lg:ml-auto"
+              onClick={openForm}
+              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+            >
+              New Transfer
+            </Button>
           </div>
           {showFilters ? (
             <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
@@ -865,16 +873,6 @@ export default function StockTransfer() {
                 </Button>
             </div>
           ) : null}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="add"
-              onClick={openForm}
-              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-            >
-              New Transfer
-            </Button>
-          </div>
         </div>
 
         <DataTable

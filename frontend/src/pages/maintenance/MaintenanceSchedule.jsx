@@ -192,7 +192,7 @@ export default function MaintenanceSchedule() {
     });
   }, [rows, search, frequencyFilter, statusFilter]);
 
-  const handleExport = (format) => {
+  const handleExport = async (format) => {
     const data = filtered.map((r) => ({
       machine: r.machine_name || r.machine_id,
       task: r.task_name,
@@ -201,12 +201,15 @@ export default function MaintenanceSchedule() {
       assigned: r.assigned_engineer || "Unassigned",
       status: r.is_active ? "Active" : "Paused",
     }));
-    if (format === "pdf") {
-      exportToPdf(data, SCHEDULE_EXPORT_COLUMNS, "Maintenance Schedules", "maintenance-schedules");
-      addToast("Exported to PDF", "success");
-    } else {
-      exportToExcel(data, SCHEDULE_EXPORT_COLUMNS, "maintenance-schedules");
-      addToast("Exported to Excel", "success");
+    try {
+      if (format === "pdf") {
+        await exportToPdf(data, SCHEDULE_EXPORT_COLUMNS, "Maintenance Schedules", "maintenance-schedules");
+      } else {
+        await exportToExcel(data, SCHEDULE_EXPORT_COLUMNS, "maintenance-schedules");
+      }
+      addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
+    } catch {
+      addToast(`Could not export maintenance schedules to ${format === "pdf" ? "PDF" : "Excel"}`, "error");
     }
   };
 
@@ -295,7 +298,7 @@ export default function MaintenanceSchedule() {
             <Button variant="add" type="button" onClick={() => setShowModal(true)} leftIcon={<Plus className="h-4 w-4" aria-hidden />}>
               Schedule Maintenance
             </Button>
-            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
           </div>
         }
       />

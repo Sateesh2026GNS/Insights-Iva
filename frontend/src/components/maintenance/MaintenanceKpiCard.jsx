@@ -71,21 +71,21 @@ const TONE_HOVER_BORDER = {
 };
 
   return (
-    <article className={`relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${TONE_HOVER_BORDER[tone] || TONE_HOVER_BORDER.primary} ${className}`}>
+    <article className={`relative min-h-[9rem] overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${TONE_HOVER_BORDER[tone] || TONE_HOVER_BORDER.primary} ${className}`}>
       <span className={`absolute inset-x-0 top-0 h-0.5 ${styles.bar}`} aria-hidden />
-      <div className="flex items-start gap-3">
-        {Icon ? (
-          <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${styles.iconBg}`}>
-            <Icon className="h-5 w-5" aria-hidden />
-          </div>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium text-slate-500">{label}</p>
-          <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-slate-900">{value}</p>
-          {trendText ? <p className={`mt-1 text-[11px] font-medium ${trendClass}`}>{trendText}</p> : null}
-          {!trendText && meta ? <p className="mt-1 text-[11px] font-medium text-slate-500">{meta}</p> : null}
-          {footer ? <div className="mt-1">{footer}</div> : null}
+      {Icon ? (
+        <div className={`absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full ${styles.iconBg}`}>
+          <Icon className="h-4 w-4" aria-hidden />
         </div>
+      ) : null}
+      <div className="flex min-h-[2.25rem] items-start pr-10">
+        <p className="text-[11px] font-medium leading-4 text-slate-500">{label}</p>
+      </div>
+      <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-slate-900">{value}</p>
+      <div className="mt-1 min-h-[2rem] text-[11px] font-medium leading-4">
+        {trendText ? <p className={trendClass}>{trendText}</p> : null}
+        {!trendText && meta ? <p className="text-slate-500">{meta}</p> : null}
+        {footer ? <div>{footer}</div> : null}
       </div>
     </article>
   );
