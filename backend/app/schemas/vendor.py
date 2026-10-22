@@ -194,10 +194,10 @@ class VendorBase(BaseModel):
         value = _empty_to_none(value)
         if value is None:
             return None
-        # Allow legacy Net 60 while preferring the new set
-        if value not in PAYMENT_TERMS and value != "Net 60":
-            raise ValueError(f"Invalid payment terms. Allowed: {', '.join(sorted(PAYMENT_TERMS))}")
-        return value
+        val_str = str(value).strip()
+        if len(val_str) > 64:
+            raise ValueError("Payment terms cannot exceed 64 characters")
+        return val_str
 
     @field_validator("status", mode="before")
     @classmethod
@@ -221,8 +221,6 @@ class VendorBase(BaseModel):
             raise ValueError("Contact person is required")
         if not self.phone:
             raise ValueError("Mobile number is required")
-        if not self.email:
-            raise ValueError("Email is required")
         return self
 
 
@@ -243,8 +241,6 @@ class VendorCreate(VendorBase):
 
     @model_validator(mode="after")
     def validate_party_basic_email_for_vendor(self):
-        if self.party_basic_details is not None:
-            self.party_basic_details.require_email()
         return self
 
 

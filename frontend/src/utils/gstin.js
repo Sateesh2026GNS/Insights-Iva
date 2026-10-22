@@ -1,9 +1,9 @@
 /**
- * Indian GSTIN validation — mirrors backend app.utils.gst.validate_gstin.
+ * Indian GSTIN validation:
+ * Exactly 15 alphanumeric characters with at least one letter and one number.
  */
 
-const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-const GSTIN_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const GSTIN_RE = /^(?=.*[0-9])(?=.*[A-Z])[A-Z0-9]{15}$/;
 
 export function normalizeGstin(value) {
   if (value == null) return null;
@@ -25,17 +25,7 @@ export function validateGstin(value, { required = false } = {}) {
     throw new Error("GST Number must be exactly 15 characters");
   }
   if (!GSTIN_RE.test(gstin)) {
-    throw new Error("Invalid GST Number format");
-  }
-  let total = 0;
-  for (let i = 0; i < 14; i += 1) {
-    const code = GSTIN_CHARS.indexOf(gstin[i]);
-    const product = code * (i % 2 === 0 ? 1 : 2);
-    total += Math.floor(product / 36) + (product % 36);
-  }
-  const check = (36 - (total % 36)) % 36;
-  if (GSTIN_CHARS[check] !== gstin[14]) {
-    throw new Error("Invalid GST Number checksum");
+    throw new Error("GST Number must contain at least one letter and one number");
   }
   return gstin;
 }

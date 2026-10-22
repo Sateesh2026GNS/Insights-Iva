@@ -182,3 +182,22 @@ def test_vendor_bulk_status_update_invalid_ids_rejected():
     with pytest.raises(ValidationError) as exc_info:
         VendorBulkStatusUpdate(vendor_ids=[-5], status="inactive")
     assert any(err["loc"] == ("vendor_ids",) for err in exc_info.value.errors())
+
+
+def test_vendor_create_without_email_and_custom_net_terms():
+    vendor = VendorCreate(
+        tenant_id=1,
+        name="Venkateswara Industries",
+        contact="Venkateswara Industries",
+        gstin="36CDEFG3456H1Z7",
+        phone="9876543212",
+        email=None,
+        payment_terms="Net 7",
+        credit_days=7,
+        outstanding=8000.0,
+    )
+    assert vendor.name == "Venkateswara Industries"
+    assert vendor.email is None
+    assert vendor.payment_terms == "Net 7"
+    assert vendor.credit_days == 7
+    assert vendor.outstanding == 8000.0

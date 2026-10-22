@@ -651,7 +651,10 @@ export default function VendorDetailModal({
                   <Field
                     label="Email"
                     value={
-                      v.email ? (
+                      v.email &&
+                      !v.email.endsWith("@mail.insightsiva.com") &&
+                      !v.email.endsWith("@insightsiva.internal") &&
+                      !v.email.includes("placeholder") ? (
                         <a href={`mailto:${v.email}`} className="text-blue-600 hover:underline">
                           {v.email}
                         </a>

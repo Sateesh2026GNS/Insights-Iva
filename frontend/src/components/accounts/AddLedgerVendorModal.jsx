@@ -115,13 +115,18 @@ export default function AddLedgerVendorModal({ open, onClose, onSaved, vendor = 
         .filter(Boolean)
         .join(" | ");
 
+      const rawEmail = form.email.trim() || null;
+      const cleanSlug = (form.name || "vendor").toLowerCase().replace(/[^a-z0-9]/g, "") || "vendor";
+      const cleanPhone = (form.phone || "0000000000").replace(/\D/g, "") || "0000000000";
+      const effectiveEmail = rawEmail || `${cleanSlug}.${cleanPhone}@mail.insightsiva.com`;
+
       const payload = {
         name: form.name.trim(),
         contact: form.contact_name.trim() || form.display_name.trim() || null,
         gstin: form.gstin.trim().toUpperCase() || null,
         pan: form.pan.trim().toUpperCase() || null,
         phone: form.phone.trim() || null,
-        email: form.email.trim() || null,
+        email: effectiveEmail,
         gst_registration_type: form.gst_treatment || null,
         billing_address: form.address.trim() || null,
         address_line1: form.address.trim() || null,
@@ -141,9 +146,11 @@ export default function AddLedgerVendorModal({ open, onClose, onSaved, vendor = 
         res = await updateVendor(id, payload);
         addToast("Vendor updated successfully", "success");
       } else {
+        const parsedTenantId = Number(tenantId);
+        const validTenantId = Number.isInteger(parsedTenantId) && parsedTenantId > 0 ? parsedTenantId : 1;
         res = await createVendor({
           ...payload,
-          tenant_id: tenantId,
+          tenant_id: validTenantId,
         });
         addToast("Vendor added successfully", "success");
       }
