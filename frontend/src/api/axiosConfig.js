@@ -333,7 +333,7 @@ api.interceptors.response.use(
 
     // Auto-retry up to 4 times for GET requests on timeout / network error / gateway spin-up errors (e.g. Render server cold-starts)
     const maxRetries = isGatewayError ? 4 : 3;
-    if (method === "get" && (isTimeout || isNetworkErr || isGatewayError) && original && (original._retryCount || 0) < maxRetries) {
+    if (method === "get" && !original?.skipGetRetries && (isTimeout || isNetworkErr || isGatewayError) && original && (original._retryCount || 0) < maxRetries) {
       original._retryCount = (original._retryCount || 0) + 1;
       triggerServerWakeup({ force: true });
       const delayMs = 1500 * Math.pow(1.4, original._retryCount - 1);

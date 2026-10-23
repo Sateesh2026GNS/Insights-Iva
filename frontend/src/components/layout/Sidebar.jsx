@@ -868,7 +868,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
               if (collapsed && !createPinnedRef.current) setCreateOpen(true);
             }}
             onMouseLeave={scheduleCreateClose}
-            className={`relative mb-1 flex min-h-[46px] w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${createOpen ? "border-white/15 bg-white/[0.12] text-white" : "border-white/10 bg-white/[0.06] text-slate-300 hover:border-white/15 hover:bg-white/[0.1] hover:text-white"}`}
+            className={`relative mb-1 flex min-h-[46px] w-full items-center rounded-xl border py-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${navItemPad} ${collapsed ? "justify-center" : "justify-start gap-2.5"} ${createOpen ? "border-white/15 bg-white/[0.12] text-white" : "border-white/10 bg-white/[0.06] text-slate-300 hover:border-white/15 hover:bg-white/[0.1] hover:text-white"}`}
             aria-label="Create"
             aria-expanded={createOpen}
             aria-haspopup="menu"
@@ -1080,6 +1080,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
         navSections={visibleNav}
         onSelect={() => {
           createPinnedRef.current = false;
+          cancelCreateClose();
+          setCreateOpen(false);
           onClose?.();
         }}
       />

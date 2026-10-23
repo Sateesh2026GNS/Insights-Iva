@@ -13,6 +13,10 @@ export async function getErpDashboard(options = {}) {
   return unwrap(
     await api.get("/api/erp/dashboard", {
       params: { include_manufacturing_workflow: includeManufacturingWorkflow },
+      // Dashboard requests must resolve promptly so the page can leave its skeleton
+      // and show its retry state instead of waiting through repeated long retries.
+      timeout: 20_000,
+      skipGetRetries: true,
     })
   );
 }

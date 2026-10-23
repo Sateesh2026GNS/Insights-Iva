@@ -23,6 +23,7 @@ import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
 import { useToast } from "../../context/ToastContext";
+import "../../styles/daily-reports-grid-table.css";
 import {
   createDailyReport,
   getDailyReports,
@@ -435,9 +436,9 @@ export default function DailyReports() {
         render: (r) => {
           const product = cleanProductLabel(r.product_name);
           return (
-            <div className="min-w-[14rem] max-w-[18rem]">
+            <div className="min-w-0 max-w-[18rem]">
               <div className="flex flex-wrap items-center gap-1.5">
-                <p className="max-w-full truncate whitespace-nowrap text-[13px] font-semibold tabular-nums text-[var(--color-text)]" title={r.work_order_number || undefined}>
+                <p className="min-w-0 max-w-full flex-1 truncate whitespace-nowrap text-[13px] font-semibold tabular-nums text-[var(--color-text)]" title={r.work_order_number || undefined}>
                   {r.work_order_number || "—"}
                 </p>
                 {isSyncedRow(r) ? <StatusBadge tone="pending">Synced</StatusBadge> : null}
@@ -454,7 +455,7 @@ export default function DailyReports() {
         label: "Machine",
         minWidth: "11rem",
         render: (r) => (
-          <div className="max-w-[160px]">
+          <div className="min-w-0 max-w-[160px]">
             <p className="truncate text-[13px] font-medium text-[var(--color-text)]">{r.machine_name || "—"}</p>
             <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-muted)]">{r.operator_name || "—"}</p>
           </div>
@@ -659,6 +660,7 @@ export default function DailyReports() {
                 data={paginated}
                 showSearch={false}
                 pagination={false}
+                tableClassName="daily-reports-grid-table"
                 emptyState={
                   <EmptyState
                     icon="document"

@@ -422,13 +422,23 @@ export default function FinishedGoods() {
     last_updated: formatUpdated(r.last_updated),
   }));
 
-  const handleExport = (format) => {
-    if (format === "pdf") {
-      exportToPdf(exportRows, FINISHED_GOODS_EXPORT_COLUMNS, "Finished Goods", "finished-goods");
-    } else {
-      exportToExcel(exportRows, FINISHED_GOODS_EXPORT_COLUMNS, "finished-goods");
+  const handleExport = async (format) => {
+    try {
+      if (format === "pdf") {
+        await exportToPdf(exportRows, FINISHED_GOODS_EXPORT_COLUMNS, "Finished Goods", "finished-goods");
+      } else {
+        await exportToExcel(exportRows, FINISHED_GOODS_EXPORT_COLUMNS, "finished-goods");
+      }
+      addToast(
+        exportRows.length
+          ? (format === "pdf" ? "Exported to PDF" : "Exported to Excel")
+          : "Downloaded an empty Finished Goods report.",
+        "success",
+      );
+    } catch (error) {
+      console.error("Finished Goods export failed:", error);
+      addToast(apiErrorMessage(error, "Unable to download the Finished Goods report."), "error");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   if (loading) return <Loader label="Loading finished goods…" />;
@@ -506,7 +516,7 @@ export default function FinishedGoods() {
           />
 
           <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <Button
               type="button"
               variant="secondary"

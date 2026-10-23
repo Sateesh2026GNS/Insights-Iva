@@ -136,7 +136,7 @@ def _order_context(db: Session, tenant_id: int, order: ProductionOrder) -> dict:
     if order.status in ("completed", "closed", "done"):
         progress = 100.0
     else:
-        progress = round(produced / planned * 100, 1) if (planned and produced > 0) else 0.0
+        progress = min(100.0, max(0.0, round(produced / planned * 100, 1))) if (planned and produced > 0) else 0.0
 
     balance = max(planned - produced, 0)
 

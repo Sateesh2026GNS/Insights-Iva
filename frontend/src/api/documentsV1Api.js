@@ -40,6 +40,12 @@ export function getDocumentPreview(documentId, version = null) {
   return api.get(`${BASE}/${documentId}/preview`, { params: version ? { version } : undefined });
 }
 
+export async function getDocumentPreviewFile(documentId, version = null) {
+  const preview = await getDocumentPreview(documentId, version);
+  const file = await api.get(preview.data.url, { responseType: "blob" });
+  return URL.createObjectURL(file.data);
+}
+
 export async function downloadDocument(documentId, version = null, filename = "document") {
   const res = await api.get(`${BASE}/${documentId}/download`, {
     params: version ? { version } : undefined,
