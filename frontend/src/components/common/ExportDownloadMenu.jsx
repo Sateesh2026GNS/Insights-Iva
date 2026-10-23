@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Download, FileSpreadsheet, FileText } from "lucide-react";
 
 import Button from "./Button";
@@ -10,12 +11,14 @@ export default function ExportDownloadMenu({
   size = "md",
 }) {
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState(null);
   const rootRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     if (!open) return undefined;
     const onPointerDown = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpen(false);
+      if (!rootRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false);
     };
     const onKeyDown = (event) => {
       if (event.key === "Escape") setOpen(false);
@@ -25,6 +28,29 @@ export default function ExportDownloadMenu({
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const updatePosition = () => {
+      const trigger = rootRef.current?.querySelector("button");
+      const menu = menuRef.current;
+      if (!trigger || !menu) return;
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      const top = triggerRect.bottom + 6 + menuRect.height > window.innerHeight
+        ? Math.max(8, triggerRect.top - menuRect.height - 6)
+        : triggerRect.bottom + 6;
+      const left = Math.min(triggerRect.left, window.innerWidth - menuRect.width - 8);
+      setMenuPosition({ top, left: Math.max(8, left) });
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
   }, [open]);
 
@@ -49,10 +75,12 @@ export default function ExportDownloadMenu({
         {label}
       </Button>
 
-      {open ? (
+      {open ? createPortal(
         <div
+          ref={menuRef}
           role="menu"
-          className="absolute left-0 z-30 mt-1.5 w-max min-w-0 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+          style={{ position: "fixed", top: menuPosition?.top ?? 0, left: menuPosition?.left ?? 0, zIndex: 10050, visibility: menuPosition ? "visible" : "hidden" }}
+          className="w-max min-w-0 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
         >
           <button
             type="button"
@@ -72,7 +100,8 @@ export default function ExportDownloadMenu({
             <FileSpreadsheet className="h-4 w-4 shrink-0 text-[var(--color-success)]" aria-hidden />
             Export Excel
           </button>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

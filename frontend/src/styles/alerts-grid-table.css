@@ -1,0 +1,183 @@
+.alerts-grid-table {
+  width: 100%;
+  min-width: 760px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.alerts-grid-table th,
+.alerts-grid-table td {
+  border: 1px solid var(--color-border-soft);
+  vertical-align: middle;
+}
+
+.alerts-grid-table th:nth-child(4),
+.alerts-grid-table td:nth-child(4),
+.alerts-grid-table th:nth-child(5),
+.alerts-grid-table td:nth-child(5) {
+  text-align: center;
+}
+
+.alerts-grid-table th:nth-child(1),
+.alerts-grid-table td:nth-child(1) {
+  width: 8%;
+}
+
+.alerts-grid-table th:nth-child(2),
+.alerts-grid-table td:nth-child(2) {
+  width: 21%;
+}
+
+.alerts-grid-table th:nth-child(3),
+.alerts-grid-table td:nth-child(3) {
+  width: 24%;
+}
+
+.alerts-grid-table td:nth-child(3) {
+  white-space: normal;
+  padding-right: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.alerts-grid-table td:nth-child(3) > span {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.alerts-grid-table td:nth-child(6) {
+  white-space: normal;
+}
+
+.alerts-grid-table th:nth-child(4),
+.alerts-grid-table td:nth-child(4) {
+  width: 14%;
+}
+
+.alerts-grid-table th:nth-child(5),
+.alerts-grid-table td:nth-child(5) {
+  width: 15%;
+}
+
+.alerts-grid-table th:nth-child(6),
+.alerts-grid-table td:nth-child(6) {
+  width: 18%;
+}
+
+.alerts-grid-table td:nth-child(4),
+.alerts-grid-table td:nth-child(5) {
+  padding-right: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.alerts-grid-table td:nth-child(4) > span,
+.alerts-grid-table td:nth-child(5) > span {
+  box-sizing: border-box;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.alerts-grid-table--actions th:nth-child(1),
+.alerts-grid-table--actions td:nth-child(1) { width: 7%; }
+.alerts-grid-table--actions th:nth-child(2),
+.alerts-grid-table--actions td:nth-child(2) { width: 18%; }
+.alerts-grid-table--actions th:nth-child(3),
+.alerts-grid-table--actions td:nth-child(3) { width: 23%; }
+.alerts-grid-table--actions th:nth-child(4),
+.alerts-grid-table--actions td:nth-child(4) { width: 14%; }
+.alerts-grid-table--actions th:nth-child(5),
+.alerts-grid-table--actions td:nth-child(5) { width: 14%; }
+.alerts-grid-table--actions th:nth-child(6),
+.alerts-grid-table--actions td:nth-child(6) { width: 14%; }
+.alerts-grid-table--actions th:nth-child(7),
+.alerts-grid-table--actions td:nth-child(7) { width: 10%; }
+
+@media (max-width: 767px) {
+  .ui-table-wrap--scroll:has(.alerts-grid-table) {
+    overflow-x: visible;
+  }
+
+  .alerts-grid-table {
+    display: block;
+    min-width: 0;
+  }
+
+  .alerts-grid-table thead {
+    display: none;
+  }
+
+  .alerts-grid-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .alerts-grid-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--color-border-soft);
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+  }
+
+  .alerts-grid-table tbody td {
+    display: flex;
+    min-width: 0;
+    width: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    border: 0;
+    border-bottom: 1px solid var(--color-border-soft);
+    padding: 0.65rem 0.75rem;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .alerts-grid-table tbody td::before {
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1rem;
+  }
+
+  .alerts-grid-table tbody td:nth-child(1)::before { content: "S.No."; }
+  .alerts-grid-table tbody td:nth-child(2)::before { content: "Alert"; }
+  .alerts-grid-table tbody td:nth-child(3)::before { content: "Module"; }
+  .alerts-grid-table tbody td:nth-child(4)::before { content: "Severity"; }
+  .alerts-grid-table tbody td:nth-child(5)::before { content: "Status"; }
+  .alerts-grid-table tbody td:nth-child(6)::before { content: "Created"; }
+  .alerts-grid-table--actions tbody td:nth-child(7)::before { content: "Actions"; }
+
+  .alerts-grid-table tbody td:nth-child(2) button {
+    max-width: 100%;
+  }
+
+  .alerts-grid-table tbody td:nth-child(4),
+  .alerts-grid-table tbody td:nth-child(5) {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .alerts-grid-table tbody td:nth-child(4),
+  .alerts-grid-table tbody td:nth-child(5) {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .alerts-grid-table tbody td:nth-child(3) {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .alerts-grid-table--actions tbody td:last-child {
+    grid-column: 1 / -1;
+    border-bottom: 0;
+  }
+
+  .alerts-grid-table tbody td[colspan] {
+    display: block;
+    grid-column: 1 / -1;
+  }
+
+  .alerts-grid-table tbody td[colspan]::before {
+    content: none;
+  }
+}

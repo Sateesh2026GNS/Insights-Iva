@@ -38,6 +38,7 @@ import {
   processStatusLabel,
 } from "../../data/qualityMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -399,13 +400,23 @@ export default function InProcessQC() {
 
   if (loading) return <Loader label="Loading in-process QC..." />;
 
-  const handleExport = (format) => {
-    if (format === "pdf") {
-      exportToPdf(exportRows, PROCESS_EXPORT_COLUMNS, "In-Process QC", "in-process-qc");
-    } else {
-      exportToExcel(exportRows, PROCESS_EXPORT_COLUMNS, "in-process-qc");
+  const handleExport = async (format) => {
+    try {
+      if (format === "pdf") {
+        await exportToPdf(exportRows, PROCESS_EXPORT_COLUMNS, "In-Process QC", "in-process-qc");
+      } else {
+        await exportToExcel(exportRows, PROCESS_EXPORT_COLUMNS, "in-process-qc");
+      }
+      addToast(
+        exportRows.length
+          ? (format === "pdf" ? "Exported to PDF" : "Exported to Excel")
+          : "Downloaded an empty In-Process QC report.",
+        "success",
+      );
+    } catch (error) {
+      console.error("In-Process QC export failed:", error);
+      addToast(apiErrorMessage(error, "Unable to download the In-Process QC report."), "error");
     }
-    addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
   return (
@@ -415,7 +426,7 @@ export default function InProcessQC() {
         subtitle="Monitor and manage quality checks during the production process"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+            <ExportDownloadMenu onExport={handleExport} />
             <Button variant="add" onClick={() => setShowCreate(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
               New In-Process QC
             </Button>

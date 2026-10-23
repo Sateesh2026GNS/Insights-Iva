@@ -32,25 +32,25 @@ export default function GlobalCreateMenu({
 
   const syncPosition = useCallback(() => {
     const anchor = anchorRef?.current;
-    if (!anchor) return;
-    const rect = anchor.getBoundingClientRect();
-    const sideLeft = rect.right + 12;
-    const sideWidth = window.innerWidth - sideLeft - 16;
-    const openBesideAnchor = palette && sideWidth >= 320;
-    const menuWidth = palette
-      ? Math.min(680, openBesideAnchor ? sideWidth : window.innerWidth - 32)
-      : 220;
-    let left = rect.left + rect.width / 2 - menuWidth / 2;
+    if (!anchor && !palette) return;
+    const rect = anchor?.getBoundingClientRect();
+    const menuWidth = palette ? Math.min(680, window.innerWidth - 32) : 220;
     if (palette) {
-      left = openBesideAnchor ? sideLeft : 16;
-    } else if (align === "end") {
+      const maxHeight = Math.max(180, window.innerHeight - 32);
+      const measuredHeight = menuRef.current?.getBoundingClientRect().height || 0;
+      const top = Math.max(16, (window.innerHeight - Math.min(measuredHeight, maxHeight)) / 2);
+      const left = Math.max(16, (window.innerWidth - menuWidth) / 2);
+      setPos({ top, left, width: menuWidth, maxHeight });
+      return;
+    }
+
+    let left = rect.left + rect.width / 2 - menuWidth / 2;
+    if (align === "end") {
       left = rect.right - menuWidth;
     }
     left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
-    const bottom = palette ? undefined : window.innerHeight - rect.top + 8;
-    const top = palette ? Math.max(16, Math.min(rect.top, window.innerHeight - 160)) : undefined;
-    const maxHeight = palette ? Math.max(180, window.innerHeight - top - 12) : undefined;
-    setPos({ bottom, top, left, width: menuWidth, maxHeight });
+    const bottom = window.innerHeight - rect.top + 8;
+    setPos({ bottom, left, width: menuWidth });
   }, [anchorRef, align, palette]);
 
   useEffect(() => {

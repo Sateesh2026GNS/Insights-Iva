@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   Calendar,
@@ -52,6 +53,7 @@ import {
 } from "../../data/productionScheduleMasterData";
 import { runListExport } from "../../utils/listExport";
 import { cleanProductLabel } from "../../utils/productLabel";
+import { apiErrorMessage } from "../../utils/apiError";
 import { SCHEDULE_TOOLKIT_KPIS, formatScheduleKpiValue } from "../../utils/productionScheduleToolkit";
 import "../../styles/manufacturing-toolkit.css";
 import "../../styles/production-schedule-toolkit.css";
@@ -685,6 +687,7 @@ function NewScheduleModal({ onClose, onSuccess }) {
   const { addToast } = useToast();
   const [productionOrders, setProductionOrders] = useState([]);
   const [machines, setMachines] = useState([]);
+  const [productionOrdersError, setProductionOrdersError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -698,13 +701,23 @@ function NewScheduleModal({ onClose, onSuccess }) {
 
   useEffect(() => {
     Promise.all([
-      getProductionOrders().catch(() => ({ data: [] })),
+      getProductionOrders().catch((error) => {
+        setProductionOrdersError(apiErrorMessage(error, "Could not load production orders."));
+        return { data: [] };
+      }),
       getMachines().catch(() => ({ data: [] })),
     ]).then(([poRes, mRes]) => {
-      // Only show planned/in_progress orders that don't have a work order yet
-      const orders = (poRes.data || []).filter((o) => ["planned", "in_progress"].includes(o.status));
+      // Match backend planning statuses; only orders without an existing work order can be scheduled here.
+      const schedulableStatuses = new Set([
+        "draft", "planned", "pending", "assigned", "material_ready", "machine_assigned",
+        "in_progress", "running",
+      ]);
+      const orders = (poRes.data || []).filter((order) => {
+        const status = String(order.status || "").trim().toLowerCase();
+        return schedulableStatuses.has(status) && !order.work_order_number;
+      });
       setProductionOrders(orders);
-      setMachines(mRes.data || []);
+      setMachines(Array.isArray(mRes.data) ? mRes.data : []);
     }).finally(() => setLoading(false));
   }, [tenantId]);
 
@@ -715,6 +728,10 @@ function NewScheduleModal({ onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!productionOrders.length) {
+      addToast("Create or release a production order before scheduling.", "error");
+      return;
+    }
     if (!form.production_order_id) {
       addToast("Please select a production order", "error");
       return;
@@ -741,8 +758,7 @@ function NewScheduleModal({ onClose, onSuccess }) {
         onClose();
       }
     } catch (err) {
-      const detail = err?.response?.data?.detail;
-      addToast(typeof detail === "string" ? detail : "Failed to create schedule", "error");
+      addToast(apiErrorMessage(err, "Unable to create schedule. Check the production order and try again."), "error");
     } finally {
       setSaving(false);
     }
@@ -798,11 +814,14 @@ function NewScheduleModal({ onClose, onSuccess }) {
                   </option>
                 ))}
               </select>
-              {productionOrders.length === 0 && (
+              {productionOrdersError ? (
+                <p className="mt-1 text-xs text-[var(--color-danger)]" role="alert">{productionOrdersError}</p>
+              ) : productionOrders.length === 0 ? (
                 <p className="mt-1 text-xs text-[var(--color-warning)]">
-                  No active production orders found. Create a production order first.
+                  No schedulable production orders found. Create or release one in{" "}
+                  <Link to="/production/planning" onClick={onClose} className="font-semibold underline">Production Planning</Link>.
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div>

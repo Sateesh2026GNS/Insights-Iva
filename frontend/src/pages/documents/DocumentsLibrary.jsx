@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   CalendarDays,
   Clock,
@@ -50,14 +51,13 @@ import {
   createDocument,
   deleteDocument,
   downloadDocument,
-  getDocumentPreview,
   getDocumentsSummary,
   listDocumentVersions,
   listDocuments,
   uploadDocumentVersion,
   updateDocumentStatus,
+  getDocumentPreviewFile,
 } from "../../api/documentsV1Api";
-import { getApiBaseURL } from "../../api/axiosConfig";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 import { isAdmin, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
@@ -203,6 +203,10 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   const [versionModal, setVersionModal] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewMeta, setPreviewMeta] = useState(null);
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
   const [busyId, setBusyId] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [statusEditDoc, setStatusEditDoc] = useState(null);
@@ -452,9 +456,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
       return;
     }
     try {
-      const res = await getDocumentPreview(doc.id);
-      const base = getApiBaseURL().replace(/\/$/, "");
-      const url = `${base}${res.data.url}`;
+      const url = await getDocumentPreviewFile(doc.id);
       setPreviewUrl(url);
       setPreviewMeta(doc);
     } catch (e) {
@@ -1051,9 +1053,9 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         </div>
       )}
 
-      {previewUrl && previewMeta && (
-        <div className="ui-modal-backdrop">
-          <div className="ui-modal flex max-h-[90vh] w-full max-w-4xl flex-col">
+      {previewUrl && previewMeta && createPortal(
+        <div className="ui-modal-backdrop documents-preview-backdrop">
+          <div className="ui-modal flex w-full max-w-5xl flex-col documents-preview-modal">
             <div className="flex justify-between border-b pb-2">
               <h2 className="font-bold">{previewMeta.name}</h2>
               <Button
@@ -1077,7 +1079,8 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
