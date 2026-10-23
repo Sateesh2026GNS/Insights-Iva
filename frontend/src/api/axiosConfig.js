@@ -64,9 +64,9 @@ export function getApiBaseURL() {
     const envUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
     if (envUrl) {
       let raw = envUrl.replace(/\/+$/, "");
-      if (hostname === "localhost" && raw.includes("127.0.0.1:8000")) {
-        raw = raw.replace("127.0.0.1:8000", "localhost:8000");
-      } else if (hostname === "127.0.0.1" && raw.includes("localhost:8000")) {
+      // On Windows, localhost can resolve to IPv6 ::1 first, causing a 15-20s connection stall
+      // when backend binds only to IPv4 (0.0.0.0). Normalize local backends to 127.0.0.1.
+      if (isLocalhost && raw.includes("localhost:8000")) {
         raw = raw.replace("localhost:8000", "127.0.0.1:8000");
       }
       // If VITE_API_BASE_URL points to localhost but the site is loaded from a global/remote host,

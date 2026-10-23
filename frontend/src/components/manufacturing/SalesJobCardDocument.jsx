@@ -180,6 +180,7 @@ export default function SalesJobCardDocument({
                   </span>
                 </div>
                 <FieldRow label="Product Category" value={order.product_category} />
+                <FieldRow label="End Use" value={order.end_use} />
                 <FieldRow label="Payment Terms" value={order.payment_terms} />
                 <div className="sjc-doc__field-row">
                   <span className="sjc-doc__field-label">Priority *</span>
@@ -214,6 +215,7 @@ export default function SalesJobCardDocument({
                 <FieldRow label="Sales Order Date" value={fmtDate(order.sales_order_date)} />
                 <FieldRow label="Delivery Date" value={fmtDeliveryDisplay(order.delivery_date)} />
                 <FieldRow label="Product Category" value={order.product_category} />
+                <FieldRow label="End Use" value={order.end_use} />
                 <FieldRow label="Payment Terms" value={order.payment_terms} />
                 {order.payment_terms_description ? (
                   <FieldRow label="Payment Terms Description" value={order.payment_terms_description} />

@@ -94,7 +94,6 @@ function normalizeUser(raw) {
 
 function readStoredUser() {
   try {
-    clearLegacyAuthTokens();
     const status = checkSessionStatus();
     if (status.expired) {
       if (status.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {

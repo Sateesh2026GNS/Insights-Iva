@@ -43,10 +43,16 @@ def seed_tenant(db):
             if not slug_clash:
                 existing.slug = "gns"
                 changed = True
-        if existing.subscription is None or (existing.subscription or "").strip().lower() in {"", "none"}:
-            existing.subscription = "trial"
+        if getattr(existing, "status", None) != "active":
+            existing.status = "active"
             changed = True
-        if existing.trial_status is False and (existing.subscription or "").lower() == "trial":
+        if getattr(existing, "license_status", None) != "active":
+            existing.license_status = "active"
+            changed = True
+        if existing.subscription is None or (existing.subscription or "").strip().lower() in {"", "none", "trial"}:
+            existing.subscription = "enterprise"
+            changed = True
+        if not existing.trial_status:
             existing.trial_status = True
             changed = True
         if changed:
@@ -67,3 +73,5 @@ def seed_tenant(db):
     db.flush()
     _sync_tenant_id_sequence(db)
     db.commit()
+    from app.services.inventory_v2_service import seed_default_categories
+    seed_default_categories(db, tenant.id)

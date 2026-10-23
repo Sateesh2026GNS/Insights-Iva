@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import {
   Calendar,
-  CalendarDays,
   CheckCircle,
   ChevronDown,
   ChevronLeft,
@@ -307,6 +306,7 @@ export default function IncomingInspection() {
     if (t.includes("process") || t.includes("ipqc")) return "in_process";
     if (t.includes("final") || t.includes("fqc")) return "final";
     if (t.includes("batch")) return "batch";
+    if (t.includes("raw") || t.includes("material")) return "raw_material";
     return "incoming";
   };
 
@@ -465,36 +465,57 @@ export default function IncomingInspection() {
             aria-label="Search incoming inspections"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
-              <button
-                type="button"
-                aria-label="Open date picker"
-                onClick={() => {
-                  const input = dateInputRef.current;
-                  if (!input) return;
-                  if (typeof input.showPicker === "function") input.showPicker();
-                  else {
-                    input.focus();
-                    input.click();
-                  }
-                }}
-                className="shrink-0 text-[var(--color-text-muted)]"
-              >
-                <CalendarDays className="h-4 w-4" />
-              </button>
+            <div
+              onClick={(e) => {
+                if (e.target.closest("button")) return;
+                const input = dateInputRef.current;
+                if (!input) return;
+                if (typeof input.showPicker === "function") input.showPicker();
+                else input.focus();
+              }}
+              className="inline-flex min-h-[var(--control-h)] h-[var(--control-h)] items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2.5 text-xs shadow-xs transition-colors hover:border-[var(--color-primary)] focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)] cursor-pointer"
+            >
               <input
                 ref={dateInputRef}
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none"
+                className="w-[6.2rem] border-0 bg-transparent p-0 text-xs text-[var(--color-text)] focus:outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                 aria-label="Select date"
               />
+              <button
+                type="button"
+                aria-label="Open date picker"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const input = dateInputRef.current;
+                  if (!input) return;
+                  if (typeof input.showPicker === "function") input.showPicker();
+                  else input.focus();
+                }}
+                className="cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors shrink-0"
+              >
+                <Calendar className="h-4 w-4" />
+              </button>
+              {dateFilter && (
+                <button
+                  type="button"
+                  aria-label="Clear date filter"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDateFilter("");
+                  }}
+                  className="cursor-pointer text-[var(--color-text-muted)] hover:text-red-500 transition-colors shrink-0"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <Button
               type="button"
               variant="secondary"
               onClick={() => setShowFilters((v) => !v)}
+              aria-expanded={showFilters}
               className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
             >
               <Filter className="h-4 w-4" /> Filters
@@ -507,7 +528,8 @@ export default function IncomingInspection() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
+        {showFilters && (
+          <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
           <MultiSelectDropdown
             label="Inspection Types"
             options={INSPECTION_TYPE_OPTIONS}
@@ -562,7 +584,8 @@ export default function IncomingInspection() {
               Clear filters
             </Button>
           )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* KPI cards */}

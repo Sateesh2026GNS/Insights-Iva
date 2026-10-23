@@ -289,6 +289,8 @@ class PlatformCompanyService:
             tenant.company_code = _company_code(tenant.id)
 
             seed_roles_for_tenant(self.db, tenant.id)
+            from app.services.inventory_v2_service import seed_default_categories
+            seed_default_categories(self.db, tenant.id)
             admin_role = self.db.scalars(
                 select(Role).where(Role.tenant_id == tenant.id, Role.name == ADMIN_ROLE)
             ).first()

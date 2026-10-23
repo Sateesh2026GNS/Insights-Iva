@@ -126,10 +126,34 @@ export function buildSalesJobCardDocument({
       sales_order_date: so.order_date,
       delivery_date: form?.required_delivery_date || so.delivery_date,
       product_category: uniqueCategories.join(", ") || null,
-      end_use: null,
-      payment_terms: so.payment_terms,
-      priority: form?.priority || so.priority,
-      remarks: form?.notes,
+      end_use:
+        form?.end_use ||
+        so.end_use ||
+        card?.manual_document?.order?.end_use ||
+        card?.sales_document?.order_details?.end_use ||
+        null,
+      payment_terms:
+        form?.payment_terms ||
+        so.payment_terms ||
+        card?.manual_document?.order?.payment_terms ||
+        null,
+      payment_terms_description:
+        form?.payment_terms_description ||
+        card?.manual_document?.order?.payment_terms_description ||
+        so.payment_terms_description ||
+        null,
+      priority:
+        form?.priority ||
+        so.priority ||
+        card?.manual_document?.order?.priority ||
+        "medium",
+      remarks:
+        form?.notes ||
+        form?.remarks ||
+        so.remarks ||
+        so.notes ||
+        card?.manual_document?.order?.remarks ||
+        null,
       sales_person: form?.sales_person_name || so.sales_person,
     },
     product_lines: lines,

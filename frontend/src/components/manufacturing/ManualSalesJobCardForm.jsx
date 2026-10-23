@@ -17,6 +17,7 @@ import {
   getManualJobCard,
   updateManualJobCard,
 } from "../../api/workflowApi";
+import { listInventoryV2Categories } from "../../api/inventoryV2Api";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage, extractApiErrorDetail } from "../../utils/apiError";
 import {
@@ -140,10 +141,27 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
     () => PAYMENT_TERMS_OPTIONS.map((t) => ({ value: t, label: t })),
     []
   );
-  const categoryOptions = useMemo(
-    () => PRODUCT_CATEGORY_OPTIONS.map((c) => ({ value: c, label: c })),
-    []
-  );
+  const [customCategories, setCustomCategories] = useState([]);
+
+  useEffect(() => {
+    listInventoryV2Categories()
+      .then((res) => {
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setCustomCategories(rows.filter((c) => c?.name && String(c.name).toLowerCase() !== "no category"));
+      })
+      .catch(() => setCustomCategories([]));
+  }, []);
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set(PRODUCT_CATEGORY_OPTIONS);
+    customCategories.forEach((c) => {
+      if (c.name) set.add(c.name);
+    });
+    if (form.order.product_category && form.order.product_category.trim()) {
+      set.add(form.order.product_category.trim());
+    }
+    return Array.from(set).map((c) => ({ value: c, label: c }));
+  }, [customCategories, form.order.product_category]);
   const specParameterOptions = useMemo(
     () => SPEC_PARAMETER_OPTIONS.map((p) => ({ value: p, label: p })),
     []
@@ -408,6 +426,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
         order_date: detailOrder?.order_date ?? order.order_date,
         customer_name:
           detailCustomerRecord?.name ?? detailOrder?.customer_name ?? order.customer_name,
+        end_use: detailOrder?.end_use ?? order.end_use ?? "",
+        remarks: detailOrder?.remarks ?? detailOrder?.notes ?? order.remarks ?? order.notes ?? "",
       };
 
       let customer = null;
@@ -706,6 +726,7 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
       />
       <QuickAddProductModal
         open={showAddProduct}
+        defaultCategory={form.order.product_category || "Finished Goods"}
         onClose={() => {
           setShowAddProduct(false);
           setAddProductRowIndex(null);
@@ -1016,6 +1037,27 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                       disabled={!canEditCard}
                     />
                   </FormGridField>
+                  <FormGridField label="End Use">
+                    <Input
+                      value={form.order.end_use}
+                      onChange={(e) => patch("order.end_use", e.target.value)}
+                      className="sjc-doc__input"
+                      placeholder="e.g. Packaging, Pharma, Labels"
+                      disabled={!canEditCard}
+                    />
+                  </FormGridField>
+                  <FormGridField label="Priority">
+                    <Select
+                      value={form.order.priority}
+                      onChange={(e) => patch("order.priority", e.target.value)}
+                      className="sjc-doc__input"
+                      disabled={!canEditCard}
+                    >
+                      {PRIORITY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </Select>
+                  </FormGridField>
                   <FormGridField label="Payment Terms">
                     <div className="manual-sjc__payment-terms-field">
                       <SearchableSelect
@@ -1063,6 +1105,17 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
                         </button>
                       ) : null}
                     </div>
+                  </FormGridField>
+                  <FormGridField label="Remarks">
+                    <Textarea
+                      rows={2}
+                      wrap="soft"
+                      value={form.order.remarks}
+                      onChange={(e) => patch("order.remarks", e.target.value)}
+                      className="sjc-doc__input manual-sjc__textarea"
+                      placeholder="Add remarks or special instructions"
+                      disabled={!canEditCard}
+                    />
                   </FormGridField>
                 </div>
               </section>
