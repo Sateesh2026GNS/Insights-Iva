@@ -864,14 +864,25 @@ function extractSalesJobCardPrintData(order) {
   };
 
   const order_details = {
+    ...o,
     sales_order_date: o.sales_order_date || order?.job_card_date || order?.order_date || "",
     delivery_date: o.delivery_date || order?.delivery_date || "",
     product_category: o.product_category || order?.product_category || order?.category || "",
-    end_use: o.end_use || order?.end_use || "",
-    payment_terms: o.payment_terms || order?.payment_terms || "",
-    priority: o.priority || (order?.priority ? String(order.priority).toUpperCase() : "MEDIUM"),
-    remarks: o.remarks || order?.notes || order?.remarks || "",
-    ...o,
+    end_use: o.end_use || order?.end_use || doc?.order?.end_use || "",
+    payment_terms: o.payment_terms || order?.payment_terms || doc?.order?.payment_terms || "",
+    payment_terms_description:
+      o.payment_terms_description ||
+      order?.payment_terms_description ||
+      doc?.order?.payment_terms_description ||
+      "",
+    priority:
+      o.priority ||
+      (order?.priority
+        ? String(order.priority).toUpperCase()
+        : doc?.order?.priority
+        ? String(doc.order.priority).toUpperCase()
+        : "MEDIUM"),
+    remarks: o.remarks || order?.notes || order?.remarks || doc?.order?.remarks || "",
   };
 
   const product_lines =
@@ -1064,8 +1075,8 @@ function buildSalesJobCardHtml(data) {
       <div class="row"><span class="lbl">Delivery Date</span><span>${escapeHtml(o.delivery_date || '')}</span></div>
       <div class="row"><span class="lbl">Product Category</span><span>${escapeHtml(o.product_category || '')}</span></div>
       <div class="row"><span class="lbl">End Use</span><span>${escapeHtml(o.end_use || '')}</span></div>
-      <div class="row"><span class="lbl">Payment Terms</span><span>${escapeHtml(o.payment_terms || '')}</span></div>
-      <div class="row"><span class="lbl">Priority</span><span>${escapeHtml(o.priority || '')}</span></div>
+      <div class="row"><span class="lbl">Payment Terms</span><span>${escapeHtml(o.payment_terms || '')}${o.payment_terms_description ? ` (${escapeHtml(o.payment_terms_description)})` : ''}</span></div>
+      <div class="row"><span class="lbl">Priority</span><span>${escapeHtml(o.priority ? String(o.priority).toUpperCase() : '')}</span></div>
       <div class="row"><span class="lbl">Remarks</span><span>${escapeHtml(o.remarks || '')}</span></div>
     </div></div>
   </div>
@@ -1228,14 +1239,15 @@ export async function downloadSalesJobCardPdf(order, user) {
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 6,
     margin,
-    head: [["SO Date", "Delivery", "Category", "Payment Terms", "Priority", "Remarks"]],
+    head: [["SO Date", "Delivery", "Category", "End Use", "Payment Terms", "Priority", "Remarks"]],
     body: [
       [
         fmtVal(o.sales_order_date),
         fmtVal(o.delivery_date),
         fmtVal(o.product_category),
-        fmtVal(o.payment_terms),
-        fmtVal(o.priority),
+        fmtVal(o.end_use),
+        fmtVal(o.payment_terms ? `${o.payment_terms}${o.payment_terms_description ? ` (${o.payment_terms_description})` : ''}` : ''),
+        fmtVal(o.priority ? String(o.priority).toUpperCase() : ''),
         fmtVal(o.remarks),
       ],
     ],

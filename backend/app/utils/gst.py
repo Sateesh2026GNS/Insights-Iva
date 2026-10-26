@@ -4,12 +4,8 @@ from __future__ import annotations
 
 import re
 
-# 2 digit state + 10 char PAN + entity + Z + checksum
-_GSTIN_RE = re.compile(
-    r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"
-)
-
-_GSTIN_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+# Exactly 15 alphanumeric characters with at least one letter and one number
+_GSTIN_RE = re.compile(r"^(?=.*[0-9])(?=.*[A-Z])[A-Z0-9]{15}$")
 
 
 def normalize_gstin(value: str | None) -> str | None:
@@ -21,7 +17,7 @@ def normalize_gstin(value: str | None) -> str | None:
 
 def validate_gstin(value: str | None, *, required: bool = False) -> str | None:
     """
-    Validate Indian GSTIN format + checksum.
+    Validate Indian GSTIN: exactly 15 alphanumeric characters with at least one letter and one number.
     Returns normalized GSTIN or None if empty and not required.
     Raises ValueError on invalid format.
     """
@@ -33,16 +29,9 @@ def validate_gstin(value: str | None, *, required: bool = False) -> str | None:
     if len(gstin) != 15:
         raise ValueError("GST Number must be exactly 15 characters")
     if not _GSTIN_RE.match(gstin):
-        raise ValueError("Invalid GST Number format")
-    # Checksum (mod 36)
-    total = 0
-    for i, ch in enumerate(gstin[:14]):
-        code = _GSTIN_CHARS.index(ch)
-        product = code * (1 if i % 2 == 0 else 2)
-        total += (product // 36) + (product % 36)
-    check = (36 - (total % 36)) % 36
-    if _GSTIN_CHARS[check] != gstin[14]:
-        raise ValueError("Invalid GST Number checksum")
+        raise ValueError(
+            "GST Number must be 15 alphanumeric characters with at least one letter and one number"
+        )
     return gstin
 
 

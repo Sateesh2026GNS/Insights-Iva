@@ -1,5 +1,20 @@
 /* Documents library — compact layout & scoped table spacing */
 
+.documents-preview-backdrop {
+  top: calc(var(--navbar-height) + 2rem);
+  bottom: 1rem;
+  z-index: 9999;
+}
+
+.documents-preview-modal {
+  max-height: calc(100dvh - var(--navbar-height) - 3rem);
+  min-height: 0;
+}
+
+.documents-preview-modal iframe {
+  height: min(70vh, calc(100dvh - var(--navbar-height) - 10rem));
+}
+
 .documents-library-page__stack {
   gap: var(--space-3);
 }

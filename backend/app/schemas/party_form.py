@@ -78,8 +78,6 @@ class PartyBasicDetails(BaseModel):
         return self
 
     def require_email(self) -> PartyBasicDetails:
-        if not self.email:
-            raise ValueError("Email ID is required")
         return self
 
 

@@ -111,16 +111,25 @@ def _leave_balance_snapshot(
     return float(row.balance or 0)
 
 
-def _collect_leave_items(db: Session, tenant_id: int) -> list[ApprovalQueueItemRead]:
+def _collect_leave_items(
+    db: Session, tenant_id: int, status_filter: str | None = "pending"
+) -> list[ApprovalQueueItemRead]:
+    q = (
+        select(LeaveRequest)
+        .options(joinedload(LeaveRequest.employee))
+        .where(LeaveRequest.tenant_id == tenant_id)
+    )
+    sf = (status_filter or "pending").lower().strip()
+    if sf == "pending":
+        q = q.where(LeaveRequest.status == "pending")
+    elif sf == "approved":
+        q = q.where(LeaveRequest.status == "approved")
+    elif sf == "rejected":
+        q = q.where(LeaveRequest.status == "rejected")
+
     rows = list(
         db.scalars(
-            select(LeaveRequest)
-            .options(joinedload(LeaveRequest.employee))
-            .where(
-                LeaveRequest.tenant_id == tenant_id,
-                LeaveRequest.status == "pending",
-            )
-            .order_by(LeaveRequest.created_at.desc(), LeaveRequest.id.desc())
+            q.order_by(LeaveRequest.created_at.desc(), LeaveRequest.id.desc())
         ).all()
     )
     items: list[ApprovalQueueItemRead] = []
@@ -165,15 +174,21 @@ def _collect_leave_items(db: Session, tenant_id: int) -> list[ApprovalQueueItemR
     return items
 
 
-def _collect_material_requests(db: Session, tenant_id: int) -> list[ApprovalQueueItemRead]:
+def _collect_material_requests(
+    db: Session, tenant_id: int, status_filter: str | None = "pending"
+) -> list[ApprovalQueueItemRead]:
+    q = select(MaterialRequest).where(MaterialRequest.tenant_id == tenant_id)
+    sf = (status_filter or "pending").lower().strip()
+    if sf == "pending":
+        q = q.where(MaterialRequest.approval_status == "pending")
+    elif sf == "approved":
+        q = q.where(MaterialRequest.approval_status.in_(("approved", "auto_approved")))
+    elif sf == "rejected":
+        q = q.where(MaterialRequest.approval_status == "rejected")
+
     mrs = list(
         db.scalars(
-            select(MaterialRequest)
-            .where(
-                MaterialRequest.tenant_id == tenant_id,
-                MaterialRequest.approval_status == "pending",
-            )
-            .order_by(MaterialRequest.created_at.desc(), MaterialRequest.id.desc())
+            q.order_by(MaterialRequest.created_at.desc(), MaterialRequest.id.desc())
         ).all()
     )
     items: list[ApprovalQueueItemRead] = []
@@ -203,15 +218,21 @@ def _collect_material_requests(db: Session, tenant_id: int) -> list[ApprovalQueu
     return items
 
 
-def _collect_purchase_orders(db: Session, tenant_id: int) -> list[ApprovalQueueItemRead]:
+def _collect_purchase_orders(
+    db: Session, tenant_id: int, status_filter: str | None = "pending"
+) -> list[ApprovalQueueItemRead]:
+    q = select(PurchaseOrder).where(PurchaseOrder.tenant_id == tenant_id)
+    sf = (status_filter or "pending").lower().strip()
+    if sf == "pending":
+        q = q.where(PurchaseOrder.status == "draft")
+    elif sf == "approved":
+        q = q.where(PurchaseOrder.status.in_(("approved", "ordered", "received", "partially_received")))
+    elif sf == "rejected":
+        q = q.where(PurchaseOrder.status.in_(("rejected", "cancelled")))
+
     pos = list(
         db.scalars(
-            select(PurchaseOrder)
-            .where(
-                PurchaseOrder.tenant_id == tenant_id,
-                PurchaseOrder.status == "draft",
-            )
-            .order_by(PurchaseOrder.created_at.desc(), PurchaseOrder.id.desc())
+            q.order_by(PurchaseOrder.created_at.desc(), PurchaseOrder.id.desc())
         ).all()
     )
     items: list[ApprovalQueueItemRead] = []
@@ -236,15 +257,21 @@ def _collect_purchase_orders(db: Session, tenant_id: int) -> list[ApprovalQueueI
     return items
 
 
-def _collect_vendors(db: Session, tenant_id: int) -> list[ApprovalQueueItemRead]:
+def _collect_vendors(
+    db: Session, tenant_id: int, status_filter: str | None = "pending"
+) -> list[ApprovalQueueItemRead]:
+    q = select(Supplier).where(Supplier.tenant_id == tenant_id)
+    sf = (status_filter or "pending").lower().strip()
+    if sf == "pending":
+        q = q.where(Supplier.approval_status == "pending")
+    elif sf == "approved":
+        q = q.where(Supplier.approval_status == "approved")
+    elif sf == "rejected":
+        q = q.where(Supplier.approval_status == "rejected")
+
     vendors = list(
         db.scalars(
-            select(Supplier)
-            .where(
-                Supplier.tenant_id == tenant_id,
-                Supplier.approval_status == "pending",
-            )
-            .order_by(Supplier.created_at.desc(), Supplier.id.desc())
+            q.order_by(Supplier.created_at.desc(), Supplier.id.desc())
         ).all()
     )
     items: list[ApprovalQueueItemRead] = []
@@ -268,15 +295,21 @@ def _collect_vendors(db: Session, tenant_id: int) -> list[ApprovalQueueItemRead]
     return items
 
 
-def _collect_production_orders(db: Session, tenant_id: int) -> list[ApprovalQueueItemRead]:
+def _collect_production_orders(
+    db: Session, tenant_id: int, status_filter: str | None = "pending"
+) -> list[ApprovalQueueItemRead]:
+    q = select(ProductionOrder).where(ProductionOrder.tenant_id == tenant_id)
+    sf = (status_filter or "pending").lower().strip()
+    if sf == "pending":
+        q = q.where(ProductionOrder.status.in_(("planned", "pending")))
+    elif sf == "approved":
+        q = q.where(ProductionOrder.status.in_(("released", "approved", "completed", "in_progress")))
+    elif sf == "rejected":
+        q = q.where(ProductionOrder.status.in_(("cancelled", "rejected")))
+
     orders = list(
         db.scalars(
-            select(ProductionOrder)
-            .where(
-                ProductionOrder.tenant_id == tenant_id,
-                ProductionOrder.status.in_(("planned", "pending")),
-            )
-            .order_by(ProductionOrder.created_at.desc(), ProductionOrder.id.desc())
+            q.order_by(ProductionOrder.created_at.desc(), ProductionOrder.id.desc())
         ).all()
     )
     items: list[ApprovalQueueItemRead] = []
@@ -301,15 +334,21 @@ def _collect_production_orders(db: Session, tenant_id: int) -> list[ApprovalQueu
     return items
 
 
-def _collect_stock_adjustments(db: Session, tenant_id: int) -> list[ApprovalQueueItemRead]:
+def _collect_stock_adjustments(
+    db: Session, tenant_id: int, status_filter: str | None = "pending"
+) -> list[ApprovalQueueItemRead]:
+    q = select(StockAdjustment).where(StockAdjustment.tenant_id == tenant_id)
+    sf = (status_filter or "pending").lower().strip()
+    if sf == "pending":
+        q = q.where(StockAdjustment.status == "pending")
+    elif sf == "approved":
+        q = q.where(StockAdjustment.status == "approved")
+    elif sf == "rejected":
+        q = q.where(StockAdjustment.status == "rejected")
+
     rows = list(
         db.scalars(
-            select(StockAdjustment)
-            .where(
-                StockAdjustment.tenant_id == tenant_id,
-                StockAdjustment.status == "pending",
-            )
-            .order_by(StockAdjustment.created_at.desc(), StockAdjustment.id.desc())
+            q.order_by(StockAdjustment.created_at.desc(), StockAdjustment.id.desc())
         ).all()
     )
     items: list[ApprovalQueueItemRead] = []
@@ -344,9 +383,15 @@ def _matches_search(item: ApprovalQueueItemRead, q: str) -> bool:
                 item.title,
                 item.employee_name,
                 item.department,
+                item.designation,
                 item.detail_summary,
                 item.category,
+                item.reason,
+                item.status,
                 str(item.resource_id),
+                str(item.extra.get("vendor_name", "")),
+                str(item.extra.get("leave_type", "")),
+                str(item.extra.get("employee_code", "")),
             ],
         )
     ).lower()
@@ -360,7 +405,14 @@ def _matches_dates(
         return True
     submitted = item.submitted_at
     if not submitted:
-        return True
+        extra_date = item.extra.get("start_date")
+        if extra_date:
+            try:
+                submitted = date.fromisoformat(str(extra_date)[:10])
+            except ValueError:
+                pass
+    if not submitted:
+        return False
     sub_date = submitted.date() if isinstance(submitted, datetime) else submitted
     if from_d and sub_date < from_d:
         return False
@@ -425,14 +477,24 @@ def list_approval_queue(
     all_items: list[ApprovalQueueItemRead] = []
     for cat in collectors:
         if cat in cats_to_load:
-            all_items.extend(collectors[cat](db, tenant_id))
+            all_items.extend(collectors[cat](db, tenant_id, status_filter=status_filter))
 
     if status_filter and status_filter.lower() != "all":
-        sf = status_filter.lower()
+        sf = status_filter.lower().strip()
         if sf == "pending":
             all_items = [
                 i for i in all_items
                 if (i.status or "").lower() in ("pending", "draft", "planned")
+            ]
+        elif sf == "approved":
+            all_items = [
+                i for i in all_items
+                if (i.status or "").lower() in ("approved", "auto_approved", "released", "completed", "in_progress", "ordered", "received", "partially_received")
+            ]
+        elif sf == "rejected":
+            all_items = [
+                i for i in all_items
+                if (i.status or "").lower() in ("rejected", "cancelled")
             ]
         else:
             all_items = [i for i in all_items if (i.status or "").lower() == sf]
@@ -450,8 +512,15 @@ def list_approval_queue(
         reverse=True,
     )
 
-    pending_total = len(all_items)
-    total = pending_total
+    total = len(all_items)
+    if (status_filter or "pending").lower().strip() == "pending" and not search and not from_date and not to_date and (not category or category == "all"):
+        pending_total = total
+    else:
+        pending_total = 0
+        for cat in collectors:
+            if cat in allowed:
+                pending_total += len(collectors[cat](db, tenant_id, status_filter="pending"))
+
     total_pages = max(1, math.ceil(total / page_size)) if total else 0
     if total and page > total_pages:
         page = total_pages

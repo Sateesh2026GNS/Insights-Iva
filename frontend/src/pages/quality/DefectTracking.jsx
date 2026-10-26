@@ -307,18 +307,18 @@ export default function DefectTracking() {
               aria-label="Search defect tracking records"
             />
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <div className="inline-flex min-h-[var(--control-h)] w-[12.5rem] min-w-[12.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
                 <button type="button" aria-label="Open start date picker" onClick={() => { const input = dateFromRef.current; if (!input) return; if (input.showPicker) input.showPicker(); else { input.focus(); input.click(); } }} className="shrink-0 text-[var(--color-text-muted)]">
                   <CalendarDays className="h-4 w-4" />
                 </button>
-                <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date from" />
+                <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[9rem] min-w-[9rem] flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date from" />
               </div>
               <span className="text-sm text-[var(--color-text-muted)]">to</span>
-              <div className="inline-flex min-h-[var(--control-h)] min-w-[8.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <div className="inline-flex min-h-[var(--control-h)] w-[12.5rem] min-w-[12.5rem] items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
                 <button type="button" aria-label="Open end date picker" onClick={() => { const input = dateToRef.current; if (!input) return; if (input.showPicker) input.showPicker(); else { input.focus(); input.click(); } }} className="shrink-0 text-[var(--color-text-muted)]">
                   <CalendarDays className="h-4 w-4" />
                 </button>
-                <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[6rem] min-w-0 flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date to" />
+                <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[9rem] min-w-[9rem] flex-none border-0 bg-transparent p-0 text-sm text-[var(--color-text)] focus:outline-none" aria-label="Date to" />
               </div>
               <Button type="button" variant="secondary" onClick={clearFilters}>
                 <RotateCcw className="h-4 w-4" /> Clear

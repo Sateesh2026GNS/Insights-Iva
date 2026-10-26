@@ -31,6 +31,23 @@ const CATEGORY_TABS = [
   { id: "inventory", label: "Inventory" },
 ];
 
+const TYPE_OPTIONS = [
+  { value: "all", label: "All Types" },
+  { value: "leave", label: "Leave Requests" },
+  { value: "material_request", label: "Material Requests" },
+  { value: "purchase_order", label: "Purchase Orders" },
+  { value: "vendor", label: "Vendor Registrations" },
+  { value: "production", label: "Production Orders" },
+  { value: "inventory", label: "Inventory Adjustments" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "all", label: "All Statuses" },
+];
+
 const CATEGORY_LABELS = {
   leave: "Leave Request",
   material_request: "Material Request",
@@ -76,11 +93,13 @@ export default function PendingApprovals() {
 
   const [activeTab, setActiveTab] = useState("all");
   const [searchInput, setSearchInput] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [appliedFilters, setAppliedFilters] = useState({
     search: "",
+    type: "all",
     status: "pending",
     fromDate: "",
     toDate: "",
@@ -100,10 +119,17 @@ export default function PendingApprovals() {
     setLoading(true);
     setError(null);
     try {
+      const activeCategory =
+        appliedFilters.type && appliedFilters.type !== "all"
+          ? appliedFilters.type
+          : activeTab === "all"
+          ? undefined
+          : activeTab;
+
       const res = await getApprovalQueue({
         page,
         page_size: pageSize,
-        category: activeTab === "all" ? undefined : activeTab,
+        category: activeCategory,
         status: appliedFilters.status || "pending",
         search: appliedFilters.search || undefined,
         from_date: appliedFilters.fromDate || undefined,
@@ -146,19 +172,43 @@ export default function PendingApprovals() {
     setPage(1);
     setAppliedFilters({
       search: searchInput.trim(),
+      type: typeFilter,
       status: statusFilter,
       fromDate,
       toDate,
     });
+    if (["all", "leave", "procurement", "production", "inventory"].includes(typeFilter)) {
+      setActiveTab(typeFilter);
+    } else if (["material_request", "purchase_order", "vendor"].includes(typeFilter)) {
+      setActiveTab("procurement");
+    }
   };
 
   const resetFilters = () => {
     setSearchInput("");
+    setTypeFilter("all");
     setStatusFilter("pending");
     setFromDate("");
     setToDate("");
+    setActiveTab("all");
     setPage(1);
-    setAppliedFilters({ search: "", status: "pending", fromDate: "", toDate: "" });
+    setAppliedFilters({
+      search: "",
+      type: "all",
+      status: "pending",
+      fromDate: "",
+      toDate: "",
+    });
+  };
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setTypeFilter(tabId);
+    setPage(1);
+    setAppliedFilters((prev) => ({
+      ...prev,
+      type: tabId,
+    }));
   };
 
   const refreshAfterAction = () => {
@@ -291,13 +341,10 @@ export default function PendingApprovals() {
           <button
             key={tab.id}
             type="button"
-            onClick={() => {
-              setActiveTab(tab.id);
-              setPage(1);
-            }}
+            onClick={() => handleTabChange(tab.id)}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               activeTab === tab.id
-                ? "bg-[var(--color-primary)] text-white"
+                ? "bg-[var(--color-primary)] text-white shadow-sm"
                 : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
@@ -306,7 +353,13 @@ export default function PendingApprovals() {
         ))}
       </div>
 
-      <div className="ui-card p-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          applyFilters();
+        }}
+        className="ui-card p-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end"
+      >
         <div className="flex-1 min-w-[200px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -314,60 +367,166 @@ export default function PendingApprovals() {
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search"
+              placeholder="Search by code, employee, title..."
               className="w-full rounded-lg border border-[var(--color-border)] bg-white pl-9 pr-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
         </div>
+
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="text-[var(--color-text-muted)]">Type</span>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm cursor-pointer bg-white"
+          >
+            {TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-[var(--color-text-muted)]">Status</span>
           <select
             value={statusFilter}
-            onChange={(e) => {
-              const val = e.target.value;
-              setStatusFilter(val);
-              setPage(1);
-              setAppliedFilters((prev) => ({
-                ...prev,
-                status: val,
-                search: searchInput.trim(),
-                fromDate,
-                toDate,
-              }));
-            }}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm cursor-pointer"
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm cursor-pointer bg-white"
           >
-            <option value="pending">Pending</option>
-            <option value="all">All</option>
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </label>
+
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-[var(--color-text-muted)]">From</span>
           <input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm bg-white"
           />
         </label>
+
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-[var(--color-text-muted)]">To</span>
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
+            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm bg-white"
           />
         </label>
+
         <div className="flex gap-2">
-          <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={applyFilters}>
-            Apply Filters
+          <button
+            type="submit"
+            className="ui-btn ui-btn-primary text-xs"
+            disabled={loading}
+          >
+            {loading ? "Filtering..." : "Apply Filters"}
           </button>
-          <button type="button" className="ui-btn ui-btn-secondary text-xs" onClick={resetFilters}>
+          <button
+            type="button"
+            className="ui-btn ui-btn-secondary text-xs"
+            onClick={resetFilters}
+            disabled={loading}
+          >
             Reset
           </button>
         </div>
-      </div>
+      </form>
+
+      {Boolean(
+        appliedFilters.search ||
+        appliedFilters.status !== "pending" ||
+        (appliedFilters.type && appliedFilters.type !== "all") ||
+        appliedFilters.fromDate ||
+        appliedFilters.toDate ||
+        activeTab !== "all"
+      ) && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          <span className="font-medium">Active filters:</span>
+          {appliedFilters.search && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300">
+              Search: &ldquo;{appliedFilters.search}&rdquo;
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("");
+                  setAppliedFilters((p) => ({ ...p, search: "" }));
+                  setPage(1);
+                }}
+                className="hover:text-blue-900 ml-1 font-bold"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {appliedFilters.type && appliedFilters.type !== "all" && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300">
+              Type: {TYPE_OPTIONS.find((o) => o.value === appliedFilters.type)?.label || appliedFilters.type}
+              <button
+                type="button"
+                onClick={() => {
+                  setTypeFilter("all");
+                  setActiveTab("all");
+                  setAppliedFilters((p) => ({ ...p, type: "all" }));
+                  setPage(1);
+                }}
+                className="hover:text-blue-900 ml-1 font-bold"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {appliedFilters.status && appliedFilters.status !== "pending" && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 capitalize">
+              Status: {appliedFilters.status}
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("pending");
+                  setAppliedFilters((p) => ({ ...p, status: "pending" }));
+                  setPage(1);
+                }}
+                className="hover:text-blue-900 ml-1 font-bold"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {(appliedFilters.fromDate || appliedFilters.toDate) && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300">
+              Date: {appliedFilters.fromDate || "start"} → {appliedFilters.toDate || "end"}
+              <button
+                type="button"
+                onClick={() => {
+                  setFromDate("");
+                  setToDate("");
+                  setAppliedFilters((p) => ({ ...p, fromDate: "", toDate: "" }));
+                  setPage(1);
+                }}
+                className="hover:text-blue-900 ml-1 font-bold"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="text-[var(--color-primary)] hover:underline ml-1 font-semibold"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="ui-card p-8 text-center text-sm text-[var(--color-text-muted)]">
@@ -384,15 +543,41 @@ export default function PendingApprovals() {
           </button>
         </div>
       ) : items.length === 0 ? (
-        <div className="ui-card flex flex-col items-center justify-center p-12 text-center space-y-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-            <CheckCircle2 className="h-6 w-6" />
+        Boolean(
+          appliedFilters.search ||
+          appliedFilters.status !== "pending" ||
+          (appliedFilters.type && appliedFilters.type !== "all") ||
+          appliedFilters.fromDate ||
+          appliedFilters.toDate ||
+          activeTab !== "all"
+        ) ? (
+          <div className="ui-card flex flex-col items-center justify-center p-12 text-center space-y-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <Search className="h-6 w-6" />
+            </div>
+            <h3 className="text-base font-bold text-[var(--color-text)]">No approvals found</h3>
+            <p className="text-xs text-[var(--color-text-muted)] max-w-sm">
+              No approval requests match your search criteria or selected filters.
+            </p>
+            <button
+              type="button"
+              className="ui-btn ui-btn-secondary text-xs"
+              onClick={resetFilters}
+            >
+              Clear all filters
+            </button>
           </div>
-          <h3 className="text-base font-bold text-[var(--color-text)]">All Approvals Clear</h3>
-          <p className="text-xs text-[var(--color-text-muted)] max-w-sm">
-            There are currently no pending requests that require your approval.
-          </p>
-        </div>
+        ) : (
+          <div className="ui-card flex flex-col items-center justify-center p-12 text-center space-y-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <h3 className="text-base font-bold text-[var(--color-text)]">All Approvals Clear</h3>
+            <p className="text-xs text-[var(--color-text-muted)] max-w-sm">
+              There are currently no pending requests that require your approval.
+            </p>
+          </div>
+        )
       ) : (
         <>
           <div className="hidden md:block ui-card overflow-x-auto">
@@ -422,7 +607,9 @@ export default function PendingApprovals() {
                         : item.detail_summary}
                     </td>
                     <td className="px-4 py-3">{formatDate(item.submitted_at)}</td>
-                    <td className="px-4 py-3 capitalize">{item.status}</td>
+                    <td className="px-4 py-3">
+                      <ApprovalStatusBadge status={item.status} />
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <RowActions
                         item={item}
@@ -562,8 +749,44 @@ function RowActions({ item, onView, onApprove, onReject }) {
   );
 }
 
+function ApprovalStatusBadge({ status }) {
+  const s = String(status || "").toLowerCase();
+  if (s === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        Pending
+      </span>
+    );
+  }
+  if (["approved", "auto_approved", "released", "completed"].includes(s)) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        Approved
+      </span>
+    );
+  }
+  if (["rejected", "cancelled"].includes(s)) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+        {s === "cancelled" ? "Cancelled" : "Rejected"}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 capitalize">
+      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+      {status || "Draft"}
+    </span>
+  );
+}
+
 function ApprovalCard({ item, onView, onApprove, onReject }) {
   const isLeave = item.category === "leave";
+  const isDraftPo = item.resource_type === "purchase_order" && item.status === "draft";
+  const canAct = item.status === "pending" || isDraftPo;
   return (
     <div className="ui-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
@@ -576,7 +799,7 @@ function ApprovalCard({ item, onView, onApprove, onReject }) {
             {item.department ? ` • ${item.department}` : ""}
           </p>
         </div>
-        <span className="text-xs font-semibold capitalize">{item.status}</span>
+        <ApprovalStatusBadge status={item.status} />
       </div>
       <p className="text-xs text-[var(--color-text)]">
         {isLeave ? (
@@ -597,14 +820,18 @@ function ApprovalCard({ item, onView, onApprove, onReject }) {
           <Eye className="h-3.5 w-3.5 mr-1 inline" />
           View Details
         </button>
-        <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={onApprove}>
-          <Check className="h-3.5 w-3.5 mr-1 inline" />
-          Approve
-        </button>
-        <button type="button" className="ui-btn ui-btn-ghost text-xs text-rose-600" onClick={onReject}>
-          <XCircle className="h-3.5 w-3.5 mr-1 inline" />
-          Reject
-        </button>
+        {canAct && (
+          <>
+            <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={onApprove}>
+              <Check className="h-3.5 w-3.5 mr-1 inline" />
+              Approve
+            </button>
+            <button type="button" className="ui-btn ui-btn-ghost text-xs text-rose-600" onClick={onReject}>
+              <XCircle className="h-3.5 w-3.5 mr-1 inline" />
+              Reject
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -612,6 +839,8 @@ function ApprovalCard({ item, onView, onApprove, onReject }) {
 
 function DetailModal({ item, history, historyLoading, onClose, onApprove, onReject }) {
   const isLeave = item.category === "leave";
+  const isDraftPo = item.resource_type === "purchase_order" && item.status === "draft";
+  const canAct = item.status === "pending" || isDraftPo;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
@@ -650,7 +879,7 @@ function DetailModal({ item, history, historyLoading, onClose, onApprove, onReje
           )}
           <DetailRow label="Reason" value={item.reason || "—"} />
           <DetailRow label="Submitted" value={formatDate(item.submitted_at)} />
-          <DetailRow label="Status" value={item.status} />
+          <DetailRow label="Status" value={<ApprovalStatusBadge status={item.status} />} />
         </dl>
 
         {isLeave && (
@@ -682,12 +911,16 @@ function DetailModal({ item, history, historyLoading, onClose, onApprove, onReje
           <button type="button" className="ui-btn ui-btn-secondary text-xs" onClick={onClose}>
             Close
           </button>
-          <button type="button" className="ui-btn ui-btn-ghost text-xs text-rose-600" onClick={onReject}>
-            Reject
-          </button>
-          <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={onApprove}>
-            Approve
-          </button>
+          {canAct && (
+            <>
+              <button type="button" className="ui-btn ui-btn-ghost text-xs text-rose-600" onClick={onReject}>
+                Reject
+              </button>
+              <button type="button" className="ui-btn ui-btn-primary text-xs" onClick={onApprove}>
+                Approve
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

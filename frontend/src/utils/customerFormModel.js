@@ -304,8 +304,8 @@ export function validateCustomerForm(form) {
   const gstin = form.gstin.trim().toUpperCase();
   if (gstin) {
     if (gstin.length !== 15) errors.gstin = "GSTIN must be exactly 15 characters";
-    else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
-      errors.gstin = "Invalid GSTIN format";
+    else if (!/^(?=.*[0-9])(?=.*[A-Z])[A-Z0-9]{15}$/.test(gstin)) {
+      errors.gstin = "GSTIN must be 15 alphanumeric characters with at least one letter and one number";
     }
   }
 

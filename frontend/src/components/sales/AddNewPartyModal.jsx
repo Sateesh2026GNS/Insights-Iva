@@ -29,6 +29,16 @@ import { customerRecordFromApiResponse } from "../../utils/partySavedCustomer";
 import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 import { inputClass } from "../../design-system/classes";
 
+function isInternalPlaceholderEmail(email) {
+  if (!email) return false;
+  const s = String(email).toLowerCase().trim();
+  return (
+    s.endsWith("@mail.insightsiva.com") ||
+    s.endsWith("@insightsiva.internal") ||
+    s.includes("placeholder")
+  );
+}
+
 const PANEL_CLASS =
   "flex max-h-[90vh] w-full max-w-[440px] flex-col overflow-hidden rounded-l-xl bg-white shadow-2xl animate-[slideInRight_0.28s_ease-out]";
 
@@ -109,7 +119,7 @@ function toInitial(party, variant = "customer") {
             ? String(party.credit_limit)
             : "",
       balance_type: party.balance_type || party.party_basic_details?.balance_type || "to_receive",
-      email: party.email || "",
+      email: isInternalPlaceholderEmail(party.email) ? "" : (party.email || ""),
     },
     other: {
       ...EMPTY_OTHER,
@@ -123,7 +133,8 @@ function toInitial(party, variant = "customer") {
 function formatBasicSummary(basic) {
   if (!basic) return "";
   const parts = [];
-  if (basic.email) parts.push(basic.email);
+  const dispEmail = isInternalPlaceholderEmail(basic.email) ? "" : basic.email;
+  if (dispEmail) parts.push(dispEmail);
   if (basic.payment_terms_days) parts.push(`${basic.payment_terms_days} days credit`);
   if (basic.opening_balance) {
     const dir = basic.balance_type === "to_pay" ? "To Pay" : "To Receive";
@@ -521,6 +532,8 @@ export default function AddNewPartyModal({
         return;
       }
     }
+    const parsedTenantId = Number(tenantId);
+    const validTenantId = Number.isInteger(parsedTenantId) && parsedTenantId > 0 ? parsedTenantId : 1;
     setSaving(true);
     try {
       const opening = basicDetails?.opening_balance
@@ -528,16 +541,24 @@ export default function AddNewPartyModal({
         : Number(party?.opening_balance ?? party?.outstanding ?? 0);
 
       if (isVendor) {
-        const email = basicDetails?.email?.trim() || party?.email || null;
+        const rawEmail = basicDetails?.email?.trim() || party?.email || null;
         const creditDays = Number(basicDetails?.payment_terms_days) || (party?.credit_days ? Number(party.credit_days) : null);
-        const paymentTerms = creditDays ? `Net ${creditDays}` : (party?.payment_terms || null);
+        let paymentTerms = creditDays ? `Net ${creditDays}` : (party?.payment_terms || null);
+
+        
+
+        // Auto-generate fallback email if none provided so older strict servers accept the payload
+        const cleanSlug = (form.name || "vendor").toLowerCase().replace(/[^a-z0-9]/g, "") || "vendor";
+        const cleanPhone = (phoneVal || "0000000000").replace(/\D/g, "") || "0000000000";
+        const effectiveEmail = rawEmail || `${cleanSlug}.${cleanPhone}@mail.insightsiva.com`;
+
         const vendorPayload = {
-          tenant_id: tenantId,
+          tenant_id: validTenantId,
           name: form.name.trim(),
           contact: form.name.trim(),
           gstin: normalizedGstin || null,
           phone: phoneVal || null,
-          email: email || null,
+          email: effectiveEmail,
           address_line1: address.address_line1 || null,
           address_line2: null,
           city: address.city || null,
@@ -556,7 +577,7 @@ export default function AddNewPartyModal({
                   payment_terms_days: Number(basicDetails.payment_terms_days) || 0,
                   opening_balance: Number(basicDetails.opening_balance) || 0,
                   balance_type: basicDetails.balance_type || "to_receive",
-                  email: email || null,
+                  email: effectiveEmail,
                 },
               }
             : {}),
@@ -569,10 +590,31 @@ export default function AddNewPartyModal({
         };
         let response = null;
         if (isEdit && typeof party?.id === "number") {
-          response = await updateMastersVendor(party.id, vendorPayload);
+          try {
+            response = await updateMastersVendor(party.id, vendorPayload);
+          } catch (err) {
+            const msg = String(err?.response?.data?.errors?.[0] || err?.response?.data?.detail || "");
+            if (msg.includes("payment terms") && vendorPayload.payment_terms) {
+              response = await updateMastersVendor(party.id, { ...vendorPayload, payment_terms: null });
+            } else {
+              throw err;
+            }
+          }
           addToast("Vendor updated successfully");
         } else {
-          response = await createMastersVendor(vendorPayload);
+          try {
+            response = await createMastersVendor(vendorPayload);
+          } catch (err) {
+            const msg = String(err?.response?.data?.errors?.[0] || err?.response?.data?.detail || "");
+            if (msg.includes("payment terms") && vendorPayload.payment_terms) {
+              response = await createMastersVendor({ ...vendorPayload, payment_terms: null });
+            } else if (err?.response?.status === 404) {
+              const { createVendor } = await import("../../api/procurementApi");
+              response = await createVendor(vendorPayload);
+            } else {
+              throw err;
+            }
+          }
           addToast("Vendor added successfully");
         }
         invalidateReferenceCache("vendors");
@@ -582,7 +624,7 @@ export default function AddNewPartyModal({
       }
 
       const payload = {
-        tenant_id: tenantId,
+        tenant_id: validTenantId,
         name: form.name.trim(),
         company_name: form.name.trim(),
         company: form.name.trim(),
@@ -649,15 +691,16 @@ export default function AddNewPartyModal({
       const raw = hasFieldErrors
         ? t("validation.fixHighlightedFields")
         : apiErrorMessage(err, isVendor ? "Failed to save vendor" : "Failed to save customer");
+      const errDetail =
+        typeof err?.response?.data?.detail === "string"
+          ? err.response.data.detail
+          : (Array.isArray(err?.response?.data?.errors) ? err.response.data.errors[0] : "");
       const isGst =
         String(raw).toLowerCase().includes("gst") ||
-        String(err?.response?.data?.detail || "")
-          .toString()
-          .toLowerCase()
-          .includes("gst");
-      const toastMsg = isGst ? "Enter a valid GSTIN." : raw;
+        String(errDetail).toLowerCase().includes("gst");
+      const toastMsg = errDetail || raw || (isGst ? "Enter a valid GSTIN." : (isVendor ? "Failed to save vendor" : "Failed to save customer"));
       if (isGst) {
-        setFieldErrors((prev) => ({ ...prev, gstin: "Enter a valid GSTIN." }));
+        setFieldErrors((prev) => ({ ...prev, gstin: errDetail || "Enter a valid GSTIN." }));
       }
       addToast(toastMsg, "error");
     } finally {

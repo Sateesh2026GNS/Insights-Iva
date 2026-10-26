@@ -469,19 +469,15 @@ export function CustomerFormModal({ customer, onClose, onSave }) {
               return;
             }
           }
-          const trimmedGstin = form.gstin.trim();
+          const trimmedGstin = form.gstin.trim().toUpperCase();
           if (trimmedGstin) {
-            if (/[a-z]/.test(trimmedGstin)) {
-              alert("GSTIN must contain only uppercase letters and numeric values.");
-              return;
-            }
             if (trimmedGstin.length !== 15) {
               alert("GSTIN must be exactly 15 characters.");
               return;
             }
-            const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+            const gstinRegex = /^(?=.*[0-9])(?=.*[A-Z])[A-Z0-9]{15}$/;
             if (!gstinRegex.test(trimmedGstin)) {
-              alert("Invalid GSTIN format.");
+              alert("GSTIN must be 15 alphanumeric characters with at least one letter and one number.");
               return;
             }
           }
@@ -547,7 +543,7 @@ export function CustomerFormModal({ customer, onClose, onSave }) {
         set("gstin", value);
       }
     }}
-    pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"
+    pattern="^(|(?=.*[0-9])(?=.*[a-zA-Z])[a-zA-Z0-9]{15})$"
     onInvalid={(e) =>
       e.target.setCustomValidity("Please enter a valid GSTIN.")
     }

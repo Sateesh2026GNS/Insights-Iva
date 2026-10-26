@@ -68,7 +68,7 @@ class MastersService:
             "selling_price": float(p.unit_price) if p.unit_price else 0,
             "wholesale_price": float(p.wholesale_price) if getattr(p, "wholesale_price", None) else 0,
             "hsn_code": getattr(p, "hsn_code", None) or "",
-            "category": getattr(p, "category", None) or "No Category",
+            "category": getattr(p, "category", None) or "Finished Goods",
             "gst_percent": float(p.gst_percent) if getattr(p, "gst_percent", None) is not None else 0,
             "cess_percent": float(p.cess_percent) if getattr(p, "cess_percent", None) is not None else 0,
             "status": getattr(p, "status", None) or "active",

@@ -211,3 +211,89 @@ def test_tenant_isolation(register_admin, client):
         json={"expected_status": "pending"},
     )
     assert cross.status_code == 404
+
+
+def test_approval_queue_filters_status_search_dates(register_admin, client):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    db = SessionLocal()
+    try:
+        emp = Employee(
+            tenant_id=tenant_id,
+            employee_code="EFILT",
+            full_name="Filter Test User",
+            department="Engineering",
+            is_active=True,
+        )
+        db.add(emp)
+        db.flush()
+        leave_pend = LeaveRequest(
+            tenant_id=tenant_id,
+            employee_id=emp.id,
+            leave_type="Casual Leave",
+            start_date=date(2026, 10, 15),
+            end_date=date(2026, 10, 16),
+            days=2,
+            reason="Vacation trip",
+            status="pending",
+        )
+        leave_app = LeaveRequest(
+            tenant_id=tenant_id,
+            employee_id=emp.id,
+            leave_type="Sick Leave",
+            start_date=date(2026, 10, 10),
+            end_date=date(2026, 10, 11),
+            days=2,
+            reason="Medical recovery",
+            status="approved",
+        )
+        leave_rej = LeaveRequest(
+            tenant_id=tenant_id,
+            employee_id=emp.id,
+            leave_type="Earned Leave",
+            start_date=date(2026, 10, 5),
+            end_date=date(2026, 10, 6),
+            days=2,
+            reason="Offsite visit",
+            status="rejected",
+        )
+        db.add_all([leave_pend, leave_app, leave_rej])
+        db.commit()
+    finally:
+        db.close()
+
+    # 1. Default (pending only)
+    resp = client.get("/admin/approvals/queue?status=pending", headers=admin["headers"])
+    assert resp.status_code == 200
+    statuses = [i["status"] for i in resp.json()["items"] if i["category"] == "leave"]
+    assert all(s == "pending" for s in statuses)
+
+    # 2. Approved filter
+    resp_app = client.get("/admin/approvals/queue?status=approved", headers=admin["headers"])
+    assert resp_app.status_code == 200
+    app_items = [i for i in resp_app.json()["items"] if i["category"] == "leave"]
+    assert any(i["title"] == "Sick Leave" for i in app_items)
+    assert all(i["status"] == "approved" for i in app_items)
+
+    # 3. Rejected filter
+    resp_rej = client.get("/admin/approvals/queue?status=rejected", headers=admin["headers"])
+    assert resp_rej.status_code == 200
+    rej_items = [i for i in resp_rej.json()["items"] if i["category"] == "leave"]
+    assert any(i["title"] == "Earned Leave" for i in rej_items)
+    assert all(i["status"] == "rejected" for i in rej_items)
+
+    # 4. All statuses
+    resp_all = client.get("/admin/approvals/queue?status=all", headers=admin["headers"])
+    assert resp_all.status_code == 200
+    all_leaves = [i for i in resp_all.json()["items"] if i["category"] == "leave"]
+    titles = {i["title"] for i in all_leaves}
+    assert "Casual Leave" in titles
+    assert "Sick Leave" in titles
+    assert "Earned Leave" in titles
+
+    # 5. Search query
+    resp_search = client.get("/admin/approvals/queue?status=all&search=Vacation", headers=admin["headers"])
+    assert resp_search.status_code == 200
+    matched = resp_search.json()["items"]
+    assert any("Vacation" in (i["reason"] or "") for i in matched)
+    assert all("sick" not in (i["title"] or "").lower() for i in matched)

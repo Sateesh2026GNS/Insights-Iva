@@ -150,6 +150,19 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
         db, payload.tenant_id, name=payload.name, sku=payload.sku
     )
     product = Product(**payload.model_dump())
+    cat_name = (product.category or "").strip() or "Finished Goods"
+    product.category = cat_name
+    if cat_name.lower() != "no category":
+        from app.models.product import InventoryCategory
+        cat_exists = db.scalars(
+            select(InventoryCategory).where(
+                InventoryCategory.tenant_id == payload.tenant_id,
+                func.lower(InventoryCategory.name) == cat_name.lower(),
+            )
+        ).first()
+        if not cat_exists:
+            db.add(InventoryCategory(tenant_id=payload.tenant_id, name=cat_name))
+            db.flush()
     opening_stock = product.current_stock or 0
     has_existing_inventory = False
     db.add(product)
@@ -239,6 +252,19 @@ def update_product(
         if field == "current_stock":
             continue
         setattr(product, field, value)
+    if "category" in data and product.category:
+        clean_cat = product.category.strip()
+        if clean_cat and clean_cat.lower() != "no category":
+            from app.models.product import InventoryCategory
+            cat_exists = db.scalars(
+                select(InventoryCategory).where(
+                    InventoryCategory.tenant_id == tenant_id,
+                    func.lower(InventoryCategory.name) == clean_cat.lower(),
+                )
+            ).first()
+            if not cat_exists:
+                db.add(InventoryCategory(tenant_id=tenant_id, name=clean_cat))
+                db.flush()
     from app.models.inventory import InventoryItem
 
     linked_item = db.scalars(

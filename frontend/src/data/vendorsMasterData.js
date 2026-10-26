@@ -93,11 +93,24 @@ export const IMPORT_TEMPLATE_HEADERS = [
 /** @deprecated kept empty — list uses live API only */
 export const DEMO_VENDORS = [];
 
+export function isPlaceholderEmail(email) {
+  if (!email) return false;
+  const s = String(email).toLowerCase().trim();
+  return (
+    s.endsWith("@mail.insightsiva.com") ||
+    s.endsWith("@insightsiva.internal") ||
+    s.includes("placeholder")
+  );
+}
+
 export function enrichApiVendor(row, index = 0) {
   const code = row.vendor_code || `VEN-${String(row.id || index + 1).padStart(4, "0")}`;
+  const rawEmail = row.email || "";
+  const email = isPlaceholderEmail(rawEmail) ? "" : rawEmail;
   return {
     ...row,
     vendor_code: code,
+    email,
     name: row.name || "Unnamed Vendor",
     contact: row.contact || row.contact_name || "—",
     status: (row.status || "active").toLowerCase(),

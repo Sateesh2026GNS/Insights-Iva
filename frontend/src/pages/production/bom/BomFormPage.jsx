@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Search, Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 import { createBom, fetchBomDetail, updateBomVersion } from "../../../api/bomModuleApi";
+import { getProducts } from "../../../api/productsApi";
 import Button from "../../../components/common/Button";
 import FieldError from "../../../components/common/states/FieldError";
 import { PermissionDeniedState } from "../../../components/common/states";
@@ -11,14 +12,13 @@ import { PRODUCTION_MANAGER_PAGE_CHROME } from "../../../config/productionManage
 import { useToast } from "../../../context/ToastContext";
 import useAuth from "../../../hooks/useAuth";
 import { userCanEditBom } from "../../../config/permissions";
-import { apiErrorMessage, mapValidationErrorsToFields } from "../../../utils/apiError";
-import { fetchProductsWithFallback } from "../../../utils/productOptions";
-import { grossComponentQuantity } from "./bomModuleUtils";
+import { apiErrorMessage, asArray, mapValidationErrorsToFields } from "../../../utils/apiError";
+import { cleanProductLabel } from "../../../utils/productLabel";
 
 const emptyLine = () => ({
   component_item_id: "",
   quantity: "1",
-  uom: "Pcs",
+  uom: "",
   scrap_percent: "0",
 });
 
@@ -31,35 +31,48 @@ export default function BomFormPage() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [products, setProducts] = useState([]);
-  const [allItems, setAllItems] = useState([]);
-  const [itemQuery, setItemQuery] = useState("");
-  const [isItemSearchOpen, setIsItemSearchOpen] = useState(false);
-  const itemSearchRef = useRef(null);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsError, setItemsError] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState("");
-  const [name, setName] = useState("");
-  const [nameEdited, setNameEdited] = useState(false);
   const [productId, setProductId] = useState("");
   const [baseQty, setBaseQty] = useState("1");
-  const [baseUom, setBaseUom] = useState("Pcs");
+  const [baseUom, setBaseUom] = useState("");
+  const [savedCostPerUnit, setSavedCostPerUnit] = useState(null);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState([emptyLine()]);
   const [versionId, setVersionId] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [lineErrors, setLineErrors] = useState({});
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const canEdit = userCanEditBom(user);
+  const finishedProducts = products.filter((product) => /finished/i.test(String(product.category || "")));
 
   useEffect(() => {
-    if (isItemSearchOpen) itemSearchRef.current?.focus();
-  }, [isItemSearchOpen]);
-
-  useEffect(() => {
-    fetchProductsWithFallback().then((list) => {
-      const fg = list.filter((p) => /finished/i.test(p.category || ""));
-      setProducts(fg.length ? fg : list);
-      setAllItems(list);
-    });
+    let active = true;
+    getProducts()
+      .then((res) => {
+        if (!active) return;
+        const list = asArray(res?.data ?? res)
+          .map((product) => ({
+            ...product,
+            name: cleanProductLabel(product.name),
+            unit: product.unit || "Pcs",
+            category: String(product.category || ""),
+            status: String(product.status || "active").toLowerCase(),
+          }))
+          .filter((product) => product.status === "active" && Number.isFinite(Number(product.id)));
+        setProducts(list);
+        setItemsError("");
+      })
+      .catch((error) => {
+        if (active) setItemsError(apiErrorMessage(error, "Unable to load products."));
+      })
+      .finally(() => {
+        if (active) setItemsLoading(false);
+      });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -68,17 +81,14 @@ export default function BomFormPage() {
     fetchBomDetail(sourceId).then((data) => {
       const v = data.version;
       if (isEdit) {
-        setName(data.name);
-        setNameEdited(true);
         setProductId(String(data.product_id));
         setVersionId(v.id);
       } else {
-        setName(`${data.name} (copy)`);
-        setNameEdited(false);
         setProductId("");
       }
       setBaseQty(String(v.base_quantity));
       setBaseUom(v.base_uom);
+      setSavedCostPerUnit(v.cost?.cost_per_unit ?? null);
       setNotes(v.notes || "");
       setEffectiveFrom(v.effective_from || "");
       setLines(
@@ -101,16 +111,14 @@ export default function BomFormPage() {
   }
 
   const buildPayload = () => ({
-    name,
+    name: products.find((product) => String(product.id) === String(productId))?.name || "BOM",
     product_id: Number(productId),
     version: {
       base_quantity: Number(baseQty),
       base_uom: baseUom,
       effective_from: effectiveFrom || null,
       notes,
-      components: lines
-        .filter((l) => l.component_item_id)
-        .map((l, i) => ({
+      components: lines.map((l, i) => ({
           component_item_id: Number(l.component_item_id),
           quantity: Number(l.quantity),
           uom: l.uom,
@@ -125,7 +133,6 @@ export default function BomFormPage() {
     const nextLineErrors = {};
     const parsedBaseQty = Number(baseQty);
 
-    if (!name.trim()) nextErrors.name = "Enter a name for this BOM.";
     if (!productId) nextErrors.product_id = "Select the finished product this BOM makes.";
     if (!Number.isFinite(parsedBaseQty) || parsedBaseQty <= 0) {
       nextErrors.base_quantity = "Output quantity must be greater than zero.";
@@ -133,11 +140,15 @@ export default function BomFormPage() {
     if (!baseUom.trim()) nextErrors.base_uom = "Enter an output unit.";
     if (!lines.length) nextErrors.components = "Add at least one component.";
 
+    const componentIds = new Set();
     lines.forEach((line, index) => {
       const errors = [];
       const quantity = Number(line.quantity);
       const scrap = Number(line.scrap_percent || 0);
+      const componentId = Number(line.component_item_id);
       if (!line.component_item_id) errors.push("Select a component.");
+      if (line.component_item_id && componentIds.has(componentId)) errors.push("Choose each component only once.");
+      if (line.component_item_id) componentIds.add(componentId);
       if (!Number.isFinite(quantity) || quantity <= 0) errors.push("Quantity must be greater than zero.");
       if (!String(line.uom || "").trim()) errors.push("Enter a unit.");
       if (!Number.isFinite(scrap) || scrap < 0 || scrap >= 100) errors.push("Scrap must be from 0% to less than 100%.");
@@ -168,7 +179,14 @@ export default function BomFormPage() {
   };
 
   const save = async (activateAfter) => {
-    if (!validateForm()) return;
+    setSaveError("");
+    if (!validateForm()) {
+      addToast("Please correct the highlighted fields before saving.", "error");
+      requestAnimationFrame(() => {
+        document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
     setSaving(true);
     setFieldErrors({});
     setLineErrors({});
@@ -189,8 +207,11 @@ export default function BomFormPage() {
       }
     } catch (e) {
       const mapped = mapValidationErrorsToFields(e);
+      const mappedMessage = Object.values(mapped || {}).join(" ");
+      const message = mappedMessage || apiErrorMessage(e, "Unable to save BOM.");
       if (mapped && Object.keys(mapped).length) setFieldErrors(mapped);
-      else addToast(apiErrorMessage(e, "Unable to save BOM."), "error");
+      setSaveError(message);
+      addToast(message, "error");
     } finally {
       setSaving(false);
     }
@@ -198,25 +219,10 @@ export default function BomFormPage() {
 
   return (
     <ListPageShell plannerChrome={PRODUCTION_MANAGER_PAGE_CHROME.bomForm}>
-      <div className="ui-card p-4 space-y-4 max-w-4xl">
-        <div>
-          <label className="text-sm font-medium">BOM name</label>
-          <input
-            className="ui-input mt-1 w-full"
-            required
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setNameEdited(true);
-              clearFieldError("name");
-            }}
-            aria-invalid={Boolean(fieldErrors.name)}
-          />
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-            Defaults to the selected product name. Add a qualifier if you maintain different recipes.
-          </p>
-          <FieldError message={fieldErrors.name} />
-        </div>
+      <div
+        className="ui-card mx-auto w-full max-w-4xl space-y-4 p-4"
+        style={{ width: "min(100%, 56rem)", marginInline: "auto" }}
+      >
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium">Finished product</label>
@@ -227,21 +233,23 @@ export default function BomFormPage() {
               onChange={(e) => {
                 const selectedId = e.target.value;
                 setProductId(selectedId);
+                const selectedProduct = finishedProducts.find((product) => String(product.id) === selectedId);
+                setBaseUom(selectedProduct?.unit || "");
                 clearFieldError("product_id");
-                if (!nameEdited) {
-                  const selectedProduct = products.find((product) => String(product.id) === selectedId);
-                  setName(selectedProduct ? `${selectedProduct.name} – Standard BOM` : "");
-                  clearFieldError("name");
-                }
               }}
               disabled={isEdit}
+              aria-busy={itemsLoading}
               aria-invalid={Boolean(fieldErrors.product_id)}
             >
-              <option value="">Select</option>
-              {products.map((p) => (
+              <option value="">{itemsLoading ? "Loading products…" : "Select finished product"}</option>
+              {(isEdit ? products : finishedProducts).map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            {!itemsLoading && !itemsError && finishedProducts.length === 0 && (
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">No active finished goods are available. Add one in Product Master first.</p>
+            )}
+            {itemsError && <FieldError message={itemsError} />}
             <FieldError message={fieldErrors.product_id} />
           </div>
           <div>
@@ -265,92 +273,68 @@ export default function BomFormPage() {
             <FieldError message={fieldErrors.base_quantity} />
           </div>
           <div>
-            <label className="text-sm font-medium">Output unit (UOM)</label>
+            <label className="text-sm font-medium">Output unit</label>
             <input
-              className="ui-input mt-1 w-full"
+              className="ui-input mt-1 w-full read-only:opacity-75"
               value={baseUom}
-              required
-              onChange={(e) => {
-                setBaseUom(e.target.value);
-                clearFieldError("base_uom");
-              }}
+              readOnly
+              placeholder="Set from finished product"
               aria-invalid={Boolean(fieldErrors.base_uom)}
             />
             <FieldError message={fieldErrors.base_uom} />
           </div>
           <div>
-            <label className="text-sm font-medium">Effective from</label>
-            <input type="date" className="ui-input mt-1 w-full" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium">Notes</label>
-            <textarea
-              className="ui-textarea mt-1 min-h-20 w-full resize-y"
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+            <label className="text-sm font-medium">Cost per unit</label>
+            <input
+              className="ui-input mt-1 w-full read-only:opacity-75"
+              value={savedCostPerUnit != null ? `₹${Number(savedCostPerUnit).toFixed(2)}` : "Calculated after save"}
+              readOnly
+              aria-label="Calculated cost per unit"
             />
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Calculated from component landed costs; it is not entered manually.
+            </p>
           </div>
         </div>
+        <details className="rounded-lg border border-[var(--color-border)] px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium">Additional details (optional)</summary>
+          <div className="grid gap-3 pt-3 sm:grid-cols-2">
+            <label className="text-sm font-medium">
+              Effective from
+              <input type="date" className="ui-input mt-1 w-full" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} />
+            </label>
+            <label className="text-sm font-medium sm:col-span-2">
+              Notes
+              <textarea className="ui-textarea mt-1 min-h-16 w-full resize-y" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </label>
+          </div>
+        </details>
         <FieldError message={fieldErrors.components} />
         <div className="border-t border-[var(--color-border)] pt-3">
-          <div className="mb-3 flex min-w-0 items-center gap-3">
-            <p className="shrink-0 text-sm font-semibold">Components</p>
-            {isItemSearchOpen ? (
-              <input
-                ref={itemSearchRef}
-                className="ui-input min-w-0 flex-1"
-                placeholder="Search raw materials and sub-assemblies"
-                value={itemQuery}
-                onChange={(e) => setItemQuery(e.target.value)}
-              />
-            ) : null}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={isItemSearchOpen ? "Close component search" : "Search components"}
-              title={isItemSearchOpen ? "Close search" : "Search components"}
-              onClick={() => {
-                setIsItemSearchOpen((open) => {
-                  if (open) setItemQuery("");
-                  return !open;
-                });
-              }}
-            >
-              {isItemSearchOpen ? <X className="h-4 w-4" aria-hidden /> : <Search className="h-4 w-4" aria-hidden />}
-            </Button>
-          </div>
-          <div className="mb-1 hidden grid-cols-6 gap-2 px-1 text-xs font-semibold text-[var(--color-text-muted)] sm:grid">
-            <span className="col-span-2">Component</span>
-            <span>Quantity</span>
-            <span>Unit</span>
-            <span>Scrap %</span>
-            <span className="sr-only">Actions</span>
+          <div className="mb-3">
+            <p className="text-sm font-semibold">Components</p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">Add each material or sub-assembly once and enter the quantity needed for the output above.</p>
           </div>
           {lines.map((line, idx) => (
-            <div key={idx} className="grid grid-cols-[minmax(0,2fr)_minmax(4rem,1fr)_minmax(4rem,1fr)_minmax(4rem,1fr)_2.5rem] sm:grid-cols-6 gap-2 mb-2 items-end border-b border-[var(--color-border)] pb-2">
+            <div key={idx} className="grid grid-cols-1 gap-2 mb-3 items-end rounded-lg border border-[var(--color-border)] p-3 sm:grid-cols-[minmax(0,2fr)_minmax(6rem,1fr)_minmax(6rem,1fr)_2.5rem]">
               <select
-                className="ui-input sm:col-span-2"
+                className="ui-input"
                 value={line.component_item_id}
                 aria-label={`Component ${idx + 1}`}
                 aria-invalid={Boolean(lineErrors[idx])}
+                disabled={itemsLoading || Boolean(itemsError)}
                 onChange={(e) => {
                   const next = [...lines];
                   next[idx].component_item_id = e.target.value;
-                  const picked = allItems.find((p) => String(p.id) === e.target.value);
-                  if (picked?.unit) next[idx].uom = picked.unit;
+                  const picked = products.find((p) => String(p.id) === e.target.value);
+                  next[idx].uom = picked?.unit || "";
                   setLines(next);
                   clearLineError(idx);
                 }}
               >
-                <option value="">Component</option>
-                {allItems
-                  .filter((p) => {
-                    if (itemQuery && !String(p.name || "").toLowerCase().includes(itemQuery.toLowerCase())) return false;
-                    if (productId && String(p.id) === String(productId)) return false;
-                    return true;
-                  })
+                <option value="">{itemsLoading ? "Loading components…" : "Select material or sub-assembly"}</option>
+                {products
+                  .filter((p) => String(p.id) !== String(productId))
                   .map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -370,34 +354,10 @@ export default function BomFormPage() {
                   clearLineError(idx);
                 }}
               />
-              <input
-                className="ui-input"
-                placeholder="UOM"
-                aria-label={`Unit for component ${idx + 1}`}
-                value={line.uom}
-                onChange={(e) => {
-                  const next = [...lines];
-                  next[idx].uom = e.target.value;
-                  setLines(next);
-                  clearLineError(idx);
-                }}
-              />
-              <input
-                type="number"
-                min="0"
-                max="99.99"
-                step="any"
-                className="ui-input"
-                placeholder="Scrap %"
-                aria-label={`Scrap percentage for component ${idx + 1}`}
-                value={line.scrap_percent}
-                onChange={(e) => {
-                  const next = [...lines];
-                  next[idx].scrap_percent = e.target.value;
-                  setLines(next);
-                  clearLineError(idx);
-                }}
-              />
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">Unit</label>
+                <input className="ui-input w-full" value={line.uom} readOnly placeholder="From selected item" aria-label={`Unit for component ${idx + 1}`} />
+              </div>
               <Button
                 type="button"
                 variant="ghost"
@@ -412,9 +372,6 @@ export default function BomFormPage() {
               >
                 <Trash2 className="h-4 w-4 text-red-600" aria-hidden />
               </Button>
-              <p className="text-xs text-[var(--color-text-muted)] col-span-full">
-                Gross: {grossComponentQuantity(line.quantity, line.scrap_percent)} {line.uom}
-              </p>
               {lineErrors[idx] ? (
                 <p className="col-span-full text-xs text-[var(--color-danger)]" role="alert">
                   {lineErrors[idx]}
@@ -433,6 +390,7 @@ export default function BomFormPage() {
             </p>
           ) : <span />}
           <div className="flex flex-wrap justify-end gap-2">
+            {saveError && <p className="basis-full text-right text-sm text-[var(--color-danger)]" role="alert">{saveError}</p>}
             <Button variant="primary" disabled={saving} onClick={() => save(false)}>Save draft</Button>
             {isEdit && (
               <Button variant="secondary" disabled={saving} onClick={() => save(true)}>

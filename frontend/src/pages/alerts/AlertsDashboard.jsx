@@ -30,6 +30,7 @@ import Button from "../../components/common/Button";
 import { SearchBar } from "../../components/common/SearchFilter";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
+import "../../styles/alerts-grid-table.css";
 import {
   SEVERITY_OPTIONS,
   MODULE_OPTIONS,
@@ -673,11 +674,11 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       <ListPageCard className="overflow-hidden print:hidden">
         <ListPageCardBody className="p-0">
         <div className="ui-table-wrap ui-table-wrap--scroll w-full max-w-full">
-          <table className={`ui-table ${showActionsColumn ? "min-w-[920px]" : "min-w-[840px]"} w-full border-collapse text-left text-[13px]`}>
+          <table className={`ui-table alerts-grid-table ${showActionsColumn ? "alerts-grid-table--actions" : ""} w-full border-collapse text-left text-[13px]`}>
             <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">
                 <SerialNumberHeader className="px-3 py-3" />
-                <th className={`${showActionsColumn ? "min-w-[280px]" : "min-w-[220px]"} px-4 py-3`}>Alert</th>
+                <th className="px-4 py-3">Alert</th>
                 <th className="px-4 py-3">Module</th>
                 <th className="px-4 py-3">Severity</th>
                 <th className="px-4 py-3">Status</th>

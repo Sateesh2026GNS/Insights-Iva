@@ -1426,6 +1426,16 @@ export default function WorkOrders() {
         </div>
 
         <div className="hidden print:block work-orders-print-report">
+          {filtered.length === 0 ? (
+            <div className="work-orders-print-empty">
+              <EmptyState
+                icon="document"
+                title="No records found."
+                description="There is nothing to show here yet."
+                className="border-none bg-transparent py-16"
+              />
+            </div>
+          ) : (
           <table className="work-orders-print-table">
             <colgroup>
               <col style={{ width: "16%" }} />
@@ -1476,6 +1486,7 @@ export default function WorkOrders() {
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 
@@ -1697,6 +1708,67 @@ export default function WorkOrders() {
             font-size: 8pt !important;
             color: #475569 !important;
             margin-top: 1px !important;
+          }
+
+          /* Work Orders Print Empty State */
+          .work-orders-print-empty {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            padding: 72px 16px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .work-orders-print-empty > div {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+          }
+          .work-orders-print-empty [class*="opacity"] {
+            opacity: 1 !important;
+          }
+          .work-orders-print-empty svg {
+            display: block !important;
+            width: 54px !important;
+            height: 62px !important;
+            color: #cbd5e1 !important;
+            stroke: #cbd5e1 !important;
+            opacity: 1 !important;
+            margin: 0 auto 14px auto !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .work-orders-print-empty svg path,
+          .work-orders-print-empty svg line {
+            stroke: #cbd5e1 !important;
+            stroke-width: 3.5 !important;
+          }
+          .work-orders-print-empty h3 {
+            font-size: 15pt !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            margin: 0 0 6px 0 !important;
+            line-height: 1.25 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .work-orders-print-empty p {
+            font-size: 10pt !important;
+            font-weight: 400 !important;
+            color: #475569 !important;
+            margin: 0 !important;
+            line-height: 1.4 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
           /* Work Orders Print Table */

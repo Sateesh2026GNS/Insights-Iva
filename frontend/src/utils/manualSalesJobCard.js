@@ -76,7 +76,7 @@ export function scrollToManualMaterialCheck() {
 export const PRIORITY_OPTIONS = [
   { value: "urgent", label: "Urgent" },
   { value: "high", label: "High" },
-  { value: "medium", label: "Normal" },
+  { value: "medium", label: "Medium" },
   { value: "low", label: "Low" },
 ];
 
@@ -461,6 +461,8 @@ export function mergeSalesOrderIntoManualForm(
       payment_terms:
         normalizePaymentTermsFromOrder(order.payment_terms) || prev.order.payment_terms,
       priority: order.priority || prev.order.priority || "medium",
+      end_use: order.end_use || prev.order.end_use || "",
+      remarks: order.remarks || order.notes || prev.order.remarks || "",
     },
   };
   if (replaceProductLines && productLines?.length) {

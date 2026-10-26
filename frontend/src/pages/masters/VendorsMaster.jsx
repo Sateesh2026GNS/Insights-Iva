@@ -49,7 +49,16 @@ const VENDOR_EXPORT_COLUMNS = [
 function blankOr(value) {
   if (value == null) return "";
   const s = String(value).trim();
-  return !s || s === "—" ? "" : s;
+  if (
+    !s ||
+    s === "—" ||
+    s.endsWith("@mail.insightsiva.com") ||
+    s.endsWith("@insightsiva.internal") ||
+    s.includes("placeholder")
+  ) {
+    return "";
+  }
+  return s;
 }
 
 export default function VendorsMaster() {

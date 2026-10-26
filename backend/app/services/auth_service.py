@@ -147,24 +147,40 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     return user
 
 
-def find_user_by_email(db: Session, email: str) -> User | None:
+def find_users_by_email(db: Session, email: str) -> list[User]:
     if not email:
-        return None
+        return []
     normalized = email.strip().lower()
-    # Fast path: direct indexed B-tree query
-    user = db.scalars(
-        select(User)
-        .where(User.email == normalized)
-        .options(selectinload(User.roles), selectinload(User.tenant))
-    ).first()
-    if user:
-        return user
-    # Fallback for un-normalized legacy records
-    return db.scalars(
-        select(User)
-        .where(func.lower(func.trim(User.email)) == normalized)
-        .options(selectinload(User.roles), selectinload(User.tenant))
-    ).first()
+    users = list(
+        db.scalars(
+            select(User)
+            .where(User.email == normalized)
+            .options(selectinload(User.roles), selectinload(User.tenant))
+        ).all()
+    )
+    if users:
+        return users
+    return list(
+        db.scalars(
+            select(User)
+            .where(func.lower(func.trim(User.email)) == normalized)
+            .options(selectinload(User.roles), selectinload(User.tenant))
+        ).all()
+    )
+
+
+def find_user_by_email(db: Session, email: str) -> User | None:
+    users = find_users_by_email(db, email)
+    if not users:
+        return None
+    from app.core.company_email import is_subscription_active
+    for u in users:
+        if u.is_active and u.tenant and is_subscription_active(u.tenant):
+            return u
+    for u in users:
+        if u.is_active:
+            return u
+    return users[0]
 
 
 def login_user(db: Session, email: str, password: str, user: User | None = None) -> User:
@@ -180,15 +196,30 @@ def login_user(db: Session, email: str, password: str, user: User | None = None)
     dummy_hash = "$2b$12$LQv3c1yqBWVHxkd0LHA0COYz6TtxMQJqpNfWXlFbW.6B1Lx3KvQ6e"
 
     email = (email or "").strip().lower()
-    if user is None:
-        user = find_user_by_email(db, email)
+    candidate_users = [user] if user is not None else find_users_by_email(db, email)
 
-    if not user:
+    if not candidate_users:
         verify_password(password, dummy_hash)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)
 
-    if not verify_password(password, user.hashed_password):
+    # Check candidates for matching password and active account
+    matched_user = None
+    for cand in candidate_users:
+        if verify_password(password, cand.hashed_password):
+            matched_user = cand
+            break
+
+    if not matched_user and user is not None:
+        all_cands = find_users_by_email(db, email)
+        for cand in all_cands:
+            if cand.id != user.id and verify_password(password, cand.hashed_password):
+                matched_user = cand
+                break
+
+    if not matched_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)
+
+    user = matched_user
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=generic)

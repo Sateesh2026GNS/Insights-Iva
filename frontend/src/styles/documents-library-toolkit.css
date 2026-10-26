@@ -26,9 +26,9 @@
 }
 
 .documents-library-page--toolkit .documents-library-panel__toolbar .ui-btn {
-  font-size: 10px;
-  min-height: 28px;
-  padding: 4px 10px;
+  min-height: 40px;
+  padding: 7px 14px;
+  font-size: 12px;
 }
 
 .documents-library-page--toolkit .documents-library-filters {
@@ -63,6 +63,14 @@
   border: 1px solid var(--mtk-border, #c5d0dc);
   padding: 3px 5px;
   vertical-align: middle;
+  text-align: left;
+}
+
+.documents-library-page--toolkit .documents-library-table.mtk-table th:first-child,
+.documents-library-page--toolkit .documents-library-table.mtk-table td:first-child,
+.documents-library-page--toolkit .documents-library-table.mtk-table th:last-child,
+.documents-library-page--toolkit .documents-library-table.mtk-table td:last-child {
+  text-align: center;
 }
 
 .documents-library-page--toolkit .documents-library-table.mtk-table thead th {

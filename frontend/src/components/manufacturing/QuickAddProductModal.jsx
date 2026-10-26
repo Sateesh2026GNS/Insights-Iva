@@ -1,30 +1,59 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import AdminModal from "../admin/AdminModal";
 import Button from "../common/Button";
 import { Input } from "../common/FormField";
 import SearchableSelect from "../common/SearchableSelect";
 import { createProduct } from "../../api/productsApi";
+import { listInventoryV2Categories } from "../../api/inventoryV2Api";
 import useTenantId from "../../hooks/useTenantId";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 import { getUomOptions } from "../../utils/manualSalesJobCard";
+import { PRODUCT_CATEGORIES } from "../../data/productsMasterData";
+import { invalidateReferenceCache } from "../../utils/referenceDataCache";
 
-export default function QuickAddProductModal({ open, onClose, onSaved }) {
+export default function QuickAddProductModal({ open, onClose, onSaved, defaultCategory = "Finished Goods" }) {
   const tenantId = useTenantId();
   const { addToast } = useToast();
   const [name, setName] = useState("");
   const [productCode, setProductCode] = useState("");
+  const [category, setCategory] = useState(defaultCategory || "Finished Goods");
+  const [loadedCategories, setLoadedCategories] = useState([]);
   const [uom, setUom] = useState("Nos");
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setCategory(defaultCategory || "Finished Goods");
+      listInventoryV2Categories()
+        .then((res) => {
+          const rows = Array.isArray(res?.data) ? res.data : [];
+          setLoadedCategories(rows.filter((c) => c?.name && String(c.name).toLowerCase() !== "no category"));
+        })
+        .catch(() => setLoadedCategories([]));
+    }
+  }, [open, defaultCategory]);
+
+  const categoryOptions = useMemo(() => {
+    const names = new Set(PRODUCT_CATEGORIES);
+    loadedCategories.forEach((c) => {
+      if (c.name) names.add(c.name);
+    });
+    if (category && category.trim()) {
+      names.add(category.trim());
+    }
+    return Array.from(names).map((c) => ({ value: c, label: c }));
+  }, [loadedCategories, category]);
 
   const uomOptions = getUomOptions().map((u) => ({ value: u, label: u }));
 
   const reset = () => {
     setName("");
     setProductCode("");
+    setCategory(defaultCategory || "Finished Goods");
     setUom("Nos");
     setDescription("");
     setErrors({});
@@ -49,18 +78,21 @@ export default function QuickAddProductModal({ open, onClose, onSaved }) {
     setSaving(true);
     try {
       const sku = productCode.trim() || `SKU-${Date.now().toString().slice(-8)}`;
+      const finalCategory = (category || "").trim() || "Finished Goods";
       const res = await createProduct({
         tenant_id: tenantId,
         sku,
         name: name.trim(),
-        category: "Finished Goods",
-        product_type: "Finished Goods",
+        category: finalCategory,
+        product_type: finalCategory,
         description: description.trim() || null,
         unit: uom,
         unit_price: 0,
         unit_cost: 0,
         current_stock: 0,
       });
+      invalidateReferenceCache("categories");
+      invalidateReferenceCache("products");
       const created = res?.data ?? res;
       addToast("Product added successfully.", "success");
       onSaved?.(created);
@@ -79,6 +111,17 @@ export default function QuickAddProductModal({ open, onClose, onSaved }) {
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Product Name *</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} error={errors.name} autoFocus />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Category *</label>
+          <SearchableSelect
+            value={category}
+            onChange={setCategory}
+            options={categoryOptions}
+            placeholder="Select Category"
+            searchPlaceholder="Search or enter category…"
+            allowCustom
+          />
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Product Code</label>

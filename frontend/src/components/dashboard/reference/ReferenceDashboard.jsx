@@ -1112,8 +1112,17 @@ export default function ReferenceDashboard() {
         setLoading(false);
       });
 
-    Promise.allSettled([getProductionOrders(), getWorkOrders(), approvalsFetch]).then(
-      ([prodRes, woRes, approvalsRes]) => {
+    // Operators receive their assigned work and task counts from /api/erp/dashboard.
+    // Fetching the unrestricted planning lists here is redundant and can invoke
+    // production-planning validation for a role that cannot use that module.
+    const liveDataFetch = isOp
+      ? Promise.resolve([])
+      : Promise.allSettled([getProductionOrders(), getWorkOrders(), approvalsFetch]);
+
+    liveDataFetch.then(
+      (results) => {
+      if (isOp) return;
+      const [prodRes, woRes, approvalsRes] = results;
       let customOrders = [];
       try {
         customOrders = JSON.parse(localStorage.getItem("gns_custom_production_orders") || "[]");
