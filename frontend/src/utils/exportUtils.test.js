@@ -49,4 +49,33 @@ describe("exportToPdf column layout and styling", () => {
       exportToPdf(data, columns, "Products", "products-test", { landscape: true })
     ).resolves.not.toThrow();
   });
+
+  it("renders empty state without crashing when data array is empty", async () => {
+    const columns = [
+      { key: "id", label: "Alert ID" },
+      { key: "title", label: "Title" },
+      { key: "message", label: "Description" },
+      { key: "module", label: "Module" },
+      { key: "severity", label: "Severity" },
+      { key: "status", label: "Status" },
+    ];
+
+    await expect(
+      exportToPdf([], columns, "Safety & Incident Report", "safety-alerts")
+    ).resolves.not.toThrow();
+  });
+
+  it("supports custom empty title and description options", async () => {
+    const columns = [
+      { key: "id", label: "ID" },
+      { key: "name", label: "Name" },
+    ];
+
+    await expect(
+      exportToPdf([], columns, "Custom Report", "custom-report", {
+        emptyTitle: "No records found.",
+        emptyDescription: "There is nothing to show here yet.",
+      })
+    ).resolves.not.toThrow();
+  });
 });

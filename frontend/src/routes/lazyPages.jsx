@@ -10,7 +10,6 @@ export const CompanyDetail = lazy(() => import("../pages/platform/CompanyDetail"
 export const ForgotPassword = lazy(() => import("../pages/auth/ForgotPassword"));
 export const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 export const VerifyEmail = lazy(() => import("../pages/auth/VerifyEmail"));
-export const ContactUs = lazy(() => import("../pages/contact/ContactUs"));
 export const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
 export const ProductionPlanning = lazy(() => import("../pages/production/ProductionPlanning"));
 export const ProductionDashboard = lazy(() => import("../pages/production/ProductionDashboard"));

@@ -10,7 +10,6 @@ import {
   Filter,
   Info,
   Plus,
-  RefreshCw,
   Search,
   XCircle,
 } from "lucide-react";
@@ -98,6 +97,10 @@ function formatDateTime(value) {
   return `${day}, ${time}`;
 }
 
+const DEFAULT_FILTERS = {
+  status: "",
+};
+
 function findWarehouseIdByName(warehouseList, name) {
   if (!name) return "";
   const match = warehouseList.find((w) => w.name === name);
@@ -141,7 +144,12 @@ export default function StockAdjustment() {
   const [updatingId, setUpdatingId] = useState(null);
   const [showForm, setShowForm] = useState(() => searchParams.get("new") === "1");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [filters, setFilters] = useState(() => ({
+    status: "",
+  }));
+  const [appliedFilters, setAppliedFilters] = useState(() => ({
+    status: "",
+  }));
   const [showFilters, setShowFilters] = useState(false);
   const [headerDate, setHeaderDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
@@ -240,11 +248,28 @@ export default function StockAdjustment() {
         )
       );
     }
-    if (statusFilter) {
-      rows = rows.filter((r) => String(r.status || "").toLowerCase() === statusFilter);
+    const statusVal = appliedFilters.status;
+    if (statusVal) {
+      rows = rows.filter((r) => String(r.status || "").toLowerCase() === statusVal);
     }
     return rows;
-  }, [displayAdjustments, search, statusFilter]);
+  }, [displayAdjustments, search, appliedFilters]);
+
+  const handleApplyFilters = () => {
+    setAppliedFilters({ ...filters });
+  };
+
+  const handleClearFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+  };
+
+  const handleFilterKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleApplyFilters();
+    }
+  };
 
   const resetForm = () => {
     setForm({
@@ -843,37 +868,34 @@ export default function StockAdjustment() {
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center xl:gap-5">
-            <h2 className="shrink-0 text-sm font-semibold text-[var(--color-text)]">Recent Adjustments</h2>
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
             <SearchBar
               value={search}
               onChange={setSearch}
               placeholder="Search adjustments"
-              className="w-full min-w-0 max-w-none flex-1 sm:min-w-[18rem]"
+              className="w-full min-w-[12rem] flex-1 lg:min-w-[16rem]"
             />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 xl:shrink-0">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
-              <Filter className="h-4 w-4" /> Filters
-            </Button>
-            {showFilters ? (
-              <>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
-                  <option value="">Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-                <Button type="button" variant="ghost" onClick={() => { setSearch(""); setStatusFilter(""); }}>
-                  <RefreshCw className="h-4 w-4" /> Clear
-                </Button>
-              </>
-            ) : null}
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowFilters((v) => !v)}
+                className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
+              >
+                <Filter className="h-4 w-4" /> Filters
+                {Object.values(appliedFilters).filter(Boolean).length > 0 ? (
+                  <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
+                    {Object.values(appliedFilters).filter(Boolean).length}
+                  </span>
+                ) : null}
+              </Button>
+            </div>
             <Button
               type="button"
               variant="add"
+              className="shrink-0 lg:ml-auto"
               onClick={openForm}
               leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
             >
@@ -881,6 +903,41 @@ export default function StockAdjustment() {
             </Button>
           </div>
         </div>
+
+        {showFilters ? (
+          <section
+            aria-label="Filter stock adjustments"
+            className="-mx-4 sm:-mx-5 px-4 sm:px-5 mb-4 flex flex-wrap items-center gap-3 border-y border-[var(--color-border-soft)] py-3.5"
+          >
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+              onKeyDown={handleFilterKeyDown}
+              className="ui-select !w-auto min-w-[8.5rem]"
+            >
+              <option value="">Status</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleApplyFilters}
+                className="h-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+              >
+                Apply Filters
+              </button>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="h-10 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+              >
+                Clear
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <DataTable
           columns={columns}

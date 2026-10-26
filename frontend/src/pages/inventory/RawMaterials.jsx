@@ -112,6 +112,12 @@ function todayISO() {
 }
 
 
+const DEFAULT_FILTERS = {
+  category: "",
+  status: "",
+  warehouse: "",
+};
+
 export default function RawMaterials() {
   const tenantId = useTenantId();
   const { user } = useAuth();
@@ -125,9 +131,8 @@ export default function RawMaterials() {
   const [materials, setMaterials] = useState([]);
   const [warehousesApi, setWarehousesApi] = useState([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [category, setCategory] = useState("");
-  const [warehouse, setWarehouse] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
@@ -254,6 +259,21 @@ export default function RawMaterials() {
     return Array.from(set).sort();
   }, [rows]);
 
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({ ...filters });
+  }, [filters]);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+  }, []);
+
+  const handleFilterKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleApplyFilters();
+    }
+  };
+
   const filtered = useMemo(() => {
     let list = rows;
     const q = search.trim().toLowerCase();
@@ -264,11 +284,11 @@ export default function RawMaterials() {
         )
       );
     }
-    if (statusFilter) list = list.filter((r) => resolveStatus(r) === statusFilter);
-    if (category) list = list.filter((r) => r.category === category);
-    if (warehouse) list = list.filter((r) => r.warehouse_name === warehouse);
+    if (appliedFilters.status) list = list.filter((r) => resolveStatus(r) === appliedFilters.status);
+    if (appliedFilters.category) list = list.filter((r) => r.category === appliedFilters.category);
+    if (appliedFilters.warehouse) list = list.filter((r) => r.warehouse_name === appliedFilters.warehouse);
     return list;
-  }, [rows, search, statusFilter, category, warehouse]);
+  }, [rows, search, appliedFilters]);
 
   const openDetail = async (row, readOnly = true) => {
     if (row.live && typeof row.id === "number") {
@@ -498,35 +518,55 @@ export default function RawMaterials() {
         ) : (
           <>
             <ClickableKpiCard
-              onClick={() => { setStatusFilter(""); setSearch(""); }}
+              onClick={() => {
+                setFilters(DEFAULT_FILTERS);
+                setAppliedFilters(DEFAULT_FILTERS);
+                setSearch("");
+              }}
               title="Show all raw materials"
               tone="info"
             >
               <KpiCard label="Total Items" value={Number(kpis.total_items).toLocaleString("en-IN")} icon={Package} tone="info" meta="Click to show all" />
             </ClickableKpiCard>
             <ClickableKpiCard
-              onClick={() => { setStatusFilter(""); setSearch(""); }}
+              onClick={() => {
+                setFilters(DEFAULT_FILTERS);
+                setAppliedFilters(DEFAULT_FILTERS);
+                setSearch("");
+              }}
               title="View total stock value"
               tone="success"
             >
               <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stock_value)} icon={Package} tone="success" meta="Across all warehouses" />
             </ClickableKpiCard>
             <ClickableKpiCard
-              onClick={() => setStatusFilter("low_stock")}
+              onClick={() => {
+                const next = { ...DEFAULT_FILTERS, status: "low_stock" };
+                setFilters(next);
+                setAppliedFilters(next);
+              }}
               title="Filter low stock items"
               tone="warning"
             >
               <KpiCard label="Low Stock Items" value={kpis.low_stock} icon={AlertTriangle} tone="warning" meta="Click to filter" />
             </ClickableKpiCard>
             <ClickableKpiCard
-              onClick={() => setStatusFilter("out_of_stock")}
+              onClick={() => {
+                const next = { ...DEFAULT_FILTERS, status: "out_of_stock" };
+                setFilters(next);
+                setAppliedFilters(next);
+              }}
               title="Filter out of stock items"
               tone="danger"
             >
               <KpiCard label="Out of Stock" value={kpis.out_of_stock} icon={PackageX} tone="danger" meta="Click to filter" />
             </ClickableKpiCard>
             <ClickableKpiCard
-              onClick={() => { setStatusFilter(""); setSearch(""); }}
+              onClick={() => {
+                setFilters(DEFAULT_FILTERS);
+                setAppliedFilters(DEFAULT_FILTERS);
+                setSearch("");
+              }}
               title="View total quantity"
               tone="info"
             >
@@ -544,7 +584,7 @@ export default function RawMaterials() {
 
       <ListPageCard>
         <ListPageCardBody>
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${showFilters ? "mb-3" : "mb-4"}`}>
           <SearchBar
             value={search}
             onChange={setSearch}
@@ -561,9 +601,9 @@ export default function RawMaterials() {
               className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
             >
               <Filter className="h-4 w-4" /> Filters
-              {(category || statusFilter || warehouse) ? (
+              {Object.values(appliedFilters).filter(Boolean).length > 0 ? (
                 <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
-                  {[category, statusFilter, warehouse].filter(Boolean).length}
+                  {Object.values(appliedFilters).filter(Boolean).length}
                 </span>
               ) : null}
             </Button>
@@ -576,8 +616,16 @@ export default function RawMaterials() {
         </div>
 
         {showFilters ? (
-          <div className="mb-4 flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+          <section
+            aria-label="Filter raw materials"
+            className="-mx-4 sm:-mx-5 px-4 sm:px-5 mb-4 flex flex-wrap items-center gap-3 border-y border-[var(--color-border-soft)] py-3.5"
+          >
+            <select
+              value={filters.category}
+              onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
+              onKeyDown={handleFilterKeyDown}
+              className="ui-select !w-auto min-w-[8.5rem]"
+            >
               <option value="">Category</option>
               {categories.map((c) => (
                 <option key={c} value={c}>
@@ -585,13 +633,23 @@ export default function RawMaterials() {
                 </option>
               ))}
             </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+              onKeyDown={handleFilterKeyDown}
+              className="ui-select !w-auto min-w-[8.5rem]"
+            >
               <option value="">Status</option>
               <option value="available">In Stock</option>
               <option value="low_stock">Low Stock</option>
               <option value="out_of_stock">Out of Stock</option>
             </select>
-            <select value={warehouse} onChange={(e) => setWarehouse(e.target.value)} className="ui-select !w-auto min-w-[9rem]">
+            <select
+              value={filters.warehouse}
+              onChange={(e) => setFilters((f) => ({ ...f, warehouse: e.target.value }))}
+              onKeyDown={handleFilterKeyDown}
+              className="ui-select !w-auto min-w-[9rem]"
+            >
               <option value="">Warehouse</option>
               {warehouseOptions.map((w) => (
                 <option key={w} value={w}>
@@ -599,21 +657,23 @@ export default function RawMaterials() {
                 </option>
               ))}
             </select>
-            {(category || statusFilter || warehouse) ? (
-              <Button
+            <div className="flex items-center gap-2.5">
+              <button
                 type="button"
-                variant="ghost"
-                onClick={() => {
-                  setCategory("");
-                  setStatusFilter("");
-                  setWarehouse("");
-                }}
-                className="text-xs text-[var(--color-text-muted)] hover:text-red-600"
+                onClick={handleApplyFilters}
+                className="h-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
               >
-                Clear filters
-              </Button>
-            ) : null}
-          </div>
+                Apply Filters
+              </button>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="h-10 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+              >
+                Clear
+              </button>
+            </div>
+          </section>
         ) : null}
 
         {initialLoading ? (

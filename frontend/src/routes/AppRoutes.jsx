@@ -84,14 +84,6 @@ export default function AppRoutes() {
       <Route path="/verify-email" element={<P.VerifyEmail />} />
       <Route path="/e-quotation/:token" element={<P.PublicEQuotationPage />} />
       <Route
-        path="/contact"
-        element={
-          <ProtectedRoute>
-            <P.ContactUs />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/"
         element={
           <ProtectedRoute>

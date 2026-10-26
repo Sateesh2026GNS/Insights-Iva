@@ -37,6 +37,79 @@ function formatPdfCell(row, col) {
   return sanitizePdfText(val ?? "");
 }
 
+function drawPdfEmptyState(doc, cell, title = "No records found.", description = "There is nothing to show here yet.") {
+  const { x, y, width, height } = cell;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+
+  const iconW = 14;
+  const iconH = 17;
+  const fold = 4.2;
+  const iconX = centerX - iconW / 2;
+  const iconY = centerY - 14.5;
+
+  if (typeof doc.saveGraphicsState === "function") doc.saveGraphicsState();
+
+  // Document rounded outline
+  doc.setDrawColor(203, 213, 225); // #cbd5e1 / slate-300
+  doc.setFillColor(255, 255, 255);
+  doc.setLineWidth(0.75);
+  if (typeof doc.roundedRect === "function") {
+    doc.roundedRect(iconX, iconY, iconW, iconH, 1.4, 1.4, "FD");
+  } else if (typeof doc.rect === "function") {
+    doc.rect(iconX, iconY, iconW, iconH, "FD");
+  }
+
+  // Clear top-right corner to make folded dog-ear
+  if (typeof doc.triangle === "function") {
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.2);
+    doc.triangle(
+      iconX + iconW - fold - 0.4,
+      iconY - 0.4,
+      iconX + iconW + 0.4,
+      iconY - 0.4,
+      iconX + iconW + 0.4,
+      iconY + fold + 0.4,
+      "FD"
+    );
+  }
+
+  // Fold angled cut edge
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.75);
+  doc.line(iconX + iconW - fold, iconY, iconX + iconW, iconY + fold);
+
+  // Inner fold flap lines
+  doc.line(iconX + iconW - fold, iconY, iconX + iconW - fold, iconY + fold);
+  doc.line(iconX + iconW - fold, iconY + fold, iconX + iconW, iconY + fold);
+
+  // Three inner lines (document text placeholder)
+  // Short top dash
+  doc.line(iconX + 3.2, iconY + 7.5, iconX + 5.8, iconY + 7.5);
+  // Middle line
+  doc.line(iconX + 3.2, iconY + 10.5, iconX + iconW - 3.2, iconY + 10.5);
+  // Bottom line
+  doc.line(iconX + 3.2, iconY + 13.5, iconX + iconW - 3.2, iconY + 13.5);
+
+  // Title: "No records found."
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(15, 23, 42); // #0f172a
+  doc.text(sanitizePdfText(title), centerX, iconY + iconH + 5.5, { align: "center" });
+
+  // Description: "There is nothing to show here yet."
+  if (description) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139); // #64748b
+    doc.text(sanitizePdfText(description), centerX, iconY + iconH + 10, { align: "center" });
+  }
+
+  if (typeof doc.restoreGraphicsState === "function") doc.restoreGraphicsState();
+}
+
 export async function exportToPdf(data, columns, title = "Report", filename = "report", options = {}) {
   const [{ jsPDF }, autoTableModule] = await Promise.all([
     import("jspdf"),
@@ -54,6 +127,9 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
   });
   const marginX = options.marginX ?? (landscape && colCount > 12 ? 8 : 10);
   const headers = columns.map((c) => sanitizePdfText(c.pdfLabel || (typeof c.label === "string" ? c.label : c.key)));
+  const isEmpty = rowsData.length === 0;
+  const emptyTitle = options.emptyTitle || "No records found.";
+  const emptyDescription = options.emptyDescription !== undefined ? options.emptyDescription : "There is nothing to show here yet.";
   const rows = rowsData.map((row) => columns.map((c) => formatPdfCell(row, c)));
 
   const isProductionDashboard = options.variant === "production-dashboard";
@@ -262,6 +338,12 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
 
   const customDidParseCell = didParseCell;
   const finalDidParseCell = (hook) => {
+    if (isEmpty && hook.section === "body") {
+      hook.cell.styles.fillColor = [255, 255, 255];
+      hook.cell.styles.lineColor = [226, 232, 240];
+      hook.cell.styles.lineWidth = 0.15;
+      return;
+    }
     if (customDidParseCell) customDidParseCell(hook);
     if (hook.section === "head") {
       const colStyle = columnStyles[hook.column.index];
@@ -280,62 +362,87 @@ export async function exportToPdf(data, columns, title = "Report", filename = "r
   }
   const resolvedTableWidth = options.tableWidth || (allColumnsHaveWidth ? "wrap" : "auto");
 
-  autoTable(doc, {
-    head: [headers],
-    body: rows,
-    startY: tableStartY,
-    margin: tableMargin,
-    styles: tableStyles,
-    headStyles: tableHeadStyles,
-    columnStyles,
-    showHead: "everyPage",
-    rowPageBreak: "auto",
-    tableWidth: resolvedTableWidth,
-    didParseCell: finalDidParseCell,
-    didDrawPage: isProductionDashboard
-      ? ({ pageNumber }) => {
-          const pageHeight = doc.internal.pageSize.getHeight();
-          if (pageNumber > 1) {
-            doc.setFillColor(30, 64, 175);
-            doc.roundedRect(marginX, 10, doc.internal.pageSize.getWidth() - marginX * 2, 24, 2.5, 2.5, "F");
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(255, 255, 255);
-            doc.text(sanitizePdfText(title), marginX + 5, 20);
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(7);
-            doc.setTextColor(219, 234, 254);
-            doc.text("Daily operations snapshot", marginX + 5, 28);
-          }
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(7);
-          doc.setTextColor(100, 116, 139);
-          doc.text(`Production dashboard snapshot  ·  Page ${pageNumber}`, marginX, pageHeight - 6);
-        }
-      : isProductionPlanning || isProductionWorkOrders
+  if (isEmpty) {
+    const docPageWidth = doc.internal.pageSize.getWidth();
+    const cardX = marginX;
+    const cardY = tableStartY;
+    const cardWidth = docPageWidth - marginX * 2;
+    const cardHeight = landscape ? 60 : 70;
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.25);
+    if (typeof doc.roundedRect === "function") {
+      doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 3, 3, "FD");
+    } else if (typeof doc.rect === "function") {
+      doc.rect(cardX, cardY, cardWidth, cardHeight, "FD");
+    }
+
+    drawPdfEmptyState(
+      doc,
+      { x: cardX, y: cardY, width: cardWidth, height: cardHeight },
+      emptyTitle,
+      emptyDescription
+    );
+  } else {
+    autoTable(doc, {
+      head: [headers],
+      body: rows,
+      startY: tableStartY,
+      margin: tableMargin,
+      styles: tableStyles,
+      headStyles: tableHeadStyles,
+      columnStyles,
+      showHead: "everyPage",
+      rowPageBreak: "auto",
+      tableWidth: resolvedTableWidth,
+      didParseCell: finalDidParseCell,
+      didDrawCell: options.didDrawCell,
+      didDrawPage: isProductionDashboard
         ? ({ pageNumber }) => {
-            const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             if (pageNumber > 1) {
               doc.setFillColor(30, 64, 175);
-              doc.roundedRect(marginX, 8, pageWidth - marginX * 2, 23, 2.5, 2.5, "F");
+              doc.roundedRect(marginX, 10, doc.internal.pageSize.getWidth() - marginX * 2, 24, 2.5, 2.5, "F");
               doc.setFont("helvetica", "bold");
-              doc.setFontSize(13);
+              doc.setFontSize(11);
               doc.setTextColor(255, 255, 255);
-              doc.text(sanitizePdfText(title), marginX + 5, 18);
+              doc.text(sanitizePdfText(title), marginX + 5, 20);
               doc.setFont("helvetica", "normal");
-              doc.setFontSize(8);
+              doc.setFontSize(7);
               doc.setTextColor(219, 234, 254);
-              doc.text(isProductionWorkOrders ? "Work order details" : "Production order details", marginX + 5, 25);
+              doc.text("Daily operations snapshot", marginX + 5, 28);
             }
             doc.setFont("helvetica", "normal");
             doc.setFontSize(7);
             doc.setTextColor(100, 116, 139);
-            doc.text(isProductionWorkOrders ? "Work orders report" : "Production planning report", marginX, pageHeight - 6);
-            doc.text(`Page ${pageNumber}`, pageWidth - marginX, pageHeight - 6, { align: "right" });
+            doc.text(`Production dashboard snapshot  ·  Page ${pageNumber}`, marginX, pageHeight - 6);
           }
-        : undefined,
-  });
+        : isProductionPlanning || isProductionWorkOrders
+          ? ({ pageNumber }) => {
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const pageHeight = doc.internal.pageSize.getHeight();
+              if (pageNumber > 1) {
+                doc.setFillColor(30, 64, 175);
+                doc.roundedRect(marginX, 8, pageWidth - marginX * 2, 23, 2.5, 2.5, "F");
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(13);
+                doc.setTextColor(255, 255, 255);
+                doc.text(sanitizePdfText(title), marginX + 5, 18);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(219, 234, 254);
+                doc.text(isProductionWorkOrders ? "Work order details" : "Production order details", marginX + 5, 25);
+              }
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(7);
+              doc.setTextColor(100, 116, 139);
+              doc.text(isProductionWorkOrders ? "Work orders report" : "Production planning report", marginX, pageHeight - 6);
+              doc.text(`Page ${pageNumber}`, pageWidth - marginX, pageHeight - 6, { align: "right" });
+            }
+          : undefined,
+    });
+  }
 
   if (isProductionDashboard) {
     const pageCount = doc.internal.getNumberOfPages();
