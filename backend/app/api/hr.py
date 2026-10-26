@@ -148,6 +148,12 @@ def hr_dashboard(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = D
     return get_hr_dashboard_extended(db, tenant_id)
 
 
+@router.get("/workforce-dashboard")
+def workforce_dashboard(tenant_id: int = Depends(tenant_scope(MODULE)), db: Session = Depends(get_db)):
+    from app.services.workforce_service import get_workforce_dashboard
+    return get_workforce_dashboard(db, tenant_id)
+
+
 @router.post("/employees", response_model=EmployeeRead)
 def create_employee_endpoint(
     payload: EmployeeCreate,

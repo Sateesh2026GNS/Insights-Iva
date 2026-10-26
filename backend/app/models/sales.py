@@ -350,3 +350,21 @@ class DispatchShipment(Base, TimestampMixin):
 
     sales_order = relationship("SalesOrder", back_populates="dispatches")
     customer = relationship("Customer")
+
+
+class CrmReminder(Base, TimestampMixin):
+    """Sales notes that are not already stored on a lead or lead activity."""
+
+    __tablename__ = "crm_reminders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    due_on: Mapped[date | None] = mapped_column(Date)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+    customer = relationship("Customer")

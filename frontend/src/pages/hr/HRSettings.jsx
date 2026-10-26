@@ -22,7 +22,7 @@ import {
 
 import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
-import { ListPageShell } from "../../components/common/ListPageShell";
+import { SettingsPageShell } from "../settings/settingsUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import { getFeatureSetting, putFeatureSetting } from "../../api/bizDocumentsApi";
@@ -158,10 +158,16 @@ export default function HRSettings() {
 
   const showGeneralForm = activeCategory === "general";
 
-  if (loading) return <Loader label="Loading HR settings..." />;
+  if (loading) {
+    return (
+      <SettingsPageShell heroTitle="HR" heroHighlight="Settings" heroSubtitle="Manage your HRMS preferences and system configurations">
+        <Loader label="Loading HR settings..." />
+      </SettingsPageShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <SettingsPageShell heroTitle="HR" heroHighlight="Settings" heroSubtitle="Manage your HRMS preferences and system configurations">
     <div className="hr-page ui-page ui-stack min-w-0">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -460,6 +466,6 @@ export default function HRSettings() {
         </div>
       </div>
     </div>
-    </ListPageShell>
+    </SettingsPageShell>
   );
 }

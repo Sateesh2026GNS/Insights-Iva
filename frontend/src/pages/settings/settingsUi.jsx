@@ -44,7 +44,6 @@ import useAuth from "../../hooks/useAuth";
 import {
   SETTINGS_PRODUCTION_TOOLKIT_SUBTITLE,
   formatSettingsToolkitHeroDate,
-  useProductionManagerSettingsToolkit,
 } from "../../utils/settingsProductionToolkit";
 import "../../styles/manufacturing-toolkit.css";
 import "../../styles/settings-production-toolkit.css";
@@ -101,7 +100,7 @@ export function useSettingsToolkitLayout() {
   return useContext(SettingsToolkitContext);
 }
 
-function SettingsToolkitHero() {
+function SettingsToolkitHero({ title = "Settings", highlight = "", subtitle }) {
   return (
     <header className="mtk-hero">
       <div className="mtk-hero__row">
@@ -110,33 +109,26 @@ function SettingsToolkitHero() {
       </div>
       <div className="mtk-hero__title">
         <h1>
-          Production <span className="mtk-accent">Settings</span>
+          {title}
+          {highlight ? <span className="mtk-accent"> {highlight}</span> : null}
         </h1>
-        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
-          Workspace preferences, notifications, appearance, and production options available to your role.
-        </p>
+        {subtitle ? <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>{subtitle}</p> : null}
       </div>
     </header>
   );
 }
 
-export function SettingsPageShell({ children }) {
-  const { user } = useAuth();
-  const toolkit = useProductionManagerSettingsToolkit(user);
-
-  if (!toolkit) {
-    return (
-      <div className="settings-page min-h-full">
-        <div className="ui-page">{children}</div>
-      </div>
-    );
-  }
-
+export function SettingsPageShell({
+  children,
+  heroTitle = "Settings",
+  heroHighlight = "",
+  heroSubtitle = "Workspace preferences, notifications, appearance, and options available to your role.",
+}) {
   return (
     <SettingsToolkitContext.Provider value={true}>
       <div className="settings-page settings-page--toolkit min-h-full w-full">
         <div className="mtk-root mtk-theme--navy settings-toolkit-root print:hidden">
-          <SettingsToolkitHero />
+          <SettingsToolkitHero title={heroTitle} highlight={heroHighlight} subtitle={heroSubtitle} />
           <div className="mtk-body settings-toolkit-body min-w-0">
             <div className="ui-page settings-toolkit-content">{children}</div>
           </div>
@@ -714,9 +706,14 @@ export function SkeletonCards({ count = 9 }) {
 }
 
 /** Shared shell for V2 settings feature pages (invoice, format, sequence, templates) */
-export function SettingsFeatureShell({ children }) {
+export function SettingsFeatureShell({
+  children,
+  heroTitle = "Settings",
+  heroHighlight = "",
+  heroSubtitle = "Workspace preferences, notifications, appearance, and options available to your role.",
+}) {
   return (
-    <SettingsPageShell>
+    <SettingsPageShell heroTitle={heroTitle} heroHighlight={heroHighlight} heroSubtitle={heroSubtitle}>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <aside className="hidden shrink-0 lg:block lg:w-56 xl:w-60">
           <SettingsSidebarNav />

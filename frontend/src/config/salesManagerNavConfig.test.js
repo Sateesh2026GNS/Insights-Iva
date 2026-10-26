@@ -38,8 +38,12 @@ describe("salesManagerNavConfig", () => {
     const salesPaths = (SALES_MANAGER_NAV_ITEMS.find((n) => n.key === "sales")?.children || []).map(
       (c) => c.to
     );
+    expect(salesPaths).toContain("/sales/order-delivery-tracker");
+    expect(salesPaths).toContain("/sales/daily-dashboard");
+    expect(salesPaths).toContain("/sales/crm-tracker");
     expect(salesPaths).toContain("/sales/leads");
     expect(salesPaths).toContain("/sales/quotations");
+    expect(salesPaths).toContain("/sales/job-order-quotation");
     expect(salesPaths).toContain("/sales/orders");
     expect(salesPaths).not.toContain("/sales/customers");
 

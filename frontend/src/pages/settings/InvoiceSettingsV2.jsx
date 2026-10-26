@@ -103,7 +103,11 @@ export default function InvoiceSettingsV2() {
   };
 
   return (
-    <SettingsFeatureShell>
+    <SettingsFeatureShell
+      heroTitle="Invoice"
+      heroHighlight="Settings"
+      heroSubtitle="Manage default billing preferences, automated settlements, and tax calculation rules."
+    >
       <PageHeader
         title="Invoice Settings"
         subtitle="Manage default billing preferences, automated settlements, and tax calculation rules"

@@ -39,6 +39,30 @@ export const SALES_MANAGER_NAV_ITEMS = [
     module: "sales",
     children: [
       {
+        key: "deliveryTracker",
+        label: "Delivery Tracker",
+        to: "/sales/order-delivery-tracker",
+        icon: Truck,
+        module: "sales",
+        end: true,
+      },
+      {
+        key: "dailySales",
+        label: "Daily Sales",
+        to: "/sales/daily-dashboard",
+        icon: BarChart3,
+        module: "sales",
+        end: true,
+      },
+      {
+        key: "crmTracker",
+        label: "CRM Tracker",
+        to: "/sales/crm-tracker",
+        icon: Users,
+        module: "sales",
+        end: true,
+      },
+      {
         key: "leads",
         label: "Leads / Enquiries",
         to: "/sales/leads",
@@ -56,6 +80,7 @@ export const SALES_MANAGER_NAV_ITEMS = [
         activeMatch: "leadsCreate",
       },
       { key: "quotations", label: "Quotations", to: "/sales/quotations", icon: FileText, module: "sales" },
+      { key: "jobOrderQuote", label: "Job Order Quote", to: "/sales/job-order-quotation", icon: FileText, module: "sales", end: true },
       { key: "orders", label: "Sales Orders", to: "/sales/orders", icon: ClipboardList, module: "sales" },
     ],
   },

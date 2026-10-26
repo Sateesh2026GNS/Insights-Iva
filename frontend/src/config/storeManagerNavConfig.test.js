@@ -25,11 +25,17 @@ describe("storeManagerNavConfig collaboration", () => {
 describe("storeManagerNavConfig masters", () => {
   it("includes Customers, Vendors, and Products under Masters", () => {
     const masters = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "masters");
-    expect(masters?.children?.map((c) => c.label)).toEqual(["Customers", "Vendors", "Products"]);
+    expect(masters?.children?.map((c) => c.label)).toEqual([
+      "Customers",
+      "Vendors",
+      "Products",
+      "Supplier Tracker",
+    ]);
     expect(masters?.children?.map((c) => c.to)).toEqual([
       "/sales/customers",
       "/procurement/vendors",
       "/masters/products",
+      "/procurement/vendors/tracker",
     ]);
   });
 });

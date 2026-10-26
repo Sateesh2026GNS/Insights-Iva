@@ -1,6 +1,15 @@
 import api from "./axiosConfig";
 
 export const getCustomers = () => api.get("/sales/customers");
+export const getCrmTracker = () => api.get("/sales/crm-tracker");
+export const getDailySalesDashboard = (params = {}) => api.get("/sales/daily-dashboard", { params });
+export const getOrderDeliveryTracker = (params = {}) => api.get("/sales/order-delivery-tracker", { params });
+export const completeCrmFollowUp = (leadId) =>
+  api.post(`/sales/crm-tracker/follow-ups/${leadId}/complete`);
+export const createCrmReminder = (payload) => api.post("/sales/crm-reminders", payload);
+export const updateCrmReminder = (reminderId, payload) =>
+  api.patch(`/sales/crm-reminders/${reminderId}`, payload);
+export const deleteCrmReminder = (reminderId) => api.delete(`/sales/crm-reminders/${reminderId}`);
 export const createCustomer = (payload) => api.post("/sales/customers", payload);
 export const updateCustomer = (customerId, payload) =>
   api.put(`/sales/customers/${customerId}`, payload);

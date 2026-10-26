@@ -3,11 +3,10 @@ import { ChevronRight, Receipt, Scale, Settings } from "lucide-react";
 
 import {
   AccountsCard,
-  AccountsPageShell,
   ACCOUNTS_TEXT,
   ACCOUNTS_TEXT_MUTED,
 } from "../../components/accounts/accountsDesignSystem";
-import PageHeader from "../../components/common/PageHeader";
+import { SettingsPageShell } from "../settings/settingsUi";
 
 const LINKS = [
   {
@@ -26,11 +25,11 @@ const LINKS = [
 
 export default function AccountsSettingsV2() {
   return (
-    <AccountsPageShell>
-      <PageHeader
-        title="Accounts Settings"
-        subtitle="Accounting configuration supported by your company workspace."
-      />
+    <SettingsPageShell
+      heroTitle="Accounts"
+      heroHighlight="Settings"
+      heroSubtitle="Accounting configuration supported by your company workspace."
+    >
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {LINKS.map((item) => {
@@ -72,6 +71,6 @@ export default function AccountsSettingsV2() {
           </p>
         </div>
       </AccountsCard>
-    </AccountsPageShell>
+    </SettingsPageShell>
   );
 }

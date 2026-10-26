@@ -397,6 +397,30 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/sales/order-delivery-tracker"
+        element={
+          <ProtectedRoute>
+            <P.OrderDeliveryTracker />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/daily-dashboard"
+        element={
+          <ProtectedRoute>
+            <P.DailySalesDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/crm-tracker"
+        element={
+          <ProtectedRoute>
+            <P.BuyerCrmTracker />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/sales/leads"
         element={
           <ProtectedRoute>
@@ -433,6 +457,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <P.Quotations />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales/job-order-quotation"
+        element={
+          <ProtectedRoute>
+            <P.JobOrderQuotation />
           </ProtectedRoute>
         }
       />
@@ -794,6 +826,7 @@ export default function AppRoutes() {
       <Route path="/procurement/purchase-orders/create" element={<ProtectedRoute><P.CreatePurchaseOrder /></ProtectedRoute>} />
       <Route path="/procurement/purchase-orders/:id/edit" element={<ProtectedRoute><P.CreatePurchaseOrder /></ProtectedRoute>} />
       <Route path="/procurement/vendors" element={<ProtectedRoute><P.VendorManagement /></ProtectedRoute>} />
+      <Route path="/procurement/vendors/tracker" element={<ProtectedRoute><P.SupplierVendorTracker /></ProtectedRoute>} />
       <Route path="/masters/vendors" element={<ProtectedRoute><P.VendorManagement /></ProtectedRoute>} />
       <Route path="/procurement/vendors/bulk-import" element={<ProtectedRoute><P.BulkImportSeller /></ProtectedRoute>} />
       <Route path="/masters/vendors/bulk-import" element={<ProtectedRoute><P.BulkImportSeller /></ProtectedRoute>} />
@@ -931,6 +964,7 @@ export default function AppRoutes() {
       <Route path="/iot/smart-packaging" element={<ProtectedRoute><P.SmartPackaging /></ProtectedRoute>} />
       <Route path="/iot/live-operations" element={<ProtectedRoute><P.LiveOperations /></ProtectedRoute>} />
       <Route path="/hr" element={<ProtectedRoute><P.HRDashboard /></ProtectedRoute>} />
+      <Route path="/hr/workforce-dashboard" element={<ProtectedRoute><P.WorkforceDashboard /></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute><P.HREmployees /></ProtectedRoute>} />
       <Route path="/hr/employees/create" element={<ProtectedRoute><P.HRCreateEmployee /></ProtectedRoute>} />
       <Route path="/hr/employees/bulk-upload" element={<ProtectedRoute><P.HRBulkUploadEmployees /></ProtectedRoute>} />

@@ -15,7 +15,11 @@ export default function OpeningBalancesSettings() {
 
   if (!canAccess) {
     return (
-      <SettingsFeatureShell>
+      <SettingsFeatureShell
+        heroTitle="Opening"
+        heroHighlight="Balances"
+        heroSubtitle="Set the organization start date and configure account opening balances."
+      >
         <PageHeader title="Opening Balances" backTo="/settings" backLabel="Back to Settings" showTitle />
         <PermissionDeniedState description="You do not have permission to manage opening balances." />
       </SettingsFeatureShell>
@@ -24,7 +28,11 @@ export default function OpeningBalancesSettings() {
 
   if (!online) {
     return (
-      <SettingsFeatureShell>
+      <SettingsFeatureShell
+        heroTitle="Opening"
+        heroHighlight="Balances"
+        heroSubtitle="Set the organization start date and configure account opening balances."
+      >
         <PageHeader title="Opening Balances" backTo="/settings" backLabel="Back to Settings" showTitle />
         <OfflineState onRetry={load} />
       </SettingsFeatureShell>
@@ -32,7 +40,11 @@ export default function OpeningBalancesSettings() {
   }
 
   return (
-    <SettingsFeatureShell>
+    <SettingsFeatureShell
+        heroTitle="Opening"
+        heroHighlight="Balances"
+        heroSubtitle="Set the organization start date and configure account opening balances."
+      >
       <PageHeader
         title="Opening Balances"
         subtitle="Set the organization start date and configure account opening balances"

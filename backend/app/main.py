@@ -76,6 +76,9 @@ from app.api.procurement import router as procurement_router
 from app.api.production_scheduling import router as production_scheduling_router
 from app.api.quality import router as quality_router
 from app.api.public_quotations import router as public_quotations_router
+from app.api.crm_tracker import router as crm_tracker_router
+from app.api.daily_sales import router as daily_sales_router
+from app.api.order_delivery import router as order_delivery_router
 from app.api.sales import router as sales_router
 from app.api.settings import router as company_settings_router
 from app.api.supply_chain import router as supply_chain_router
@@ -593,6 +596,12 @@ app.include_router(rbac_api_router, prefix="/api")
 
 # ERP domain modules (Sales, Finance, Procurement, Quality, Maintenance, Analytics, Inventory)
 app.include_router(public_quotations_router, prefix="/api")
+app.include_router(crm_tracker_router)
+app.include_router(crm_tracker_router, prefix="/api")
+app.include_router(daily_sales_router)
+app.include_router(daily_sales_router, prefix="/api")
+app.include_router(order_delivery_router)
+app.include_router(order_delivery_router, prefix="/api")
 app.include_router(sales_router)
 app.include_router(sales_router, prefix="/api")
 app.include_router(business_documents_router)

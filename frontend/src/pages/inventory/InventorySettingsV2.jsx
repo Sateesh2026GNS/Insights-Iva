@@ -17,6 +17,7 @@ import Button from "../../components/common/Button";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
+import { SettingsPageShell } from "../settings/settingsUi";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 
@@ -195,14 +196,15 @@ export default function InventorySettingsV2() {
 
   if (loading) {
     return (
-      <div className="space-y-5 pb-4">
+      <SettingsPageShell heroTitle="Inventory" heroHighlight="Settings" heroSubtitle="Stock valuation, warnings, and warehouse defaults.">
         <Loader label="Loading inventory settings…" />
-      </div>
+      </SettingsPageShell>
     );
   }
 
   return (
-    <div className="min-w-0 space-y-5 px-2 pt-2 pb-24 sm:px-4 lg:px-6">
+    <SettingsPageShell heroTitle="Inventory" heroHighlight="Settings" heroSubtitle="Stock valuation, warnings, and warehouse defaults.">
+    <div className="min-w-0 space-y-5">
       <PageHeader variant="inventory"
         backTo="/settings"
         backLabel="Back to Settings"
@@ -562,5 +564,6 @@ export default function InventorySettingsV2() {
         </div>
       </div>
     </div>
+    </SettingsPageShell>
   );
 }

@@ -31,6 +31,14 @@ export const HR_SIDEBAR_ITEMS = [
     end: true,
   },
   {
+    key: "hr-workforce",
+    label: "Workforce Dashboard",
+    to: "/hr/workforce-dashboard",
+    icon: Users,
+    module: hr,
+    end: true,
+  },
+  {
     key: "hr-attendance",
     label: "Attendance",
     icon: CalendarDays,
