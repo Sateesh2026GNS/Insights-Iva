@@ -62,6 +62,7 @@ export const CreateLeadPage = lazy(() => import("../pages/sales/CreateLeadPage")
 export const LeadDetailPage = lazy(() => import("../pages/sales/LeadDetailPage"));
 export const Quotations = lazy(() => import("../pages/sales/Quotations"));
 export const QuotationForm = lazy(() => import("../pages/sales/QuotationForm"));
+export const JobOrderQuotation = lazy(() => import("../pages/sales/JobOrderQuotation"));
 export const PaymentReceipts = lazy(() => import("../pages/sales/PaymentReceipts"));
 export const PaymentReceiptForm = lazy(() => import("../pages/sales/PaymentReceiptForm"));
 export const PaymentReceiptCopyPage = lazy(() => import("../pages/sales/PaymentReceiptCopyPage"));
@@ -69,6 +70,9 @@ export const RefundVouchers = lazy(() => import("../pages/sales/RefundVouchers")
 export const Dispatch = lazy(() => import("../pages/sales/Dispatch"));
 export const Shipping = lazy(() => import("../pages/sales/Shipping"));
 export const SalesDashboard = lazy(() => import("../pages/sales/SalesDashboard"));
+export const BuyerCrmTracker = lazy(() => import("../pages/sales/BuyerCrmTracker"));
+export const DailySalesDashboard = lazy(() => import("../pages/sales/DailySalesDashboard"));
+export const OrderDeliveryTracker = lazy(() => import("../pages/sales/OrderDeliveryTracker"));
 export const InvoiceDashboard = lazy(() => import("../pages/sales/InvoiceDashboard"));
 export const InvoiceCopyPage = lazy(() => import("../pages/sales/InvoiceCopyPage"));
 export const QuotationCopyPage = lazy(() => import("../pages/sales/QuotationCopyPage"));
@@ -123,7 +127,7 @@ export const SequenceResetSettingV2 = lazy(() => import("../pages/settings/Seque
 export const TemplateSettings = lazy(() => import("../pages/settings/TemplateSettingsV2"));
 export const FormatSettings = lazy(() => import("../pages/settings/FormatSettingsV2"));
 export const InvoiceSettings = lazy(() => import("../pages/settings/InvoiceSettingsV2"));
-export const OpeningBalancesSettings = lazy(() => import("../pages/settings/OpeningBalancesSettings"));
+export const OpeningBalancesSettings = lazy(() => import("../pages/settings/OpeningBalancesSettings.jsx"));
 export const AccountingReports = lazy(() => import("../pages/accounts/AccountingReportsV2"));
 export const ReportDetailV2 = lazy(() => import("../pages/accounts/ReportDetailV2"));
 export const LedgerV2 = lazy(() => import("../pages/accounts/LedgerV2"));
@@ -154,6 +158,7 @@ export const YearClosing = lazy(() => import("../pages/accounts/YearClosing"));
 export const PurchaseOrders = lazy(() => import("../pages/procurement/PurchaseOrders"));
 export const CreatePurchaseOrder = lazy(() => import("../pages/procurement/CreatePurchaseOrder"));
 export const VendorManagement = lazy(() => import("../pages/masters/VendorsMaster"));
+export const SupplierVendorTracker = lazy(() => import("../pages/procurement/SupplierVendorTracker"));
 export const CreateVendor = lazy(() => import("../pages/procurement/CreateVendor"));
 export const BulkImportSeller = lazy(() => import("../pages/procurement/BulkImportSeller"));
 export const VendorDetail = lazy(() => import("../pages/procurement/VendorDetail"));
@@ -262,6 +267,7 @@ export const EditManualJobCard = lazy(() => import("../pages/manufacturing/EditM
 export const ViewManualJobCard = lazy(() => import("../pages/manufacturing/ViewManualJobCardPage"));
 export const MyJobCards = lazy(() => import("../pages/manufacturing/MyJobCardsPage"));
 export const HRDashboard = lazy(() => import("../pages/hr/HRDashboard"));
+export const WorkforceDashboard = lazy(() => import("../pages/hr/WorkforceDashboard"));
 export const HREmployees = lazy(() => import("../pages/hr/Employees"));
 export const HRCreateEmployee = lazy(() => import("../pages/hr/CreateEmployee"));
 export const HRBulkUploadEmployees = lazy(() => import("../pages/hr/BulkUploadEmployees"));

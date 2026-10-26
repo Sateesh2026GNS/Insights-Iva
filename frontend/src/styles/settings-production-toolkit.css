@@ -111,3 +111,139 @@
   font-size: 12px;
   font-weight: 700;
 }
+
+.settings-page--toolkit .space-y-6 > :not([hidden]) ~ :not([hidden]),
+.settings-page--toolkit .space-y-5 > :not([hidden]) ~ :not([hidden]),
+.settings-page--toolkit .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 8px;
+}
+
+.settings-page--toolkit .gap-6,
+.settings-page--toolkit .gap-5,
+.settings-page--toolkit .gap-4 {
+  gap: 8px;
+}
+
+.settings-page--toolkit button[role="switch"][aria-checked="true"] {
+  background: #1d4ed8;
+}
+
+.settings-page--toolkit table:not(.hr-org-setup__table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+}
+
+.settings-page--toolkit table:not(.hr-org-setup__table) th,
+.settings-page--toolkit table:not(.hr-org-setup__table) td {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  padding: 3px 5px;
+  vertical-align: middle;
+}
+
+.settings-page--toolkit table:not(.hr-org-setup__table) th {
+  background: #e8eef4;
+  font-weight: 700;
+  font-size: 9px;
+  color: #1e293b;
+}
+
+.settings-page--toolkit table:not(.hr-org-setup__table) tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.settings-page--toolkit table:not(.hr-org-setup__table) tbody tr:hover td {
+  background: #eff6ff;
+}
+
+.settings-page--toolkit .ui-badge {
+  border-radius: 10px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.settings-page--toolkit .hr-att-settings,
+.settings-page--toolkit .hr-payroll-settings {
+  --as-primary: #1d4ed8;
+  --as-title: #1e3a5f;
+  --as-border: #c5d0dc;
+  --as-page-bg: #f4f7fa;
+  --ps-primary: #1d4ed8;
+  --ps-title: #1e3a5f;
+  --ps-border: #c5d0dc;
+  font-size: 11px;
+  background: transparent;
+}
+
+.settings-page--toolkit .hr-att-settings__tab,
+.settings-page--toolkit .hr-payroll-settings__tab {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.settings-page--toolkit input[type="checkbox"],
+.settings-page--toolkit input[type="radio"] {
+  accent-color: #1d4ed8;
+}
+
+.settings-page--toolkit .ui-input,
+.settings-page--toolkit .ui-select,
+.settings-page--toolkit textarea {
+  border-radius: 2px;
+  border-color: var(--mtk-border, #c5d0dc);
+}
+
+.settings-page--toolkit .hr-org-setup textarea,
+.settings-page--toolkit .hr-org-setup input,
+.settings-page--toolkit .hr-org-setup select {
+  border-color: var(--os-border, #e8edf3);
+  border-radius: 6px;
+}
+
+.settings-page--toolkit .hr-payroll-settings__title {
+  display: none;
+}
+
+.settings-page--toolkit .erp-hero-header:not(:has(.erp-hero-header__back)):not(:has(.erp-hero-header__actions)),
+.settings-page--toolkit .inventory-hero-header:not(:has(.inventory-hero-header__back)):not(:has(.inventory-hero-header__actions)) {
+  display: none;
+}
+
+.settings-page--toolkit .erp-hero-header,
+.settings-page--toolkit .inventory-hero-header {
+  background: #fff;
+  color: #1e3a5f;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 8px 10px;
+}
+
+.settings-page--toolkit .erp-hero-header__title,
+.settings-page--toolkit .inventory-hero-header__title,
+.settings-page--toolkit .erp-hero-header__subtitle,
+.settings-page--toolkit .inventory-hero-header__subtitle {
+  display: none;
+}
+
+.settings-page--toolkit .erp-hero-header__back,
+.settings-page--toolkit .inventory-hero-header__back {
+  color: #1d4ed8;
+}
+
+.settings-page--toolkit .erp-hero-header .inventory-header-control__label,
+.settings-page--toolkit .inventory-hero-header .inventory-header-control__label {
+  color: #1e3a5f;
+}
+
+.settings-page--toolkit .erp-hero-header .inventory-header-control__surface,
+.settings-page--toolkit .inventory-hero-header .inventory-header-control__surface {
+  background: #fff;
+  border-color: var(--mtk-border, #c5d0dc);
+}
+
+@media (max-width: 1100px) {
+  .settings-page--toolkit .settings-toolkit-content {
+    overflow-x: auto;
+  }
+}

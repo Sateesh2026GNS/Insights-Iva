@@ -3,13 +3,8 @@ import { Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 
 import ExpenseCategoryModal from "../../components/accounts/ExpenseCategoryModal";
-import {
-  AccountsCard,
-  AccountsPageShell,
-  AccountsPrimaryButton,
-  ACCOUNTS_TEXT,
-  ACCOUNTS_TEXT_MUTED,
-} from "../../components/accounts/accountsDesignSystem";
+import { AccountsCard, AccountsPrimaryButton } from "../../components/accounts/accountsDesignSystem";
+import { SettingsPageShell } from "../settings/settingsUi";
 import Loader from "../../components/common/Loader";
 import {
   categoryIcon,
@@ -75,16 +70,16 @@ export default function ExpenseSettingsV2() {
 
   if (loading) {
     return (
-      <AccountsPageShell>
+      <SettingsPageShell heroTitle="Expense" heroHighlight="Settings" heroSubtitle="Expense categories used on vouchers and the expense module.">
         <div className="flex min-h-[40vh] items-center justify-center">
           <Loader label="Loading categories…" />
         </div>
-      </AccountsPageShell>
+      </SettingsPageShell>
     );
   }
 
   return (
-    <AccountsPageShell>
+    <SettingsPageShell heroTitle="Expense" heroHighlight="Settings" heroSubtitle="Expense categories used on vouchers and the expense module.">
       <div className="mx-auto max-w-[900px]">
         <div className="mb-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -96,10 +91,7 @@ export default function ExpenseSettingsV2() {
             >
               <ChevronLeft className="h-4 w-4 text-slate-700 dark:text-white" />
             </Link>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white">Expense Settings</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Configure expense categories and account groupings</p>
-            </div>
+            <span className="sr-only">Expense categories</span>
           </div>
           <AccountsPrimaryButton
             onClick={() => {
@@ -164,6 +156,6 @@ export default function ExpenseSettingsV2() {
         category={editCategory}
         onSave={onSave}
       />
-    </AccountsPageShell>
+    </SettingsPageShell>
   );
 }

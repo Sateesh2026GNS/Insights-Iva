@@ -143,7 +143,11 @@ export default function FormatSettingsV2() {
   }, []);
 
   return (
-    <SettingsFeatureShell>
+    <SettingsFeatureShell
+      heroTitle="Change"
+      heroHighlight="Format"
+      heroSubtitle="Configure number formatting, currency symbol, and date display preferences."
+    >
       <PageHeader
         title="Change Format"
         subtitle="Configure number formatting, currency symbol, and date display preferences"

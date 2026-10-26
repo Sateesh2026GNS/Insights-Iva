@@ -6,12 +6,11 @@ import {
 } from "./settingsProductionToolkit";
 
 describe("settingsProductionToolkit", () => {
-  it("enables toolkit layout for Production Manager but not Admin", () => {
+  it("enables Process Checklist toolkit layout for every settings role", () => {
     expect(useProductionManagerSettingsToolkit({ role: "Production Manager" })).toBe(true);
-    expect(useProductionManagerSettingsToolkit({ role: "Admin" })).toBe(false);
-    expect(
-      useProductionManagerSettingsToolkit({ role: "Admin", roles: ["production_manager"] }),
-    ).toBe(false);
+    expect(useProductionManagerSettingsToolkit({ role: "Admin" })).toBe(true);
+    expect(useProductionManagerSettingsToolkit({ role: "Store Manager" })).toBe(true);
+    expect(useProductionManagerSettingsToolkit({ role: "HR Manager" })).toBe(true);
   });
 
   it("formats hero date for mtk-hero meta", () => {

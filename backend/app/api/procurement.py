@@ -23,6 +23,7 @@ from app.schemas.vendor import (
     VendorListRead,
     VendorProductRead,
     VendorPurchaseOrderRead,
+    SupplierTrackerRead,
     VendorSummaryRead,
     VendorUpdate,
 )
@@ -44,6 +45,7 @@ from app.schemas.procurement import (
     SupplierPaymentUpdate,
 )
 from app.services.inventory_service import update_supplier_approval
+from app.services.supplier_tracker_service import get_supplier_vendor_tracker
 from app.services.vendor_service import (
     bulk_update_vendor_status,
     create_vendor,
@@ -211,6 +213,16 @@ def update_purchase_order_status_endpoint(
     if not po:
         raise HTTPException(404, "Purchase order not found")
     return po
+
+
+@router.get("/vendors/tracker", response_model=SupplierTrackerRead)
+def vendor_tracker_endpoint(
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+) -> SupplierTrackerRead:
+    """Store Manager supplier tracker. Aggregates the existing vendor master."""
+    _require_vendor_access(user)
+    return get_supplier_vendor_tracker(db, user.tenant_id)
 
 
 @router.get("/vendors/summary", response_model=VendorSummaryRead)

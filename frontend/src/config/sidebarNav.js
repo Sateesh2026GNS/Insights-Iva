@@ -49,7 +49,8 @@ export const SIDEBAR_NAV = [
     icon: Layers,
     children: [
       { label: "Customers", to: "/sales/customers", module: "masters" },
-      { label: "Vendors", to: "/procurement/vendors", module: "masters" },
+      { label: "Vendors", to: "/procurement/vendors", module: "masters", end: true },
+      { label: "Supplier Tracker", to: "/procurement/vendors/tracker", module: "masters" },
       { label: "Products", to: "/masters/products", module: "masters" },
       { label: "Bill of Materials (BOM)", to: "/production/bom", module: "production", bomViewOnly: true },
     ],
@@ -110,8 +111,12 @@ export const SIDEBAR_NAV = [
     icon: Wallet,
     children: [
       { label: "Sales Dashboard", to: "/sales/dashboard", module: "sales" },
+      { label: "Daily Sales", to: "/sales/daily-dashboard", module: "sales", end: true },
+      { label: "Delivery Tracker", to: "/sales/order-delivery-tracker", module: "sales", end: true },
+      { label: "CRM Tracker", to: "/sales/crm-tracker", module: "sales", end: true },
       { label: "Leads", to: "/sales/leads", module: "sales", activeMatch: "leadsIndex" },
       { label: "Quotations", to: "/sales/quotations", module: "sales" },
+      { label: "Job Order Quote", to: "/sales/job-order-quotation", module: "sales", end: true },
       { label: "Sales Orders", to: "/sales/orders", module: "sales" },
       { label: "Customers", to: "/sales/customers", module: "sales" },
       { labelKey: "erpNav.workOrders", label: "Work Orders", to: "/production/work-orders", module: "sales" },

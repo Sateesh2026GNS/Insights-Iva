@@ -42,7 +42,7 @@ import {
 
 import Loader from "../../components/common/Loader";
 import { DocumentEmptyIcon } from "../../components/common/EmptyState";
-import { ListPageShell } from "../../components/common/ListPageShell";
+import { SettingsPageShell } from "../settings/settingsUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import { isGoogleMapsConfigured, loadGoogleMaps } from "../../utils/googleMapsLoader";
@@ -1499,10 +1499,16 @@ export default function OrganizationSetup() {
   usePageRefresh(() => load(true));
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <Loader label="Loading organization setup..." />;
+  if (loading) {
+    return (
+      <SettingsPageShell heroTitle="HR" heroHighlight="Settings" heroSubtitle="Manage your HRMS preferences and system configurations">
+        <Loader label="Loading organization setup..." />
+      </SettingsPageShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <SettingsPageShell heroTitle="HR" heroHighlight="Settings" heroSubtitle="Manage your HRMS preferences and system configurations">
       <div className="hr-org-setup min-w-0">
         <h1 className="hr-org-setup__title">Organization Setup</h1>
 
@@ -1591,6 +1597,6 @@ export default function OrganizationSetup() {
           <GeoFencingTab rows={geoFencing} setRows={setGeoFencing} branches={branches} />
         )}
       </div>
-    </ListPageShell>
+    </SettingsPageShell>
   );
 }

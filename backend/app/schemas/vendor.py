@@ -599,3 +599,52 @@ class VendorBulkImportRequest(BaseModel):
     """Bulk seller import from Masters → Vendors upload page."""
 
     rows: list[VendorCreate] = Field(default_factory=list, min_length=1)
+
+
+class TrackerCountRead(BaseModel):
+    label: str
+    count: int
+
+
+class TrackerRatingRead(BaseModel):
+    stars: int
+    count: int
+
+
+class TrackerActivityRead(BaseModel):
+    occurred_on: date
+    supplier_name: str
+    activity: str
+    details: str
+    status: str
+
+
+class TrackerHeaderRead(BaseModel):
+    total_suppliers: int = 0
+    active_suppliers: int = 0
+    import_suppliers: int = 0
+    export_service_vendors: int = 0
+    countries_served: int = 0
+    suppliers_at_risk: int = 0
+    last_updated: datetime | None = None
+
+
+class TrackerKpiRead(BaseModel):
+    key: str
+    label: str
+    value: float | int | None = None
+    unit: str | None = None
+    note: str | None = None
+
+
+class SupplierTrackerRead(BaseModel):
+    """Dashboard aggregates computed from the existing supplier master."""
+
+    header: TrackerHeaderRead
+    kpis: list[TrackerKpiRead]
+    by_country: list[TrackerCountRead]
+    by_trade_type: list[TrackerCountRead]
+    by_rating: list[TrackerRatingRead]
+    by_category: list[TrackerCountRead]
+    by_payment_terms: list[TrackerCountRead]
+    activities: list[TrackerActivityRead]

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
-import { ListPageShell } from "../../components/common/ListPageShell";
+import { SettingsPageShell } from "../settings/settingsUi";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -267,13 +267,19 @@ export default function PayrollSettings() {
     }
   };
 
-  if (loading) return <Loader label="Loading settings..." />;
+  if (loading) {
+    return (
+      <SettingsPageShell heroTitle="Payroll" heroHighlight="Settings" heroSubtitle="Salary structures, statutory components, and payroll defaults.">
+        <Loader label="Loading settings..." />
+      </SettingsPageShell>
+    );
+  }
 
   const toDate = calcToDate(fromDate);
   const saveLabel = editingId ? "Update" : "Save";
 
   return (
-    <ListPageShell>
+    <SettingsPageShell heroTitle="Payroll" heroHighlight="Settings" heroSubtitle="Salary structures, statutory components, and payroll defaults.">
       <div className="hr-payroll-settings min-w-0">
         <h1 className="hr-payroll-settings__title">Settings</h1>
 
@@ -455,6 +461,6 @@ export default function PayrollSettings() {
           employees={employeeDrawer?.employees || DEMO_EMPLOYEES}
         />
       </div>
-    </ListPageShell>
+    </SettingsPageShell>
   );
 }

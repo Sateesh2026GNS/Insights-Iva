@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, FileSearch, Info, Search } from "lucide-reac
 
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
-import { ListPageShell } from "../../components/common/ListPageShell";
+import { SettingsPageShell } from "../settings/settingsUi";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { getEmployeesEnriched } from "../../api/hrApi";
@@ -437,10 +437,16 @@ export default function AttendanceSettings() {
     addToast(message, "success");
   };
 
-  if (loading) return <Loader label="Loading attendance settings..." />;
+  if (loading) {
+    return (
+      <SettingsPageShell heroTitle="Attendance" heroHighlight="Settings" heroSubtitle="Shifts, exemptions, and overtime rules for your workforce.">
+        <Loader label="Loading attendance settings..." />
+      </SettingsPageShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <SettingsPageShell heroTitle="Attendance" heroHighlight="Settings" heroSubtitle="Shifts, exemptions, and overtime rules for your workforce.">
       <div className="hr-att-settings min-w-0">
         <div className="rounded-t-[10px] border border-b-0 border-[#e5e7eb] bg-white">
           <div className="hr-att-settings__tabs px-2">
@@ -463,6 +469,6 @@ export default function AttendanceSettings() {
           {activeTab === "overtime" ? <ConfigureOvertimeTab onSave={handleSave} /> : null}
         </div>
       </div>
-    </ListPageShell>
+    </SettingsPageShell>
   );
 }

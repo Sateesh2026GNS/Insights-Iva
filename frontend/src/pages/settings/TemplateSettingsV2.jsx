@@ -1799,7 +1799,11 @@ export default function TemplateSettingsV2() {
   };
 
   return (
-    <SettingsFeatureShell>
+    <SettingsFeatureShell
+      heroTitle="Template"
+      heroHighlight="Settings"
+      heroSubtitle="Choose and customize invoice, quotation, and purchase document templates."
+    >
       <PageHeader
         showTitle
         title="Template Settings"

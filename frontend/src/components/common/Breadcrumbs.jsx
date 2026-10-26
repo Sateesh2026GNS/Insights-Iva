@@ -39,6 +39,7 @@ const pathLabels = {
   customers: "Customers",
   payments: "Payments",
   hr: "Human Resources (HR)",
+  "workforce-dashboard": "Workforce Dashboard",
   employees: "Employees",
   attendance: "Attendance",
   leave: "Leave",
@@ -54,6 +55,10 @@ const pathLabels = {
   purchases: "Purchases",
   "purchase-orders": "Purchase Orders",
   vendors: "Vendors",
+  "crm-tracker": "CRM Tracker",
+  "daily-dashboard": "Daily Sales",
+  "order-delivery-tracker": "Delivery Tracker",
+  "job-order-quotation": "Job Order Quote",
   "goods-receipt": "Goods Receipt Note (GRN)",
   "supply-chain": "Supply Chain",
   masters: "Masters",
@@ -198,6 +203,7 @@ const PAGE_TITLE_OVERRIDES = {
   "/inventory/history": "Inventory History",
   "/inventory/warehouses": "Warehouses",
   "/inventory/suppliers": "Suppliers",
+  "/procurement/vendors/tracker": "Supplier Tracker",
   "/inventory/items/create": "Create Item",
   "/inventory/warehouses/create": "Create Warehouse",
   "/inventory/suppliers/create": "Create Supplier",
@@ -283,6 +289,7 @@ function getLabel(segment, segments, index) {
   const prev = index > 0 ? segments[index - 1] : null;
   const prevPrev = index > 1 ? segments[index - 2] : null;
 
+  if (segment === "tracker" && prev === "vendors") return "Supplier Tracker";
   if (segment === "dashboard" && prev === "inventory") return "Dashboard";
   if (segment === "settings" && prev === "inventory") return "Inventory Settings";
   if ((segment === "create" || segment === "new") && prev && ENTITY_SINGULAR[prev]) {

@@ -153,7 +153,11 @@ export default function SequenceResetSettingV2() {
 
   if (loading) {
     return (
-      <SettingsFeatureShell>
+      <SettingsFeatureShell
+        heroTitle="Sequence"
+        heroHighlight="Reset"
+        heroSubtitle="Set the active financial year sequence for generating new document numbers."
+      >
         <div className="flex min-h-[40vh] items-center justify-center">
           <Loader label="Loading sequence settings…" />
         </div>
@@ -162,7 +166,11 @@ export default function SequenceResetSettingV2() {
   }
 
   return (
-    <SettingsFeatureShell>
+    <SettingsFeatureShell
+        heroTitle="Sequence"
+        heroHighlight="Reset"
+        heroSubtitle="Set the active financial year sequence for generating new document numbers."
+      >
       <PageHeader
         title="Sequence Reset Setting"
         subtitle="Set the active financial year sequence for generating new document numbers"

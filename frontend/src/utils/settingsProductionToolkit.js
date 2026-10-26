@@ -1,12 +1,11 @@
-/** Toolkit chrome — Production Manager Settings (Process Checklist alignment, mtk-theme--navy). */
-
-import { isAdmin, isProductionManager } from "../config/permissions";
+/** Toolkit chrome — all Settings pages, aligned with Process Checklist (mtk-theme--navy). */
 
 export const SETTINGS_PRODUCTION_TOOLKIT_SUBTITLE =
   "Manufacturing Production Planning & Factory Control Toolkit";
 
-export function useProductionManagerSettingsToolkit(user) {
-  return Boolean(user && isProductionManager(user) && !isAdmin(user));
+/** Process Checklist chrome is the settings design for every role. */
+export function useProductionManagerSettingsToolkit() {
+  return true;
 }
 
 export function formatSettingsToolkitHeroDate(date = new Date()) {

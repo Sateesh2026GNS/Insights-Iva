@@ -198,7 +198,12 @@ def build_quotation_document(db: Session, tenant_id: int, quote_id: int) -> dict
     )
     items = _map_line_items(raw_items, tax_mode)
     grand = float(quote.total_amount or 0)
-    summary = _summary_from_items(items, grand, discount=float(quote.discount or 0))
+    summary = _summary_from_items(
+        items,
+        grand,
+        discount=float(quote.discount or 0),
+        round_off=float(meta_raw.get("round_off") or 0),
+    )
 
     dispatch_raw = meta_raw.get("transportation") or meta_raw.get("dispatch") or {}
     cons_raw = meta_raw.get("consignee") or {}

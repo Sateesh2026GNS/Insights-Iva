@@ -23,6 +23,7 @@ export const getVendors = (params = {}) => {
   });
 };
 export const getVendorSummary = () => api.get("/procurement/vendors/summary");
+export const getSupplierTracker = () => api.get("/procurement/vendors/tracker");
 export const getVendorDetail = (vendorId) => api.get(`/procurement/vendors/${vendorId}`);
 export const getVendorPurchaseHistory = (vendorId) =>
   api.get(`/procurement/vendors/${vendorId}/purchase-history`);

@@ -1,6 +1,7 @@
 import api from "./axiosConfig";
 
 export const getHRHub = () => api.get("/hr/hub");
+export const getWorkforceDashboard = () => api.get("/hr/workforce-dashboard");
 
 export const getEmployees = () => api.get("/hr/employees");
 export const getEmployeeSummary = () => api.get("/hr/employees/summary");

@@ -1,0 +1,375 @@
+.svt-root {
+  --svt-teal: #0e8f9d;
+  --svt-teal-dark: #0b6e86;
+  --svt-header: #1287a8;
+  --svt-navy: #0f3f66;
+  --svt-panel: #f4fbff;
+  --svt-line: #c5dde8;
+  --svt-text: #143044;
+  --svt-muted: #5b7280;
+  color: var(--svt-text);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.svt-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr) minmax(180px, 0.45fr);
+  gap: 12px;
+  align-items: stretch;
+  background: linear-gradient(90deg, #0c7f96 0%, #1493b3 55%, #0e86a8 100%);
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.svt-kicker {
+  margin: 0 0 2px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  opacity: 0.92;
+}
+
+.svt-header h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.svt-header h1 span {
+  font-weight: 650;
+}
+
+.svt-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  max-width: 640px;
+}
+
+.svt-tagline {
+  margin: 8px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.svt-header-stats,
+.svt-risk {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.svt-header-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.svt-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.svt-stat strong {
+  font-size: 13px;
+}
+
+.svt-risk {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #fff5f5;
+  color: #9f1239;
+  border-color: #fecdd3;
+}
+
+.svt-risk span {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.svt-risk strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.svt-risk small {
+  font-size: 10px;
+  color: #9f1239;
+}
+
+.svt-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.svt-kpi {
+  background: #fff;
+  border: 1px solid var(--svt-line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-height: 78px;
+}
+
+.svt-kpi__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--svt-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.svt-kpi__icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.svt-kpi strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--svt-navy);
+}
+
+.svt-kpi small {
+  display: block;
+  margin-top: 4px;
+  color: var(--svt-muted);
+  font-size: 10px;
+}
+
+.svt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.8fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.svt-panel {
+  background: #fff;
+  border: 1px solid var(--svt-line);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.svt-panel__title {
+  margin: 0;
+  background: #1287a8;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 7px 7px 0 0;
+}
+
+.svt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  align-items: center;
+}
+
+.svt-toolbar input,
+.svt-toolbar select {
+  border: 1px solid var(--svt-line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: #fff;
+  color: var(--svt-text);
+}
+
+.svt-toolbar input {
+  min-width: 180px;
+  flex: 1;
+}
+
+.svt-table-wrap {
+  overflow-x: auto;
+}
+
+.svt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.svt-table th,
+.svt-table td {
+  border-bottom: 1px solid #e6f1f6;
+  padding: 6px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.svt-table th {
+  background: #e7f6fb;
+  color: var(--svt-navy);
+  font-size: 11px;
+}
+
+.svt-table th button {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.svt-table tr.is-selected td {
+  background: #e0f7fb;
+}
+
+.svt-table tbody tr {
+  cursor: pointer;
+}
+
+.svt-stars {
+  color: #f5b301;
+  letter-spacing: 1px;
+}
+
+.svt-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.svt-status--risk {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.svt-status--inactive {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.svt-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.svt-row-actions a {
+  color: var(--svt-teal-dark);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.svt-pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.svt-pager button,
+.svt-action,
+.svt-footer button,
+.svt-footer a {
+  border: 1px solid var(--svt-line);
+  background: #fff;
+  color: var(--svt-navy);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.svt-action--primary,
+.svt-footer button.is-active,
+.svt-footer a.is-active {
+  background: var(--svt-header);
+  color: #fff;
+  border-color: var(--svt-header);
+}
+
+.svt-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.svt-chart {
+  height: 180px;
+  padding: 8px;
+}
+
+.svt-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 11px;
+}
+
+.svt-empty,
+.svt-note,
+.svt-state {
+  padding: 12px;
+  color: var(--svt-muted);
+  font-size: 12px;
+}
+
+.svt-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(220px, 0.7fr);
+  gap: 10px;
+}
+
+.svt-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+}
+
+.svt-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: #e7f6fb;
+  border: 1px solid var(--svt-line);
+  border-radius: 8px;
+}
+
+@media (max-width: 1100px) {
+  .svt-header,
+  .svt-kpis,
+  .svt-layout,
+  .svt-lower {
+    grid-template-columns: 1fr;
+  }
+}
