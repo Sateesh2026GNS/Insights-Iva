@@ -39,7 +39,7 @@ export default function GlobalCreateMenu({
 
     if (palette) {
       const isMobileOrNarrow = window.innerWidth < 768;
-      const targetWidth = 480;
+      const targetWidth = 450;
       const menuWidth = Math.min(targetWidth, window.innerWidth - (isMobileOrNarrow ? 24 : 32));
 
       if (!rect || isMobileOrNarrow) {
@@ -59,19 +59,15 @@ export default function GlobalCreateMenu({
 
       const spaceOnRight = window.innerWidth - anchorRight - 16;
       const adjustedWidth = Math.min(menuWidth, Math.max(300, spaceOnRight - 8));
-      const left = anchorRight + 10;
+      const left = anchorRight + 8;
 
-      // Position side-down relative to the Create button
-      const padding = 16;
-      let top = Math.max(padding, rect.top);
-      const measuredHeight = menuRef.current?.getBoundingClientRect().height || 0;
+      // Start strictly from the Create button line
+      const top = Math.max(8, rect.top);
 
-      // If opening below would overflow the viewport bottom, adjust top upwards
-      if (measuredHeight > 0 && top + measuredHeight > window.innerHeight - padding) {
-        top = Math.max(padding, window.innerHeight - measuredHeight - padding);
-      }
+      // Decreased controlled height so it aligns cleanly and looks compact
+      const availableHeightBelow = Math.max(180, window.innerHeight - top - 16);
+      const maxHeight = Math.min(460, availableHeightBelow);
 
-      const maxHeight = Math.max(180, window.innerHeight - top - padding);
       setPos({ top, left, width: adjustedWidth, maxHeight, bottom: "auto" });
       return;
     }
@@ -156,7 +152,7 @@ export default function GlobalCreateMenu({
       ref={menuRef}
       role="menu"
       aria-label="Add"
-      className={`app-shell-create-menu ${palette ? "!box-border !p-4 sm:!p-5 !rounded-2xl !shadow-2xl !overflow-x-hidden !overflow-y-auto" : ""}`}
+      className={`app-shell-create-menu ${palette ? "!box-border !p-3.5 !rounded-2xl !shadow-2xl !overflow-x-hidden !overflow-y-auto" : ""}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onPointerEnter={handleMouseEnter}
@@ -166,8 +162,8 @@ export default function GlobalCreateMenu({
         top: pos.top,
         left: pos.left,
         bottom: pos.bottom,
-        width: pos.width || (palette ? "min(480px, calc(100vw - 32px))" : 220),
-        maxWidth: "min(480px, calc(100vw - 32px))",
+        width: pos.width || (palette ? "min(450px, calc(100vw - 32px))" : 220),
+        maxWidth: "min(450px, calc(100vw - 32px))",
         maxHeight: pos.maxHeight,
         zIndex: 200,
       }}
@@ -181,13 +177,13 @@ export default function GlobalCreateMenu({
       )}
 
       {palette ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {Object.entries(groupedItems).map(([group, groupItems], groupIndex) => {
             const GroupIcon = groupIcons[group] || BriefcaseBusiness;
             return (
               <section key={group} aria-label={group}>
-                <div className="mb-2 flex min-h-8 items-center justify-between gap-3 px-1">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</h2>
+                <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+                  <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</h2>
                   {groupIndex === 0 && (
                     <button
                       type="button"
@@ -197,13 +193,13 @@ export default function GlobalCreateMenu({
                         onOpenChange?.(false);
                         anchorRef?.current?.focus();
                       }}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                     >
-                      <X className="h-4 w-4" aria-hidden />
+                      <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {groupItems.map((item, index) => {
                     const accentColors = [
                       { icon: "bg-amber-500",  border: "#f59e0b" },
@@ -217,14 +213,14 @@ export default function GlobalCreateMenu({
                         key={item.id}
                         type="button"
                         role="menuitem"
-                        className="gcm-palette-card flex min-h-[50px] min-w-0 items-center gap-3 rounded-xl bg-slate-100 px-3.5 py-2.5 text-left text-[13px] font-semibold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:bg-slate-800 dark:text-slate-100"
+                        className="gcm-palette-card flex min-h-[42px] min-w-0 items-center gap-2.5 rounded-xl bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:bg-slate-800 dark:text-slate-100"
                         style={{ "--gcm-accent": borderColor }}
                         onClick={() => handleSelect(item.path)}
                       >
-                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ${iconBg}`}>
-                          <GroupIcon className="h-4 w-4" aria-hidden />
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ${iconBg}`}>
+                          <GroupIcon className="h-3.5 w-3.5" aria-hidden />
                         </span>
-                        <span className="min-w-0 truncate sm:break-words leading-tight">{item.label}</span>
+                        <span className="min-w-0 truncate leading-tight">{item.label}</span>
                       </button>
                     );
                   })}
