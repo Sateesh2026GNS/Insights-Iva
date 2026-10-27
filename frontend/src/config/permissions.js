@@ -656,7 +656,6 @@ export function userCanAccessPath(user, pathname) {
   }
   if (isAdmin(user)) return true;
   const path = (pathname || "").replace(/\/$/, "") || "/";
-  if (path === "/contact") return true;
   if (path === "/admin/approvals") {
     if (isQualityTeam(user)) return false;
     return userCanAccessApprovalQueue(user);

@@ -58,6 +58,13 @@ function thumbColor(name = "") {
 }
 
 
+const DEFAULT_FILTERS = {
+  status: "",
+  location: "",
+  type: "",
+  plant: "",
+};
+
 export default function Warehouses() {
   const tenantId = useTenantId();
   const { addToast } = useToast();
@@ -69,8 +76,8 @@ export default function Warehouses() {
   const [detailError, setDetailError] = useState(false);
   const [formWarehouse, setFormWarehouse] = useState(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [branchFilter, setBranchFilter] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [headerDate, setHeaderDate] = useState("");
   const [headerScope, setHeaderScope] = useState("");
@@ -112,23 +119,52 @@ export default function Warehouses() {
     [warehouses]
   );
 
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({ ...filters });
+  }, [filters]);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+    setHeaderScope("");
+  }, []);
+
+  const handleFilterKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleApplyFilters();
+    }
+  };
+
   const filtered = useMemo(() => {
     let list = rows;
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter((w) =>
-        [w.name, w.code, w.city, w.state, w.branch, w.description].some(
+        [w.name, w.code, w.city, w.state, w.branch, w.description, w.plant, w.warehouse_type].some(
           (v) => v && String(v).toLowerCase().includes(q)
         )
       );
     }
-    if (statusFilter) list = list.filter((w) => String(w.status || "").toLowerCase() === statusFilter);
-    if (branchFilter) list = list.filter((w) => w.branch === branchFilter || w.city === branchFilter);
+    if (appliedFilters.status) {
+      list = list.filter((w) => String(w.status || "").toLowerCase() === appliedFilters.status.toLowerCase());
+    }
+    if (appliedFilters.location) {
+      const locNorm = appliedFilters.location.toLowerCase();
+      list = list.filter((w) => (w.branch && w.branch.toLowerCase() === locNorm) || (w.city && w.city.toLowerCase() === locNorm));
+    }
+    if (appliedFilters.type) {
+      const tNorm = appliedFilters.type.toLowerCase();
+      list = list.filter((w) => w.warehouse_type && w.warehouse_type.toLowerCase() === tNorm);
+    }
+    if (appliedFilters.plant) {
+      const pNorm = appliedFilters.plant.toLowerCase();
+      list = list.filter((w) => w.plant && (w.plant.toLowerCase().includes(pNorm) || pNorm.includes(w.plant.toLowerCase())));
+    }
     if (headerScope && headerScope !== "all") {
       list = list.filter((w) => String(w.id) === String(headerScope) || w.code === headerScope);
     }
     return list;
-  }, [rows, search, statusFilter, branchFilter, headerScope]);
+  }, [rows, search, appliedFilters, headerScope]);
 
   const kpis = useMemo(() => {
     const active = filtered.filter((w) => w.status === "active").length;
@@ -161,12 +197,7 @@ export default function Warehouses() {
     }
   };
 
-  const clearFilters = () => {
-    setSearch("");
-    setStatusFilter("");
-    setBranchFilter("");
-    setHeaderScope("");
-  };
+  const clearFilters = handleClearFilters;
 
   const handleSave = async (form) => {
     const usedCap = form.used_capacity !== "" && form.used_capacity != null ? Number(form.used_capacity) : 0;
@@ -430,28 +461,45 @@ export default function Warehouses() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <ClickableKpiCard
-          onClick={() => { setStatusFilter(""); setSearch(""); }}
+          onClick={() => {
+            setFilters(DEFAULT_FILTERS);
+            setAppliedFilters(DEFAULT_FILTERS);
+            setSearch("");
+          }}
           title="Show all warehouses"
           tone="info"
         >
           <KpiCard label="Total Warehouses" value={kpis.total} icon={Warehouse} tone="info" meta="Click to show all" />
         </ClickableKpiCard>
         <ClickableKpiCard
-          onClick={() => { setStatusFilter(""); setSearch(""); }}
+          onClick={() => {
+            setFilters(DEFAULT_FILTERS);
+            setAppliedFilters(DEFAULT_FILTERS);
+            setSearch("");
+          }}
           title="View total items"
           tone="success"
         >
           <KpiCard label="Total Items" value={Number(kpis.totalItems).toLocaleString("en-IN")} icon={Package} tone="success" meta="In all warehouses" />
         </ClickableKpiCard>
         <ClickableKpiCard
-          onClick={() => { setStatusFilter(""); setSearch(""); }}
+          onClick={() => {
+            setFilters(DEFAULT_FILTERS);
+            setAppliedFilters(DEFAULT_FILTERS);
+            setSearch("");
+          }}
           title="View total stock value"
           tone="warning"
         >
           <KpiCard label="Total Stock Value" value={formatInrAmount(kpis.stockValue)} icon={IndianRupee} tone="warning" meta="Across all warehouses" />
         </ClickableKpiCard>
         <ClickableKpiCard
-          onClick={() => { setStatusFilter("active"); setSearch(""); }}
+          onClick={() => {
+            const next = { ...DEFAULT_FILTERS, status: "active" };
+            setFilters(next);
+            setAppliedFilters(next);
+            setSearch("");
+          }}
           title="Filter active warehouses"
           tone="success"
         >
@@ -461,7 +509,7 @@ export default function Warehouses() {
 
       <ListPageCard>
         <ListPageCardBody>
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${showFilters ? "mb-3" : "mb-4"}`}>
             <SearchBar
               value={search}
               onChange={setSearch}
@@ -477,9 +525,9 @@ export default function Warehouses() {
                 className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
               >
                 <Filter className="h-4 w-4" /> Filters
-                {(statusFilter || branchFilter) ? (
+                {Object.values(appliedFilters).filter(Boolean).length > 0 ? (
                   <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
-                    {[statusFilter, branchFilter].filter(Boolean).length}
+                    {Object.values(appliedFilters).filter(Boolean).length}
                   </span>
                 ) : null}
               </Button>
@@ -490,37 +538,71 @@ export default function Warehouses() {
           </div>
 
           {showFilters ? (
-            <div className="mb-4 flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+            <section
+              aria-label="Filter warehouses"
+              className="-mx-4 sm:-mx-5 px-4 sm:px-5 mb-4 flex flex-wrap items-center gap-3 border-y border-[var(--color-border-soft)] py-3.5"
+            >
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                onKeyDown={handleFilterKeyDown}
+                className="ui-select !w-auto min-w-[8.5rem]"
+              >
                 <option value="">Status</option>
                 {WAREHOUSE_STATUSES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
-              <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
+              <select
+                value={filters.location}
+                onChange={(e) => setFilters((f) => ({ ...f, location: e.target.value }))}
+                onKeyDown={handleFilterKeyDown}
+                className="ui-select !w-auto min-w-[8.5rem]"
+              >
                 <option value="">Location</option>
                 {BRANCHES.map((b) => (
                   <option key={b} value={b}>{b}</option>
                 ))}
               </select>
-              <select className="ui-select !w-auto min-w-[8.5rem]" defaultValue="">
+              <select
+                value={filters.type}
+                onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
+                onKeyDown={handleFilterKeyDown}
+                className="ui-select !w-auto min-w-[8.5rem]"
+              >
                 <option value="">Type</option>
                 {WAREHOUSE_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
-              <select className="ui-select !w-auto min-w-[8.5rem]" defaultValue="">
+              <select
+                value={filters.plant}
+                onChange={(e) => setFilters((f) => ({ ...f, plant: e.target.value }))}
+                onKeyDown={handleFilterKeyDown}
+                className="ui-select !w-auto min-w-[8.5rem]"
+              >
                 <option value="">Plant</option>
                 {PLANTS.map((p) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
-              {(statusFilter || branchFilter || search) ? (
-                <Button type="button" variant="ghost" onClick={clearFilters} className="text-xs text-[var(--color-text-muted)] hover:text-red-600">
-                  Clear filters
-                </Button>
-              ) : null}
-            </div>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleApplyFilters}
+                  className="h-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+                >
+                  Apply Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="h-10 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+                >
+                  Clear
+                </button>
+              </div>
+            </section>
           ) : null}
 
           <DataTable

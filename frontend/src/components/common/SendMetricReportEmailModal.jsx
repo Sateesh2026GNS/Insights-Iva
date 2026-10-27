@@ -59,9 +59,18 @@ export default function SendMetricReportEmailModal({
 
   const validate = () => {
     const next = {};
-    if (!recipient.trim()) next.recipient = "Recipient email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())) {
+    const to = recipient.trim();
+    if (!to) {
+      next.recipient = "Recipient email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
       next.recipient = "Please enter a valid recipient email address.";
+    }
+    if (cc.trim()) {
+      const parts = cc.split(/[,;]+/).map((p) => p.trim()).filter(Boolean);
+      const invalid = parts.some((p) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p));
+      if (invalid) {
+        next.cc = "Please enter valid email address(es) for Cc.";
+      }
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -142,12 +151,14 @@ export default function SendMetricReportEmailModal({
                 autoComplete="email"
               />
             </OutlinedField>
-            <OutlinedField label="Cc">
+            <OutlinedField label="Cc" error={errors.cc}>
               <input
-                className={field}
+                className={`${field} ${errors.cc ? "border-[#e67e22]" : ""}`}
                 placeholder="Optional Cc"
                 value={cc}
                 onChange={(e) => setCc(e.target.value)}
+                type="email"
+                autoComplete="email"
               />
             </OutlinedField>
             <OutlinedField label="Subject" className="sm:col-span-2">

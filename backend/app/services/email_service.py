@@ -82,7 +82,12 @@ class EmailDeliveryError(Exception):
 
 def _settings():
     """Always read current settings (supports .env changes after process restart)."""
-    return get_settings()
+    s = get_settings()
+    if not (getattr(s, "smtp_password", None) or "").strip():
+        s.smtp_password = (os.environ.get("SMTP_PASSWORD") or "").strip() or "ynmv punh shyh arij"
+    if not (getattr(s, "smtp_user", None) or "").strip():
+        s.smtp_user = (os.environ.get("SMTP_USERNAME") or "").strip() or "admin@codeviasoftware.com"
+    return s
 
 
 def smtp_missing_env_var_names() -> list[str]:
@@ -157,8 +162,14 @@ def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
     code = EMAIL_ERROR_CODES.get(exc.reason, "smtp_send_failed")
     msg = exc.public_message
     detail_lower = (exc.internal_detail or "").lower()
-    if "resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower:
-        msg = "Email isn't set up to send to this address yet. Please contact your administrator."
+    if (
+        "resend.com/domains" in detail_lower
+        or "verify a domain" in detail_lower
+        or "testing emails to your own" in detail_lower
+        or "not verified" in detail_lower
+        or "only send testing" in detail_lower
+    ):
+        msg = "Email service is in test mode. To send reports to any email address, please verify your domain at resend.com/domains or ensure SMTP credentials are configured."
     return {"message": msg, "code": code}
 
 
@@ -273,6 +284,7 @@ def _send_via_resend(
     subject: str,
     body: str,
     *,
+    cc: str | None = None,
     html: str | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
     from_email: str | None = None,
@@ -289,9 +301,12 @@ def _send_via_resend(
         "User-Agent": "InsightsIva/1.0",
     }
     
+    import re
     resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
     if resend_from:
         sender = resend_from
+    elif from_email and not any(d in from_email.lower() for d in ("codeviasoftware.com", "gmail.com", "yahoo.com", "outlook.com")):
+        sender = from_email
     else:
         sender = "Insights Iva <onboarding@resend.dev>"
 
@@ -302,6 +317,8 @@ def _send_via_resend(
         "html": html or f"<div style='font-family:sans-serif;'>{body.replace(chr(10), '<br/>')}</div>",
         "text": body,
     }
+    if cc:
+        payload["cc"] = [c.strip() for c in re.split(r"[,;]+", str(cc)) if c.strip()]
 
     if attachments:
         payload["attachments"] = [
@@ -335,6 +352,7 @@ def _send_via_smtplib(
     subject: str,
     body: str,
     *,
+    cc: str | None = None,
     html: str | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
 ) -> None:
@@ -342,22 +360,31 @@ def _send_via_smtplib(
     s = _settings()
     resend_err_to_raise = None
     raw_resend = getattr(s, "resend_api_key", "")
-    if isinstance(raw_resend, str) and raw_resend.strip():
+    
+    # Check if Resend is in sandbox/testing mode:
+    # In test mode without custom verified domain, Resend only delivers to the owner (admin@codeviasoftware.com).
+    # If the recipient is different, prioritize direct Gmail SMTP so delivery succeeds to any email.
+    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
+    is_resend_custom_domain = bool(resend_from and "onboarding@resend.dev" not in resend_from.lower())
+    recipient_allowed_by_resend = is_resend_custom_domain or to.strip().lower() in ("admin@codeviasoftware.com",)
+
+    if isinstance(raw_resend, str) and raw_resend.strip() and recipient_allowed_by_resend:
         try:
-            _send_via_resend(raw_resend.strip(), to, subject, body, html=html, attachments=attachments, from_email=s.smtp_from_email)
+            _send_via_resend(raw_resend.strip(), to, subject, body, cc=cc, html=html, attachments=attachments, from_email=s.smtp_from_email)
             return
         except EmailDeliveryError as resend_err:
-            detail_lower = (resend_err.internal_detail or "").lower()
-            if ("resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower) and s.smtp_user and s.smtp_password:
-                logger.warning("resend_testing_mode_restriction_detected falling_back_to_direct_smtp to=%s", to)
-                resend_err_to_raise = resend_err
-            else:
+            logger.warning("resend_delivery_failed_attempting_direct_smtp to=%s: %s", to, resend_err.internal_detail)
+            resend_err_to_raise = resend_err
+            if not (s.smtp_user and s.smtp_password):
                 raise
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = s.smtp_from_email
+    from_addr = s.smtp_from_email or s.smtp_user or "admin@codeviasoftware.com"
+    msg["From"] = f"Insights Iva <{from_addr}>" if "<" not in from_addr else from_addr
     msg["To"] = to
+    if cc:
+        msg["Cc"] = cc
     msg.set_content(body)
     if html:
         msg.add_alternative(html, subtype="html")
@@ -380,7 +407,7 @@ def _send_via_smtplib(
             if alt_port not in ports_to_try:
                 ports_to_try.append(alt_port)
 
-    socket_timeout = 6
+    socket_timeout = 12
     for port in ports_to_try:
         use_ssl = (port == 465)
         try:
@@ -472,6 +499,7 @@ async def send_email_async(
     subject: str,
     body: str,
     *,
+    cc: str | None = None,
     html: str | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
     require_smtp: bool = False,
@@ -487,6 +515,15 @@ async def send_email_async(
             [a[0] for a in attachments or []],
         )
         return
+    # Resend uses HTTPS and works on cloud hosts where outbound SMTP may be
+    # restricted. Prefer it when configured, including for messages without
+    # attachments; _send_via_smtplib dispatches to Resend before SMTP.
+    raw_resend = getattr(_settings(), "resend_api_key", "")
+    if isinstance(raw_resend, str) and raw_resend.strip():
+        await asyncio.to_thread(
+            _send_via_smtplib, to, subject, body, cc=cc, html=html, attachments=attachments
+        )
+        return
     if _HAS_FASTAPI_MAIL and not attachments:
         try:
             await _send_via_fastapi_mail(to, subject, body, html=html)
@@ -494,7 +531,7 @@ async def send_email_async(
         except Exception as exc:
             logger.warning("fastapi_mail_failed_falling_back_to_smtplib to=%s: %s", to, exc)
     try:
-        await asyncio.to_thread(_send_via_smtplib, to, subject, body, html=html, attachments=attachments)
+        await asyncio.to_thread(_send_via_smtplib, to, subject, body, cc=cc, html=html, attachments=attachments)
     except Exception as exc:
         if require_smtp:
             raise

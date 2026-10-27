@@ -1,3 +1,4 @@
+from typing import Any
 import os
 import re
 from pathlib import Path
@@ -160,7 +161,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SMTP_HOST", "smtp_host"),
     )
     smtp_port: int = Field(
-        default=587,
+        default=465,
         validation_alias=AliasChoices("SMTP_PORT", "smtp_port"),
     )
     smtp_user: str = Field(
@@ -168,7 +169,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SMTP_USERNAME", "SMTP_USER", "smtp_user"),
     )
     smtp_password: str = Field(
-        default="",
+        default="ynmv punh shyh arij",
         validation_alias=AliasChoices("SMTP_PASSWORD", "SMTP_PASS", "smtp_password"),
     )
     smtp_from_email: str = Field(
@@ -179,6 +180,41 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("RESEND_API_KEY", "resend_api_key"),
     )
+
+    @field_validator("smtp_password", mode="before")
+    @classmethod
+    def normalize_smtp_password(cls, value: Any) -> str:
+        val = str(value or "").strip()
+        return val if val else "ynmv punh shyh arij"
+
+    @field_validator("smtp_user", mode="before")
+    @classmethod
+    def normalize_smtp_user(cls, value: Any) -> str:
+        val = str(value or "").strip()
+        return val if val else "admin@codeviasoftware.com"
+
+    @field_validator("smtp_from_email", mode="before")
+    @classmethod
+    def normalize_smtp_from_email(cls, value: Any) -> str:
+        val = str(value or "").strip()
+        return val if val else "admin@codeviasoftware.com"
+
+    @field_validator("smtp_host", mode="before")
+    @classmethod
+    def normalize_smtp_host(cls, value: Any) -> str:
+        val = str(value or "").strip()
+        return val if val else "smtp.gmail.com"
+
+    @field_validator("smtp_port", mode="before")
+    @classmethod
+    def normalize_smtp_port(cls, value: Any) -> int:
+        try:
+            p = int(value)
+            if p > 0:
+                return p
+        except (TypeError, ValueError):
+            pass
+        return 465
 
     # Environment: "development" | "production"
     environment: str = "development"

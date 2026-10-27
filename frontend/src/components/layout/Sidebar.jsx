@@ -25,7 +25,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Plus,
-  PhoneCall,
   Zap,
   X,
 } from "lucide-react";
@@ -42,7 +41,6 @@ import {
   userCanAccessApprovalQueue,
   userCanAccessPath,
   userCanViewBom,
-  isAdmin,
   isStoreManager,
   isProductionManager,
   isOperator,
@@ -423,7 +421,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     cancelCreateClose();
     createCloseTimerRef.current = setTimeout(() => {
       if (!createPinnedRef.current) setCreateOpen(false);
-    }, 160);
+    }, 280);
   };
   const handleCreateOpenChange = (open) => {
     createPinnedRef.current = false;
@@ -538,9 +536,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
       }
       return section;
     });
-    return isAdmin(user)
-      ? [...roleNav, { key: "contactUs", label: "Contact Us", to: "/contact", icon: PhoneCall, end: true }]
-      : roleNav;
+    return roleNav;
   }, [apiNav, user, storeMode, salesMode, productionMode, qualityMode]);
 
   const createActions = useMemo(
@@ -865,7 +861,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
             }}
             onMouseEnter={() => {
               cancelCreateClose();
-              if (collapsed && !createPinnedRef.current) setCreateOpen(true);
+              if (!createPinnedRef.current) setCreateOpen(true);
             }}
             onMouseLeave={scheduleCreateClose}
             className={`relative mb-1 flex min-h-[46px] w-full items-center rounded-xl border py-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 ${navItemPad} ${collapsed ? "justify-center" : "justify-start gap-2.5"} ${createOpen ? "border-white/15 bg-white/[0.12] text-white" : "border-white/10 bg-white/[0.06] text-slate-300 hover:border-white/15 hover:bg-white/[0.1] hover:text-white"}`}

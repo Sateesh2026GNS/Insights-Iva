@@ -44,12 +44,17 @@ export function extractApiErrorDetail(err) {
   const data = err?.response?.data;
   if (!data) return null;
   if (data.detail != null && data.detail !== "") return data.detail;
-  if (Array.isArray(data.errors) && data.errors.length) return data.errors;
   if (data.data && typeof data.data === "object") {
     const nested = data.data;
     if (nested.message || nested.code || nested.blockers) return nested;
   }
-  if (data.message && data.message !== "Validation failed") return data.message;
+  if (data.message && data.message !== "Validation failed" && data.message !== "Enter valid inputs") return data.message;
+  if (Array.isArray(data.errors) && data.errors.length) {
+    if (data.errors.length === 1 && typeof data.errors[0] === "string") {
+      return data.errors[0];
+    }
+    return data.errors;
+  }
   if (data.message) return data.message;
   return null;
 }
@@ -142,17 +147,39 @@ function reportEmailDetailMessage(detail, fallback) {
     if (code && REPORT_EMAIL_CODE_MESSAGES[code]) {
       return REPORT_EMAIL_CODE_MESSAGES[code];
     }
-    const message = detail.message;
-    if (typeof message === "string" && message.trim() && message !== "Email service is temporarily unavailable. Please try again later.") {
+    const message = detail.message || detail.detail;
+    if (
+      typeof message === "string" &&
+      message.trim() &&
+      message !== "Email service is temporarily unavailable. Please try again later." &&
+      message !== "Enter valid inputs" &&
+      message !== "Validation failed"
+    ) {
       if (!EMAIL_SERVICE_LEAK_PATTERN.test(message)) {
         return message;
       }
+      return REPORT_EMAIL_CODE_MESSAGES.smtp_not_configured;
     }
     if (typeof message === "string" && message.trim()) {
-      if (EMAIL_SERVICE_LEAK_PATTERN.test(message)) {
-        return REPORT_EMAIL_CODE_MESSAGES.smtp_not_configured;
-      }
       return message;
+    }
+  }
+  if (Array.isArray(detail) && detail.length) {
+    detail = detail[0];
+  }
+  if (typeof detail === "string") {
+    const lower = detail.toLowerCase();
+    if (lower.includes("rows are required") || lower.includes("rows or purchase_order_id")) {
+      return "No report data available to send.";
+    }
+    if (lower.includes("to_email") || lower.includes("recipient email") || lower.includes("not a valid email") || lower.includes("value is not a valid email")) {
+      return "Please enter a valid recipient email address.";
+    }
+    if (lower.includes("cc: value error") || lower.includes("invalid cc")) {
+      return "Please enter a valid Cc email address.";
+    }
+    if (!EMAIL_SERVICE_LEAK_PATTERN.test(detail) && detail !== "Enter valid inputs" && detail !== "Validation failed") {
+      return detail;
     }
   }
   const text = formatApiError(detail, fallback);
@@ -166,7 +193,11 @@ function reportEmailDetailMessage(detail, fallback) {
 /** User-facing errors for dashboard/ledger report email (PDF). */
 export function reportEmailErrorMessage(err, fallback = "Unable to send the report. Please try again.") {
   const status = err?.response?.status;
-  const detail = extractApiErrorDetail(err);
+  const data = err?.response?.data;
+  const validationErrors = Array.isArray(data?.errors) ? data.errors : [];
+  const detail = status === 422 && validationErrors.length
+    ? validationErrors[0]
+    : extractApiErrorDetail(err);
   if (status === 404) {
     return "Report email service is currently unavailable.";
   }
@@ -174,8 +205,17 @@ export function reportEmailErrorMessage(err, fallback = "Unable to send the repo
     return "You don't have permission to email this report.";
   }
   if (status === 422) {
-    return reportEmailDetailMessage(detail, "Please check the email details.")
-      || "Please check the email details.";
+    if (validationErrors.length) {
+      const first = String(validationErrors[0]);
+      if (first.toLowerCase().includes("to_email") || first.toLowerCase().includes("recipient") || first.toLowerCase().includes("email")) {
+        return "Please enter a valid recipient email address.";
+      }
+      if (first.toLowerCase().includes("cc")) {
+        return "Please enter a valid Cc email address.";
+      }
+    }
+    const mapped = reportEmailDetailMessage(detail, "Please check the recipient email address.");
+    return (mapped && mapped !== "Enter valid inputs") ? mapped : "Please check the recipient email address and try again.";
   }
   if (status === 503) {
     return (

@@ -14,6 +14,8 @@ export default function GlobalCreateMenu({
   onOpenChange,
   onPointerEnter,
   onPointerLeave,
+  onMouseEnter,
+  onMouseLeave,
   anchorRef,
   align = "center",
   palette = false,
@@ -34,13 +36,39 @@ export default function GlobalCreateMenu({
     const anchor = anchorRef?.current;
     if (!anchor && !palette) return;
     const rect = anchor?.getBoundingClientRect();
-    const menuWidth = palette ? Math.min(680, window.innerWidth - 32) : 220;
+
     if (palette) {
-      const maxHeight = Math.max(180, window.innerHeight - 32);
-      const measuredHeight = menuRef.current?.getBoundingClientRect().height || 0;
-      const top = Math.max(16, (window.innerHeight - Math.min(measuredHeight, maxHeight)) / 2);
-      const left = Math.max(16, (window.innerWidth - menuWidth) / 2);
-      setPos({ top, left, width: menuWidth, maxHeight });
+      const isMobileOrNarrow = window.innerWidth < 768;
+      const targetWidth = 450;
+      const menuWidth = Math.min(targetWidth, window.innerWidth - (isMobileOrNarrow ? 24 : 32));
+
+      if (!rect || isMobileOrNarrow) {
+        // Fallback or mobile view: keep it nicely centered and adjusted
+        const maxHeight = Math.max(180, window.innerHeight - 32);
+        const measuredHeight = menuRef.current?.getBoundingClientRect().height || 0;
+        const top = Math.max(16, (window.innerHeight - Math.min(measuredHeight, maxHeight)) / 2);
+        const left = Math.max(12, (window.innerWidth - menuWidth) / 2);
+        setPos({ top, left, width: menuWidth, maxHeight, bottom: "auto" });
+        return;
+      }
+
+      // Anchor is present and we're on desktop/tablet (sidebar context)
+      const sidebar = anchor.closest("aside") || anchor.closest("#app-sidebar");
+      const sidebarRect = sidebar?.getBoundingClientRect();
+      const anchorRight = sidebarRect ? sidebarRect.right : rect.right;
+
+      const spaceOnRight = window.innerWidth - anchorRight - 16;
+      const adjustedWidth = Math.min(menuWidth, Math.max(300, spaceOnRight - 8));
+      const left = anchorRight + 8;
+
+      // Start strictly from the Create button line
+      const top = Math.max(8, rect.top);
+
+      // Decreased controlled height so it aligns cleanly and looks compact
+      const availableHeightBelow = Math.max(180, window.innerHeight - top - 16);
+      const maxHeight = Math.min(460, availableHeightBelow);
+
+      setPos({ top, left, width: adjustedWidth, maxHeight, bottom: "auto" });
       return;
     }
 
@@ -57,10 +85,12 @@ export default function GlobalCreateMenu({
     if (!open) return undefined;
     if (menuRef.current) menuRef.current.scrollTop = 0;
     syncPosition();
+    const rafId = requestAnimationFrame(syncPosition);
     const onScroll = () => syncPosition();
     window.addEventListener("resize", onScroll);
     window.addEventListener("scroll", onScroll, true);
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", onScroll);
       window.removeEventListener("scroll", onScroll, true);
     };
@@ -114,33 +144,46 @@ export default function GlobalCreateMenu({
     Other: BriefcaseBusiness,
   };
 
+  const handleMouseEnter = onMouseEnter || onPointerEnter;
+  const handleMouseLeave = onMouseLeave || onPointerLeave;
+
   return createPortal(
     <div
       ref={menuRef}
       role="menu"
       aria-label="Add"
-      className={`app-shell-create-menu ${palette ? "!box-border !p-5 sm:!p-6 !rounded-2xl !shadow-2xl !overflow-x-hidden !overflow-y-auto" : ""}`}
-      onMouseEnter={onPointerEnter}
-      onMouseLeave={onPointerLeave}
+      className={`app-shell-create-menu ${palette ? "!box-border !p-3.5 !rounded-2xl !shadow-2xl !overflow-x-hidden !overflow-y-auto" : ""}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onPointerEnter={handleMouseEnter}
+      onPointerLeave={handleMouseLeave}
       style={{
         position: "fixed",
         top: pos.top,
         left: pos.left,
         bottom: pos.bottom,
-        width: pos.width || (palette ? "min(680px, calc(100vw - 32px))" : 220),
-        maxWidth: "min(680px, calc(100vw - 32px))",
+        width: pos.width || (palette ? "min(450px, calc(100vw - 32px))" : 220),
+        maxWidth: "min(450px, calc(100vw - 32px))",
         maxHeight: pos.maxHeight,
         zIndex: 200,
       }}
     >
+      {/* Invisible hover bridge to prevent mouse leaving when moving between sidebar anchor and flyout menu */}
+      {palette && anchorRef?.current && (
+        <div
+          className="absolute -left-3 top-0 bottom-0 w-3 pointer-events-auto"
+          aria-hidden="true"
+        />
+      )}
+
       {palette ? (
-        <div className="space-y-5">
+        <div className="space-y-3">
           {Object.entries(groupedItems).map(([group, groupItems], groupIndex) => {
             const GroupIcon = groupIcons[group] || BriefcaseBusiness;
             return (
               <section key={group} aria-label={group}>
-                <div className="mb-2.5 flex min-h-10 items-center justify-between gap-3 px-1">
-                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{group}</h2>
+                <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+                  <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</h2>
                   {groupIndex === 0 && (
                     <button
                       type="button"
@@ -150,13 +193,13 @@ export default function GlobalCreateMenu({
                         onOpenChange?.(false);
                         anchorRef?.current?.focus();
                       }}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                     >
-                      <X className="h-5 w-5" aria-hidden />
+                      <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {groupItems.map((item, index) => {
                     const accentColors = [
                       { icon: "bg-amber-500",  border: "#f59e0b" },
@@ -170,14 +213,14 @@ export default function GlobalCreateMenu({
                         key={item.id}
                         type="button"
                         role="menuitem"
-                        className="gcm-palette-card flex min-h-16 min-w-0 items-center gap-3 rounded-xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:bg-slate-800 dark:text-slate-100"
+                        className="gcm-palette-card flex min-h-[42px] min-w-0 items-center gap-2.5 rounded-xl bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] dark:bg-slate-800 dark:text-slate-100"
                         style={{ "--gcm-accent": borderColor }}
                         onClick={() => handleSelect(item.path)}
                       >
-                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white ${iconBg}`}>
-                          <GroupIcon className="h-5 w-5" aria-hidden />
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ${iconBg}`}>
+                          <GroupIcon className="h-3.5 w-3.5" aria-hidden />
                         </span>
-                        <span className="min-w-0 break-words">{item.label}</span>
+                        <span className="min-w-0 truncate leading-tight">{item.label}</span>
                       </button>
                     );
                   })}

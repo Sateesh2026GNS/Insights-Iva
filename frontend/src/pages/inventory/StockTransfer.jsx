@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Filter,
   Plus,
-  RefreshCw,
   Search,
   Truck,
   XCircle,
@@ -81,6 +80,10 @@ const STEPS = [
   { id: 3, label: "Review & Confirm" },
 ];
 
+const DEFAULT_FILTERS = {
+  status: "",
+};
+
 const emptyForm = {
   transfer_number: "",
   transfer_date: todayIso(),
@@ -146,11 +149,17 @@ export default function StockTransfer() {
   const [updatingId, setUpdatingId] = useState(null);
   const [showForm, setShowForm] = useState(() => searchParams.get("new") === "1");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(() => {
+  const initialStatus = useMemo(() => {
     const s = String(searchParams.get("status") || "").toLowerCase();
     return s === "pending" ? "pending" : "";
-  });
-  const [showFilters, setShowFilters] = useState(false);
+  }, [searchParams]);
+  const [filters, setFilters] = useState(() => ({
+    status: initialStatus,
+  }));
+  const [appliedFilters, setAppliedFilters] = useState(() => ({
+    status: initialStatus,
+  }));
+  const [showFilters, setShowFilters] = useState(() => Boolean(initialStatus));
   const [headerDate, setHeaderDate] = useState(() => todayIso());
   const [headerWarehouse, setHeaderWarehouse] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -194,7 +203,11 @@ export default function StockTransfer() {
       openForm();
     }
     const s = String(searchParams.get("status") || "").toLowerCase();
-    if (s === "pending") setStatusFilter("pending");
+    if (s === "pending") {
+      setFilters((f) => ({ ...f, status: "pending" }));
+      setAppliedFilters((f) => ({ ...f, status: "pending" }));
+      setShowFilters(true);
+    }
   }, [searchParams, openForm]);
 
   useEffect(() => {
@@ -247,15 +260,32 @@ export default function StockTransfer() {
         )
       );
     }
-    if (statusFilter) {
+    const statusVal = appliedFilters.status;
+    if (statusVal) {
       rows = rows.filter((r) => {
         const st = String(r.status || "").toLowerCase();
-        if (statusFilter === "pending") return st === "pending" || st === "pending_approval";
-        return st === statusFilter;
+        if (statusVal === "pending") return st === "pending" || st === "pending_approval";
+        return st === statusVal;
       });
     }
     return rows;
-  }, [displayTransfers, search, statusFilter]);
+  }, [displayTransfers, search, appliedFilters]);
+
+  const handleApplyFilters = () => {
+    setAppliedFilters({ ...filters });
+  };
+
+  const handleClearFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+  };
+
+  const handleFilterKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleApplyFilters();
+    }
+  };
 
   const resetForm = () => {
     setForm({
@@ -843,8 +873,18 @@ export default function StockTransfer() {
             />
             <div className="flex shrink-0 flex-wrap items-center gap-2">
               <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-              <Button type="button" variant="secondary" onClick={() => setShowFilters((v) => !v)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowFilters((v) => !v)}
+                className={showFilters ? "!border-[var(--color-primary)] !text-[var(--color-primary)] font-semibold" : ""}
+              >
                 <Filter className="h-4 w-4" /> Filters
+                {Object.values(appliedFilters).filter(Boolean).length > 0 ? (
+                  <span className="ml-1 rounded-full bg-[var(--color-primary)] px-1.5 py-0.2 text-[10px] text-white">
+                    {Object.values(appliedFilters).filter(Boolean).length}
+                  </span>
+                ) : null}
               </Button>
             </div>
             <Button
@@ -857,23 +897,45 @@ export default function StockTransfer() {
               New Transfer
             </Button>
           </div>
-          {showFilters ? (
-            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border-soft)] pt-3">
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ui-select !w-auto min-w-[8.5rem]">
-                  <option value="">Status</option>
-                  <option value="draft">Draft</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="in_transit">In Transit</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <Button type="button" variant="ghost" onClick={() => { setSearch(""); setStatusFilter(""); }}>
-                  <RefreshCw className="h-4 w-4" /> Clear
-                </Button>
-            </div>
-          ) : null}
         </div>
+
+        {showFilters ? (
+          <section
+            aria-label="Filter stock transfers"
+            className="-mx-4 sm:-mx-5 px-4 sm:px-5 mb-4 flex flex-wrap items-center gap-3 border-y border-[var(--color-border-soft)] py-3.5"
+          >
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+              onKeyDown={handleFilterKeyDown}
+              className="ui-select !w-auto min-w-[8.5rem]"
+            >
+              <option value="">Status</option>
+              <option value="draft">Draft</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="in_transit">In Transit</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleApplyFilters}
+                className="h-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+              >
+                Apply Filters
+              </button>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="h-10 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold px-5 text-xs sm:text-sm transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+              >
+                Clear
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <DataTable
           columns={historyColumns}

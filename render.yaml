@@ -39,13 +39,16 @@ services:
       - key: SMTP_HOST
         value: "smtp.gmail.com"
       - key: SMTP_PORT
-        value: "587"
+        value: "465"
       - key: SMTP_USERNAME
         value: "admin@codeviasoftware.com"
       - key: SMTP_PASSWORD
-        sync: false
+        value: "ynmv punh shyh arij"
       - key: SMTP_FROM_EMAIL
         value: "admin@codeviasoftware.com"
+      # Set this secret in Render to enable reliable HTTPS email delivery.
+      - key: RESEND_API_KEY
+        sync: false
       # OpenAI / AI Assistant — set OPENAI_API_KEY in Render dashboard (Environment tab)
       - key: OPENAI_API_KEY
         sync: false

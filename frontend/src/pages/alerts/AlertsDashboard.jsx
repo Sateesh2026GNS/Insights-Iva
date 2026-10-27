@@ -455,6 +455,24 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
     }
   };
 
+  const resolvedReportTitle = useMemo(() => {
+    if (title && title !== "All Alerts") {
+      if (title.toLowerCase().includes("report")) return title;
+      return `${title} Report`;
+    }
+    if (appliedFilters.module) {
+      const mod = moduleLabel(appliedFilters.module);
+      return `${mod} Alerts Report`;
+    }
+    return "Alerts Report";
+  }, [title, appliedFilters.module]);
+
+  const resolvedFileSlug = useMemo(() => {
+    if (initialAlertType) return `${initialAlertType}-alerts`;
+    if (appliedFilters.module) return `${appliedFilters.module}-alerts`;
+    return "alerts";
+  }, [initialAlertType, appliedFilters.module]);
+
   const exportRows = sorted.map((r) => ({
     ...r,
     module: r.module,
@@ -465,9 +483,9 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   const handleExport = async (format) => {
     try {
       if (format === "pdf") {
-        await exportToPdf(exportRows, EXPORT_COLUMNS, "Alerts Report", "alerts");
+        await exportToPdf(exportRows, EXPORT_COLUMNS, resolvedReportTitle, resolvedFileSlug);
       } else {
-        await exportToExcel(exportRows, EXPORT_COLUMNS, "alerts");
+        await exportToExcel(exportRows, EXPORT_COLUMNS, resolvedFileSlug);
       }
       addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
     } catch {
@@ -753,37 +771,33 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
 
       <ListPageCard className="alerts-page-table overflow-hidden print:hidden">
         <ListPageCardBody className="p-0">
-        <div className="ui-table-wrap ui-table-wrap--scroll w-full max-w-full">
-          <table className={`ui-table alerts-grid-table ${showActionsColumn ? "alerts-grid-table--actions" : ""} ${salesManager ? "alerts-grid-table--sales" : ""} w-full border-collapse text-left text-[13px]`}>
-            <thead className="ui-table-head">
-              <tr className="border-b border-[var(--color-border-soft)]">
-                <SerialNumberHeader className="px-3 py-3" />
-                <th className="px-4 py-3">Alert</th>
-                {salesManager ? <th className="px-4 py-3">Sales order</th> : null}
-                {salesManager ? <th className="px-4 py-3">Customer</th> : null}
-                <th className="px-4 py-3">{salesManager ? "Category" : "Module"}</th>
-                <th className="px-4 py-3">
-                  <button type="button" className="font-semibold" onClick={() => { setSortKey("severity"); setSortDir((dir) => (sortKey === "severity" && dir === "asc" ? "desc" : "asc")); }}>{salesManager ? "Priority" : "Severity"}</button>
-                </th>
-                <th className="px-4 py-3">Status</th>
-                <th className="whitespace-nowrap px-4 py-3">Created</th>
-                {showActionsColumn ? <th className="w-[4.5rem] px-3 py-3 text-right">Actions</th> : null}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border-muted)]">
-              {pageRows.length === 0 ? (
-                <tr>
-                  <td colSpan={(showActionsColumn ? 7 : 6) + (salesManager ? 2 : 0)} className="border-none p-0">
-                    <EmptyState
-                      icon="document"
-                      title="No records found."
-                      description="There is nothing to show here yet."
-                      className="border-none bg-transparent py-12"
-                    />
-                  </td>
+        {pageRows.length === 0 ? (
+          <EmptyState
+            icon="document"
+            title="No records found."
+            description="There is nothing to show here yet."
+            className="border-none bg-transparent py-14"
+          />
+        ) : (
+          <div className="ui-table-wrap ui-table-wrap--scroll w-full max-w-full">
+            <table className={`ui-table alerts-grid-table ${showActionsColumn ? "alerts-grid-table--actions" : ""} ${salesManager ? "alerts-grid-table--sales" : ""} w-full border-collapse text-left text-[13px]`}>
+              <thead className="ui-table-head">
+                <tr className="border-b border-[var(--color-border-soft)]">
+                  <SerialNumberHeader className="px-3 py-3" />
+                  <th className="px-4 py-3">Alert</th>
+                  {salesManager ? <th className="px-4 py-3">Sales order</th> : null}
+                  {salesManager ? <th className="px-4 py-3">Customer</th> : null}
+                  <th className="px-4 py-3">{salesManager ? "Category" : "Module"}</th>
+                  <th className="px-4 py-3">
+                    <button type="button" className="font-semibold" onClick={() => { setSortKey("severity"); setSortDir((dir) => (sortKey === "severity" && dir === "asc" ? "desc" : "asc")); }}>{salesManager ? "Priority" : "Severity"}</button>
+                  </th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="whitespace-nowrap px-4 py-3">Created</th>
+                  {showActionsColumn ? <th className="w-[4.5rem] px-3 py-3 text-right">Actions</th> : null}
                 </tr>
-              ) : (
-                pageRows.map((row, rowIndex) => {
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border-muted)]">
+                {pageRows.map((row, rowIndex) => {
                   const isUnread = row.status === "active";
                   const menuItems = [
                     {
@@ -908,17 +922,18 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                       ) : null}
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        <div className="alerts-page-pager flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row">
-          <p className="text-xs font-medium text-[var(--color-text-muted)]">
-            Showing {sorted.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
-            {Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length} alerts
-          </p>
+        {sorted.length > 0 ? (
+          <div className="alerts-page-pager flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row">
+            <p className="text-xs font-medium text-[var(--color-text-muted)]">
+              Showing {(page - 1) * PAGE_SIZE + 1}–
+              {Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length} alerts
+            </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -941,6 +956,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
             </button>
           </div>
         </div>
+        ) : null}
         </ListPageCardBody>
       </ListPageCard>
 
