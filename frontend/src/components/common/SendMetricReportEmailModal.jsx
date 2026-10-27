@@ -59,12 +59,18 @@ export default function SendMetricReportEmailModal({
 
   const validate = () => {
     const next = {};
-    if (!recipient.trim()) next.recipient = "Recipient email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())) {
+    const to = recipient.trim();
+    if (!to) {
+      next.recipient = "Recipient email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
       next.recipient = "Please enter a valid recipient email address.";
     }
-    if (cc.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cc.trim())) {
-      next.cc = "Please enter a valid Cc email address.";
+    if (cc.trim()) {
+      const parts = cc.split(/[,;]+/).map((p) => p.trim()).filter(Boolean);
+      const invalid = parts.some((p) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p));
+      if (invalid) {
+        next.cc = "Please enter valid email address(es) for Cc.";
+      }
     }
     setErrors(next);
     return Object.keys(next).length === 0;

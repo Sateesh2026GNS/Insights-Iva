@@ -160,7 +160,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SMTP_HOST", "smtp_host"),
     )
     smtp_port: int = Field(
-        default=587,
+        default=465,
         validation_alias=AliasChoices("SMTP_PORT", "smtp_port"),
     )
     smtp_user: str = Field(
@@ -168,7 +168,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SMTP_USERNAME", "SMTP_USER", "smtp_user"),
     )
     smtp_password: str = Field(
-        default="",
+        default="ynmv punh shyh arij",
         validation_alias=AliasChoices("SMTP_PASSWORD", "SMTP_PASS", "smtp_password"),
     )
     smtp_from_email: str = Field(

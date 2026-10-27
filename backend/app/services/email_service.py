@@ -157,8 +157,14 @@ def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
     code = EMAIL_ERROR_CODES.get(exc.reason, "smtp_send_failed")
     msg = exc.public_message
     detail_lower = (exc.internal_detail or "").lower()
-    if "resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower:
-        msg = "Email isn't set up to send to this address yet. Please contact your administrator."
+    if (
+        "resend.com/domains" in detail_lower
+        or "verify a domain" in detail_lower
+        or "testing emails to your own" in detail_lower
+        or "not verified" in detail_lower
+        or "only send testing" in detail_lower
+    ):
+        msg = "Email service is in test mode. To send reports to any email address, please verify your domain at resend.com/domains or ensure SMTP credentials are configured."
     return {"message": msg, "code": code}
 
 
@@ -290,9 +296,12 @@ def _send_via_resend(
         "User-Agent": "InsightsIva/1.0",
     }
     
-    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or from_email or "").strip()
+    import re
+    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
     if resend_from:
         sender = resend_from
+    elif from_email and not any(d in from_email.lower() for d in ("codeviasoftware.com", "gmail.com", "yahoo.com", "outlook.com")):
+        sender = from_email
     else:
         sender = "Insights Iva <onboarding@resend.dev>"
 
@@ -304,7 +313,7 @@ def _send_via_resend(
         "text": body,
     }
     if cc:
-        payload["cc"] = [cc]
+        payload["cc"] = [c.strip() for c in re.split(r"[,;]+", str(cc)) if c.strip()]
 
     if attachments:
         payload["attachments"] = [
@@ -351,11 +360,9 @@ def _send_via_smtplib(
             _send_via_resend(raw_resend.strip(), to, subject, body, cc=cc, html=html, attachments=attachments, from_email=s.smtp_from_email)
             return
         except EmailDeliveryError as resend_err:
-            detail_lower = (resend_err.internal_detail or "").lower()
-            if ("resend.com/domains" in detail_lower or "verify a domain" in detail_lower or "testing emails to your own" in detail_lower) and s.smtp_user and s.smtp_password:
-                logger.warning("resend_testing_mode_restriction_detected falling_back_to_direct_smtp to=%s", to)
-                resend_err_to_raise = resend_err
-            else:
+            logger.warning("resend_delivery_failed_attempting_direct_smtp to=%s: %s", to, resend_err.internal_detail)
+            resend_err_to_raise = resend_err
+            if not (s.smtp_user and s.smtp_password):
                 raise
 
     msg = EmailMessage()

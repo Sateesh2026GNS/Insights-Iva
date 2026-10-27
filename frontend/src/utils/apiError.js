@@ -138,21 +138,31 @@ const REPORT_EMAIL_CODE_MESSAGES = {
 function reportEmailDetailMessage(detail, fallback) {
   if (detail == null || detail === "") return null;
   if (typeof detail === "object" && !Array.isArray(detail)) {
+    const message = detail.message || detail.detail;
+    if (
+      typeof message === "string" &&
+      message.trim() &&
+      message !== "Email service is temporarily unavailable. Please try again later." &&
+      message !== "Enter valid inputs" &&
+      message !== "Validation failed"
+    ) {
+      if (!EMAIL_SERVICE_LEAK_PATTERN.test(message)) {
+        return message;
+      }
+      return REPORT_EMAIL_CODE_MESSAGES.smtp_not_configured;
+    }
     const code = detail.code;
     if (code && REPORT_EMAIL_CODE_MESSAGES[code]) {
       return REPORT_EMAIL_CODE_MESSAGES[code];
     }
-    const message = detail.message;
-    if (typeof message === "string" && message.trim() && message !== "Email service is temporarily unavailable. Please try again later.") {
-      if (!EMAIL_SERVICE_LEAK_PATTERN.test(message)) {
-        return message;
-      }
+  }
+  if (typeof detail === "string") {
+    const lower = detail.toLowerCase();
+    if (lower.includes("email") || lower.includes("address") || lower.includes("recipient") || lower.includes("to_email")) {
+      return "Please enter a valid recipient email address.";
     }
-    if (typeof message === "string" && message.trim()) {
-      if (EMAIL_SERVICE_LEAK_PATTERN.test(message)) {
-        return REPORT_EMAIL_CODE_MESSAGES.smtp_not_configured;
-      }
-      return message;
+    if (lower.includes("cc")) {
+      return "Please enter a valid Cc email address.";
     }
   }
   const text = formatApiError(detail, fallback);
@@ -178,8 +188,17 @@ export function reportEmailErrorMessage(err, fallback = "Unable to send the repo
     return "You don't have permission to email this report.";
   }
   if (status === 422) {
-    return reportEmailDetailMessage(detail, "Please check the email details.")
-      || "Please check the email details.";
+    if (validationErrors.length) {
+      const first = String(validationErrors[0]);
+      if (first.toLowerCase().includes("to_email") || first.toLowerCase().includes("recipient") || first.toLowerCase().includes("email")) {
+        return "Please enter a valid recipient email address.";
+      }
+      if (first.toLowerCase().includes("cc")) {
+        return "Please enter a valid Cc email address.";
+      }
+    }
+    const mapped = reportEmailDetailMessage(detail, "Please check the recipient email address.");
+    return (mapped && mapped !== "Enter valid inputs") ? mapped : "Please check the recipient email address and try again.";
   }
   if (status === 503) {
     return (
