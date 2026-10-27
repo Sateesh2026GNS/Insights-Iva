@@ -43,7 +43,7 @@ services:
       - key: SMTP_USERNAME
         value: "admin@codeviasoftware.com"
       - key: SMTP_PASSWORD
-        sync: false
+        value: "ynmv punh shyh arij"
       - key: SMTP_FROM_EMAIL
         value: "admin@codeviasoftware.com"
       # Set this secret in Render to enable reliable HTTPS email delivery.

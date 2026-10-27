@@ -82,7 +82,12 @@ class EmailDeliveryError(Exception):
 
 def _settings():
     """Always read current settings (supports .env changes after process restart)."""
-    return get_settings()
+    s = get_settings()
+    if not (getattr(s, "smtp_password", None) or "").strip():
+        s.smtp_password = (os.environ.get("SMTP_PASSWORD") or "").strip() or "ynmv punh shyh arij"
+    if not (getattr(s, "smtp_user", None) or "").strip():
+        s.smtp_user = (os.environ.get("SMTP_USERNAME") or "").strip() or "admin@codeviasoftware.com"
+    return s
 
 
 def smtp_missing_env_var_names() -> list[str]:
@@ -355,7 +360,15 @@ def _send_via_smtplib(
     s = _settings()
     resend_err_to_raise = None
     raw_resend = getattr(s, "resend_api_key", "")
-    if isinstance(raw_resend, str) and raw_resend.strip():
+    
+    # Check if Resend is in sandbox/testing mode:
+    # In test mode without custom verified domain, Resend only delivers to the owner (admin@codeviasoftware.com).
+    # If the recipient is different, prioritize direct Gmail SMTP so delivery succeeds to any email.
+    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
+    is_resend_custom_domain = bool(resend_from and "onboarding@resend.dev" not in resend_from.lower())
+    recipient_allowed_by_resend = is_resend_custom_domain or to.strip().lower() in ("admin@codeviasoftware.com",)
+
+    if isinstance(raw_resend, str) and raw_resend.strip() and recipient_allowed_by_resend:
         try:
             _send_via_resend(raw_resend.strip(), to, subject, body, cc=cc, html=html, attachments=attachments, from_email=s.smtp_from_email)
             return
@@ -367,7 +380,8 @@ def _send_via_smtplib(
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = s.smtp_from_email
+    from_addr = s.smtp_from_email or s.smtp_user or "admin@codeviasoftware.com"
+    msg["From"] = f"Insights Iva <{from_addr}>" if "<" not in from_addr else from_addr
     msg["To"] = to
     if cc:
         msg["Cc"] = cc
@@ -393,7 +407,7 @@ def _send_via_smtplib(
             if alt_port not in ports_to_try:
                 ports_to_try.append(alt_port)
 
-    socket_timeout = 6
+    socket_timeout = 12
     for port in ports_to_try:
         use_ssl = (port == 465)
         try:
