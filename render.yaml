@@ -46,6 +46,9 @@ services:
         sync: false
       - key: SMTP_FROM_EMAIL
         value: "admin@codeviasoftware.com"
+      # Set this secret in Render to enable reliable HTTPS email delivery.
+      - key: RESEND_API_KEY
+        sync: false
       # OpenAI / AI Assistant — set OPENAI_API_KEY in Render dashboard (Environment tab)
       - key: OPENAI_API_KEY
         sync: false

@@ -76,6 +76,7 @@ async def email_metric_report(
             subject,
             body,
             attachments=[(attachment_name, pdf_bytes, "application/pdf")],
+            require_smtp=True,
         )
     except EmailDeliveryError as exc:
         logger.error(

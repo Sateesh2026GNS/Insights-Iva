@@ -289,7 +289,7 @@ def _send_via_resend(
         "User-Agent": "InsightsIva/1.0",
     }
     
-    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
+    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or from_email or "").strip()
     if resend_from:
         sender = resend_from
     else:
@@ -485,6 +485,15 @@ async def send_email_async(
             to,
             subject,
             [a[0] for a in attachments or []],
+        )
+        return
+    # Resend uses HTTPS and works on cloud hosts where outbound SMTP may be
+    # restricted. Prefer it when configured, including for messages without
+    # attachments; _send_via_smtplib dispatches to Resend before SMTP.
+    raw_resend = getattr(_settings(), "resend_api_key", "")
+    if isinstance(raw_resend, str) and raw_resend.strip():
+        await asyncio.to_thread(
+            _send_via_smtplib, to, subject, body, html=html, attachments=attachments
         )
         return
     if _HAS_FASTAPI_MAIL and not attachments:
