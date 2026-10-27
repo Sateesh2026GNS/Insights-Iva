@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileText } from "lucide-react";
 
 import DataTable from "../../../components/common/DataTable";
 import ExportDownloadMenu from "../../../components/common/ExportDownloadMenu";
-import PageHeader from "../../../components/common/PageHeader";
 import SkeletonTable from "../../../components/common/SkeletonTable";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../../components/common/ListPageShell";
+import SalesPlanningShell from "../../../components/sales/SalesPlanningShell";
 import KpiCard from "../../../components/common/KpiCard";
 import { useToast } from "../../../context/ToastContext";
 import { getQuotationSummary, getQuotationsEnriched } from "../../../api/salesApi";
@@ -82,12 +81,13 @@ export default function QuotationReport() {
   );
 
   return (
-    <ListPageShell>
-      <PageHeader
-        title="Quotation Report"
-        subtitle="Open and historical quotations for your tenant."
-        icon={FileText}
-        actions={
+    <SalesPlanningShell
+      theme="purple"
+      kicker="Quote · Convert · Review"
+      title="QUOTATION"
+      accent="REPORT"
+      meta={loading ? "Loading" : `${rows.length} quotation${rows.length === 1 ? "" : "s"}`}
+      actions={
           <ExportDownloadMenu
             disabled={!rows.length}
             onExportExcel={() =>
@@ -108,7 +108,7 @@ export default function QuotationReport() {
             }
           />
         }
-      />
+    >
       {summary && (
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard label="Total quotations" value={summary.total_quotations ?? rows.length} />
@@ -132,6 +132,6 @@ export default function QuotationReport() {
           )}
         </ListPageCardBody>
       </ListPageCard>
-    </ListPageShell>
+    </SalesPlanningShell>
   );
 }

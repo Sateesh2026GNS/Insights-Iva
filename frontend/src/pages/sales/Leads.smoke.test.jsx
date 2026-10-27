@@ -62,6 +62,7 @@ describe("Leads page smoke", () => {
     const workflow = await screen.findByRole("navigation", { name: "Lead workflow" });
     expect(workflow).toHaveClass("sales-leads-page__workflow");
     expect(await screen.findByLabelText("Search leads")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /leads enquiries/i })).toBeTruthy();
     expect(await screen.findByRole("button", { name: /^new lead$/i })).toBeTruthy();
   });
 });

@@ -6,9 +6,8 @@ import KpiCard from "../../components/common/KpiCard";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Button from "../../components/common/Button";
 import {
@@ -19,6 +18,7 @@ import {
 import LeadDetailModal from "../../components/sales/LeadDetailModal";
 import LeadRowActionsMenu from "../../components/sales/LeadRowActionsMenu";
 import ConfirmationDialog from "../../components/common/ConfirmationDialog";
+import SalesPlanningShell from "../../components/sales/SalesPlanningShell";
 import { useToast } from "../../context/ToastContext";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import usePermissions from "../../hooks/usePermissions";
@@ -385,26 +385,36 @@ export default function Leads() {
     addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
-  if (loading) return <Loader label="Loading leads..." />;
+  if (loading) {
+    return (
+      <SalesPlanningShell theme="green" kicker="Record · Qualify · Quote · Order" title="LEADS" accent="ENQUIRIES">
+        <Loader label="Loading leads..." />
+      </SalesPlanningShell>
+    );
+  }
 
   return (
-    <ListPageShell stackClassName="sales-leads-page space-y-4 pb-4">
-      <PageHeader
-        className="erp-hero-header--compact inventory-hero-header--compact sales-leads-page__banner"
-        action={
-          <div className="sales-leads-page__banner-actions flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
-            <Button
-              variant="add"
-              type="button"
-              onClick={() => navigate("/sales/leads/new")}
-              leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
-            >
-              New Lead
-            </Button>
-          </div>
-        }
-      />
+    <SalesPlanningShell
+      theme="green"
+      kicker="Record · Qualify · Quote · Order"
+      title="LEADS"
+      accent="ENQUIRIES"
+      meta={`${summary.total_leads} lead${summary.total_leads === 1 ? "" : "s"}`}
+      actions={
+        <div className="sales-leads-page__banner-actions flex flex-wrap items-center gap-2">
+          <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
+          <Button
+            variant="add"
+            type="button"
+            onClick={() => navigate("/sales/leads/new")}
+            leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+          >
+            New Lead
+          </Button>
+        </div>
+      }
+    >
+      <div className="sales-leads-page space-y-3 pb-2">
 
       <div className="ui-grid-kpi sales-leads-page__kpi-grid">
         <KpiCard
@@ -785,6 +795,7 @@ export default function Leads() {
         onConfirm={confirmDeleteLead}
         onCancel={() => !deleteLoading && setDeleteTarget(null)}
       />
-    </ListPageShell>
+      </div>
+    </SalesPlanningShell>
   );
 }

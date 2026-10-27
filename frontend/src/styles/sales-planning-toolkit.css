@@ -1,0 +1,323 @@
+/* Sales reports — shared toolkit layout, one palette per page. */
+
+.sales-plan-page {
+  --sp-hero: #0c2d4a;
+  --sp-hero-mid: #123a5c;
+  --sp-accent: #f5c518;
+  --sp-panel: #1e4a6e;
+  --sp-button: #1e4a6e;
+  --sp-button-hover: #0c2d4a;
+  --sp-ink: #0c2d4a;
+  --sp-row-hover: #eff6ff;
+  width: 100%;
+  background: #f4f7fa;
+  color: #1a1a1a;
+}
+
+.sales-plan-page--navy {
+  --sp-hero: #0c2d4a;
+  --sp-hero-mid: #123a5c;
+  --sp-accent: #f5c518;
+  --sp-panel: #1e4a6e;
+  --sp-button: #1e4a6e;
+  --sp-button-hover: #0c2d4a;
+  --sp-ink: #0c2d4a;
+  --sp-row-hover: #eff6ff;
+}
+
+.sales-plan-page--blue {
+  --sp-hero: #1e3a8a;
+  --sp-hero-mid: #1d4ed8;
+  --sp-accent: #14b8a6;
+  --sp-panel: #1d4ed8;
+  --sp-button: #1d4ed8;
+  --sp-button-hover: #1e3a8a;
+  --sp-ink: #1e3a8a;
+  --sp-row-hover: #ecfeff;
+}
+
+.sales-plan-page--purple {
+  --sp-hero: #4c1d95;
+  --sp-hero-mid: #6d28d9;
+  --sp-accent: #c4b5fd;
+  --sp-panel: #6d28d9;
+  --sp-button: #6d28d9;
+  --sp-button-hover: #4c1d95;
+  --sp-ink: #4c1d95;
+  --sp-row-hover: #f5f3ff;
+}
+
+.sales-plan-page--green {
+  --sp-hero: #14532d;
+  --sp-hero-mid: #166534;
+  --sp-accent: #34d399;
+  --sp-panel: #166534;
+  --sp-button: #166534;
+  --sp-button-hover: #14532d;
+  --sp-ink: #14532d;
+  --sp-row-hover: #ecfdf5;
+}
+
+.sales-plan-page .mtk-root {
+  --mtk-hero: var(--sp-hero);
+  --mtk-hero-mid: var(--sp-hero-mid);
+  --mtk-accent: var(--sp-accent);
+  --mtk-head: var(--sp-panel);
+  --mtk-total: var(--sp-button-hover);
+}
+
+.sales-plan-page .mtk-hero__title p {
+  margin: 0;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.sales-plan-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sales-plan-page .ui-btn,
+.sales-plan-page .sales-plan-page__actions .ui-btn {
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 11px;
+  box-shadow: none;
+}
+
+.sales-plan-page .ui-btn--primary,
+.sales-plan-page .ui-btn--add {
+  background: var(--sp-button);
+  border-color: var(--sp-button);
+  color: #fff;
+}
+
+.sales-plan-page .ui-btn--primary:hover:not(:disabled):not(.is-loading),
+.sales-plan-page .ui-btn--add:hover:not(:disabled):not(.is-loading) {
+  background: var(--sp-button-hover);
+  border-color: var(--sp-button-hover);
+}
+
+.sales-plan-page .ui-btn--secondary,
+.sales-plan-page .ui-btn--outline {
+  background: #fff;
+  border-color: var(--sp-button);
+  color: var(--sp-ink);
+}
+
+.sales-plan-page .ui-btn--secondary:hover:not(:disabled):not(.is-loading),
+.sales-plan-page .ui-btn--outline:hover:not(:disabled):not(.is-loading),
+.sales-plan-page .sales-leads-page__banner-actions .ui-btn--secondary:hover:not(:disabled) {
+  background: var(--sp-row-hover);
+  border-color: var(--sp-button-hover);
+  color: var(--sp-ink);
+}
+
+.sales-plan-page .sales-leads-page__banner-actions .ui-btn--secondary {
+  background: #fff;
+  border-color: var(--sp-button);
+  color: var(--sp-ink);
+}
+
+.sales-plan-page .analytics-page.ui-page {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sales-plan-page .analytics-page.ui-stack {
+  gap: 8px;
+}
+
+.sales-plan-page .ui-list-card,
+.sales-plan-page .sales-leads-page__records {
+  border-radius: 2px;
+  border-color: #c5d0dc;
+  border-top: 3px solid var(--sp-panel);
+  box-shadow: none;
+}
+
+.sales-plan-page .ui-list-card__body {
+  padding: 8px;
+}
+
+.sales-plan-page .ui-table-wrap,
+.sales-plan-page .overflow-x-auto {
+  max-width: 100%;
+}
+.sales-plan-page .ui-card,
+.sales-plan-page .analytics-chart-card {
+  border: 1px solid #c5d0dc;
+  border-radius: 4px;
+  box-shadow: none;
+  background: #fff;
+}
+
+.sales-plan-page .ui-kpi {
+  border: 1px solid #c5d0dc;
+  border-radius: 4px;
+  box-shadow: none;
+  background: #fff;
+  padding: 6px 4px;
+}
+
+.sales-plan-page .ui-kpi__label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.sales-plan-page .ui-kpi__value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sales-plan-page .ui-table-head th,
+.sales-plan-page table thead th {
+  background: #e8eef4 !important;
+  color: #1a1a1a !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  border-color: #c5d0dc !important;
+}
+
+.sales-plan-page table td {
+  font-size: 9px;
+  color: #1a1a1a;
+  border-color: #c5d0dc;
+}
+
+.sales-plan-page table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.sales-plan-page table tbody tr:hover td {
+  background: var(--sp-row-hover);
+}
+
+.sales-plan-page .ui-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--sp-ink);
+}
+
+.sales-plan-page .sales-leads-page {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+.sales-plan-page .sales-leads-page__kpi-grid .ui-kpi {
+  min-height: 0;
+  border-radius: 4px;
+  border-color: #c5d0dc;
+  box-shadow: none;
+  padding: 6px 4px;
+}
+
+.sales-plan-page .sales-leads-page__kpi-grid .ui-kpi__label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.sales-plan-page .sales-leads-page__kpi-grid .ui-kpi__value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sales-plan-page .sales-leads-page__kpi-grid .ui-kpi.cursor-pointer:hover {
+  border-color: var(--sp-panel);
+  box-shadow: none;
+}
+
+.sales-plan-page .sales-leads-page__workflow {
+  border-radius: 2px;
+  border-color: #c5d0dc;
+  box-shadow: none;
+  padding: 6px 8px;
+}
+
+.sales-plan-page .sales-leads-page__workflow-step {
+  border: 1px solid #c5d0dc;
+  border-radius: 2px;
+  background: #fff;
+  color: var(--sp-ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sales-plan-page .sales-leads-page__records-body {
+  padding: 8px;
+}
+
+.sales-plan-page .sales-leads-page__view-toggle {
+  border-radius: 2px;
+  border-color: #c5d0dc;
+}
+
+.sales-plan-page .sales-leads-page__view-toggle .ui-btn[aria-pressed="true"] {
+  color: var(--sp-ink) !important;
+}
+
+.sales-plan-page .production-analytics-chart-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #f8fafc;
+  border-bottom: 1px solid #c5d0dc;
+  font-size: 9px;
+  color: #64748b;
+}
+
+.sales-plan-page .production-analytics-chart-panel__body {
+  padding: 4px 6px 8px;
+  min-height: 220px;
+}
+
+.sales-plan-page .ui-page-btn--active {
+  background: var(--sp-button) !important;
+  border-color: var(--sp-button) !important;
+  color: #fff !important;
+}
+
+.sales-plan-page input:focus,
+.sales-plan-page select:focus,
+.sales-plan-page textarea:focus,
+.sales-plan-page .ui-btn:focus-visible {
+  outline: 2px solid var(--sp-button);
+  outline-offset: 1px;
+}
+
+@layer base {
+  .sales-plan-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .sales-plan-page select,
+  .sales-plan-page .ui-select,
+  .sales-plan-page .ui-input {
+    border-radius: 2px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    border-color: #c5d0dc !important;
+    background: #fff !important;
+    font-size: 11px !important;
+    color: #1a1a1a !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .sales-plan-page .mtk-body {
+    padding: 6px;
+  }
+}

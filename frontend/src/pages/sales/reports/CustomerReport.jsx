@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Pencil, Trash2, Users } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 
 import DataTable from "../../../components/common/DataTable";
 import ExportDownloadMenu from "../../../components/common/ExportDownloadMenu";
-import PageHeader from "../../../components/common/PageHeader";
 import RowActionMenu from "../../../components/common/RowActionMenu";
 import SkeletonTable from "../../../components/common/SkeletonTable";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../../components/common/ListPageShell";
+import SalesPlanningShell from "../../../components/sales/SalesPlanningShell";
 import KpiCard from "../../../components/common/KpiCard";
 import ConfirmDialog from "../../../components/admin/ConfirmDialog";
 import CustomerDetailModal from "../../../components/sales/CustomerDetailModal";
@@ -134,19 +134,20 @@ export default function CustomerReport() {
   };
 
   return (
-    <ListPageShell>
-      <PageHeader
-        title="Customer Report"
-        subtitle="Customer master list for your tenant."
-        icon={Users}
-        actions={
-          <ExportDownloadMenu
-            disabled={!rows.length}
-            onExportExcel={() => handleExport("excel")}
-            onExportPdf={() => handleExport("pdf")}
-          />
-        }
-      />
+    <SalesPlanningShell
+      theme="blue"
+      kicker="Record · Report · Review"
+      title="CUSTOMER"
+      accent="REPORT"
+      meta={loading ? "Loading" : `${rows.length} customer${rows.length === 1 ? "" : "s"}`}
+      actions={
+        <ExportDownloadMenu
+          disabled={!rows.length}
+          onExportExcel={() => handleExport("excel")}
+          onExportPdf={() => handleExport("pdf")}
+        />
+      }
+    >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard label="Total customers" value={rows.length} />
         <KpiCard label="Active" value={activeCount} />
@@ -187,6 +188,6 @@ export default function CustomerReport() {
         onCancel={() => setDeleting(null)}
         onConfirm={confirmDelete}
       />
-    </ListPageShell>
+    </SalesPlanningShell>
   );
 }

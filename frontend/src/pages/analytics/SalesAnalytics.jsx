@@ -22,6 +22,7 @@ import { getSalesReportsSummary } from "../../api/salesApi";
 import { CHART_COLORS, currentFiscalYearLabel, fiscalYearToYear, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { apiErrorMessage } from "../../utils/apiError";
+import SalesPlanningShell from "../../components/sales/SalesPlanningShell";
 
 const KPI_ICONS = {
   revenue: IndianRupee, orders: ShoppingCart, customers: Users, conversion: Percent,
@@ -123,11 +124,19 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
     return () => clearInterval(t);
   }, [autoRefresh, load]);
 
+  const reportShell = (node) => (
+    useSalesModuleApi ? (
+      <SalesPlanningShell theme="navy" kicker="Record · Measure · Review" title="SALES" accent="REPORT">
+        {node}
+      </SalesPlanningShell>
+    ) : node
+  );
+
   if (loading && !data.kpis?.length) {
-    return <AnalyticsPageShell loading kpiCount={4} chartCount={6} />;
+    return reportShell(<AnalyticsPageShell loading kpiCount={4} chartCount={6} />);
   }
   if (error && !data.kpis?.length) {
-    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
+    return reportShell(<AnalyticsPageShell error={error} onRetry={() => load()} />);
   }
   const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
 
@@ -142,7 +151,9 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
     if (kpi.key === "revenue" && data.drill_revenue) setDrillTrail(data.drill_revenue);
   };
 
-  return (
+  const chartVariant = useSalesModuleApi ? "toolkit" : "default";
+
+  return reportShell(
     <AnalyticsPageShell>
       <AnalyticsDashboardHeader
         title={useSalesModuleApi ? "Sales Report" : "Sales KPI"}
@@ -178,7 +189,7 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <AnalyticsChartCard id="chart-monthly-rev" title="Monthly Revenue" data={data.monthly_revenue} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
+        <AnalyticsChartCard variant={chartVariant} id="chart-monthly-rev" title="Monthly Revenue" data={data.monthly_revenue} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={monthlyRevenue}>
               <CartesianGrid {...ANALYTICS_GRID} />
@@ -190,7 +201,7 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-top-cust" title="Top Customers" data={data.top_customers} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
+        <AnalyticsChartCard variant={chartVariant} id="chart-top-cust" title="Top Customers" data={data.top_customers} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topCustomers}>
               <CartesianGrid {...ANALYTICS_GRID} />
@@ -202,7 +213,7 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-top-prod" title="Top Products" data={data.top_products} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
+        <AnalyticsChartCard variant={chartVariant} id="chart-top-prod" title="Top Products" data={data.top_products} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topProducts}>
               <CartesianGrid {...ANALYTICS_GRID} />
@@ -214,7 +225,7 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-funnel" title="Sales Funnel" data={data.sales_funnel} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
+        <AnalyticsChartCard variant={chartVariant} id="chart-funnel" title="Sales Funnel" data={data.sales_funnel} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={salesFunnel} layout="vertical">
               <CartesianGrid {...ANALYTICS_GRID} />
@@ -226,7 +237,7 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-order-status" title="Order Status" data={data.order_status} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
+        <AnalyticsChartCard variant={chartVariant} id="chart-order-status" title="Order Status" data={data.order_status} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie data={orderStatus} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={100} label>
@@ -240,7 +251,7 @@ export default function SalesAnalytics({ useSalesModuleApi = false }) {
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-quote-conv" title="Quotation Conversion" data={data.quotation_conversion} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
+        <AnalyticsChartCard variant={chartVariant} id="chart-quote-conv" title="Quotation Conversion" data={data.quotation_conversion} dataKeys={["label", "value"]} sourceLink={SOURCE_LINKS.sales} sourceLabel="Sales">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={quotationConversion}>
               <CartesianGrid {...ANALYTICS_GRID} />
