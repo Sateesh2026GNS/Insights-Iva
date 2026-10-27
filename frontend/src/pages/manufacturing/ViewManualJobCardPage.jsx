@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-import Button from "../../components/common/Button";
-import { ListPageShell } from "../../components/common/ListPageShell";
 import SalesJobCardDocumentPanel from "../../components/manufacturing/SalesJobCardDocumentPanel";
 import SendJobCardModal from "../../components/manufacturing/SendJobCardModal";
 import useAuth from "../../hooks/useAuth";
 import { userCanAction, userCanCreateSalesJobCard } from "../../config/permissions";
 import { jobCardManualEditUrl } from "../../utils/jobCardRoutes";
 import "../../styles/my-job-cards-page.css";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/sales-job-card-toolkit.css";
 
 export default function ViewManualJobCardPage() {
   const { id } = useParams();
@@ -22,17 +22,25 @@ export default function ViewManualJobCardPage() {
   const listPath = "/my-job-cards?dept=sales";
 
   return (
-    <ListPageShell className="my-job-cards-page" stackClassName="my-job-cards-page__stack">
-      <div className="mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(listPath)}
-          leftIcon={<ArrowLeft className="h-4 w-4" aria-hidden />}
-        >
-          Back to My Job Cards
-        </Button>
-      </div>
+    <div className="sales-jc-toolkit mtk-root mtk-theme--green my-job-cards-page">
+      <header className="mtk-hero">
+        <div className="mtk-hero__row">
+          <button
+            type="button"
+            onClick={() => navigate(listPath)}
+            className="inline-flex items-center gap-1 text-white"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Sales · Job Cards
+          </button>
+        </div>
+        <div className="mtk-hero__title">
+          <h1>
+            View <span className="mtk-accent">Sales Job Card</span>
+          </h1>
+        </div>
+      </header>
+      <div className="mtk-body">
       <SalesJobCardDocumentPanel
         key={`${id}-${reloadKey}`}
         jobCardId={id}
@@ -49,6 +57,7 @@ export default function ViewManualJobCardPage() {
         onClose={() => setSendTarget(null)}
         onSent={() => setReloadKey((current) => current + 1)}
       />
-    </ListPageShell>
+      </div>
+    </div>
   );
 }

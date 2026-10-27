@@ -391,6 +391,7 @@ export default function AddNewPartyModal({
   vendor = null,
   variant = "customer",
   title = null,
+  chromeClass = "",
 }) {
   const tenantId = useTenantId();
   const { addToast } = useToast();
@@ -717,7 +718,7 @@ export default function AddNewPartyModal({
       <form
         noValidate
         onSubmit={onSubmit}
-        className={PANEL_CLASS}
+        className={`${PANEL_CLASS}${chromeClass ? ` ${chromeClass}` : ""}`}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >

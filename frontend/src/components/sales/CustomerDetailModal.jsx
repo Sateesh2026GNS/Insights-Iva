@@ -15,6 +15,8 @@ import {
 import CITIES_MAP from "../../data/indiaCitiesToStates.json";
 import Button from "../common/Button";
 import PartyLedgerStatementSection from "../accounts/PartyLedgerStatementSection";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/masters-navy-chrome.css";
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "orders", label: "Sales Orders" },
@@ -32,7 +34,7 @@ function Field({ label, value }) {
     value !== undefined && value !== null && String(value).trim() !== "" ? value : "—";
   const isEmpty = displayVal === "—";
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-100">
+    <div className="masters-navy-field rounded-lg bg-slate-50 px-3 py-2 border border-slate-100">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className={`mt-0.5 text-sm font-medium break-words ${isEmpty ? "text-slate-400 font-normal" : "text-slate-800"}`}>
         {displayVal}
@@ -113,10 +115,10 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
       aria-labelledby="customer-detail-title"
     >
       <div
-        className={`flex w-full flex-col overflow-hidden bg-white shadow-2xl transition-all duration-150 animate-in fade-in zoom-in-95 duration-150 ${
+        className={`masters-navy-dialog mtk-root mtk-theme--navy flex w-full flex-col overflow-hidden bg-white transition-all duration-150 ${
           isFullscreen
             ? "h-full w-full max-w-none max-h-none rounded-none"
-            : "w-full max-w-4xl rounded-2xl"
+            : "w-full max-w-4xl"
         }`}
         style={
           isFullscreen
@@ -126,7 +128,7 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header - Always pinned at top */}
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4">
+        <div className="masters-navy-dialog__header flex shrink-0 items-start justify-between gap-4 border-b px-4 py-2">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-bold text-[var(--color-primary)]">
@@ -195,7 +197,7 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
         </div>
 
         {/* Dashboard Metrics */}
-        <div className="grid shrink-0 grid-cols-3 gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 sm:grid-cols-6">
+        <div className="masters-navy-metrics grid shrink-0 grid-cols-3 gap-2 border-b px-4 py-2 sm:grid-cols-6">
           {dashboard.map((d) => (
             <div key={d.label} className="text-center">
               <p className="text-[10px] font-medium text-slate-500">{d.label}</p>
@@ -211,9 +213,9 @@ export default function CustomerDetailModal({ customer, onClose, onEdit, onDelet
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
+              className={`masters-navy-tab px-3 py-1.5 whitespace-nowrap ${
                 tab === t.id
-                  ? "bg-[var(--color-primary)] text-white shadow-xs"
+                  ? "masters-navy-tab--active"
                   : "text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -483,13 +485,13 @@ export function CustomerFormModal({ customer, onClose, onSave }) {
           }
           onSave({ ...form, contact_person: trimmedContact, email: trimmedEmail || null, phone: trimmedPhone || null, gstin: trimmedGstin || null });
         }}
-        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+        className="masters-navy-dialog mtk-root mtk-theme--navy w-full max-w-lg bg-white"
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{customer?.customer_code ? "Edit Customer" : "New Customer"}</h2>
+        <div className="masters-navy-dialog__header mb-0 flex items-center justify-between px-3 py-2">
+          <h2 className="text-[12px] font-bold">{customer?.customer_code ? "Edit Customer" : "New Customer"}</h2>
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
         </div>
-        <div className="grid max-h-[60vh] gap-3 overflow-y-auto sm:grid-cols-2">
+        <div className="grid max-h-[60vh] gap-3 overflow-y-auto p-3 sm:grid-cols-2">
           <label>
             <span className="text-xs font-semibold text-slate-500">Customer Code</span>
             <input value={form.customer_code} onChange={(e) => set("customer_code", e.target.value)} placeholder="e.g. CUST-001" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />

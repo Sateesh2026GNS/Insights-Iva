@@ -6,9 +6,10 @@ export default function CreateProduct() {
   const location = useLocation();
 
   useEffect(() => {
-    const target = location.pathname.startsWith("/products")
-      ? "/products?add=1"
-      : "/masters/products?add=1";
+    const editMatch = location.pathname.match(/\/([^/]+)\/edit\/?$/);
+    const editId = editMatch?.[1];
+    const base = location.pathname.startsWith("/products") ? "/products" : "/masters/products";
+    const target = editId ? `${base}?edit=${encodeURIComponent(editId)}` : `${base}?add=1`;
     navigate(target, { replace: true });
   }, [navigate, location.pathname]);
 

@@ -21,7 +21,9 @@ import { useToast } from "../../context/ToastContext";
 import { InteractiveStarRating } from "../../components/procurement/VendorDetailModal";
 
 import Button from "../../components/common/Button";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/masters-navy-chrome.css";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -35,7 +37,7 @@ const TABS = [
 
 function Field({ label, value }) {
   return (
-    <div className="rounded-xl bg-[var(--color-surface-muted)] px-3 py-2.5">
+    <div className="masters-navy-field rounded-xl bg-white px-3 py-2">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{label}</p>
       <p className="mt-0.5 text-sm font-medium text-[var(--color-text)] break-words">{value || "—"}</p>
     </div>
@@ -114,19 +116,22 @@ export default function VendorDetail() {
 
   if (loading) {
     return (
-      <ListPageShell>
-        <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--color-text-muted)]">
+      <div className="vendor-detail-page masters-navy-page min-h-full">
+        <div className="mtk-root mtk-theme--navy">
+        <div className="mtk-body flex min-h-[40vh] items-center justify-center text-[11px]">
           <Loader2 className="mr-2 h-5 w-5 animate-spin text-[var(--color-primary)]" />
           Loading vendor…
         </div>
-      </ListPageShell>
+        </div>
+      </div>
     );
   }
 
   if (error || !vendor) {
     return (
-      <ListPageShell>
-        <div className="mx-auto max-w-lg space-y-4 py-16 text-center">
+      <div className="vendor-detail-page masters-navy-page min-h-full">
+        <div className="mtk-root mtk-theme--navy">
+        <div className="mtk-body mx-auto max-w-lg space-y-4 py-10 text-center">
           <p className="text-sm font-medium text-[var(--color-danger)]">{error || "Vendor not found"}</p>
           <div className="flex justify-center gap-2">
             <button
@@ -144,24 +149,31 @@ export default function VendorDetail() {
             </Link>
           </div>
         </div>
-      </ListPageShell>
+        </div>
+      </div>
     );
   }
 
   const v = vendor;
 
   return (
-    <ListPageShell>
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <Link
-            to="/procurement/vendors"
-            className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)] hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to vendors
+    <div className="vendor-detail-page masters-navy-page min-h-full">
+      <div className="mtk-root mtk-theme--navy">
+      <header className="mtk-hero">
+        <div className="mtk-hero__row">
+          <Link to="/procurement/vendors" className="inline-flex items-center gap-1 text-white">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to vendors
           </Link>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">{v.name}</h1>
+          <span>{v.vendor_code || ""}</span>
+        </div>
+        <div className="mtk-hero__title">
+          <h1>{v.name}</h1>
+          <p>{[v.vendor_type, v.city].filter(Boolean).join(" · ") || "Vendor details"}</p>
+        </div>
+      </header>
+      <div className="mtk-body space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
             {v.preferred_vendor ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800">
                 <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Preferred
@@ -179,12 +191,6 @@ export default function VendorDetail() {
               {v.status || "—"}
             </span>
           </div>
-          <p className="ui-subtitle">
-            {v.vendor_code}
-            {v.vendor_type ? ` · ${v.vendor_type}` : ""}
-            {v.city ? ` · ${v.city}` : ""}
-          </p>
-        </div>
         <div className="flex flex-wrap gap-2">
           {!viewOnly && (
             <>
@@ -197,18 +203,18 @@ export default function VendorDetail() {
             </>
           )}
         </div>
-      </header>
+      </div>
 
-      <div className="flex flex-wrap gap-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-sm">
+      <div className="flex flex-wrap gap-1 border border-[#c5d0dc] bg-white p-1">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`rounded-xl px-3 py-2 text-xs font-semibold transition sm:text-sm ${
+            className={`masters-navy-tab px-3 py-1 ${
               tab === t.id
-                ? "bg-[var(--color-primary)] text-white shadow-sm"
-                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                ? "masters-navy-tab--active"
+                : "text-[#1e3a5f] hover:bg-[#eff6ff]"
             }`}
           >
             {t.label}
@@ -220,7 +226,7 @@ export default function VendorDetail() {
         <ListPageCardBody className="sm:p-6">
         {tab === "overview" && (
           <div className="space-y-5 pb-4">
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/80 via-orange-50/50 to-amber-50/80 p-4">
+            <div className="masters-navy-rating flex flex-wrap items-center justify-between gap-4 p-3">
               <div>
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
@@ -415,7 +421,9 @@ export default function VendorDetail() {
         )}
         </ListPageCardBody>
       </ListPageCard>
-    </ListPageShell>
+      </div>
+      </div>
+    </div>
   );
 }
 

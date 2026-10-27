@@ -868,6 +868,7 @@ export default function AppRoutes() {
       <Route path="/analytics/profit" element={<ProtectedRoute><P.ProfitAnalysis /></ProtectedRoute>} />
       <Route path="/analytics/forecasting" element={<ProtectedRoute><P.ForecastingDashboard /></ProtectedRoute>} />
       <Route path="/alerts" element={<ProtectedRoute><P.AllAlerts /></ProtectedRoute>} />
+      <Route path="/alerts/order-delays" element={<ProtectedRoute><P.OrderDelays /></ProtectedRoute>} />
       <Route path="/alerts/low-stock" element={<ProtectedRoute><P.LowStockAlerts /></ProtectedRoute>} />
       <Route path="/alerts/machine-failure" element={<ProtectedRoute><P.MachineFailureAlerts /></ProtectedRoute>} />
       <Route path="/alerts/production-delay" element={<ProtectedRoute><P.ProductionDelayAlerts /></ProtectedRoute>} />

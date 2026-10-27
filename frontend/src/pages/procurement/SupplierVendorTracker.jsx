@@ -163,7 +163,6 @@ export default function SupplierVendorTracker() {
     <div className="svt-root">
       <header className="svt-header">
         <div>
-          <p className="svt-kicker">Import & Export Costing, Documentation & Shipment Control Toolkit</p>
           <h1>
             Supplier & <span>Vendor Master Tracker</span>
           </h1>

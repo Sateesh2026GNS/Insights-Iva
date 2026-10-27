@@ -35,7 +35,7 @@ export default function CancelSalesOrderModal({
         }}
       />
       <div
-        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        className="so-modal relative z-10 w-full max-w-md border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancel-so-title"

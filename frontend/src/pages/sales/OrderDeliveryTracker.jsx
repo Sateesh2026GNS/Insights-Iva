@@ -106,10 +106,8 @@ export default function OrderDeliveryTracker() {
     <div className="odt-root">
       <header className="odt-header">
         <div>
-          <p className="odt-kicker">Import & Export Costing, Documentation & Shipment Control Toolkit</p>
           <h1>Order & Delivery Status Tracker</h1>
           <p>Track customer orders from processing to delivery. Monitor dispatch dates and ETAs, carriers, and on-time deliveries.</p>
-          <p className="odt-tagline">Real-time order visibility · Stored shipment records · No live carrier feed</p>
         </div>
         <div className="odt-summary">
           <div>Today<strong>{formatDay(tracker?.as_of)}</strong></div>

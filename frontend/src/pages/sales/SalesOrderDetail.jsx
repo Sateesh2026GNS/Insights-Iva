@@ -7,9 +7,8 @@ import CancelSalesOrderModal from "../../components/sales/CancelSalesOrderModal"
 import DeleteSalesOrderDialog from "../../components/sales/DeleteSalesOrderDialog";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import { StatusBadge } from "../../components/common/Table";
+import { SalesOrdersToolkitShell, salesOrderStatusPillClass } from "../../components/sales/SalesOrdersToolkit";
 import { useToast } from "../../context/ToastContext";
 import Button from "../../components/common/Button";
 import useAuth from "../../hooks/useAuth";
@@ -158,14 +157,22 @@ export default function SalesOrderDetail() {
     }
   };
 
-  if (loading) return <Loader label="Loading sales order..." />;
+  if (loading) {
+    return (
+      <SalesOrdersToolkitShell title="SALES ORDER">
+        <div className="sales-orders-loading">
+          <Loader label="Loading sales order..." />
+        </div>
+      </SalesOrdersToolkitShell>
+    );
+  }
 
   if (!data?.order) {
     return (
-      <div className="space-y-6 p-4 sm:p-6">
+      <SalesOrdersToolkitShell title="SALES ORDER">
         <BackLink />
         <EmptyState icon="clipboard" title="Order not found" description="This sales order does not exist." />
-      </div>
+      </SalesOrdersToolkitShell>
     );
   }
 
@@ -244,14 +251,12 @@ export default function SalesOrderDetail() {
     : `/production/create?sales_order_id=${order.id}&sales_order_number=${encodeURIComponent(order.order_number)}`;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <SalesOrdersToolkitShell title={`ORDER ${order.order_number}`} subtitle={`Placed on ${order.order_date}`}>
+      <div className="sales-orders-stack">
       <BackLink />
-      <PageHeader
-        title={`Order ${order.order_number}`}
-        subtitle={`Placed on ${order.order_date}`}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={order.status} />
+      <div className="sales-orders-toolbar">
+          <div className="sales-orders-toolbar__start">
+            <span className={`${salesOrderStatusPillClass(order.status)} capitalize`}>{order.status}</span>
             {showCancelAction || canDelete ? (
               <RowActionMenu
                 rowId="sales-order-detail"
@@ -282,11 +287,10 @@ export default function SalesOrderDetail() {
               />
             ) : null}
           </div>
-        }
-      />
+      </div>
 
       {isCancelled ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-950 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-100">
+        <div className="so-alert border border-rose-200 bg-rose-50 text-rose-950">
           <p className="font-semibold">Order Cancelled</p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2">
             <div>
@@ -324,23 +328,19 @@ export default function SalesOrderDetail() {
       ) : null}
 
       {orderWorkflow?.stages?.length ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Role workflow stages
-              {orderWorkflow.viewer_role ? (
-                <span className="ml-2 font-normal text-slate-400">· {orderWorkflow.viewer_role}</span>
-              ) : null}
-            </h3>
-            <Link to="/production/work-orders" className="text-xs font-semibold text-[var(--color-success)] hover:underline">
+        <section className="so-card">
+          <h3>
+            Role workflow stages
+            {orderWorkflow.viewer_role ? <span> · {orderWorkflow.viewer_role}</span> : null}
+            <Link to="/production/work-orders" className="so-card__aside">
               Open board →
             </Link>
-          </div>
+          </h3>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {orderWorkflow.stages.map((s) => (
               <div
                 key={s.id}
-                className={`rounded-xl border px-3 py-2 text-xs ${
+                className={`so-stage border ${
                   s.status === "completed"
                     ? "border-emerald-200 bg-emerald-50"
                     : s.status === "current"
@@ -364,10 +364,10 @@ export default function SalesOrderDetail() {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="so-actions">
         {!isConfirmed && !isCancelled && (
           <Button variant="primary" type="button" disabled={confirming}
       onClick={handleConfirm} className="inline-flex items-center gap-2 disabled:opacity-50">
@@ -410,9 +410,9 @@ export default function SalesOrderDetail() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 lg:col-span-2">
-          <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Order Summary</h3>
+      <div className="so-layout grid grid-cols-1 lg:grid-cols-3">
+        <section className="so-card lg:col-span-2">
+          <h3>Order Summary</h3>
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <Field label="Order Number" value={order.order_number} />
             <Field label="Reference" value={order.reference_number || "—"} />
@@ -425,7 +425,7 @@ export default function SalesOrderDetail() {
             />
           </dl>
 
-          <h3 className="mb-3 mt-6 text-sm font-semibold text-slate-700 dark:text-slate-200">Line Items</h3>
+          <h3>Line Items</h3>
           {lineItems.length ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -521,11 +521,11 @@ export default function SalesOrderDetail() {
               </button>
             )}
           </div>
-        </div>
+        </section>
 
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Customer</h3>
+        <div className="sales-orders-stack">
+          <section className="so-card">
+            <h3>Customer</h3>
             {customer ? (
               <dl className="space-y-3 text-sm">
                 <Field label="Name" value={customer.name} />
@@ -535,12 +535,10 @@ export default function SalesOrderDetail() {
             ) : (
               <p className="text-sm text-slate-500">No customer linked.</p>
             )}
-          </div>
+          </section>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Production Orders
-            </h3>
+          <section className="so-card">
+            <h3>Production Orders</h3>
             {productionOrders.length ? (
               <ul className="space-y-2 text-sm">
                 {productionOrders.map((po) => (
@@ -571,15 +569,13 @@ export default function SalesOrderDetail() {
             >
               Open Production Planning →
             </Link>
-          </div>
+          </section>
         </div>
       </div>
 
       {workflowResult && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Manufacturing handoff result
-          </h3>
+        <section className="so-card">
+          <h3>Manufacturing handoff result</h3>
           {workflowResult.warning && (
             <p className="mb-3 text-sm text-amber-700">{workflowResult.warning}</p>
           )}
@@ -641,7 +637,7 @@ export default function SalesOrderDetail() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
       <CancelSalesOrderModal
         open={cancelOpen}
@@ -671,7 +667,8 @@ export default function SalesOrderDetail() {
           }
         }}
       />
-    </div>
+      </div>
+    </SalesOrdersToolkitShell>
   );
 }
 
@@ -688,7 +685,7 @@ function BackLink() {
   return (
     <Link
       to="/sales/orders"
-      className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-[var(--color-success)] dark:text-teal-400"
+      className="so-back"
     >
       <ArrowLeft className="h-4 w-4" />
       Back to sales orders

@@ -197,6 +197,7 @@ export const ProfitAnalysis = lazy(() => import("../pages/analytics/ProfitAnalys
 export const ForecastingDashboard = lazy(() => import("../pages/analytics/ForecastingDashboard"));
 export const AlertsDashboard = lazy(() => import("../pages/alerts/AlertsDashboard"));
 export const AllAlerts = lazy(() => import("../pages/alerts/AllAlerts"));
+export const OrderDelays = lazy(() => import("../pages/alerts/OrderDelays"));
 export const LowStockAlerts = lazy(() => import("../pages/alerts/LowStockAlerts"));
 export const MachineFailureAlerts = lazy(() => import("../pages/alerts/MachineFailureAlerts"));
 export const ProductionDelayAlerts = lazy(() => import("../pages/alerts/ProductionDelayAlerts"));

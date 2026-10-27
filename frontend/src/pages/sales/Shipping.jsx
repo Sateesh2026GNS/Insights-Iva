@@ -3,23 +3,17 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
-  Clock,
   Edit2,
   MapPin,
   Package,
   Printer,
-  Truck,
   X,
 } from "lucide-react";
 
 import Button from "../../components/common/Button";
-import PageHeader from "../../components/common/PageHeader";
 import ShipmentFormDrawer from "../../components/sales/ShipmentFormDrawer";
 import EmptyState from "../../components/common/EmptyState";
-import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { useToast } from "../../context/ToastContext";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
@@ -30,13 +24,13 @@ import {
   getDispatchSummary,
 } from "../../api/dispatchApi";
 import { updateSalesOrderDispatch } from "../../api/salesApi";
-import { statusColor } from "../../data/salesMasterData";
 import {
   MANUFACTURING_EVENTS,
   notifyManufacturingSpine,
 } from "../../utils/manufacturingEvents";
 import { escapeHtml } from "../../utils/htmlEscape";
 import { apiErrorMessage } from "../../utils/apiError";
+import "../../styles/manufacturing-toolkit.css";
 import "../../styles/shipping-page.css";
 
 const PAGE_SIZES = [10, 25, 50];
@@ -94,6 +88,15 @@ function displayStatus(row) {
   return String(row.status || "READY").replace(/_/g, " ").toUpperCase();
 }
 
+function dispatchStatusPill(row) {
+  const key = String(row.status || "").toLowerCase();
+  if (row.shipped || key === "shipped" || key === "delivered") return "mtk-pill mtk-pill--success";
+  if (key === "in_transit") return "mtk-pill mtk-pill--info";
+  if (row.packed || key === "packed" || key === "pending_dispatch") return "mtk-pill mtk-pill--pending";
+  if (key === "delayed" || key === "cancelled") return "mtk-pill mtk-pill--danger";
+  return "mtk-pill mtk-pill--neutral";
+}
+
 function printChallan(challan) {
   const linesHtml = (challan.lines || [])
     .map(
@@ -127,19 +130,20 @@ function ShipmentModal({ row, onClose, onPrintChallan, onShip }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between">
+      <div className="shipping-modal w-full max-w-lg overflow-hidden bg-white">
+        <div className="shipping-modal__head flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">{shipmentLabel(row)}</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-sm font-bold">{shipmentLabel(row)}</h2>
+            <p className="text-[10px] opacity-90">
               {row.so_number} · {row.customer_name}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
-            <X className="h-5 w-5" />
+          <button type="button" onClick={onClose} className="rounded-sm p-1 hover:bg-white/10" aria-label="Close">
+            <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div className="shipping-modal__body">
+        <div className="grid grid-cols-2 gap-2">
           <Field label="Carrier" value={row.courier} />
           <Field label="Tracking #" value={row.lr_number} />
           <Field label="Vehicle" value={row.vehicle_number} />
@@ -147,10 +151,10 @@ function ShipmentModal({ row, onClose, onPrintChallan, onShip }) {
           <Field label="Ship Date" value={fmtShipDate(row.dispatch_date)} />
           <Field label="ETA" value={row.eta ? fmtShipDate(row.eta) : "—"} />
         </div>
-        <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-xs text-teal-800">
-          <MapPin className="mb-1 inline h-4 w-4" /> Status: {displayStatus(row)}
+        <div className="mt-2 rounded-sm border border-[#bfdbfe] bg-[#eff6ff] px-2 py-2 text-[10px] text-[#1e3a8a]">
+          <MapPin className="mb-1 inline h-3.5 w-3.5" /> Status: {displayStatus(row)}
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           <Button type="button" variant="primary" onClick={() => onPrintChallan(soId)}>
             <Printer className="h-4 w-4" /> Print
           </Button>
@@ -165,6 +169,7 @@ function ShipmentModal({ row, onClose, onPrintChallan, onShip }) {
             </Button>
           ) : null}
         </div>
+        </div>
       </div>
     </div>
   );
@@ -172,7 +177,7 @@ function ShipmentModal({ row, onClose, onPrintChallan, onShip }) {
 
 function Field({ label, value }) {
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2">
+    <div className="shipping-modal__field">
       <p className="text-[11px] font-medium text-slate-500">{label}</p>
       <p className="mt-0.5 text-sm font-medium text-slate-800">{value || "—"}</p>
     </div>
@@ -294,54 +299,71 @@ export default function Shipping() {
     }
   };
 
-  if (loading) return <Loader label="Loading shipping…" />;
+  if (loading) {
+    return (
+      <div className="shipping-page shipping-page--toolkit min-h-full">
+        <div className="mtk-root mtk-theme--navy">
+          <header className="mtk-hero">
+            <div className="mtk-hero__row">
+              <span>Pack · Ship · Track · Deliver</span>
+            </div>
+            <div className="mtk-hero__title">
+              <h1>
+                SHIPPING <span className="mtk-accent">DISPATCH</span>
+              </h1>
+            </div>
+          </header>
+          <div className="mtk-body shipping-loading">
+            <Loader label="Loading shipping…" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const shipmentCount = `${rows.length} total shipment${rows.length === 1 ? "" : "s"}`;
 
   return (
-    <ListPageShell className="shipping-page">
-      <PageHeader
-        title="Shipping"
-        subtitle={`${rows.length} total shipment${rows.length === 1 ? "" : "s"}`}
-        actions={
-          <Button
-            type="button"
-            variant="primary"
-            leftIcon={<Package className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
-            onClick={() => {
-              setFormRow(null);
-              setFormOpen(true);
-            }}
-          >
-            New Shipment
-          </Button>
-        }
-      />
+    <div className="shipping-page shipping-page--toolkit min-h-full min-w-0 w-full">
+      <div className="mtk-root mtk-theme--navy">
+      <header className="mtk-hero">
+        <div className="mtk-hero__row">
+          <span>Pack · Ship · Track · Deliver</span>
+          <span className="hidden sm:inline">{shipmentCount}</span>
+        </div>
+        <div className="mtk-hero__title">
+          <h1>
+            SHIPPING <span className="mtk-accent">DISPATCH</span>
+          </h1>
+          <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
+            Manufacturing Production Planning &amp; Factory Control Toolkit
+          </p>
+        </div>
+      </header>
 
-      <div className="shipping-page__kpis ui-grid-kpi mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiCard
-          label="Ready to Ship"
-          value={summary.ready_to_dispatch}
-          icon={ClipboardList}
-          tone="warning"
-          meta="Informational summary"
-        />
-        <KpiCard
-          label="Pending Dispatch"
-          value={summary.packed}
-          icon={Clock}
-          tone="info"
-          meta="Informational summary"
-        />
-        <KpiCard
-          label="Shipped This Month"
-          value={shippedThisMonth}
-          icon={Truck}
-          tone="success"
-          meta="Informational summary"
-        />
+      <div className="mtk-kpi-row" aria-label="Dispatch summary">
+        <div className="mtk-kpi">
+          <div className="mtk-kpi__icon mtk-kpi__icon--orange">RS</div>
+          <div className="mtk-kpi__label">Ready to Ship</div>
+          <div className="mtk-kpi__value">{summary.ready_to_dispatch}</div>
+        </div>
+        <div className="mtk-kpi">
+          <div className="mtk-kpi__icon mtk-kpi__icon--blue">PD</div>
+          <div className="mtk-kpi__label">Pending Dispatch</div>
+          <div className="mtk-kpi__value">{summary.packed}</div>
+        </div>
+        <div className="mtk-kpi">
+          <div className="mtk-kpi__icon mtk-kpi__icon--green">SH</div>
+          <div className="mtk-kpi__label">Shipped This Month</div>
+          <div className="mtk-kpi__value">{shippedThisMonth}</div>
+        </div>
       </div>
 
-      <div className="shipping-page__filters mt-5 flex flex-col gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3 sm:flex-row sm:items-center sm:p-4">
-        <div className="min-w-0 flex-1">
+      <div className="mtk-body min-w-0">
+      <section className="mtk-panel">
+        <div className="mtk-panel__title">Shipment Log</div>
+        <div className="shipping-toolbar">
+          <div className="shipping-toolbar__start">
           <SearchBar
             value={draftSearch}
             onChange={setDraftSearch}
@@ -353,14 +375,16 @@ export default function Shipping() {
                 setPage(1);
               }
             }}
-            placeholder="Search"
-          />
-        </div>
-        <div className="shipping-page__filter-controls flex flex-wrap items-center gap-2">
+              placeholder="Search"
+              aria-label="Search shipments"
+              inputClassName="shipping-search"
+            />
+          </div>
+          <div className="shipping-toolbar__end shipping-filters">
           <select
             value={draftStatus}
             onChange={(e) => setDraftStatus(e.target.value)}
-            className="ui-select w-full sm:w-52"
+              className="ui-select"
             aria-label="Shipment status filter"
           >
             {STATUS_OPTIONS.map((opt) => (
@@ -396,14 +420,19 @@ export default function Shipping() {
           >
             Apply Filters
           </Button>
-        </div>
-      </div>
-
-      <ListPageCard className="shipping-page__log mt-5">
-        <ListPageCardBody className="!p-0">
-          <div className="shipping-page__log-heading border-b border-[var(--color-border-soft)] px-4 py-3 sm:px-5">
-            <h2 className="text-sm font-semibold text-[var(--color-text)]">Shipment Log</h2>
+          <Button
+            type="button"
+            variant="primary"
+            leftIcon={<Package className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+            onClick={() => {
+              setFormRow(null);
+              setFormOpen(true);
+            }}
+          >
+            New Shipment
+          </Button>
           </div>
+        </div>
 
           {pageRows.length === 0 ? (
             <EmptyState
@@ -419,9 +448,8 @@ export default function Shipping() {
                 {pageRows.map((row) => {
                   const soId = row.sales_order_id || row.id;
                   const st = displayStatus(row);
-                  const stKey = String(row.status || "").toLowerCase();
                   return (
-                    <div key={row.id} className="p-4 space-y-3">
+                    <div key={row.id} className="shipping-card space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="font-semibold text-sm text-[var(--color-text)]">
@@ -431,11 +459,7 @@ export default function Shipping() {
                             {row.customer_name || "—"}
                           </div>
                         </div>
-                        <span
-                          className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${statusColor(stKey)}`}
-                        >
-                          {st}
-                        </span>
+                        <span className={dispatchStatusPill(row)}>{st}</span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-subtle)] p-2.5 rounded-lg border border-[var(--color-border-soft)]">
@@ -504,8 +528,8 @@ export default function Shipping() {
 
               {/* Desktop Shipment Table */}
               <div className="hidden overflow-x-auto md:block">
-                <table className="ui-table w-full min-w-[880px] text-left">
-                  <thead className="ui-table-head">
+                <table className="shipping-table mtk-table w-full min-w-[720px]">
+                  <thead>
                     <tr>
                       <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Shipment No.</th>
                       <th className="px-4 py-3 text-[11px] font-semibold text-[var(--color-text-muted)]">Sales Order</th>
@@ -521,7 +545,6 @@ export default function Shipping() {
                     {pageRows.map((row) => {
                       const soId = row.sales_order_id || row.id;
                       const st = displayStatus(row);
-                      const stKey = String(row.status || "").toLowerCase();
                       return (
                         <tr key={row.id} className="border-t border-[var(--color-table-border)]">
                           <td className="px-4 py-3 text-sm font-semibold text-[var(--color-text)]">
@@ -544,11 +567,7 @@ export default function Shipping() {
                           <td className="px-4 py-3 text-sm text-[var(--color-text-muted)]">{row.lr_number || "—"}</td>
                           <td className="px-4 py-3 text-sm text-[var(--color-text)]">{fmtShipDate(row.dispatch_date)}</td>
                           <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide ${statusColor(stKey)}`}
-                            >
-                              {st}
-                            </span>
+                            <span className={dispatchStatusPill(row)}>{st}</span>
                           </td>
                           <td className="px-4 py-3">
                             <div className="shipping-page__row-actions flex flex-wrap gap-2">
@@ -584,7 +603,7 @@ export default function Shipping() {
             </>
           )}
 
-          <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 text-sm text-[var(--color-text-muted)] sm:flex-row sm:px-5">
+          <div className="shipping-pager">
             <p>
               Showing {rangeStart}–{rangeEnd} of {filtered.length}
             </p>
@@ -620,8 +639,7 @@ export default function Shipping() {
               </button>
             </div>
           </div>
-        </ListPageCardBody>
-      </ListPageCard>
+      </section>
 
       {selected ? (
         <ShipmentModal
@@ -642,6 +660,8 @@ export default function Shipping() {
         }}
         onSaved={() => load(true)}
       />
-    </ListPageShell>
+      </div>
+      </div>
+    </div>
   );
 }

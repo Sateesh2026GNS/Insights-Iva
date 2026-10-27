@@ -159,7 +159,7 @@
   text-align: left;
 }
 
-.sales-dash-page--toolkit .sales-dash-card__body a {
+.sales-dash-page--toolkit .sales-dash-card__body a:not(.sales-dash-pipeline__stage) {
   color: #0f766e;
   font-size: 9px;
   font-weight: 700;
@@ -251,33 +251,33 @@
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__stage--leads {
-  background: #ccfbf1;
-  color: #115e59;
+  background: var(--sales-pipeline-leads-bg);
+  color: var(--sales-pipeline-leads-fg);
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__stage--quotations {
-  background: #99f6e4;
-  color: #115e59;
+  background: var(--sales-pipeline-quotations-bg);
+  color: var(--sales-pipeline-quotations-fg);
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__stage--sales_orders {
-  background: #0d9488;
-  color: #fff;
+  background: var(--sales-pipeline-sales_orders-bg);
+  color: var(--sales-pipeline-sales_orders-fg);
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__stage--production {
-  background: #0f766e;
-  color: #fff;
+  background: var(--sales-pipeline-production-bg);
+  color: var(--sales-pipeline-production-fg);
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__stage--dispatch {
-  background: #115e59;
-  color: #fff;
+  background: var(--sales-pipeline-dispatch-bg);
+  color: var(--sales-pipeline-dispatch-fg);
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__stage--completed {
-  background: #134e4a;
-  color: #fff;
+  background: var(--sales-pipeline-completed-bg);
+  color: var(--sales-pipeline-completed-fg);
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__label {

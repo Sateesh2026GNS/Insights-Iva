@@ -3,6 +3,231 @@
   background: var(--color-surface, #fff);
 }
 
+.customer-form-toolkit.customer-form-page {
+  min-height: 100%;
+  background: #f4f7fa;
+  color: #1a1a1a;
+}
+
+.customer-form-toolkit .mtk-hero__title p {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.customer-form-toolkit .customer-form-page__inner {
+  max-width: none;
+  margin: 0;
+  padding: 8px;
+}
+
+.customer-form-toolkit .customer-form__banner {
+  border-radius: 2px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 11px;
+  border: 1px solid #c5d0dc;
+}
+
+.customer-form-toolkit .customer-form__section {
+  max-width: none;
+  gap: 8px;
+}
+
+.customer-form-toolkit .customer-form__row {
+  gap: 8px;
+}
+
+.customer-form-toolkit .customer-form__label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #1e3a5f;
+  padding-top: 6px;
+}
+
+.customer-form-toolkit .customer-form__label-required {
+  color: #991b1b;
+}
+
+.customer-form-toolkit .ui-searchable-select {
+  min-height: 28px;
+  height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #c5d0dc;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: none;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #1a1a1a;
+}
+
+.customer-form-toolkit .ui-searchable-select:focus,
+.customer-form-toolkit .ui-searchable-select:focus-visible {
+  border-color: #1d4ed8;
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+}
+
+.customer-form-toolkit .ui-searchable-select.is-error {
+  border-color: #dc2626;
+}
+
+.customer-form-toolkit .customer-form__input,
+.customer-form-toolkit .customer-form__select,
+.customer-form-toolkit .customer-form__textarea,
+.customer-form-toolkit .customer-form__contacts-table input,
+.customer-form-toolkit .customer-form__contacts-table select {
+  border: 1px solid #c5d0dc;
+  border-radius: 2px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #1a1a1a;
+  background: #fff;
+  box-shadow: none;
+}
+
+.customer-form-toolkit .customer-form__textarea {
+  min-height: 72px;
+  height: auto;
+}
+
+.customer-form-toolkit .customer-form__input:focus,
+.customer-form-toolkit .customer-form__select:focus,
+.customer-form-toolkit .customer-form__textarea:focus,
+.customer-form-toolkit .customer-form__contacts-table input:focus,
+.customer-form-toolkit .customer-form__contacts-table select:focus {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+  border-color: #1d4ed8;
+}
+
+.customer-form-toolkit .customer-form__input--error {
+  border-color: #dc2626;
+}
+
+.customer-form-toolkit .customer-form__error {
+  color: #991b1b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.customer-form-toolkit .customer-form__radio {
+  font-size: 11px;
+  color: #1a1a1a;
+}
+
+.customer-form-toolkit .customer-form__tabs {
+  margin-top: 12px;
+  border-bottom-color: #c5d0dc;
+  background: #f8fafc;
+}
+
+.customer-form-toolkit .customer-form__tab {
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.customer-form-toolkit .customer-form__tab.is-active {
+  color: #1d4ed8;
+  border-bottom-color: #1d4ed8;
+  background: #fff;
+}
+
+.customer-form-toolkit .customer-form__tab-panel {
+  padding-top: 8px;
+  max-width: none;
+}
+
+.customer-form-toolkit .customer-form__address-title {
+  margin: 0 0 8px;
+  padding: 5px 8px;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 2px;
+}
+
+.customer-form-toolkit .customer-form__copy-link,
+.customer-form-toolkit .customer-form__link,
+.customer-form-toolkit .customer-form__banner button {
+  color: #1e40af;
+  font-size: 11px;
+}
+
+.customer-form-toolkit .customer-form__address-title .customer-form__copy-link {
+  color: #fff;
+}
+
+.customer-form-toolkit .customer-form__note {
+  border-radius: 2px;
+  border-color: #fde68a;
+  font-size: 11px;
+}
+
+.customer-form-toolkit .customer-form__contacts-table-wrap {
+  border-color: #c5d0dc;
+  border-radius: 2px;
+}
+
+.customer-form-toolkit .customer-form__contacts-table {
+  font-size: 9px;
+}
+
+.customer-form-toolkit .customer-form__contacts-table th {
+  background: #e8eef4;
+  color: #1a1a1a;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid #c5d0dc;
+}
+
+.customer-form-toolkit .customer-form__contacts-table td {
+  border: 1px solid #c5d0dc;
+}
+
+.customer-form-toolkit .customer-form__footer {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top-color: #c5d0dc;
+}
+
+.customer-form-toolkit .ui-btn {
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 11px;
+  box-shadow: none;
+}
+
+.customer-form-toolkit .ui-btn--primary {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+}
+
+.customer-form-toolkit .ui-btn--primary:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.customer-form-toolkit .ui-btn--secondary {
+  background: #fff;
+  border-color: #c5d0dc;
+  color: #1e3a5f;
+}
+
+.customer-form-toolkit .ui-btn:disabled,
+.customer-form-toolkit .ui-btn.is-loading {
+  background: #e2e8f0;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
 .customer-form-page__inner {
   max-width: 1120px;
   margin: 0 auto;

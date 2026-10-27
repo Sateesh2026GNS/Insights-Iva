@@ -19,18 +19,18 @@
   --sales-dash-muted: var(--sales-muted);
   --sales-dash-heading: var(--sales-heading);
 
-  /* Sales Pipeline — fixed stage palette (matches reference chevron mock) */
-  --sales-pipeline-leads-bg: #aaa6e5;
+  /* Sales Pipeline — stage fills from the reference chevron */
+  --sales-pipeline-leads-bg: #aaa5e5;
   --sales-pipeline-leads-fg: #3d3878;
   --sales-pipeline-quotations-bg: #7d75d8;
   --sales-pipeline-quotations-fg: #2a2452;
-  --sales-pipeline-sales_orders-bg: #554cb8;
+  --sales-pipeline-sales_orders-bg: #554cb7;
   --sales-pipeline-sales_orders-fg: #ffffff;
-  --sales-pipeline-production-bg: #5bc6a5;
+  --sales-pipeline-production-bg: #5ac6a6;
   --sales-pipeline-production-fg: #0f5a45;
-  --sales-pipeline-dispatch-bg: #20a17d;
+  --sales-pipeline-dispatch-bg: #1fa17d;
   --sales-pipeline-dispatch-fg: #ffffff;
-  --sales-pipeline-completed-bg: #5a981c;
+  --sales-pipeline-completed-bg: #5a981b;
   --sales-pipeline-completed-fg: #eef6e2;
 }
 

@@ -152,7 +152,6 @@ export default function BuyerCrmTracker() {
     <div className="bct-root">
       <header className="bct-header">
         <div>
-          <p className="bct-kicker">Import & Export Costing, Documentation & Shipment Control Toolkit</p>
           <h1>Buyer & Client CRM Tracker</h1>
           <p>Manage buyers and clients. Track inquiries, follow up, and convert them to orders.</p>
           <p className="bct-tagline">More buyers · Stronger relationships · Higher conversions</p>

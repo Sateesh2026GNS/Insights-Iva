@@ -4,9 +4,8 @@ import { ArrowLeft, CloudUpload, X } from "lucide-react";
 
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
-
-const PAGE_BG = "var(--color-bg)";
-const PROCEED_BG = "#a18b1d";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/masters-navy-chrome.css";
 
 function parseCsv(text) {
   const lines = String(text || "")
@@ -136,41 +135,33 @@ export default function BulkImportPage({
   };
 
   return (
-    <div className="min-h-full" style={{ background: PAGE_BG }}>
-      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
-        <h1 className="mb-3 text-[22px] font-semibold tracking-tight text-[#1a1a1f]">{title}</h1>
-
-        <Link
-          to={backTo}
-          className="mb-4 inline-flex items-center gap-2 text-[14px] font-medium text-[#1a1a1f] hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {backLabel}
-        </Link>
-
-        {banner ? (
-          <div
-            className="mb-1 rounded-sm px-2 py-1 text-[22px] font-bold text-[#1a1a1f]"
-            style={{ background: "#FFD42A" }}
-          >
-            {banner}
+    <div className="masters-navy-page bulk-import-page min-h-full">
+      <div className="mtk-root mtk-theme--navy">
+        <header className="mtk-hero">
+          <div className="mtk-hero__row">
+            <Link to={backTo} className="inline-flex items-center gap-1 text-white">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {backLabel}
+            </Link>
           </div>
-        ) : null}
-
-        <div className="rounded-lg border border-[#d0d0d8] bg-white px-5 py-6 shadow-sm sm:px-7">
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="mtk-hero__title">
+            <h1>{title}</h1>
+            <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+          </div>
+        </header>
+        <div className="mtk-body">
+        <section className="mtk-panel">
+          <div className="mtk-panel__title">{banner || title}</div>
+          <div className="grid gap-4 p-2 lg:grid-cols-2">
             <div>
-              <p className="mb-3 text-[14px] text-[#6b6b76]">Example :</p>
-              <div className="relative overflow-hidden rounded-md border border-[#ececf0] bg-[#fbfbfd] p-3">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] border-collapse text-left text-[10px] text-[#4a4a55]">
-                    <thead className="ui-table-head">
+              <p className="mb-2 text-[10px] font-semibold text-[#1e3a5f]">Example</p>
+              <div className="relative overflow-hidden border border-[#c5d0dc] bg-white p-2">
+                <div className="mtk-table-wrap">
+                  <table className="mtk-table w-full min-w-[520px] border-collapse text-left">
+                    <thead>
                       <tr>
                         {columns.map((col) => (
-                          <th
-                            key={col}
-                            className="border-r border-[#d8d8e0] px-1.5 py-1 font-semibold last:border-r-0"
-                          >
+                          <th key={col}>
                             {col}
                           </th>
                         ))}
@@ -193,7 +184,7 @@ export default function BulkImportPage({
                   </table>
                 </div>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="select-none text-[34px] font-semibold tracking-wide text-[#9a9aa5]/55 sm:text-[42px]">
+                  <span className="select-none text-[16px] font-semibold tracking-wide text-[#9a9aa5]/70">
                     SAMPLE SHEET
                   </span>
                 </div>
@@ -203,10 +194,10 @@ export default function BulkImportPage({
             <div>
               {steps ? (
                 <>
-                  <h2 className="mb-3 text-[22px] font-semibold leading-snug text-[#1a1a1f] sm:text-[24px]">
+                  <h2 className="mb-2 text-[12px] font-bold leading-snug text-[#1e3a5f]">
                     Follow these Steps to upload Bulk items
                   </h2>
-                  <div className="space-y-2 text-[14px] text-[#1a1a1f]">
+                  <div className="space-y-1 text-[11px] text-[#1a1a1a]">
                     <p>
                       Step 1 : Download Excel File template for import{" "}
                       <button
@@ -223,7 +214,7 @@ export default function BulkImportPage({
                   </div>
                 </>
               ) : (
-                <div className="space-y-2 text-[14px] text-[#1a1a1f]">
+                <div className="space-y-1 text-[11px] text-[#1a1a1a]">
                   <p>Please Download Excel Sheet</p>
                   <p>You can Upload multiple products by filling Excel sheet data according to given format</p>
                   {warning ? <p className="font-semibold text-[#dc2626]">{warning}</p> : null}
@@ -231,7 +222,7 @@ export default function BulkImportPage({
                     <button
                       type="button"
                       onClick={handleTemplate}
-                      className="mt-2 inline-flex items-center gap-2 rounded-md bg-[#1a1a1f] px-4 py-2.5 text-[13px] font-semibold text-white"
+                      className="masters-navy-btn masters-navy-btn--primary mt-2 inline-flex items-center gap-2 px-3 font-semibold"
                     >
                       {downloadLabel}
                     </button>
@@ -240,9 +231,7 @@ export default function BulkImportPage({
               )}
 
               <div
-                className={`relative mt-4 rounded-lg border border-dashed bg-white p-5 text-center transition-colors ${
-                  dragOver ? "border-[var(--color-cta)] bg-[#fffbeb]" : "border-[#222]"
-                }`}
+                className={`masters-navy-drop relative mt-3 p-4 text-center ${dragOver ? "is-drag" : ""}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOver(true);
@@ -287,14 +276,14 @@ export default function BulkImportPage({
                   type="button"
                   disabled={busy}
                   onClick={onProceed}
-                  className="inline-flex items-center gap-2 rounded px-7 py-2.5 text-[15px] font-semibold text-[#1a1a1f] disabled:opacity-60"
-                  style={{ background: PROCEED_BG }}
+                  className="masters-navy-btn masters-navy-btn--primary inline-flex items-center gap-2 px-4 font-semibold disabled:opacity-60"
                 >
                   {busy ? "Importing…" : "Proceed"} <span>→</span>
                 </button>
               </div>
             </div>
           </div>
+        </section>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ import {
   SALUTATIONS,
   validateCustomerForm,
 } from "../../utils/customerFormModel";
+import "../../styles/manufacturing-toolkit.css";
 import "../../styles/customer-form.css";
 
 function FormRow({ label, required, hint, children }) {
@@ -275,10 +276,23 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
   };
 
   return (
-    <form className="customer-form-page" onSubmit={handleSave}>
-      <div className="customer-form-page__inner">
-        <h1 className="customer-form-page__title">{isEdit ? "Edit Customer" : "New Customer"}</h1>
-
+    <form className="customer-form-page customer-form-toolkit" onSubmit={handleSave}>
+      <div className="mtk-root mtk-theme--navy">
+        <header className="mtk-hero">
+          <div className="mtk-hero__row">
+            <span>Record · Contact · Bill · Follow Up</span>
+          </div>
+          <div className="mtk-hero__title">
+            <h1>
+              {isEdit ? "EDIT" : "NEW"} <span className="mtk-accent">CUSTOMER</span>
+            </h1>
+            <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+          </div>
+        </header>
+        <div className="mtk-body">
+          <section className="mtk-panel">
+            <div className="mtk-panel__title">{isEdit ? "Edit Customer" : "Customer Details"}</div>
+            <div className="customer-form-page__inner">
         <div className="customer-form__banner">
           <span>Prefill Customer details from the GST portal using the Customer&apos;s GSTIN.</span>
           <button type="button" onClick={() => setGstOpen(true)}>Prefill &gt;</button>
@@ -614,6 +628,9 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
           <Button type="button" variant="secondary" onClick={handleCancel}>
             Cancel
           </Button>
+        </div>
+            </div>
+          </section>
         </div>
       </div>
 

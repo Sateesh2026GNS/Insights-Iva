@@ -30,6 +30,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 - [Role-based access control](#role-based-access-control)
 - [API overview](#api-overview)
 - [UI design system](#ui-design-system)
+- [Sales pipeline colors](#sales-pipeline-colors)
 - [Testing](#testing)
 - [Production Manager QA verification](#production-manager-qa-verification)
 - [Continuous integration](#continuous-integration)
@@ -128,7 +129,7 @@ The main ERP dashboard (`ReferenceDashboard`) loads from **`GET /api/erp/dashboa
 
 | Area | Route / API | Notes |
 |------|-------------|--------|
-| Dashboard | `/sales`, `/sales/dashboard` | Hub KPIs from `GET /sales/hub`; **New Lead** and Quick Actions go to `/sales/leads/new` (full page, not a modal) |
+| Dashboard | `/sales`, `/sales/dashboard` | Hub KPIs from `GET /sales/hub`; chevron pipeline (Leads → Completed) uses the [stage colors](#sales-pipeline-colors). **New Lead** and Quick Actions go to `/sales/leads/new` (full page, not a modal) |
 | Monthly revenue | Hub field `monthly_revenue` | Calendar month; invoice totals with SO fallback; **rep-scoped** for sales users (not Admin / Sales Manager / Accountant) |
 | Leads list | `/sales/leads` | Pipeline, follow-ups (`?followup=due`), open leads (`?open=1`); **New Lead** → create page |
 | Create / edit lead | `/sales/leads/new`, `/sales/leads/:id/edit` | Canonical CRM form — see [Create New Lead](#create-new-lead) |
@@ -488,6 +489,36 @@ Use `Button`, `KpiCard`, `SearchableSelect`, `FormField` from `components/common
 **UI states:** loading, empty, error, permission denied — `frontend/src/components/common/states/` (`AsyncPageBody`, `LoadingState`, `ErrorState`). **Coverage:** Sales **Create Lead** (`/sales/leads/new`) uses `AsyncPageBody`, `PermissionDeniedState`, `FieldError`, and network/error retry via `classifyApiError` / `applyBackendFieldErrors`.
 
 **App shell:** `App.jsx` — desktop sidebar collapse (`Sidebar.jsx`, `app-sidebar__collapse-btn`), mobile drawer, navbar, global refresh / AI FAB cluster.
+
+### Sales pipeline colors
+
+The Sales Dashboard chevron (`/sales`) is styled in `frontend/src/styles/sales-dashboard.css` and applied on the toolkit page from `frontend/src/styles/sales-dashboard-toolkit.css`. Counts stay live from the sales hub. Only the stage fills and text colors are fixed.
+
+| Stage | Fill | Text |
+|-------|------|------|
+| Leads | `#AAA5E5` | `#3D3878` |
+| Quotations | `#7D75D8` | `#2A2452` |
+| Sales Orders | `#554CB7` | `#FFFFFF` |
+| Production | `#5AC6A6` | `#0F5A45` |
+| Dispatch | `#1FA17D` | `#FFFFFF` |
+| Completed | `#5A981B` | `#EEF6E2` |
+
+### Navy masters toolkit
+
+Customers, Create Customer, Vendors, Product Catalog, vendor create/edit, vendor detail, bulk import, and the customer/vendor detail dialogs share `mtk-theme--navy` from `frontend/src/styles/manufacturing-toolkit.css`. Page-specific rules stay in `customers-page.css`, `customer-form.css`, `vendors-master.css`, `products-master.css`, and `masters-navy-chrome.css`.
+
+| Token | Value |
+|-------|--------|
+| Page background | `#F4F7FA` |
+| Text | `#1A1A1A` |
+| Border | `#C5D0DC` |
+| Hero | `#1E3A5F` → `#1E40AF` |
+| Accent | `#F5C518` |
+| Panel / dialog header | `#1D4ED8` |
+| Table header | `#E8EEF4` |
+| Primary button | `#1E40AF` (hover `#1D4ED8`) |
+
+Product create and edit routes (`/masters/products/create`, `/masters/products/:id/edit`) open the catalog dialog. `/masters/products/:id/edit` keeps the id as `?edit=`. The inventory module’s category dialog is unchanged; Product Catalog passes `chromeClass="products-category-modal"`.
 
 ---
 

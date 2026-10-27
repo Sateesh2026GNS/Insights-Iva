@@ -8,6 +8,7 @@ import { createDispatchShipment } from "../../api/dispatchApi";
 import { getSalesOrdersEnriched } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
+import "../../styles/shipping-page.css";
 
 const CARRIERS = ["FedEx", "UPS", "DHL", "BlueDart", "Delhivery", "SafeExpress", "Other"];
 
@@ -179,10 +180,10 @@ setOrders(list);
     >
       <form
         onSubmit={handleSubmit}
-        className="flex h-full w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl animate-[slideInRight_0.28s_ease-out]"
+        className="shipping-drawer flex h-full w-full max-w-md flex-col overflow-hidden bg-white"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+        <div className="shipping-drawer__head">
           <button
             type="button"
             onClick={onClose}

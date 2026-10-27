@@ -11,7 +11,7 @@ import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import JobCardQueueFilters from "../../components/manufacturing/JobCardQueueFilters";
 import JobCardQueueTable from "../../components/manufacturing/JobCardQueueTable";
 import SendJobCardModal from "../../components/manufacturing/SendJobCardModal";
-import { matchesErpListStatusFilter } from "../../utils/jobCardListStatus";
+import { erpListStatus, matchesErpListStatusFilter } from "../../utils/jobCardListStatus";
 import AccountantJobCardDocumentPanel from "../../components/manufacturing/AccountantJobCardDocumentPanel";
 import OperatorJobCardDocumentPanel from "../../components/manufacturing/OperatorJobCardDocumentPanel";
 import QualityControlJobCardDocumentPanel from "../../components/manufacturing/QualityControlJobCardDocumentPanel";
@@ -53,10 +53,33 @@ import { resolveManualJobCardId, scrollToJobCardDocumentPanel } from "../../util
 import { computeProductionJobCardKpis } from "../../utils/productionJobCardQueueKpis";
 import "../../styles/my-job-cards-page.css";
 import "../../styles/manufacturing-toolkit.css";
+import "../../styles/sales-job-card-toolkit.css";
 import "../../styles/workflow-next-step.css";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 const FETCH_LIMIT = 2000;
+
+function computeSalesJobCardKpis(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  let draft = 0;
+  let active = 0;
+  let returned = 0;
+  let done = 0;
+  for (const row of list) {
+    const label = erpListStatus(row).label;
+    if (label === "Draft" || label === "Saved" || label === "Not Started") draft += 1;
+    else if (label === "Returned to Sales") returned += 1;
+    else if (label === "Completed" || label === "Store Reviewed") done += 1;
+    else active += 1;
+  }
+  return [
+    { label: "Total Job Cards", value: String(list.length), unit: "Cards", tone: "blue", icon: "JC" },
+    { label: "Draft / Not Started", value: String(draft), unit: "Cards", tone: "orange", icon: "D" },
+    { label: "Sent / In Progress", value: String(active), unit: "Cards", tone: "green", icon: "S" },
+    { label: "Returned to Sales", value: String(returned), unit: "Cards", tone: "red", icon: "R" },
+    { label: "Completed", value: String(done), unit: "Cards", tone: "teal", icon: "C" },
+  ];
+}
 
 const EMPTY_FILTERS = {
   search: "",
@@ -185,6 +208,8 @@ export default function MyJobCardsPage() {
   const operatorMode = effectiveTeam === "operator" || (isOperator(user) && effectiveTeam === "production");
   const qualityMode = effectiveTeam === "quality";
   const productionQueueMode = effectiveTeam === "production" && !operatorMode;
+  const salesToolkitMode = effectiveTeam === "sales";
+  const plannerChrome = productionQueueMode || salesToolkitMode;
   const showStockFilter = storeMode;
   const storeKpiCounts = queueMeta?.counts || {};
   const storePendingCount = Number(storeKpiCounts.store_pending || 0);
@@ -633,6 +658,7 @@ export default function MyJobCardsPage() {
     () => computeProductionJobCardKpis(filtered),
     [filtered]
   );
+  const salesKpis = useMemo(() => computeSalesJobCardKpis(filtered), [filtered]);
 
   const sectionTitle = storeMode
     ? "Sales Orders / Job Cards from Sales"
@@ -662,7 +688,7 @@ export default function MyJobCardsPage() {
     <div
       id="my-job-cards-filters-panel"
       className={
-        productionQueueMode
+        plannerChrome
           ? "my-job-cards-page__planner-filters"
           : "my-job-cards-page__filters-panel"
       }
@@ -677,11 +703,11 @@ export default function MyJobCardsPage() {
         customerSelectOptions={customerSelectOptions}
         salesOrderSelectOptions={salesOrderSelectOptions}
         erpLayout
-        plannerLayout={productionQueueMode}
         searching={searching}
         onClear={clearFilters}
         onApply={handleApplyFilters}
         onSearchKeyDown={handleSearchKeyDown}
+        plannerLayout={plannerChrome}
       />
     </div>
   ) : null;
@@ -697,7 +723,7 @@ export default function MyJobCardsPage() {
       skeletonRows={8}
       skeletonCols={11}
       errorTitle="Could not load job cards"
-      className={productionQueueMode ? "my-job-cards-page__planner-async" : "p-4"}
+      className={plannerChrome ? "my-job-cards-page__planner-async" : "p-4"}
     >
       <JobCardQueueTable
         rows={pageRows.map((row, idx) => ({ ...row, __sno: from + idx + 1 }))}
@@ -709,7 +735,7 @@ export default function MyJobCardsPage() {
         snoOffset={from}
         storeMode={storeMode}
         erpLayout
-        plannerLayout={productionQueueMode}
+        plannerLayout={plannerChrome}
         onDelete={
           storeMode
             ? undefined
@@ -728,7 +754,7 @@ export default function MyJobCardsPage() {
       {listTotal > 0 ? (
         <div
           className={
-            productionQueueMode
+            plannerChrome
               ? "my-job-cards-page__planner-pagination"
               : "my-job-cards-page__pagination"
           }
@@ -751,9 +777,9 @@ export default function MyJobCardsPage() {
     </AsyncPageBody>
   );
 
-  const queueSection = productionQueueMode ? (
+  const queueSection = plannerChrome ? (
     <section className="mtk-panel my-job-cards-page__planner-panel">
-      <div className="mtk-panel__title">Production Job Card Queue</div>
+      <div className="mtk-panel__title">{salesToolkitMode ? "Sales Job Card Queue" : "Production Job Card Queue"}</div>
       <div className="my-job-cards-page__planner-toolbar">
         <span className="my-job-cards-page__planner-total">Total: {listTotal}</span>
         <div className="my-job-cards-page__planner-toolbar-actions">
@@ -908,27 +934,30 @@ export default function MyJobCardsPage() {
     </>
   );
 
-  if (productionQueueMode) {
+  if (plannerChrome) {
+    const heroKpis = salesToolkitMode ? salesKpis : productionKpis;
     return (
-      <div className="my-job-cards-page my-job-cards-page--planner min-h-full">
+      <div className={`my-job-cards-page my-job-cards-page--planner min-h-full${salesToolkitMode ? " sales-jc-toolkit" : ""}`}>
         <div className="mtk-root mtk-theme--green print:hidden">
           <header className="mtk-hero">
             <div className="mtk-hero__row">
-              <span>Manufacturing Production Planning &amp; Factory Control Toolkit</span>
+              <span>{salesToolkitMode ? "Sales · Job Cards" : "Manufacturing Production Planning & Factory Control Toolkit"}</span>
             </div>
             <div className="mtk-hero__title">
               <h1>
-                Manufacturing
-                <span className="mtk-accent"> Production Job Card Queue</span>
+                {salesToolkitMode ? "Sales" : "Manufacturing"}
+                <span className="mtk-accent">
+                  {salesToolkitMode ? " Job Card Queue" : " Production Job Card Queue"}
+                </span>
               </h1>
               <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>
-                BOM · Assignment · Progress · Completion
+                {salesToolkitMode ? "Create · Send · Track · Complete" : "BOM · Assignment · Progress · Completion"}
               </p>
             </div>
           </header>
 
-          <div className="mtk-kpi-row" aria-label="Production queue KPIs">
-            {productionKpis.map((kpi) => (
+          <div className="mtk-kpi-row" aria-label={salesToolkitMode ? "Sales job card KPIs" : "Production queue KPIs"}>
+            {heroKpis.map((kpi) => (
               <div key={kpi.label} className="mtk-kpi">
                 <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone || "blue"}`}>{kpi.icon || "•"}</div>
                 <div className="mtk-kpi__label">{kpi.label}</div>

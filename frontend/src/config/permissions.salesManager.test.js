@@ -30,6 +30,7 @@ describe("Sales Manager route guard (verification)", () => {
     "/my-job-cards",
     "/my-job-cards?dept=sales",
     "/alerts",
+    "/alerts/order-delays",
     "/alerts/production-delay",
     "/documents",
     "/meetings",
