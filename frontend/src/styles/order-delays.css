@@ -1,0 +1,380 @@
+/* Order Delays page only. */
+
+.order-delays {
+  --ap-primary: var(--color-primary, #3157d5);
+  --ap-primary-hover: var(--color-primary-hover, #2648b8);
+  --ap-navy: #17365d;
+  --ap-bg: var(--color-bg, #f6f8fc);
+  --ap-card: var(--color-surface, #ffffff);
+  --ap-text: var(--color-text, #172033);
+  --ap-muted: var(--color-text-secondary, #667085);
+  --ap-border: var(--color-border, #e2e8f0);
+  --ap-success: var(--color-success, #16a34a);
+  --ap-warning: var(--color-warning, #d97706);
+  --ap-danger: var(--color-danger, #dc2626);
+  --ap-danger-dark: #991b1b;
+  --ap-info: #0284c7;
+  --ap-purple: var(--color-accent, #7c3aed);
+  --ap-orange: #ea580c;
+  --ap-teal: #0f766e;
+  --ap-indigo: #4338ca;
+  --ap-radius: var(--radius-lg, 0.75rem);
+  --ap-shadow: 0 1px 2px rgba(23, 54, 93, 0.06);
+  min-width: 0;
+  overflow-x: hidden;
+  background: var(--ap-bg);
+  color: var(--ap-text);
+  font-family: var(--font-sans);
+}
+
+.order-delays-kpi {
+  background: var(--ap-card);
+  border: 1px solid var(--ap-border);
+  border-radius: var(--ap-radius);
+  box-shadow: var(--ap-shadow);
+}
+
+.order-delays-kpi .ui-kpi__label { color: var(--ap-muted); }
+.order-delays-kpi .ui-kpi__value { color: var(--ap-navy); font-weight: 700; }
+
+.order-delays-kpi--delayed { background: #fef6f6; border-color: #f8d4d4; }
+.order-delays-kpi--critical { background: #fdecec; border-color: #f5c2c2; }
+.order-delays-kpi--today { background: #fffaf0; border-color: #f6e4c2; }
+.order-delays-kpi--average { background: #fff7ed; border-color: #fed7aa; }
+.order-delays-kpi--resolved { background: #f3fbf6; border-color: #cdebd6; }
+
+@layer base {
+  .order-delays .order-delays-kpi--delayed .ui-kpi__icon { background-color: var(--ap-danger) !important; color: #fff !important; }
+  .order-delays .order-delays-kpi--critical .ui-kpi__icon { background-color: var(--ap-danger-dark) !important; color: #fff !important; }
+  .order-delays .order-delays-kpi--today .ui-kpi__icon { background-color: var(--ap-warning) !important; color: #fff !important; }
+  .order-delays .order-delays-kpi--average .ui-kpi__icon { background-color: var(--ap-orange) !important; color: #fff !important; }
+  .order-delays .order-delays-kpi--resolved .ui-kpi__icon { background-color: var(--ap-success) !important; color: #fff !important; }
+}
+
+.order-delays-kpi--delayed .ui-kpi__value { color: #b91c1c; }
+.order-delays-kpi--critical .ui-kpi__value { color: var(--ap-danger-dark); }
+.order-delays-kpi--today .ui-kpi__value { color: #92400e; }
+.order-delays-kpi--average .ui-kpi__value { color: #9a3412; }
+.order-delays-kpi--resolved .ui-kpi__value { color: #166534; }
+
+.order-delays-kpis {
+  align-items: stretch;
+}
+
+.order-delays .ui-kpi {
+  min-width: 0;
+}
+
+.order-delays .ui-kpi__meta {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.order-delays .ui-kpi:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.order-delays-filters__grid {
+  align-items: end;
+}
+
+.order-delays-search {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.order-delays-filters .ui-input,
+.order-delays-filters select.ui-input {
+  width: 100%;
+  min-height: var(--control-h, 2.625rem);
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+.order-delays-filters .ui-input:focus-visible,
+.order-delays-filters select.ui-input:focus-visible,
+.order-delays-detail textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.order-delays-filters__actions {
+  align-items: center;
+}
+
+.order-delays-table-card,
+.order-delays-table-wrap {
+  min-width: 0;
+}
+
+.order-delays-table-wrap {
+  overflow-x: auto;
+}
+
+.order-delays-table {
+  min-width: 1180px;
+  border-collapse: collapse;
+}
+
+.order-delays-table th {
+  background: var(--ap-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+  border-color: color-mix(in srgb, #fff 16%, var(--ap-primary));
+}
+
+.order-delays-table td {
+  vertical-align: middle;
+  background: var(--ap-card);
+  color: var(--ap-text);
+  border-color: var(--ap-border);
+}
+
+.order-delays-table tbody tr:hover td {
+  background: #eef3ff;
+}
+
+.order-delays-row--critical td {
+  background: #fef6f6;
+}
+
+.order-delays-row--critical:hover td {
+  background: #eef3ff;
+}
+
+.order-delays-row--critical {
+  box-shadow: inset 3px 0 0 var(--ap-danger);
+}
+
+.order-delays-row--today {
+  box-shadow: inset 3px 0 0 var(--kpi-info, #2563eb);
+}
+
+.order-delays-order {
+  color: var(--color-primary);
+}
+
+.order-delays-order:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.order-delays-stage {
+  display: inline-flex;
+  max-width: 14rem;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--ap-border);
+  background: #f8fafc;
+  padding: 0.1rem 0.5rem;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ap-navy);
+  white-space: nowrap;
+}
+
+.order-delays-stage--production { background: #e8eefc; color: #1e3a8a; border-color: #c7d2fe; }
+.order-delays-stage--quality { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+.order-delays-stage--packing { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
+.order-delays-stage--dispatch { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.order-delays-stage--completed { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.order-delays-stage--billing { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.order-delays-stage--store { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.order-delays-stage--sales { background: #e8eefc; color: #1e3a8a; border-color: #c7d2fe; }
+.order-delays-stage--cancelled { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+.order-delays-days {
+  display: inline-flex;
+  min-width: 1.75rem;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.order-delays-days--today {
+  background: var(--color-info-soft, #eff6ff);
+  color: #1d4ed8;
+}
+
+.order-delays-days--medium {
+  background: #fffbeb;
+  color: #a16207;
+}
+
+.order-delays-days--high {
+  background: var(--color-warning-soft, #fff7ed);
+  color: #c2410c;
+}
+
+.order-delays-days--critical {
+  background: var(--color-danger-soft, #fef2f2);
+  color: #b91c1c;
+}
+
+.order-delays-severity {
+  border: 1px solid transparent;
+  text-transform: capitalize;
+}
+
+.order-delays-severity--critical {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.order-delays-severity--high {
+  background: #ffedd5;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+
+.order-delays-severity--medium {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.order-delays-severity--low {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.order-delays-loading {
+  color: var(--color-text-muted);
+}
+
+.order-delays-pager {
+  gap: 0.75rem;
+  background: var(--color-surface);
+}
+
+.order-delays-pager__controls {
+  align-items: center;
+}
+
+.order-delays-detail__title {
+  letter-spacing: -0.01em;
+}
+
+.order-delays-facts {
+  margin: 0;
+}
+
+.order-delays-fact {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--color-surface-muted) 65%, var(--color-surface));
+  padding: 0.65rem 0.75rem;
+}
+
+.order-delays-section__title {
+  margin-bottom: 0.35rem;
+  color: var(--color-text);
+}
+
+.order-delays-note {
+  background: var(--color-surface);
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+.order-delays-note p:first-child {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.order-delays-view {
+  text-decoration: none;
+}
+
+.order-delays .ui-btn--primary {
+  background: var(--ap-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.order-delays .ui-btn--primary:hover:not(:disabled) {
+  background: var(--ap-primary-hover);
+}
+
+.order-delays .ui-btn--secondary,
+.order-delays-view {
+  background: var(--ap-card);
+  color: var(--ap-primary);
+  border-color: var(--ap-primary);
+}
+
+.order-delays .ui-btn--secondary:hover:not(:disabled),
+.order-delays-view:hover {
+  background: #eef2ff;
+}
+
+.order-delays .ui-btn--success {
+  background: var(--ap-success);
+  color: #fff;
+  border-color: transparent;
+}
+
+.order-delays .ui-btn--cancel,
+.order-delays .ui-btn--danger {
+  background: #fff;
+  color: var(--ap-danger);
+  border-color: #fecaca;
+}
+
+.order-delays .ui-btn:disabled {
+  background: #e2e8f0;
+  color: var(--ap-muted);
+  border-color: #e2e8f0;
+}
+
+.order-delays-view:focus-visible,
+.order-delays-actions .ui-btn:focus-visible,
+.order-delays-dialog button:focus-visible,
+.order-delays .ui-kpi:focus-visible {
+  outline: 2px solid var(--ap-primary);
+  outline-offset: 2px;
+}
+
+.order-delays-dialog.erp-confirm-dialog {
+  max-width: 28rem;
+}
+
+@media (max-width: 1023px) {
+  .order-delays-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .order-delays-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .order-delays-filters__actions,
+  .order-delays-actions,
+  .order-delays-pager,
+  .order-delays-pager__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .order-delays-filters__actions .ui-btn,
+  .order-delays-actions .ui-btn,
+  .order-delays-view,
+  .order-delays-pager__controls .ui-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

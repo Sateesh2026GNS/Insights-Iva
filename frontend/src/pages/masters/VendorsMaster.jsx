@@ -13,7 +13,6 @@ import {
 import Button from "../../components/common/Button";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
@@ -32,6 +31,8 @@ import {
 import { enrichApiVendor } from "../../data/vendorsMasterData";
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage } from "../../utils/apiError";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/vendors-master.css";
 
 const PAGE_SIZES = [20, 50, 100];
 
@@ -188,25 +189,51 @@ export default function VendorsMaster() {
 
   if (loading) {
     return (
-      <ListPageShell>
-        <ListPageCard>
-          <ListPageCardBody>
-            <Loader label="Loading vendors..." />
-          </ListPageCardBody>
-        </ListPageCard>
-      </ListPageShell>
+      <div className="vendors-master vendors-master--toolkit min-h-full min-w-0 w-full">
+        <div className="mtk-root mtk-theme--navy">
+          <header className="mtk-hero">
+            <div className="mtk-hero__row">
+              <span>Record · Supply · Bill · Follow Up</span>
+            </div>
+            <div className="mtk-hero__title">
+              <h1>VENDOR <span className="mtk-accent">REGISTER</span></h1>
+              <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+            </div>
+          </header>
+          <div className="mtk-body">
+            <div className="mtk-panel">
+              <div className="mtk-panel__title">Vendor Register</div>
+              <div className="vendors-master__loading">
+                <Loader label="Loading vendors..." />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <ListPageShell>
-      <ListPageCard>
-        <ListPageCardBody>
-          <div className="ui-list-toolbar">
-            <div className="ui-list-toolbar__start">
-              <SearchBar value={query} onChange={setQuery} placeholder="Search" />
+    <div className="vendors-master vendors-master--toolkit min-h-full min-w-0 w-full">
+      <div className="mtk-root mtk-theme--navy">
+        <header className="mtk-hero">
+          <div className="mtk-hero__row">
+            <span>Record · Supply · Bill · Follow Up</span>
+            <span className="hidden sm:inline">{vendors.length} vendor{vendors.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="mtk-hero__title">
+            <h1>VENDOR <span className="mtk-accent">REGISTER</span></h1>
+            <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+          </div>
+        </header>
+        <div className="mtk-body">
+        <section className="mtk-panel">
+          <div className="mtk-panel__title">Vendor Register</div>
+          <div className="vendors-toolbar">
+            <div className="vendors-toolbar__start">
+              <SearchBar value={query} onChange={setQuery} placeholder="Search" aria-label="Search vendors" inputClassName="vendors-search" />
             </div>
-            <div className="ui-list-toolbar__end">
+            <div className="vendors-toolbar__end">
               <Button
                 variant="outline"
                 to="/procurement/vendors/bulk-import"
@@ -229,9 +256,9 @@ export default function VendorsMaster() {
             </div>
           </div>
 
-          <div className="ui-table-wrap ui-table-wrap--scroll">
-              <table className="ui-table w-full min-w-[980px] border-collapse text-left text-[13px]">
-                <thead className="ui-table-head">
+          <div className="mtk-table-wrap">
+              <table className="vendors-table mtk-table w-full min-w-[980px]">
+                <thead>
                   <tr>
                     <SerialNumberHeader />
                     <th className="px-4 py-3 font-medium">Vendor Name</th>
@@ -311,7 +338,7 @@ export default function VendorsMaster() {
             ) : null}
           </div>
 
-          <div className="mt-4 ui-pagination justify-between">
+          <div className="vendors-pager ui-pagination justify-between">
             <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
               <span>Rows per page:</span>
               <select
@@ -358,11 +385,13 @@ export default function VendorsMaster() {
               </button>
             </div>
           </div>
-        </ListPageCardBody>
-      </ListPageCard>
+        </section>
+        </div>
+      </div>
 
       <AddNewPartyModal
         open={partyOpen}
+        chromeClass="vendors-party-modal"
         variant="vendor"
         vendor={editing}
         onClose={() => {
@@ -414,6 +443,6 @@ export default function VendorsMaster() {
           }}
         />
       ) : null}
-    </ListPageShell>
+    </div>
   );
 }

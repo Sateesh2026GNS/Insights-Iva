@@ -476,6 +476,7 @@ export function salesManagerPathAllowed(pathname) {
   if (path.startsWith("/job-cards/")) return true;
   if (
     path === "/alerts" ||
+    path === "/alerts/order-delays" ||
     path === "/alerts/production-delay"
   ) {
     return true;

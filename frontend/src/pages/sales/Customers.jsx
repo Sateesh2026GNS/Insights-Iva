@@ -15,11 +15,6 @@ import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import { SearchBar } from "../../components/common/SearchFilter";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import {
-  ListPageCard,
-  ListPageCardBody,
-  ListPageShell,
-} from "../../components/common/ListPageShell";
 import EmptyState from "../../components/common/EmptyState";
 import { AsyncPageBody, NoResultsState } from "../../components/common/states";
 import {
@@ -42,6 +37,7 @@ import {
   apiErrorMessage,
   classifyApiError,
 } from "../../utils/apiError";
+import "../../styles/manufacturing-toolkit.css";
 import "../../styles/customers-page.css";
 
 const PAGE_SIZES = [20, 50, 100];
@@ -379,18 +375,24 @@ export default function Customers() {
     customers.length === 0;
 
   return (
-    <ListPageShell>
-      <ListPageCard className="customers-page">
+    <div className="customers-page customers-page--toolkit min-h-full min-w-0 w-full">
+      <div className="mtk-root mtk-theme--navy">
+        <header className="mtk-hero">
+          <div className="mtk-hero__row">
+            <span>Record · Contact · Bill · Follow Up</span>
+            <span className="hidden sm:inline">
+              {loading ? "Loading customers" : `${customers.length} customer${customers.length === 1 ? "" : "s"}`}
+            </span>
+          </div>
+          <div className="mtk-hero__title">
+            <h1>
+              CUSTOMER <span className="mtk-accent">REGISTER</span>
+            </h1>
+            <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+          </div>
+        </header>
 
-        {/* Top + New and 3-dots removed */}
-
-        <ListPageCardBody
-          className={
-            showFirstUseEmpty
-              ? "customers-page__body--empty p-0"
-              : ""
-          }
-        >
+        <div className={`mtk-body min-w-0${showFirstUseEmpty ? " customers-page__body--empty" : ""}`}>
           <AsyncPageBody
             loading={loading}
             error={loadError}
@@ -411,19 +413,21 @@ export default function Customers() {
                 }
               />
             ) : (
-              <>
-                <div className="ui-list-toolbar">
-                  <div className="ui-list-toolbar__start w-full sm:w-auto">
+              <section className="mtk-panel">
+                <div className="mtk-panel__title">Customer Register</div>
+                <div className="customers-toolbar">
+                  <div className="customers-toolbar__start">
                     <SearchBar
                       value={query}
                       onChange={setQuery}
                       placeholder="Search"
                       className="w-full max-w-md"
+                      inputClassName="customers-search"
                       aria-label="Search customers"
                     />
                   </div>
 
-                  <div className="ui-list-toolbar__end w-full sm:w-auto flex flex-wrap gap-2">
+                  <div className="customers-toolbar__end">
                     <Button
                       variant="outline"
                       to="/sales/customers/bulk-import"
@@ -461,7 +465,7 @@ export default function Customers() {
                   {rows.map((customer) => (
                     <div
                       key={customer.id}
-                      className="ui-card p-3.5 space-y-2.5 transition-all hover:border-[var(--color-primary-soft)]"
+                      className="customers-card"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -566,8 +570,8 @@ export default function Customers() {
 
                 {/* Desktop Table View */}
                 <div className="ui-table-wrap ui-table-wrap--scroll hidden md:block">
-                  <table className="ui-table w-full min-w-[980px] border-collapse text-left text-[13px]">
-                    <thead className="ui-table-head">
+                  <table className="customers-table mtk-table w-full min-w-[980px]">
+                    <thead>
                       <tr>
                         <SerialNumberHeader />
 
@@ -735,7 +739,7 @@ export default function Customers() {
                 </div>
 
                 {/* Pagination */}
-                <div className="mt-4 ui-pagination justify-between flex-wrap gap-2">
+                <div className="customers-pager ui-pagination justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap">
                     <span>Rows per page:</span>
 
@@ -797,11 +801,11 @@ export default function Customers() {
                     </button>
                   </div>
                 </div>
-              </>
+              </section>
             )}
           </AsyncPageBody>
-        </ListPageCardBody>
-      </ListPageCard>
+        </div>
+      </div>
 
       <ConfirmDialog
         open={Boolean(deleting)}
@@ -835,6 +839,6 @@ export default function Customers() {
           }}
         />
       ) : null}
-    </ListPageShell>
+    </div>
   );
 }

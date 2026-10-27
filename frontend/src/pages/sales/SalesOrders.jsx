@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { CheckCircle, ClipboardList, ExternalLink, Eye, Filter, IndianRupee, Plus, ShoppingCart, Trash2, Truck } from "lucide-react";
-import KpiCard from "../../components/common/KpiCard";
+import { CheckCircle, ClipboardList, ExternalLink, Eye, Filter, Plus, Trash2, Truck } from "lucide-react";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
 
 import DeleteSalesOrderDialog from "../../components/sales/DeleteSalesOrderDialog";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
-import PageHeader from "../../components/common/PageHeader";
 import RowActionMenu from "../../components/common/RowActionMenu";
 import SkeletonTable from "../../components/common/SkeletonTable";
 import { ErrorState, NoResultsState, OfflineState } from "../../components/common/states";
@@ -18,11 +15,11 @@ import { useToast } from "../../context/ToastContext";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import {
   confirmSalesOrder,
-  getSOSummary,
   getSalesOrdersEnriched,
   deleteSalesOrder,
 } from "../../api/salesApi";
-import { formatInr, statusColor } from "../../data/salesMasterData";
+import { formatInr } from "../../data/salesMasterData";
+import { SalesOrdersToolkitShell, salesOrderStatusPillClass } from "../../components/sales/SalesOrdersToolkit";
 import { runListExport } from "../../utils/listExport";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
 import {
@@ -263,9 +260,7 @@ export default function SalesOrders() {
       key: "status",
       label: "Status",
       render: (r) => (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(r.status)}`}>
-          {r.status}
-        </span>
+        <span className={`${salesOrderStatusPillClass(r.status)} capitalize`}>{r.status}</span>
       ),
     },
     {
@@ -329,121 +324,48 @@ export default function SalesOrders() {
     addToast(format === "pdf" ? "Exported to PDF" : "Exported to Excel", "success");
   };
 
+  const applyStatusFilter = (status) => {
+    const next = { ...defaultFilters, status };
+    setDraftFilters(next);
+    setAppliedFilters(next);
+  };
+
+  const orderKpis = [
+    { key: "total", label: "Total Orders", value: summary.total_orders ?? 0, tone: "blue", icon: "SO", title: "Show all orders", active: !appliedFilters.status, onClick: () => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters) },
+    { key: "pending", label: "Pending", value: summary.pending ?? 0, tone: "orange", icon: "P", title: "Orders waiting for confirmation", active: appliedFilters.status === "pending", onClick: () => applyStatusFilter("pending") },
+    { key: "confirmed", label: "Confirmed", value: summary.confirmed ?? 0, tone: "green", icon: "C", title: "Filter confirmed orders", active: appliedFilters.status === "confirmed", onClick: () => applyStatusFilter("confirmed") },
+    { key: "packed", label: "Packed", value: summary.packed ?? 0, tone: "purple", icon: "Pk", title: "Filter packed orders", active: appliedFilters.status === "packed", onClick: () => applyStatusFilter("packed") },
+    { key: "shipped", label: "Shipped", value: summary.shipped ?? 0, tone: "teal", icon: "S", title: "Filter shipped orders", active: appliedFilters.status === "shipped", onClick: () => applyStatusFilter("shipped") },
+    { key: "delivered", label: "Delivered", value: summary.delivered ?? 0, tone: "lime", icon: "D", title: "Filter delivered orders", active: appliedFilters.status === "delivered", onClick: () => applyStatusFilter("delivered") },
+    { key: "cancelled", label: "Cancelled", value: summary.cancelled ?? 0, tone: "red", icon: "X", title: "Filter cancelled orders", active: appliedFilters.status === "cancelled", onClick: () => applyStatusFilter("cancelled") },
+    { key: "revenue", label: "Revenue", value: formatInr(summary.revenue ?? 0), tone: "yellow", icon: "₹", title: "Total orders revenue", active: false, onClick: () => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters) },
+  ];
+
   return (
-    <ListPageShell>
-      <PageHeader
-        subtitle="Confirm pending orders first, then track packing, shipment and delivery from the same list."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu
-              disabled={!filtered.length}
-              onExport={handleExport}
-            />
-            {canCreate ? (
-              <Button variant="primary" to={jobCardCreateUrl()}>
-                <Plus className="mr-1.5 inline h-4 w-4" /> New Job Card
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
-
-      <div className="ui-grid-kpi">
-        <KpiCard
-          label="Total Orders"
-          value={summary.total_orders ?? 0}
-          icon={ShoppingCart}
-          tone="teal"
-          onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
-          title="Show all orders"
-        />
-        <KpiCard
-          label="Pending"
-          value={summary.pending ?? 0}
-          icon={ShoppingCart}
-          tone="warning"
-          emphasized
-          title="Orders waiting for confirmation — primary next action"
-          onClick={() => {
-            const next = { ...defaultFilters, status: "pending" };
-            setDraftFilters(next);
-            setAppliedFilters(next);
-          }}
-        />
-        <KpiCard
-          label="Confirmed"
-          value={summary.confirmed ?? 0}
-          icon={ShoppingCart}
-          tone="teal"
-          onClick={() => {
-            const next = { ...defaultFilters, status: "confirmed" };
-            setDraftFilters(next);
-            setAppliedFilters(next);
-          }}
-          title="Filter confirmed orders"
-        />
-        <KpiCard
-          label="Packed"
-          value={summary.packed ?? 0}
-          icon={ShoppingCart}
-          tone="neutral"
-          onClick={() => {
-            const next = { ...defaultFilters, status: "packed" };
-            setDraftFilters(next);
-            setAppliedFilters(next);
-          }}
-          title="Filter packed orders"
-        />
-        <KpiCard
-          label="Shipped"
-          value={summary.shipped ?? 0}
-          icon={Truck}
-          tone="info"
-          onClick={() => {
-            const next = { ...defaultFilters, status: "shipped" };
-            setDraftFilters(next);
-            setAppliedFilters(next);
-          }}
-          title="Filter shipped orders"
-        />
-        <KpiCard
-          label="Delivered"
-          value={summary.delivered ?? 0}
-          icon={Truck}
-          tone="teal"
-          onClick={() => {
-            const next = { ...defaultFilters, status: "delivered" };
-            setDraftFilters(next);
-            setAppliedFilters(next);
-          }}
-          title="Filter delivered orders"
-        />
-        <KpiCard
-          label="Cancelled"
-          value={summary.cancelled ?? 0}
-          icon={ShoppingCart}
-          tone="danger"
-          onClick={() => {
-            const next = { ...defaultFilters, status: "cancelled" };
-            setDraftFilters(next);
-            setAppliedFilters(next);
-          }}
-          title="Filter cancelled orders"
-        />
-        <KpiCard
-          label="Revenue"
-          value={formatInr(summary.revenue ?? 0)}
-          icon={IndianRupee}
-          tone="teal"
-          onClick={() => clearListFilters(defaultFilters, setDraftFilters, setAppliedFilters)}
-          title="Total orders revenue"
-        />
-      </div>
-
-      <ListPageCard>
-        <ListPageCardBody>
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+    <SalesOrdersToolkitShell
+      title="SALES ORDERS"
+      kpis={
+        <div className="mtk-kpi-row" aria-label="Sales order summary">
+          {orderKpis.map((kpi) => (
+            <button
+              key={kpi.key}
+              type="button"
+              className={`mtk-kpi${kpi.active ? " sales-orders-kpi--active" : ""}`}
+              onClick={kpi.onClick}
+              title={kpi.title}
+            >
+              <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+              <div className="mtk-kpi__label">{kpi.label}</div>
+              <div className="mtk-kpi__value">{kpi.value}</div>
+            </button>
+          ))}
+        </div>
+      }
+    >
+      <section className="mtk-panel">
+        <div className="mtk-panel__title">Sales Orders</div>
+        <div className="sales-orders-toolbar">
+          <div className="sales-orders-toolbar__start">
             <SearchBar
               value={draftFilters.customer}
               onChange={(v) => setDraftFilters((f) => ({ ...f, customer: v }))}
@@ -455,6 +377,7 @@ export default function SalesOrders() {
               }}
               placeholder="Search"
               aria-label="Search sales orders"
+              inputClassName="sales-orders-search"
             />
             <Button
               type="button"
@@ -475,15 +398,22 @@ export default function SalesOrders() {
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="inline-flex items-center gap-2 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]"
+              className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#134e4a]"
             >
-              <Filter className="h-4 w-4" /> Filters
+              <Filter className="h-3.5 w-3.5" /> Filters
             </button>
           </div>
-          null
+          <div className="sales-orders-toolbar__end">
+            <ExportDownloadMenu disabled={!filtered.length} onExport={handleExport} />
+            {canCreate ? (
+              <Button variant="primary" to={jobCardCreateUrl()}>
+                <Plus className="mr-1.5 inline h-3.5 w-3.5" /> New Job Card
+              </Button>
+            ) : null}
+          </div>
         </div>
         {showAdvanced && (
-          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          <div className="sales-orders-filters">
             <select
               value={draftFilters.status}
               onChange={(e) => setDraftFilters({ ...draftFilters, status: e.target.value })}
@@ -493,7 +423,7 @@ export default function SalesOrders() {
               {["draft", "pending", "confirmed", "packed", "shipped", "delivered", "cancelled"].map(
                 (s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
                   </option>
                 )
               )}
@@ -561,7 +491,7 @@ export default function SalesOrders() {
                 filtered.map((r) => (
                   <div
                     key={r.id || r.order_number}
-                    className="ui-card p-3.5 space-y-2.5 transition hover:border-[var(--color-primary-soft)]"
+                    className="so-mobile-card space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -569,11 +499,7 @@ export default function SalesOrders() {
                           <span className="font-bold text-sm text-[var(--color-primary)]">
                             {r.order_number || `SO-${r.id}`}
                           </span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${statusColor(
-                              r.status
-                            )}`}
-                          >
+                          <span className={`${salesOrderStatusPillClass(r.status)} capitalize`}>
                             {r.status || "draft"}
                           </span>
                         </div>
@@ -693,6 +619,8 @@ export default function SalesOrders() {
                 columns={columns}
                 data={filtered}
                 showSearch={false}
+                tableClassName="sales-orders-table mtk-table"
+                wrapClassName="mtk-table-wrap"
                 emptyState={
                   rows.length === 0 ? (
                     <EmptyState
@@ -720,8 +648,7 @@ export default function SalesOrders() {
             </div>
           </>
         )}
-        </ListPageCardBody>
-      </ListPageCard>
+      </section>
 
       {selected && (
         <SODetailModal
@@ -744,6 +671,6 @@ export default function SalesOrders() {
           }
         }}
       />
-    </ListPageShell>
+    </SalesOrdersToolkitShell>
   );
 }

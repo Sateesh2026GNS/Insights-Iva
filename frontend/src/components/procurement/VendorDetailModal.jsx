@@ -53,6 +53,8 @@ import { deleteDocument } from "../../api/documentsApi";
 import { useToast } from "../../context/ToastContext";
 import Button from "../common/Button";
 import { inputClass as dsInput } from "../../design-system/classes";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/masters-navy-chrome.css";
 
 const inputClass = `${dsInput} mt-1`;
 
@@ -74,7 +76,7 @@ function Field({ label, value, subtext, className = "" }) {
   const isEmpty = displayVal === "—";
   return (
     <div
-      className={`rounded-lg bg-slate-50 px-3 py-2 border border-slate-100 ${className}`}
+      className={`masters-navy-field rounded-lg bg-slate-50 px-3 py-2 border border-slate-100 ${className}`}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <div
@@ -514,10 +516,10 @@ export default function VendorDetailModal({
       aria-labelledby="vendor-modal-title"
     >
       <div
-        className={`flex w-full flex-col overflow-hidden bg-white shadow-2xl transition-all duration-150 ${
+        className={`masters-navy-dialog mtk-root mtk-theme--navy flex w-full flex-col overflow-hidden bg-white transition-all duration-150 ${
           isFullscreen
             ? "h-full w-full max-w-none max-h-none rounded-none"
-            : "w-full max-w-5xl rounded-2xl"
+            : "w-full max-w-5xl"
         }`}
         style={
           isFullscreen
@@ -527,7 +529,7 @@ export default function VendorDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Fixed at top of modal */}
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4">
+        <div className="masters-navy-dialog__header flex shrink-0 items-start justify-between gap-4 border-b px-4 py-2">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700">
@@ -583,9 +585,9 @@ export default function VendorDetailModal({
                 key={t.id}
                 type="button"
                 onClick={() => setTab(t.id)}
-                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                className={`masters-navy-tab whitespace-nowrap px-3 py-1.5 cursor-pointer ${
                   isActive
-                    ? "bg-[#2563EB] text-white shadow-xs font-bold"
+                    ? "masters-navy-tab--active"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
@@ -1657,10 +1659,10 @@ export function VendorFormModal({ vendor, onClose, onSave }) {
       onClick={onClose}
     >
       <div
-        className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10"
+        className="masters-navy-dialog mtk-root mtk-theme--navy flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden bg-white"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
+        <div className="masters-navy-dialog__header flex shrink-0 items-center justify-between border-b px-3 py-2">
           <h2 className="text-lg font-bold text-slate-900">
             {vendor?.id ? "Edit Vendor" : "Add Vendor"}
           </h2>

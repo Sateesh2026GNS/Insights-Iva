@@ -90,6 +90,7 @@ export default function ProductDetailModal({
   loadingSections = {},
   sectionErrors = {},
   onLoadSection,
+  chromeClass = "",
 }) {
   const [tab, setTab] = useState("general");
   if (!product) return null;
@@ -110,7 +111,7 @@ export default function ProductDetailModal({
       }}
     >
       <div
-        className="flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className={`flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl${chromeClass ? ` ${chromeClass}` : ""}`}
         style={{ maxHeight: "calc(100dvh - var(--navbar-height, 3.5rem) - 2rem)" }}
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">

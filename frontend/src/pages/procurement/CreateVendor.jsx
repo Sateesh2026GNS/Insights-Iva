@@ -42,6 +42,8 @@ import { useToast } from "../../context/ToastContext";
 
 import Button from "../../components/common/Button";
 import { inputClass } from "../../design-system/classes";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/masters-navy-chrome.css";
 
 const EMPTY = {
   name: "",
@@ -534,27 +536,42 @@ export default function CreateVendor() {
 
   if (booting) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin text-[var(--color-primary)]" />
-        Loading vendor…
+      <div className="create-vendor-page masters-navy-page min-h-full">
+        <div className="mtk-root mtk-theme--navy">
+          <header className="mtk-hero">
+            <div className="mtk-hero__row">
+              <span>Record · Supply · Bill · Follow Up</span>
+            </div>
+            <div className="mtk-hero__title">
+              <h1>{isEdit ? "EDIT" : "NEW"} <span className="mtk-accent">VENDOR</span></h1>
+              <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+            </div>
+          </header>
+          <div className="mtk-body flex min-h-[40vh] items-center justify-center text-[11px]">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading vendor…
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-28">
-      <div>
-        <Link
-          to="/procurement/vendors"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)] hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to vendors
-        </Link>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500">
-          Vendor code is generated automatically. Complete company, bank, and procurement details.
-        </p>
-      </div>
+    <div className="create-vendor-page masters-navy-page min-h-full pb-16">
+      <div className="mtk-root mtk-theme--navy">
+      <header className="mtk-hero">
+        <div className="mtk-hero__row">
+          <Link to="/procurement/vendors" className="inline-flex items-center gap-1 text-white">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to vendors
+          </Link>
+        </div>
+        <div className="mtk-hero__title">
+          <h1>{isEdit ? "EDIT" : "NEW"} <span className="mtk-accent">VENDOR</span></h1>
+          <p>Vendor code is generated automatically. Complete company, bank, and procurement details.</p>
+        </div>
+      </header>
+      <div className="mtk-body space-y-2">
 
       {error && (
         <div
@@ -565,7 +582,7 @@ export default function CreateVendor() {
         </div>
       )}
 
-      <form id="vendor-master-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <form id="vendor-master-form" onSubmit={handleSubmit} className="space-y-2" noValidate>
           <Section icon={Building2} title="Basic Details" subtitle="Identity and primary contacts.">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Company Name" required error={fieldErrors.name}>
@@ -870,16 +887,17 @@ export default function CreateVendor() {
           )}
         </form>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200/80 bg-white/95 shadow-[0_-8px_30px_rgba(15,23,42,0.06)] backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-end gap-2 px-4 py-3.5 sm:px-6">
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[#c5d0dc] bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-end gap-2 px-3 py-2">
           <Link
             to="/procurement/vendors"
-            className={`rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${loading ? "pointer-events-none opacity-50" : ""}`}
+            className={`masters-navy-btn masters-navy-btn--secondary inline-flex items-center px-3 ${loading ? "pointer-events-none opacity-50" : ""}`}
           >
             Cancel
           </Link>
           <Button variant="primary" type="submit" form="vendor-master-form"
-      disabled={loading || bankLookupLoading || !bankVerified} className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50">
+      disabled={loading || bankLookupLoading || !bankVerified} className="inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -893,31 +911,25 @@ export default function CreateVendor() {
           </Button>
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
-function Section({ icon: Icon, title, subtitle, children }) {
+function Section({ title, subtitle, children }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 pt-0.5">
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-          <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
-        </div>
-      </div>
-      <div className="p-5 sm:p-6">{children}</div>
+    <section className="mtk-panel masters-navy-section">
+      <div className="mtk-panel__title">{title}</div>
+      {subtitle ? <p className="masters-navy-section__hint">{subtitle}</p> : null}
+      <div className="masters-navy-section__body">{children}</div>
     </section>
   );
 }
 
 function Field({ label, required, error, hint, children, className = "" }) {
   return (
-    <div className={className}>
-      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+    <div className={`masters-navy-field ${className}`.trim()}>
+      <label className="mb-1 block">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </label>

@@ -105,7 +105,6 @@ export default function DailySalesDashboard() {
     <div className="dsd-root">
       <header className="dsd-header">
         <div>
-          <p className="dsd-kicker">Import & Export Costing, Documentation & Shipment Control Toolkit</p>
           <h1>Daily Sales & Order Dashboard</h1>
           <p>Track daily import and export sales, monitor orders, analyze buyers, and support business growth.</p>
           <p className="dsd-tagline">Global trade · Smarter decisions · Higher sales</p>

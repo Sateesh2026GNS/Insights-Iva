@@ -28,7 +28,9 @@ import {
 } from "../../components/common/states";
 import AddExecutiveNameModal from "../../components/sales/AddExecutiveNameModal";
 import LeadProductSelectModal from "../../components/sales/LeadProductSelectModal";
-import { cardPaddedClass, inputClass, selectClass, textareaClass } from "../../design-system/classes";
+import { inputClass, selectClass, textareaClass } from "../../design-system/classes";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/create-lead-toolkit.css";
 import useMeasuredStickyFooter from "../../hooks/useMeasuredStickyFooter";
 import useAuth from "../../hooks/useAuth";
 import { useToast } from "../../context/ToastContext";
@@ -78,9 +80,9 @@ const EMPTY_FORM = {
 
 function SectionCard({ title, children, grid = true }) {
   return (
-    <section className={cardPaddedClass}>
-      <h2 className="mb-4 text-base font-semibold text-[var(--color-text)]">{title}</h2>
-      {grid ? <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{children}</div> : children}
+    <section className="mtk-panel">
+      <h2 className="mtk-panel__title">{title}</h2>
+      <div className={grid ? "create-lead-grid" : "create-lead-stack"}>{children}</div>
     </section>
   );
 }
@@ -88,9 +90,9 @@ function SectionCard({ title, children, grid = true }) {
 function Field({ label, required, error, children, className = "" }) {
   return (
     <div className={`block min-w-0 ${className}`} data-lead-error={error ? "true" : undefined}>
-      <span className="mb-1.5 block text-[12px] font-semibold text-[#6b6b76]">
+      <span className="create-lead-label">
         {label}
-        {required ? <span className="text-[#e11d48]"> *</span> : null}
+        {required ? <span> *</span> : null}
       </span>
       {children}
       <FieldError message={error} />
@@ -496,23 +498,26 @@ export default function CreateLeadPage() {
 
   if (!canCreate) {
     return (
-      <div className="ui-page mx-auto max-w-[960px] p-4">
+      <div className="mtk-root mtk-theme--orange create-lead-toolkit">
         <PermissionDeniedState description={t("sales.leads.create.permissionDenied")} />
       </div>
     );
   }
 
   return (
-    <div className="ui-page mx-auto max-w-[960px] space-y-4 p-4 pb-24">
-      {leadNo ? (
-        <div className="flex items-center">
-          <span className="rounded-full bg-[var(--color-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--color-text-secondary)]">
-            {leadNo}
-          </span>
+    <div className="mtk-root mtk-theme--orange create-lead-toolkit">
+      <header className="mtk-hero">
+        <div className="mtk-hero__row">
+          <span>Sales · Leads</span>
+          <div className="mtk-hero__title">
+            <h1>{t(isEdit ? "sales.leads.create.editTitle" : "sales.leads.create.title")}</h1>
+          </div>
+          <div className="mtk-hero__meta">{leadNo || t("sales.leads.create.leadId")}</div>
         </div>
-      ) : null}
+      </header>
 
       <AsyncPageBody
+        className="mtk-body"
         loading={loading}
         errorObj={loadError}
         onRetry={loadBootstrap}
@@ -522,7 +527,7 @@ export default function CreateLeadPage() {
       >
         <form
           id="create-lead-form"
-          className="space-y-4"
+          className="create-lead-form"
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
@@ -582,7 +587,7 @@ export default function CreateLeadPage() {
           </SectionCard>
 
           {duplicateMatches.length ? (
-            <div className="rounded-lg border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 p-3 text-sm">
+            <div className="create-lead-duplicate">
               <p className="font-medium text-[var(--color-text)]">{t("sales.leads.create.duplicateWarning")}</p>
               <ul className="mt-2 list-disc pl-5">
                 {duplicateMatches.map((m) => (
@@ -674,7 +679,7 @@ export default function CreateLeadPage() {
               {canAddExecutive ? (
                 <button
                   type="button"
-                  className="mt-2 text-[12px] font-semibold text-[var(--color-primary)] hover:underline"
+                  className="create-lead-link"
                   onClick={() => setAddExecutiveOpen(true)}
                 >
                   {t("sales.leads.create.addExecutive")}
@@ -691,7 +696,7 @@ export default function CreateLeadPage() {
               {discussions.length ? (
                 <ul className="space-y-2">
                   {discussions.map((d) => (
-                    <li key={d.id} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3 text-sm">
+                    <li key={d.id} className="create-lead-note">
                       <p className="font-semibold text-[var(--color-text)]">
                         {d.discussed_with}
                         {d.role ? ` — ${d.role}` : ""}
@@ -719,7 +724,7 @@ export default function CreateLeadPage() {
             <Field label={t("sales.leads.create.attachments")} className="mt-4">
               <button
                 type="button"
-                className="flex min-h-20 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[13px] text-[var(--color-text-muted)] hover:bg-[var(--color-primary-soft)]"
+                className="create-lead-file"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Paperclip className="mb-1 h-5 w-5 text-[var(--color-primary)]" />
@@ -782,7 +787,7 @@ export default function CreateLeadPage() {
           <div
             ref={footerRef}
             data-skip-nav-loader
-            className="sticky bottom-0 z-20 flex flex-wrap justify-end gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg)] py-4 pointer-events-auto max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]"
+            className="create-lead-actions sticky bottom-0 z-20 pointer-events-auto max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]"
           >
             <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>
               {t("sales.leads.create.cancel")}

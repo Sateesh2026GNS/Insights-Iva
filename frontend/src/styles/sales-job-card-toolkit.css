@@ -1,0 +1,124 @@
+/* Sales Job Cards — aligned with Production Planning → Capacity Planning (mtk-theme--green). */
+
+.sales-jc-toolkit {
+  width: 100%;
+  max-width: none;
+  background: #f4f7fa;
+  font-size: 11px;
+  color: #1a1a1a;
+}
+
+.sales-jc-toolkit.manual-sjc-page {
+  margin: 0;
+  padding: 8px 8px 24px;
+}
+
+.sales-jc-toolkit .manual-sjc-page__card,
+.sales-jc-toolkit .my-job-cards-page__document-panel {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  box-shadow: none;
+  background: #fff;
+}
+
+.sales-jc-toolkit .manual-sjc__section--block {
+  padding: 0 0 8px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  box-shadow: none;
+  background: #fff;
+}
+
+.sales-jc-toolkit .manual-sjc__section-title {
+  display: block;
+  margin: 0 0 8px;
+  padding: 5px 8px;
+  background: #15803d;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.sales-jc-toolkit .manual-sjc__section-hint {
+  padding: 0 8px;
+  font-size: 10px;
+}
+
+.sales-jc-toolkit input,
+.sales-jc-toolkit select,
+.sales-jc-toolkit textarea,
+.sales-jc-toolkit .ui-input,
+.sales-jc-toolkit .ui-select {
+  min-height: 28px;
+  border-radius: 2px !important;
+  border-color: #c5d0dc !important;
+  box-shadow: none !important;
+  font-size: 11px;
+}
+
+.sales-jc-toolkit .ui-btn--primary,
+.sales-jc-toolkit .ui-btn--add {
+  background: #15803d !important;
+  border-color: #14532d !important;
+  color: #fff !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  min-height: 28px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sales-jc-toolkit .ui-btn--secondary,
+.sales-jc-toolkit .ui-btn--outline {
+  background: #fff;
+  border: 1px solid #c5d0dc;
+  color: #14532d;
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.sales-jc-toolkit .manual-sjc__detail-tabs {
+  margin: 8px;
+  border-radius: 2px;
+  border-color: #c5d0dc;
+  background: #f8fafc;
+}
+
+.sales-jc-toolkit .manual-sjc__detail-tab.is-active {
+  background: #15803d;
+  color: #fff;
+  box-shadow: none;
+}
+
+.sales-jc-toolkit table th {
+  background: #e8eef4;
+  color: #1e293b;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sales-jc-toolkit table tbody tr:hover td {
+  background: #f0fdf4;
+}
+
+.sales-jc-toolkit .my-job-cards-page__document-toolbar {
+  background: #f8fafc;
+  border-bottom: 1px solid #c5d0dc;
+}
+
+.sales-jc-toolkit .my-job-cards-page__document-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #14532d;
+}
+
+@media (max-width: 1100px) {
+  .sales-jc-toolkit .mtk-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

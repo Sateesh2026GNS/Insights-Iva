@@ -110,7 +110,7 @@ export const SALES_MANAGER_NAV_ITEMS = [
       {
         key: "orderDelays",
         label: "Order Delays",
-        to: "/alerts/production-delay",
+        to: "/alerts/order-delays",
         icon: AlertTriangle,
         module: "alerts",
       },

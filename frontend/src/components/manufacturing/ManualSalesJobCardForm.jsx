@@ -56,8 +56,27 @@ import EditCompanyDetailsModal from "../sales/EditCompanyDetailsModal";
 import AddContactPersonModal from "../sales/AddContactPersonModal";
 import "../../styles/sales-job-card-document.css";
 import "../../styles/manual-sales-job-card-form.css";
+import "../../styles/manufacturing-toolkit.css";
+import "../../styles/sales-job-card-toolkit.css";
 
 const ADD_CONTACT_PERSON_VALUE = "__add_contact_person__";
+
+function SalesJobCardHero({ isEdit }) {
+  return (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>Sales · Job Cards</span>
+        <div className="mtk-hero__meta">{isEdit ? "Edit" : "New"}</div>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>
+          {isEdit ? "Edit" : "Create"}
+          <span className="mtk-accent"> Sales Job Card</span>
+        </h1>
+      </div>
+    </header>
+  );
+}
 
 function FieldError({ error }) {
   if (!error) return null;
@@ -685,11 +704,19 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   }, [activeDetailTab, form.customer.billing_address, form.customer.dispatch_address]);
 
   if (loading) {
-    return <LoadingState label="Loading job card…" className="py-16" />;
+    return (
+      <div className="sales-jc-toolkit manual-sjc-page mtk-root mtk-theme--green">
+        <SalesJobCardHero isEdit={isEdit} />
+        <LoadingState label="Loading job card…" className="py-16" />
+      </div>
+    );
   }
   if (loadError) {
     return (
-      <ErrorState title="Could not load job card" description={loadError} onRetry={() => window.location.reload()} />
+      <div className="sales-jc-toolkit manual-sjc-page mtk-root mtk-theme--green">
+        <SalesJobCardHero isEdit={isEdit} />
+        <ErrorState title="Could not load job card" description={loadError} onRetry={() => window.location.reload()} />
+      </div>
     );
   }
 
@@ -718,7 +745,8 @@ export default function ManualSalesJobCardForm({ jobCardId = null, backTo = "/my
   ];
 
   return (
-    <div className="manual-sjc-page ui-stack">
+    <div className="sales-jc-toolkit manual-sjc-page ui-stack mtk-root mtk-theme--green">
+      <SalesJobCardHero isEdit={isEdit} />
       <QuickAddCustomerModal
         open={showAddCustomer}
         onClose={() => setShowAddCustomer(false)}

@@ -295,6 +295,7 @@ export default function AddNewItemModal({
   entityName = "Item",
   title,
   readOnly = false,
+  chromeClass = "",
 }) {
   const isProduct = entityName === "Product";
   const tenantId = useTenantId();
@@ -715,7 +716,7 @@ export default function AddNewItemModal({
           isDrawer
             ? "h-full w-full max-w-xl sm:max-w-2xl animate-[slideInRight_0.28s_ease-out]"
             : "max-h-[96vh] sm:max-h-[92vh] w-full max-w-xl sm:max-w-2xl lg:max-w-3xl rounded-xl sm:rounded-2xl"
-        }`}
+        }${chromeClass ? ` ${chromeClass}` : ""}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[#ececf0] bg-white px-4 py-3 sm:px-5 sm:py-4">

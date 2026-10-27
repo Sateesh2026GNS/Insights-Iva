@@ -18,6 +18,7 @@ export default function ConfirmDialog({
   showConfirm = true,
   onConfirm,
   onClose,
+  className = "",
   children,
 }) {
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function ConfirmDialog({
       }}
     >
       <div
-        className="erp-confirm-dialog"
+        className={`erp-confirm-dialog${className ? ` ${className}` : ""}`}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="erp-confirm-dialog-title"

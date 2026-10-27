@@ -19,10 +19,12 @@ import {
   createAlert,
   deleteAlert,
   getAlerts,
+  getAllAlertPages,
   markAlertRead,
   markAllAlertsRead,
   resolveAlert,
 } from "../../api/alertsApi";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import { getTeamDirectory } from "../../api/adminApi";
 import { isAdmin, isOperator, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
@@ -40,6 +42,13 @@ import {
   formatAlertDate,
   computeAlertSummary,
 } from "../../utils/alertUtils";
+import {
+  SALES_ALERT_CATEGORIES,
+  salesAlertCategory,
+  salesAlertCustomer,
+  salesAlertOrderNumber,
+  salesAlertSummary,
+} from "../../utils/salesAlertCategories";
 
 const PAGE_SIZE = 10;
 
@@ -78,7 +87,7 @@ function Badge({ value, styles }) {
   const key = String(value || "").toLowerCase();
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide border ${
+      className={`alerts-page-badge alerts-page-badge--${key || "unknown"} inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide border ${
         styles[key] || "bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] border-[var(--color-border-soft)]"
       }`}
     >
@@ -124,7 +133,7 @@ function normalizeAlert(a) {
   };
 }
 
-export default function AlertsDashboard({ initialAlertType = null, title, subtitle, topContent = null }) {
+export default function AlertsDashboard({ initialAlertType = null, title, subtitle, topContent = null, salesManager = false, shellClassName = "" }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -147,6 +156,9 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   const [assignees, setAssignees] = useState([]);
 
   const [status, setStatus] = useState("");
+  const [category, setCategory] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [resolveTarget, setResolveTarget] = useState(null);
   const [draftFilters, setDraftFilters] = useState(() => ({
     ...ALERT_FILTER_EMPTY,
     module: initialAlertType || "",
@@ -184,7 +196,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       if (initialAlertType) params.alert_type = initialAlertType;
 
       const [alertsRes, usersRes] = await Promise.allSettled([
-        getAlerts(params),
+        salesManager ? getAllAlertPages(params).then((items) => ({ data: items })) : getAlerts(params),
         getTeamDirectory(),
       ]);
 
@@ -219,7 +231,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       markRequestEnd();
       setLoading(false);
     }
-  }, [initialAlertType, markRequestStart, markRequestEnd]);
+  }, [initialAlertType, markRequestStart, markRequestEnd, salesManager]);
 
   usePageRefresh(() => load(true));
 
@@ -272,13 +284,26 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         const t = new Date(r.triggered_at || r.created_at).getTime();
         if (Number.isFinite(t) && t > new Date(dateTo).getTime()) return false;
       }
+      if (salesManager && category && salesAlertCategory(r)?.id !== category) return false;
+      if (salesManager && unreadOnly && (r.is_read || String(r.status || "").toLowerCase() !== "active")) return false;
       if (!q) return true;
-      return [r.id, r.title, r.message, r.alert_type, r.severity, r.status, r.assigned_to, r.created_by]
+      return [
+        r.id,
+        r.title,
+        r.message,
+        r.alert_type,
+        r.severity,
+        r.status,
+        r.assigned_to,
+        r.created_by,
+        salesAlertOrderNumber(r),
+        salesAlertCustomer(r),
+      ]
         .join(" ")
         .toLowerCase()
         .includes(q);
     });
-  }, [rows, appliedFilters, status, initialAlertType, reportMachineId]);
+  }, [rows, appliedFilters, status, initialAlertType, reportMachineId, salesManager, category, unreadOnly]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -295,10 +320,11 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   }, [filtered, sortKey, sortDir]);
 
   const summary = useMemo(() => {
+    if (salesManager) return salesAlertSummary(filtered);
     const base = computeAlertSummary(filtered);
     base.active = filtered.filter((a) => String(a.status || "").toLowerCase() === "active").length;
     return base;
-  }, [filtered]);
+  }, [filtered, salesManager]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -312,6 +338,35 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
     const nowLocal = getNowLocalISO();
 
     try {
+      if (salesManager && (action === "ack" || action === "resolve" || action === "read" || action === "delete")) {
+        if (action === "ack") await acknowledgeAlert(id);
+        if (action === "resolve") await resolveAlert(id);
+        if (action === "read") await markAlertRead(id);
+        if (action === "delete") await deleteAlert(id);
+        if (action === "delete") {
+          setRows((prev) => prev.filter((r) => String(r.id) !== String(id)));
+        } else {
+          setRows((prev) =>
+            prev.map((r) => {
+              if (String(r.id) !== String(id)) return r;
+              if (action === "read") return { ...r, is_read: true };
+              const nextStatus = action === "ack" ? "acknowledged" : "resolved";
+              return {
+                ...r,
+                status: nextStatus,
+                is_read: true,
+                acknowledged_by: userName,
+                acknowledged_at: nowLocal,
+                acknowledged_date: formatAlertDate(nowLocal),
+              };
+            })
+          );
+        }
+        addToast(`${label} successful`, "success");
+        setViewRow(null);
+        setResolveTarget(null);
+        return;
+      }
       if (action === "ack" || action === "resolve") {
         const nextStatus = action === "ack" ? "acknowledged" : "resolved";
         setRows((prev) =>
@@ -440,8 +495,8 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
 
   if (loading) {
     return (
-      <ListPageShell>
-      <div className="space-y-5 pb-4">
+      <ListPageShell className={shellClassName}>
+      <div className="alerts-page-loading space-y-5 pb-4">
         <div className="h-8 w-48 animate-pulse rounded bg-[var(--color-surface-muted)]" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -455,8 +510,8 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
   }
 
   return (
-    <ListPageShell>
-    <div className="min-w-0 space-y-5 pb-4">
+    <ListPageShell className={shellClassName}>
+    <div className="alerts-page-body min-w-0 space-y-5 pb-4">
       {topContent}
       <PageHeader
         title={title}
@@ -505,11 +560,21 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
       ) : null}
 
       {/* KPI summary */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {salesManager ? (
+      <div className="alerts-page-kpis grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <KpiCard className="alerts-page-kpi alerts-page-kpi--total" label="Total Alerts" value={summary.total} icon={Bell} tone="primary" meta="Same rows as the list" onClick={() => { setStatus(""); setCategory(""); setUnreadOnly(false); clearAlertFilters(); }} />
+        <KpiCard className="alerts-page-kpi alerts-page-kpi--unread" label="Unread Alerts" value={summary.unread} icon={Bell} tone="violet" meta="Active and not read" onClick={() => { setStatus("active"); setUnreadOnly(true); setCategory(""); setPage(1); }} />
+        <KpiCard className="alerts-page-kpi alerts-page-kpi--critical" label="Critical Alerts" value={summary.critical} icon={ShieldAlert} tone="danger" meta="Severity is critical" onClick={() => { setUnreadOnly(false); setStatus(""); const next = { ...draftFilters, severity: "critical" }; setDraftFilters(next); setAppliedFilters(next); setPage(1); }} />
+        <KpiCard className="alerts-page-kpi alerts-page-kpi--delay" label="Order Delay Alerts" value={summary.orderDelay} icon={AlertTriangle} tone="warning" meta="Stored order delay alerts" onClick={() => { setUnreadOnly(false); setStatus(""); setCategory("order_delay"); setPage(1); }} />
+        <KpiCard className="alerts-page-kpi alerts-page-kpi--resolved" label="Resolved Alerts" value={summary.resolved} icon={CheckCircle2} tone="success" meta="Status is resolved" onClick={() => { setUnreadOnly(false); setCategory(""); setStatus("resolved"); setPage(1); }} />
+      </div>
+      ) : (
+      <div className="alerts-page-kpis grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard
           label="Total Alerts"
           value={summary.total}
           icon={Bell}
+          className="alerts-page-kpi alerts-page-kpi--total"
           tone="primary"
           onClick={() => {
             setStatus("");
@@ -520,8 +585,9 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         <KpiCard
           label="Active"
           value={summary.active}
+          className="alerts-page-kpi alerts-page-kpi--active"
           icon={AlertTriangle}
-          tone="danger"
+          tone="info"
           onClick={() => {
             setStatus("active");
             setPage(1);
@@ -531,8 +597,9 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         <KpiCard
           label="Critical"
           value={summary.critical}
+          className="alerts-page-kpi alerts-page-kpi--critical"
           icon={ShieldAlert}
-          tone="warning"
+          tone="danger"
           onClick={() => {
             setStatus("");
             const next = { ...draftFilters, severity: "critical" };
@@ -545,6 +612,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         <KpiCard
           label="Resolved"
           value={summary.resolved}
+          className="alerts-page-kpi alerts-page-kpi--resolved"
           icon={CheckCircle2}
           tone="success"
           onClick={() => {
@@ -554,9 +622,21 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
           meta="Closed alerts"
         />
       </div>
+      )}
+
+      {salesManager ? (
+        <div className="alerts-page-categories flex flex-wrap gap-2" role="group" aria-label="Alert categories">
+          <button type="button" className={`alerts-page-category rounded-full border px-3 py-1 text-xs font-semibold focus-visible:outline focus-visible:outline-2 ${category === "" ? "is-active border-[var(--color-primary)] bg-[var(--color-primary-soft)]" : "border-[var(--color-border-soft)]"}`} onClick={() => { setCategory(""); setPage(1); }}>All categories</button>
+          {SALES_ALERT_CATEGORIES.map((item) => (
+            <button key={item.id} type="button" className={`alerts-page-category rounded-full border px-3 py-1 text-xs font-semibold focus-visible:outline focus-visible:outline-2 ${category === item.id ? "is-active border-[var(--color-primary)] bg-[var(--color-primary-soft)]" : "border-[var(--color-border-soft)]"}`} onClick={() => { setCategory(item.id); setPage(1); }}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Search, status tabs & filters */}
-      <ListPageCard className="print:hidden">
+      <ListPageCard className="alerts-page-toolbar print:hidden">
         <ListPageCardBody>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <SearchBar
@@ -689,7 +769,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         </ListPageCardBody>
       </ListPageCard>
 
-      <ListPageCard className="overflow-hidden print:hidden">
+      <ListPageCard className="alerts-page-table overflow-hidden print:hidden">
         <ListPageCardBody className="p-0">
         {pageRows.length === 0 ? (
           <EmptyState
@@ -700,13 +780,17 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
           />
         ) : (
           <div className="ui-table-wrap ui-table-wrap--scroll w-full max-w-full">
-            <table className={`ui-table alerts-grid-table ${showActionsColumn ? "alerts-grid-table--actions" : ""} w-full border-collapse text-left text-[13px]`}>
+            <table className={`ui-table alerts-grid-table ${showActionsColumn ? "alerts-grid-table--actions" : ""} ${salesManager ? "alerts-grid-table--sales" : ""} w-full border-collapse text-left text-[13px]`}>
               <thead className="ui-table-head">
                 <tr className="border-b border-[var(--color-border-soft)]">
                   <SerialNumberHeader className="px-3 py-3" />
                   <th className="px-4 py-3">Alert</th>
-                  <th className="px-4 py-3">Module</th>
-                  <th className="px-4 py-3">Severity</th>
+                  {salesManager ? <th className="px-4 py-3">Sales order</th> : null}
+                  {salesManager ? <th className="px-4 py-3">Customer</th> : null}
+                  <th className="px-4 py-3">{salesManager ? "Category" : "Module"}</th>
+                  <th className="px-4 py-3">
+                    <button type="button" className="font-semibold" onClick={() => { setSortKey("severity"); setSortDir((dir) => (sortKey === "severity" && dir === "asc" ? "desc" : "asc")); }}>{salesManager ? "Priority" : "Severity"}</button>
+                  </th>
                   <th className="px-4 py-3">Status</th>
                   <th className="whitespace-nowrap px-4 py-3">Created</th>
                   {showActionsColumn ? <th className="w-[4.5rem] px-3 py-3 text-right">Actions</th> : null}
@@ -744,11 +828,18 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                           onClick: () => runAction(row.id, "ack", "Acknowledge"),
                         }
                       : null,
+                    salesManager && canWrite && !row.is_read
+                      ? {
+                          label: "Mark as read",
+                          icon: <Eye className="h-3.5 w-3.5" />,
+                          onClick: () => runAction(row.id, "read", "Mark as read"),
+                        }
+                      : null,
                     canWrite && row.status !== "resolved"
                       ? {
                           label: "Resolve",
                           icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-                          onClick: () => runAction(row.id, "resolve", "Resolve"),
+                          onClick: () => (salesManager ? setResolveTarget(row) : runAction(row.id, "resolve", "Resolve")),
                         }
                       : null,
                     admin
@@ -768,8 +859,8 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                   return (
                     <tr
                       key={row.id}
-                      className={`transition-colors hover:bg-[var(--color-surface-muted)]/60 ${
-                        isUnread ? "bg-[var(--color-primary-soft)]/20" : ""
+                      className={`alerts-page-row alerts-page-row--${String(row.severity || "unknown").toLowerCase()} transition-colors hover:bg-[var(--color-surface-muted)]/60 ${
+                        isUnread ? "is-unread bg-[var(--color-primary-soft)]/20" : ""
                       }`}
                     >
                       <SerialNumberCell rowIndex={rowIndex} page={page} pageSize={PAGE_SIZE} className="px-3 py-3.5" />
@@ -789,10 +880,22 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                           </p>
                         </button>
                       </td>
+                      {salesManager ? (
+                        <td className="whitespace-nowrap px-4 py-3.5 text-xs">
+                          {row.reference_type === "sales_order" && row.reference_id ? (
+                            <button type="button" className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline" onClick={() => navigate(`/sales/orders/${row.reference_id}`)}>
+                              {salesAlertOrderNumber(row) || "View order"}
+                            </button>
+                          ) : (
+                            salesAlertOrderNumber(row) || "—"
+                          )}
+                        </td>
+                      ) : null}
+                      {salesManager ? <td className="px-4 py-3.5 text-xs">{salesAlertCustomer(row) || "—"}</td> : null}
                       <td className="whitespace-nowrap px-4 py-3.5">
                         <span className="inline-flex items-center gap-1 rounded-md bg-[var(--color-surface-muted)] px-2 py-0.5 text-xs font-semibold text-[var(--color-text-secondary)]">
                           <Tag className="h-3 w-3 shrink-0 opacity-60" />
-                          {row.module}
+                          {salesManager ? (salesAlertCategory(row)?.label || row.module) : row.module}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
@@ -800,6 +903,9 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                       </td>
                       <td className="px-4 py-3.5">
                         <Badge value={row.status} styles={STATUS_STYLES} />
+                        {salesManager ? (
+                          <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{row.is_read ? "Read" : "Unread"}</p>
+                        ) : null}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-xs text-[var(--color-text-secondary)]">
                         {row.created_date}
@@ -823,7 +929,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         )}
 
         {sorted.length > 0 ? (
-          <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row">
+          <div className="alerts-page-pager flex flex-col items-center justify-between gap-3 border-t border-[var(--color-border-soft)] px-4 py-3 sm:flex-row">
             <p className="text-xs font-medium text-[var(--color-text-muted)]">
               Showing {(page - 1) * PAGE_SIZE + 1}–
               {Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length} alerts
@@ -859,12 +965,12 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="ui-modal-backdrop print:hidden"
+            className={`ui-modal-backdrop print:hidden${shellClassName ? " alerts-page-modal" : ""}`}
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setViewRow(null);
             }}
           >
-            <div className="ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="alerts-page-modal__card ui-modal max-w-lg w-full max-h-[90vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
                 <div className="min-w-0 pr-4">
                   <h2 className="text-lg font-bold text-[var(--color-text)]">{viewRow.title}</h2>
@@ -912,7 +1018,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
                     </Button>
                   )}
                   {canWrite && viewRow.status !== "resolved" && (
-                    <Button type="button" variant="primary" onClick={() => runAction(viewRow.id, "resolve", "Resolve")}>
+                    <Button type="button" variant="primary" onClick={() => (salesManager ? setResolveTarget(viewRow) : runAction(viewRow.id, "resolve", "Resolve"))}>
                       <CheckCircle2 className="h-4 w-4" /> Resolve
                     </Button>
                   )}
@@ -931,7 +1037,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="ui-modal-backdrop print:hidden"
+            className={`ui-modal-backdrop print:hidden${shellClassName ? " alerts-page-modal" : ""}`}
             onMouseDown={(e) => {
               if (!saving && e.target === e.currentTarget) setShowCreate(false);
             }}
@@ -1078,6 +1184,16 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
           </div>,
           document.body
         )}
+      <ConfirmDialog
+        open={Boolean(resolveTarget)}
+        title="Resolve alert"
+        message="Resolving closes this alert. It does not change the sales order."
+        confirmLabel="Resolve"
+        className={shellClassName ? "alerts-page-dialog" : ""}
+        onClose={() => setResolveTarget(null)}
+        onConfirm={() => resolveTarget && runAction(resolveTarget.id, "resolve", "Resolve")}
+        loading={busyId != null}
+      />
     </div>
     </ListPageShell>
   );

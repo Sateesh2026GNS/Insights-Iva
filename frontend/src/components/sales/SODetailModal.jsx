@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import Button from "../common/Button";
 
-import { formatInr, statusColor } from "../../data/salesMasterData";
+import { formatInr } from "../../data/salesMasterData";
+import { salesOrderStatusPillClass } from "./SalesOrdersToolkit";
 
 export default function SODetailModal({ order, onClose }) {
   if (!order) return null;
@@ -10,14 +11,14 @@ export default function SODetailModal({ order, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b px-5 py-4">
+      <div className="so-modal flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden bg-white">
+        <div className="so-modal__head flex items-start justify-between">
           <div>
-            <p className="text-xs font-semibold text-[var(--color-primary)]">{order.order_number || order.so_number}</p>
-            <h2 className="text-xl font-bold text-slate-900">{order.customer_name}</h2>
-            <p className="text-sm text-slate-500">{String(order.order_date || order.so_date || "").slice(0, 10)} · {order.sales_person || "—"}</p>
+            <p className="text-[10px] font-semibold">{order.order_number || order.so_number}</p>
+            <h2 className="text-sm font-bold">{order.customer_name}</h2>
+            <p className="text-[10px] opacity-90">{String(order.order_date || order.so_date || "").slice(0, 10)} · {order.sales_person || "—"}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} className="p-1 hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
@@ -26,11 +27,11 @@ export default function SODetailModal({ order, onClose }) {
             <Field label="Delivery Date" value={order.delivery_date || "—"} />
             <Field label="Payment" value={order.payment_terms || "Net 30"} />
             <Field label="Warehouse" value={order.warehouse_name || "—"} />
-            <Field label="Status"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusColor(order.status)}`}>{order.status}</span></Field>
+            <Field label="Status"><span className={`${salesOrderStatusPillClass(order.status)} capitalize`}>{order.status}</span></Field>
           </div>
 
           <table className="mb-4 w-full text-left text-sm">
-            <thead className="ui-table-head">
+            <thead>
               <tr>
                 <th className="py-2 pr-3">Product</th>
                 <th className="pr-3">Qty</th>

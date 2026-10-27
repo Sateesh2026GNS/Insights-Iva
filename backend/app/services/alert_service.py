@@ -93,6 +93,7 @@ def list_alerts(
                 (Alert.title.ilike(q))
                 | (Alert.message.ilike(q))
                 | (Alert.alert_type.ilike(q))
+                | (Alert.metadata_json.ilike(q))
             )
 
         rows = list(db.scalars(stmt.order_by(Alert.triggered_at.desc(), Alert.id.desc())).all())

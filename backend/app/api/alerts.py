@@ -1,7 +1,8 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,14 @@ from app.services.alert_service import (
     sync_low_stock_alerts,
 )
 from app.services.notification_management_service import NotificationManagementService
+from app.services.order_delay_service import (
+    acknowledge_order_delay,
+    add_follow_up,
+    get_order_delay,
+    list_order_delays,
+    notify_assigned_user,
+    resolve_order_delay,
+)
 from app.utils.api_response import success_response
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
@@ -200,6 +209,87 @@ def mark_all_read_endpoint(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to mark all alerts as read",
         ) from exc
+
+
+class OrderDelayFollowUp(BaseModel):
+    note: str = Field(..., min_length=1, max_length=2000)
+
+
+@router.get("/order-delays")
+def list_order_delays_endpoint(
+    user: User = Depends(require_permission(MODULE)),
+    search: str | None = Query(None),
+    customer: str | None = Query(None),
+    severity: str | None = Query(None),
+    stage: str | None = Query(None),
+    duration: str | None = Query(None),
+    delivery_from: date | None = Query(None),
+    delivery_to: date | None = Query(None),
+    timing: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    return list_order_delays(
+        db,
+        user.tenant_id,
+        search=search,
+        customer=customer,
+        severity=severity,
+        stage=stage,
+        duration=duration,
+        delivery_from=delivery_from,
+        delivery_to=delivery_to,
+        timing=timing,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/order-delays/{order_id}")
+def get_order_delay_endpoint(
+    order_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return get_order_delay(db, user.tenant_id, order_id)
+
+
+@router.post("/order-delays/{order_id}/follow-up")
+def order_delay_follow_up_endpoint(
+    order_id: int,
+    payload: OrderDelayFollowUp,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return add_follow_up(db, user.tenant_id, order_id, payload.note, user)
+
+
+@router.post("/order-delays/{order_id}/acknowledge")
+def order_delay_acknowledge_endpoint(
+    order_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return acknowledge_order_delay(db, user.tenant_id, order_id, user)
+
+
+@router.post("/order-delays/{order_id}/resolve")
+def order_delay_resolve_endpoint(
+    order_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return resolve_order_delay(db, user.tenant_id, order_id, user)
+
+
+@router.post("/order-delays/{order_id}/notify")
+def order_delay_notify_endpoint(
+    order_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return notify_assigned_user(db, user.tenant_id, order_id, user)
 
 
 @router.put("/{alert_id}/read", response_model=AlertRead)

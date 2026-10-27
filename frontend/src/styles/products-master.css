@@ -1,0 +1,250 @@
+/* Product Catalog — navy toolkit shared with Downtime & Service, Customers, and Vendors. */
+
+.products-master--toolkit {
+  width: 100%;
+  background: #f4f7fa;
+  color: #1a1a1a;
+}
+
+.products-master--toolkit .mtk-hero__title p {
+  margin: 0;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.products-master--toolkit .products-master__body {
+  max-width: none;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-top: none;
+}
+
+.products-master--toolkit .ui-card,
+.products-master--toolkit .product-kpi-card {
+  border-radius: 4px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  box-shadow: none;
+  background: #fff;
+}
+
+.products-master--toolkit .product-kpi-card {
+  padding: 6px 4px !important;
+  text-align: center;
+}
+
+.products-master--toolkit .product-kpi-card__value {
+  margin-top: 2px;
+  font-size: 12px !important;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.products-master--toolkit .ui-btn {
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 11px;
+  box-shadow: none;
+}
+
+.products-master--toolkit .ui-btn--primary,
+.products-master--toolkit .ui-btn--add {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+}
+
+.products-master--toolkit .ui-btn--primary:hover:not(:disabled):not(.is-loading),
+.products-master--toolkit .ui-btn--add:hover:not(:disabled):not(.is-loading) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.products-master--toolkit .ui-btn--secondary,
+.products-master--toolkit .ui-btn--outline {
+  background: #fff;
+  border-color: #c5d0dc;
+  color: #1e3a5f;
+}
+
+.products-master--toolkit .product-kpi-card:hover,
+.products-master--toolkit .product-kpi-card:focus-visible {
+  background: #eff6ff !important;
+}
+
+.products-master--toolkit .ui-table-head th,
+.products-master--toolkit table.ui-table thead th {
+  background: #e8eef4 !important;
+  color: #1a1a1a !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  padding: 3px 4px !important;
+  border-color: #c5d0dc !important;
+}
+
+.products-master--toolkit table.ui-table td {
+  font-size: 9px;
+  padding: 3px 4px;
+  border-color: #c5d0dc;
+  color: #1a1a1a;
+}
+
+.products-master--toolkit table.ui-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.products-master--toolkit table.ui-table tbody tr:hover td {
+  background: #eff6ff;
+}
+
+.products-master--toolkit .ui-pagination,
+.products-master--toolkit .ui-page-btn,
+.products-master--toolkit .ui-pagination-select {
+  font-size: 10px;
+}
+
+.products-master--toolkit .ui-page-btn,
+.products-master--toolkit .ui-pagination-select {
+  min-height: 22px;
+  border-radius: 2px;
+  border-color: #c5d0dc;
+}
+
+.products-master--toolkit .ui-page-btn--active {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: #fff !important;
+}
+
+.products-item-modal,
+.products-detail-modal {
+  border-radius: 2px !important;
+  border: 1px solid #c5d0dc;
+  box-shadow: none;
+  font-size: 11px;
+  color: #1a1a1a;
+}
+
+.products-item-modal > div:first-child,
+.products-detail-modal > div:first-child {
+  background: #1d4ed8;
+  color: #fff;
+  border-bottom-color: #1d4ed8;
+}
+
+.products-item-modal > div:first-child h2,
+.products-item-modal > div:first-child button,
+.products-detail-modal > div:first-child h2,
+.products-detail-modal > div:first-child p,
+.products-detail-modal > div:first-child button {
+  color: #fff;
+}
+
+.products-item-modal input,
+.products-item-modal select,
+.products-item-modal textarea,
+.products-detail-modal input,
+.products-detail-modal select,
+.products-detail-modal textarea {
+  border-radius: 2px;
+  border-color: #c5d0dc;
+  min-height: 28px;
+  font-size: 11px;
+}
+
+.products-category-modal {
+  border-radius: 2px;
+  border: 1px solid #c5d0dc;
+  box-shadow: none;
+  font-size: 11px;
+  color: #1a1a1a;
+}
+
+.products-category-modal > .products-category-modal__header {
+  background: #1d4ed8;
+  color: #fff;
+  padding: 5px 8px;
+}
+
+.products-category-modal > .products-category-modal__header h3,
+.products-category-modal > .products-category-modal__header button {
+  color: #fff;
+}
+
+.products-category-modal input {
+  border-radius: 2px;
+  border-color: #c5d0dc;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.products-category-modal input:focus {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+  border-color: #1d4ed8;
+}
+
+.products-category-modal .ui-btn--primary {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 11px;
+}
+
+.products-category-modal .ui-btn--cancel,
+.products-category-modal .ui-btn--secondary {
+  background: #fff;
+  border-color: #c5d0dc;
+  color: #1e3a5f;
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 11px;
+}
+
+.products-item-modal .ui-btn--primary,
+.products-detail-modal .ui-btn--primary {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+  border-radius: 2px;
+}
+
+.products-master--toolkit .ui-searchable-select {
+  min-height: 28px;
+  height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #c5d0dc;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: none;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #1a1a1a;
+}
+
+.products-master--toolkit .ui-searchable-select:focus,
+.products-master--toolkit .ui-searchable-select:focus-visible {
+  border-color: #1d4ed8;
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+}
+
+@layer base {
+  .products-master--toolkit input.products-search {
+    border-radius: 2px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    background: #fff !important;
+    border-color: #c5d0dc !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .products-master--toolkit .products-master__body {
+    padding: 6px;
+  }
+}

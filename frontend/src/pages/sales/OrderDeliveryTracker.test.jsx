@@ -100,7 +100,7 @@ describe("OrderDeliveryTracker", () => {
     expect(await screen.findByRole("heading", { name: "Order & Delivery Status Tracker" })).toBeInTheDocument();
     expect(screen.getAllByText("Harbor Metals").length).toBeGreaterThan(0);
     expect(screen.getByText("LR-9")).toBeInTheDocument();
-    expect(screen.getByText(/No live carrier feed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/No live carrier feed/i)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Track Shipment" })).toHaveAttribute("href", "/sales/shipping");
   });
 

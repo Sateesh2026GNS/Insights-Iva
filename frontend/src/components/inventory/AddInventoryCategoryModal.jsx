@@ -22,6 +22,7 @@ export default function AddInventoryCategoryModal({
   busy,
   title,
   isEdit = false,
+  chromeClass = "",
 }) {
   if (!open) return null;
 
@@ -41,11 +42,15 @@ export default function AddInventoryCategoryModal({
       }}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+        className={
+          chromeClass
+            ? `w-full max-w-md overflow-hidden bg-white ${chromeClass}`
+            : "w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+        }
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="mb-5 flex items-center justify-between">
-          <h3 id="add-inventory-category-title" className="text-[17px] font-bold text-[#1a1a1f]">
+        <div className={chromeClass ? "products-category-modal__header flex items-center justify-between" : "mb-5 flex items-center justify-between"}>
+          <h3 id="add-inventory-category-title" className={chromeClass ? "text-[10px] font-bold" : "text-[17px] font-bold text-[#1a1a1f]"}>
             {headerTitle}
           </h3>
           <button
@@ -53,12 +58,13 @@ export default function AddInventoryCategoryModal({
             aria-label="Close"
             disabled={busy}
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full bg-[#f0f0f4] text-[#1a1a1f] disabled:opacity-50"
+            className={chromeClass ? "grid h-6 w-6 place-items-center disabled:opacity-50" : "grid h-8 w-8 place-items-center rounded-full bg-[#f0f0f4] text-[#1a1a1f] disabled:opacity-50"}
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
+        <div className={chromeClass ? "p-3" : ""}>
         <OutlinedField label="Category Name *">
           <input
             autoFocus
@@ -71,13 +77,14 @@ export default function AddInventoryCategoryModal({
           />
         </OutlinedField>
 
-        <div className="mt-6 flex gap-2">
+        <div className={chromeClass ? "mt-3 flex gap-2" : "mt-6 flex gap-2"}>
           <Button type="button" variant="cancel" className="flex-1" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
           <Button type="button" variant="primary" className="flex-1" disabled={busy} loading={busy} onClick={onSubmit}>
             {saveLabel}
           </Button>
+        </div>
         </div>
       </div>
     </div>,

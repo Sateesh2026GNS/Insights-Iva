@@ -1,0 +1,208 @@
+/* Navy chrome for customer, vendor, and product workflows.
+   Pair with .mtk-root.mtk-theme--navy so --mtk-* tokens apply. */
+
+.masters-navy-page {
+  width: 100%;
+  background: #f4f7fa;
+  color: #1a1a1a;
+}
+
+.masters-navy-page .mtk-hero__title p,
+.masters-navy-dialog .mtk-hero__title p {
+  margin: 0;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.masters-navy-page .ui-btn,
+.masters-navy-dialog .ui-btn,
+.masters-navy-page .masters-navy-btn {
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 11px;
+  box-shadow: none;
+}
+
+.masters-navy-page .ui-btn--primary,
+.masters-navy-page .ui-btn--add,
+.masters-navy-dialog .ui-btn--primary,
+.masters-navy-dialog .ui-btn--add,
+.masters-navy-page .masters-navy-btn--primary {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+}
+
+.masters-navy-page .ui-btn--primary:hover:not(:disabled):not(.is-loading),
+.masters-navy-page .ui-btn--add:hover:not(:disabled):not(.is-loading),
+.masters-navy-dialog .ui-btn--primary:hover:not(:disabled):not(.is-loading),
+.masters-navy-dialog .ui-btn--add:hover:not(:disabled):not(.is-loading),
+.masters-navy-page .masters-navy-btn--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.masters-navy-page .ui-btn--secondary,
+.masters-navy-page .ui-btn--outline,
+.masters-navy-dialog .ui-btn--secondary,
+.masters-navy-dialog .ui-btn--outline,
+.masters-navy-page .masters-navy-btn--secondary {
+  background: #fff;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  color: #1e3a5f;
+}
+
+.masters-navy-page .ui-input,
+.masters-navy-page .ui-select,
+.masters-navy-page .ui-textarea,
+.masters-navy-page select,
+.masters-navy-page textarea,
+.masters-navy-dialog input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+.masters-navy-dialog select,
+.masters-navy-dialog textarea,
+.masters-navy-page input:not([type="radio"]):not([type="checkbox"]):not([type="file"]) {
+  border-radius: 2px;
+  border-color: var(--mtk-border, #c5d0dc);
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+.masters-navy-page textarea,
+.masters-navy-dialog textarea {
+  height: auto;
+  min-height: 64px;
+}
+
+.masters-navy-page input:focus,
+.masters-navy-page select:focus,
+.masters-navy-page textarea:focus,
+.masters-navy-dialog input:focus,
+.masters-navy-dialog select:focus,
+.masters-navy-dialog textarea:focus {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+  border-color: #1d4ed8;
+}
+
+.masters-navy-page .masters-navy-field > label,
+.masters-navy-dialog .masters-navy-field > label,
+.masters-navy-dialog .masters-navy-field > span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #1e3a5f;
+  letter-spacing: 0.02em;
+}
+
+.masters-navy-page .masters-navy-field [role="alert"] {
+  color: #991b1b;
+  font-size: 10px;
+}
+
+.masters-navy-section__hint {
+  margin: 0;
+  padding: 4px 8px 0;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.masters-navy-section__body {
+  padding: 8px;
+}
+
+.masters-navy-dialog {
+  border-radius: 2px !important;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  box-shadow: none;
+  color: #1a1a1a;
+  font-size: 11px;
+}
+
+.masters-navy-dialog > .masters-navy-dialog__header {
+  background: var(--mtk-head, #1d4ed8);
+  color: #fff;
+  border-bottom-color: var(--mtk-head, #1d4ed8);
+}
+
+.masters-navy-dialog > .masters-navy-dialog__header h2,
+.masters-navy-dialog > .masters-navy-dialog__header p,
+.masters-navy-dialog > .masters-navy-dialog__header button {
+  color: #fff;
+}
+
+.masters-navy-dialog > .masters-navy-dialog__header h2 {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.masters-navy-dialog > .masters-navy-dialog__header p {
+  font-size: 10px;
+  opacity: 0.95;
+}
+
+.masters-navy-dialog > .masters-navy-dialog__header button:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.masters-navy-dialog .masters-navy-tab {
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.masters-navy-dialog .masters-navy-tab--active,
+.vendor-detail-page .masters-navy-tab--active {
+  background: var(--mtk-head, #1d4ed8) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+.masters-navy-dialog .masters-navy-metrics {
+  background: #f4f7fa;
+  border-color: var(--mtk-border, #c5d0dc);
+}
+
+.masters-navy-dialog .masters-navy-field,
+.vendor-detail-page .masters-navy-field {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+}
+
+.masters-navy-dialog table thead th,
+.vendor-detail-page table thead th,
+.masters-navy-page .mtk-table thead th {
+  background: #e8eef4 !important;
+  color: #1a1a1a !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+.masters-navy-drop {
+  border: 1px dashed var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+}
+
+.masters-navy-drop.is-drag {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.vendor-detail-page .masters-navy-rating {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+@media (max-width: 640px) {
+  .masters-navy-page .mtk-body,
+  .vendor-detail-page .mtk-body {
+    padding: 6px;
+  }
+}
