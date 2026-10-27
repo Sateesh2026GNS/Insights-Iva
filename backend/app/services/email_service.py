@@ -273,6 +273,7 @@ def _send_via_resend(
     subject: str,
     body: str,
     *,
+    cc: str | None = None,
     html: str | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
     from_email: str | None = None,
@@ -302,6 +303,8 @@ def _send_via_resend(
         "html": html or f"<div style='font-family:sans-serif;'>{body.replace(chr(10), '<br/>')}</div>",
         "text": body,
     }
+    if cc:
+        payload["cc"] = [cc]
 
     if attachments:
         payload["attachments"] = [
@@ -335,6 +338,7 @@ def _send_via_smtplib(
     subject: str,
     body: str,
     *,
+    cc: str | None = None,
     html: str | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
 ) -> None:
@@ -344,7 +348,7 @@ def _send_via_smtplib(
     raw_resend = getattr(s, "resend_api_key", "")
     if isinstance(raw_resend, str) and raw_resend.strip():
         try:
-            _send_via_resend(raw_resend.strip(), to, subject, body, html=html, attachments=attachments, from_email=s.smtp_from_email)
+            _send_via_resend(raw_resend.strip(), to, subject, body, cc=cc, html=html, attachments=attachments, from_email=s.smtp_from_email)
             return
         except EmailDeliveryError as resend_err:
             detail_lower = (resend_err.internal_detail or "").lower()
@@ -358,6 +362,8 @@ def _send_via_smtplib(
     msg["Subject"] = subject
     msg["From"] = s.smtp_from_email
     msg["To"] = to
+    if cc:
+        msg["Cc"] = cc
     msg.set_content(body)
     if html:
         msg.add_alternative(html, subtype="html")
@@ -472,6 +478,7 @@ async def send_email_async(
     subject: str,
     body: str,
     *,
+    cc: str | None = None,
     html: str | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
     require_smtp: bool = False,
@@ -493,7 +500,7 @@ async def send_email_async(
     raw_resend = getattr(_settings(), "resend_api_key", "")
     if isinstance(raw_resend, str) and raw_resend.strip():
         await asyncio.to_thread(
-            _send_via_smtplib, to, subject, body, html=html, attachments=attachments
+            _send_via_smtplib, to, subject, body, cc=cc, html=html, attachments=attachments
         )
         return
     if _HAS_FASTAPI_MAIL and not attachments:
@@ -503,7 +510,7 @@ async def send_email_async(
         except Exception as exc:
             logger.warning("fastapi_mail_failed_falling_back_to_smtplib to=%s: %s", to, exc)
     try:
-        await asyncio.to_thread(_send_via_smtplib, to, subject, body, html=html, attachments=attachments)
+        await asyncio.to_thread(_send_via_smtplib, to, subject, body, cc=cc, html=html, attachments=attachments)
     except Exception as exc:
         if require_smtp:
             raise

@@ -63,6 +63,9 @@ export default function SendMetricReportEmailModal({
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())) {
       next.recipient = "Please enter a valid recipient email address.";
     }
+    if (cc.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cc.trim())) {
+      next.cc = "Please enter a valid Cc email address.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -142,12 +145,14 @@ export default function SendMetricReportEmailModal({
                 autoComplete="email"
               />
             </OutlinedField>
-            <OutlinedField label="Cc">
+            <OutlinedField label="Cc" error={errors.cc}>
               <input
-                className={field}
+                className={`${field} ${errors.cc ? "border-[#e67e22]" : ""}`}
                 placeholder="Optional Cc"
                 value={cc}
                 onChange={(e) => setCc(e.target.value)}
+                type="email"
+                autoComplete="email"
               />
             </OutlinedField>
             <OutlinedField label="Subject" className="sm:col-span-2">

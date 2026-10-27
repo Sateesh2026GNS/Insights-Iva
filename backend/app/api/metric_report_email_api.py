@@ -75,6 +75,7 @@ async def email_metric_report(
             str(payload.to_email),
             subject,
             body,
+            cc=str(payload.cc) if payload.cc else None,
             attachments=[(attachment_name, pdf_bytes, "application/pdf")],
             require_smtp=True,
         )

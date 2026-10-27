@@ -22,7 +22,7 @@ class MetricReportColumn(BaseModel):
 
 class MetricReportEmailRequest(BaseModel):
     to_email: EmailStr
-    cc: str | None = None
+    cc: EmailStr | None = None
     subject: str | None = None
     message: str | None = None
     title: str = Field(..., min_length=1, max_length=200)

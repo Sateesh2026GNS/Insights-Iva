@@ -166,7 +166,11 @@ function reportEmailDetailMessage(detail, fallback) {
 /** User-facing errors for dashboard/ledger report email (PDF). */
 export function reportEmailErrorMessage(err, fallback = "Unable to send the report. Please try again.") {
   const status = err?.response?.status;
-  const detail = extractApiErrorDetail(err);
+  const data = err?.response?.data;
+  const validationErrors = Array.isArray(data?.errors) ? data.errors : [];
+  const detail = status === 422 && validationErrors.length
+    ? validationErrors[0]
+    : extractApiErrorDetail(err);
   if (status === 404) {
     return "Report email service is currently unavailable.";
   }
