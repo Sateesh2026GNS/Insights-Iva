@@ -269,15 +269,30 @@ def delete_bom_line(
 # ── Machines ───────────────────────────────────────────────────────────────
 
 
+def _shop_floor_machine_ids(user: User, db: Session) -> set[int] | None:
+    from app.services.operator_scope import is_shop_floor_operator, resolve_operator_machine_ids
+
+    if not is_shop_floor_operator(user):
+        return None
+    return set(resolve_operator_machine_ids(db, user))
+
+
 @router.get("/machines")
 def list_machines(user_tenant: tuple[User, int] = Depends(require_tenant("machines")), db: Session = Depends(get_db)):
-    _, tenant_id = user_tenant
-    return success_response("Machines retrieved", _svc(db, tenant_id).list_machines())
+    user, tenant_id = user_tenant
+    rows = _svc(db, tenant_id).list_machines()
+    allowed = _shop_floor_machine_ids(user, db)
+    if allowed is not None:
+        rows = [row for row in rows if row.get("id") in allowed]
+    return success_response("Machines retrieved", rows)
 
 
 @router.get("/machines/summary")
 def machine_summary(user_tenant: tuple[User, int] = Depends(require_tenant("machines")), db: Session = Depends(get_db)):
     user, tenant_id = user_tenant
+    from app.routers.operator_deps import reject_shop_floor_operator
+
+    reject_shop_floor_operator(user)
     return success_response("Machine summary retrieved", _dump(get_machine_summary(db, tenant_id, user=user)))
 
 
@@ -287,7 +302,10 @@ def get_machine(
     user_tenant: tuple[User, int] = Depends(require_tenant("machines")),
     db: Session = Depends(get_db),
 ):
-    _, tenant_id = user_tenant
+    user, tenant_id = user_tenant
+    allowed = _shop_floor_machine_ids(user, db)
+    if allowed is not None and machine_id not in allowed:
+        raise HTTPException(404, "Machine not found")
     data = _svc(db, tenant_id).get_machine(machine_id)
     if not data:
         raise HTTPException(404, "Machine not found")
@@ -351,6 +369,9 @@ def update_machine_status_endpoint(
     db: Session = Depends(get_db),
 ):
     user, tenant_id = user_tenant
+    allowed = _shop_floor_machine_ids(user, db)
+    if allowed is not None and machine_id not in allowed:
+        raise HTTPException(404, "Machine not found")
     try:
         machine = update_machine_status(db, machine_id, tenant_id, payload.status, user=user)
         if not machine:

@@ -62,18 +62,23 @@ def resolve_dashboard_profile(user: User | None) -> str:
         return "operator"
 
     from app.core.permissions import get_role_names, user_is_admin
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if is_shop_floor_operator(user):
+        return "operator"
+    if user_is_admin(user):
+        return "admin"
 
     active = getattr(user, "active_role", None)
-    if active:
-        roles = [active.lower().strip()]
-    elif user_is_admin(user):
-        return "admin"
+    active_name = active.lower().strip() if isinstance(active, str) and active.strip() else ""
+    all_names = [r.lower().strip() for r in get_role_names(user) if r and str(r).strip()]
+    if active_name and active_name != "operator":
+        roles = [active_name]
     else:
-        roles = [r.lower().strip() for r in get_role_names(user)]
+        roles = [name for name in all_names if name != "operator"] or all_names
 
     # Priority matches business ownership when a user has multiple roles.
     ordered = [
-        ("operator", "operator"),
         ("sales manager", "sales"),
         ("sales", "sales"),
         ("production manager", "production"),
@@ -527,6 +532,47 @@ def build_accountant_kpis(db: Session, tenant_id: int, today: date) -> list[dict
     ]
 
 
+def _operator_work_order_rows(assigned: list[dict]) -> list[dict]:
+    rows = []
+    for wo in assigned[:8]:
+        due = wo.get("planned_end")
+        if hasattr(due, "isoformat"):
+            due = due.isoformat()
+        rows.append(
+            {
+                "id": wo.get("id"),
+                "wo": wo.get("work_order_number") or "—",
+                "product": wo.get("product_name") or "—",
+                "qty": wo.get("planned_quantity") or 0,
+                "completed": wo.get("actual_quantity"),
+                "remaining": wo.get("remaining_quantity"),
+                "status": wo.get("status"),
+                "due": due,
+                "priority": wo.get("priority"),
+            }
+        )
+    return rows
+
+
+def _operator_assigned_machine(db: Session, tenant_id: int, user: User | None) -> list[dict]:
+    machine_id = getattr(user, "assigned_machine_id", None) if user else None
+    if not machine_id:
+        return []
+    machine = db.get(Machine, machine_id)
+    if not machine or machine.tenant_id != tenant_id:
+        return []
+    return [
+        {
+            "id": machine.id,
+            "name": machine.name,
+            "code": machine.code,
+            "status": machine.status,
+            "department": machine.department,
+            "production_line": machine.production_line,
+        }
+    ]
+
+
 def build_operator_kpis(db: Session, tenant_id: int, user: User, ctx: dict[str, Any]) -> list[dict]:
     from app.services.operator_service import COMPLETED_STATUSES, RUNNING_STATUSES, OperatorService
 
@@ -560,34 +606,23 @@ def build_operator_kpis(db: Session, tenant_id: int, user: User, ctx: dict[str, 
     material_total = len(assigned)
     material_label = f"{material_ready}/{material_total}" if material_total else "0"
 
-    qc_pending = int(
-        db.scalar(
-            select(func.count(WorkOrder.id)).where(
-                WorkOrder.tenant_id == tenant_id,
-                WorkOrder.status.in_(("completed", "qc_pending", "pending_qc")),
-            )
-        )
-        or 0
+    qc_pending = sum(
+        1 for w in assigned if _status(w) in ("qc_pending", "pending_qc", "completed") or w.get("qc_status") == "pending"
     )
-    # Prefer operator-scoped completed WOs awaiting QC if field exists
-    qc_pending_mine = sum(
-        1 for w in assigned if _status(w) in ("qc_pending", "pending_qc") or w.get("qc_status") == "pending"
-    )
-    if qc_pending_mine:
-        qc_pending = qc_pending_mine
 
     return [
-        _kpi("my-work-orders", "My Work Orders", len(assigned), trend_label="assigned to me", link="/production/work-orders"),
-        _kpi("todays-target", "Today's Target", int(target), trend_label="planned qty", link="/production/work-orders"),
-        _kpi("completed-today", "Completed Today", completed_today, trend_label="finished today", link="/production/work-orders"),
-        _kpi("operator-in-progress", "In Progress", in_progress, trend_label="running now", link="/production/work-orders"),
-        _kpi("pending-tasks", "Pending Tasks", pending, trend_label="not started", link="/production/work-orders"),
-        _kpi("assigned-machine", "Assigned Machine", machine_name, trend_label="my machine", link="/production/machines"),
-        _kpi("machine-status", "Machine Status", machine_status, trend_label="live status", link="/factory-monitor/machine-status"),
+        _kpi("my-work-orders", "My Work Orders", len(assigned), trend="", trend_label="assigned to me", link="/production/work-orders"),
+        _kpi("todays-target", "Today's Target", int(target), trend="", trend_label="planned qty", link="/production/work-orders"),
+        _kpi("completed-today", "Completed Today", completed_today, trend="", trend_label="finished today", link="/production/work-orders"),
+        _kpi("operator-in-progress", "In Progress", in_progress, trend="", trend_label="running now", link="/production/work-orders"),
+        _kpi("pending-tasks", "Pending Tasks", pending, trend="", trend_label="not started", link="/production/work-orders"),
+        _kpi("assigned-machine", "Assigned Machine", machine_name, trend="", trend_label="my machine", link="/production/machines"),
+        _kpi("machine-status", "Machine Status", machine_status, trend="", trend_label="live status", link="/factory-monitor/machine-status"),
         _kpi(
             "material-availability",
             "Material Availability",
             material_label,
+            trend="",
             trend_label="issued / assigned",
             link="/inventory",
         ),
@@ -595,6 +630,7 @@ def build_operator_kpis(db: Session, tenant_id: int, user: User, ctx: dict[str, 
             "quality-checks-pending",
             "Quality Checks Pending",
             qc_pending,
+            trend="",
             trend_label="awaiting QC",
             link="/quality/in-process",
         ),
@@ -761,14 +797,41 @@ def apply_role_dashboard(
         payload["shop_floor"] = {}
         payload["inventory_blocks"] = []
     elif profile == "operator":
+        assigned = []
         if not user:
             payload["kpi_cards"] = []
         else:
             payload["kpi_cards"] = build_operator_kpis(db, tenant_id, user, ctx)
+            from app.services.operator_service import OperatorService
+
+            assigned = OperatorService(db, tenant_id).list_assigned_work_orders(user) or []
+        payload["recent_work_orders"] = _operator_work_order_rows(assigned)
+        payload["top_machines"] = _operator_assigned_machine(db, tenant_id, user)
         payload["shop_floor_status"] = []
-        payload["top_machines"] = []
         payload["inventory_blocks"] = []
         payload["orders_overview"] = {"total": 0, "inProgress": 0, "completed": 0, "onHold": 0, "progress": 0}
+        payload["production_overview"] = []
+        payload["production_overview_weekly"] = []
+        payload["production_overview_monthly"] = []
+        payload["production_overview_yearly"] = []
+        payload["recent_production_orders"] = []
+        payload["quick_actions_summary"] = {}
+        payload["production_pipeline"] = []
+        payload["admin_production_widgets"] = {}
+        payload["alerts_feed"] = []
+        payload["warehouse_locations"] = []
+        plant_summary = {
+            "manPower",
+            "workingHours",
+            "powerConsumption",
+            "productionEfficiency",
+            "targetAchievement",
+            "stockMovements",
+        }
+        payload["todays_summary"] = [
+            item for item in (payload.get("todays_summary") or []) if item.get("key") not in plant_summary
+        ]
+        payload["scope"] = "operator"
     else:
         payload["kpi_cards"] = build_admin_kpis(db, tenant_id, user, ctx)
 

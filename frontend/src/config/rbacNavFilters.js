@@ -1,3 +1,5 @@
+import allowlist from "./operatorPageAllowlist.json";
+
 /** Production Manager sidebar sections (used when filtering generic nav; dedicated nav uses productionManagerNavConfig). */
 export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
@@ -79,16 +81,7 @@ export const OPERATOR_BLOCKED_CHILDREN = new Set([
   "/production/reports",
 ]);
 
-export const OPERATOR_ALLOWED_PATHS = new Set([
-  "/",
-  "/dashboard",
-  "/my-job-cards",
-  "/production/my-machine",
-  "/alerts",
-  "/documents",
-  "/chat",
-  "/settings",
-]);
+export const OPERATOR_ALLOWED_PATHS = new Set(allowlist.exact || []);
 
 /** HR Manager sidebar — HR module plus shared collaboration sections. */
 export const HR_MANAGER_ALLOWED_SECTIONS = new Set([
@@ -271,19 +264,13 @@ export function qualityControlPathAllowed(pathname) {
   return false;
 }
 
-const OPERATOR_STAGE_PATH = /^\/manufacturing\/workflow\/order\/[^/]+\/operator$/;
+const OPERATOR_STAGE_PATTERNS = (allowlist.patterns || []).map((pattern) => new RegExp(pattern));
 
-/** Strict Operator page allowlist. Anything else is denied. */
+/** Strict Operator page allowlist. The path list is operatorPageAllowlist.json. */
 export function operatorPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
-  if (path === "/" || path === "/dashboard") return true;
-  if (path === "/my-job-cards" || path.startsWith("/my-job-cards/")) return true;
-  if (OPERATOR_STAGE_PATH.test(path)) return true;
-  if (path === "/production/my-machine") return true;
-  if (path === "/alerts") return true;
-  if (path === "/documents") return true;
-  if (path === "/chat" || path.startsWith("/chat/")) return true;
-  if (path === "/settings") return true;
-  return false;
+  if ((allowlist.exact || []).includes(path)) return true;
+  if ((allowlist.prefixes || []).some((prefix) => path.startsWith(prefix))) return true;
+  return OPERATOR_STAGE_PATTERNS.some((pattern) => pattern.test(path));
 }

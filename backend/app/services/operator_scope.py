@@ -13,21 +13,39 @@ from app.services.data_scope import operator_can_access_work_order, scope_work_o
 from app.services.reports.scope import resolve_accessible_warehouse_ids
 
 
+def normalized_role_names(user: User) -> set[str]:
+    return {r.strip().lower() for r in get_role_names(user) if r and str(r).strip()}
+
+
 def user_is_operator_role(user: User) -> bool:
+    """Exact role name Operator. A name that merely contains the word does not match."""
     if user_is_admin(user):
         return False
-    roles = {r.strip().lower() for r in get_role_names(user) if r}
-    return "operator" in roles
+    return "operator" in normalized_role_names(user)
 
 
 def is_shop_floor_operator(user: User) -> bool:
-    """Operator who is not also a manager or admin. Catalog and plant APIs stay open for those roles."""
-    if not user_is_operator_role(user):
+    """Lock down only when Operator is the user's shop-floor role.
+
+    A second role whose name is in the permission matrix (Production Manager, Store
+    Manager, and the rest) keeps that role's access. Extra permissions outside the
+    Operator set do the same. Matching is the full role name, not a substring.
+    """
+    if not user or user_is_admin(user):
         return False
-    roles = {r.strip().lower() for r in get_role_names(user) if r}
-    if any("manager" in r or "admin" in r for r in roles):
+    from app.core.permissions import get_user_permissions
+    from app.core.rbac_constants import PERMISSION_MATRIX
+
+    names = normalized_role_names(user)
+    if "operator" not in names:
         return False
-    return True
+    privileged = {name.strip().lower() for name in PERMISSION_MATRIX if name.strip().lower() != "operator"}
+    if names & privileged:
+        return False
+    operator_spec = PERMISSION_MATRIX.get("Operator") or {}
+    allowed = set(operator_spec.get("modules") or []) | set(operator_spec.get("actions") or [])
+    extra = {perm for perm in get_user_permissions(user) if perm not in allowed and perm not in {"*", "admin"}}
+    return not extra
 
 
 def resolve_operator_machine_ids(db: Session, user: User) -> list[int]:

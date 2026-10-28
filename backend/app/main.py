@@ -39,6 +39,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import get_settings
 from app.middleware.csrf_middleware import CsrfMiddleware
+from app.middleware.operator_allowlist import OperatorAllowlistMiddleware
 from app.core.logging_config import get_logger, setup_logging
 
 from app.api.accounts import router as accounts_router
@@ -181,6 +182,7 @@ if _cors_regex:
     _cors_kwargs["allow_origin_regex"] = _cors_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 app.add_middleware(CsrfMiddleware)
+app.add_middleware(OperatorAllowlistMiddleware)
 
 
 @app.middleware("http")

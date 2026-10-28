@@ -9,7 +9,8 @@ import {
   getEffectivePermissions,
   userCanAccess,
 } from "./permissions";
-import { operatorPathAllowed } from "./rbacNavFilters";
+import allowlist from "./operatorPageAllowlist.json";
+import { operatorPathAllowed, OPERATOR_ALLOWED_PATHS } from "./rbacNavFilters";
 
 describe("canAccess", () => {
   it("grants admins access to any module", () => {
@@ -213,6 +214,13 @@ describe("Operator production nav", () => {
     expect(operatorPathAllowed("/alerts/low-stock")).toBe(false);
     expect(operatorPathAllowed("/manufacturing/workflow/order/12/operator")).toBe(true);
     expect(operatorPathAllowed("/manufacturing/workflow")).toBe(false);
+  });
+
+  it("uses the shared page allowlist file", () => {
+    expect([...OPERATOR_ALLOWED_PATHS].sort()).toEqual([...allowlist.exact].sort());
+    for (const path of allowlist.exact) {
+      expect(operatorPathAllowed(path)).toBe(true);
+    }
   });
 
   it("userCanAccessPath denies manager production URLs", () => {

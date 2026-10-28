@@ -1020,16 +1020,20 @@ def get_erp_dashboard(
 
     if user:
         from app.core.permissions import get_role_names
-        user_roles_list = [r.lower() for r in get_role_names(user)]
-        is_admin = any("admin" in r for r in user_roles_list)
-        is_operator = not is_admin and any("operator" in r for r in user_roles_list)
-        is_prod_manager = not is_admin and not is_operator and any(
-            "production manager" in r or "production_manager" in r for r in user_roles_list
-        )
-        if is_operator:
-            todays_summary = [
-                item for item in todays_summary if item["key"] not in ("manPower", "powerConsumption", "stockMovements") and item.get("label") not in ("Man Power", "Manpower", "Power Consumption", "Stock Movements")
-            ]
+        from app.services.operator_scope import is_shop_floor_operator
+
+        role_names = {r.strip().lower() for r in get_role_names(user) if r}
+        is_prod_manager = "production manager" in role_names
+        if is_shop_floor_operator(user):
+            plant_summary = {
+                "manPower",
+                "workingHours",
+                "powerConsumption",
+                "productionEfficiency",
+                "targetAchievement",
+                "stockMovements",
+            }
+            todays_summary = [item for item in todays_summary if item.get("key") not in plant_summary]
         elif is_prod_manager:
             todays_summary = [
                 item for item in todays_summary if item["key"] not in ("powerConsumption", "stockMovements")

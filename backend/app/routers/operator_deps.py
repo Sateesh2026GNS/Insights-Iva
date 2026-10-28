@@ -5,10 +5,8 @@ from fastapi import Depends, HTTPException, Request, status
 from app.api.auth_deps import get_current_user
 from app.core.permissions import (
     MODULE_FORBIDDEN_MESSAGE,
-    get_role_names,
     user_has_any_permission,
     user_has_permission,
-    user_is_admin,
 )
 from app.models.user import User
 
@@ -86,13 +84,13 @@ def deny_operator_production_planning(current_user: User = Depends(get_current_u
 
 
 def guard_operator_manufacturing(request: Request, user: User = Depends(get_current_user)) -> None:
-    """Operators may open only their stage card and the job-card actions that enforce ownership."""
+    """Operators may open only manufacturing paths on the shared API allowlist."""
+    from app.core.operator_allowlist import operator_api_allowed
     from app.services.operator_scope import is_shop_floor_operator
 
     if not is_shop_floor_operator(user):
         return
-    path = request.url.path
-    if "/production/job-cards/" in path or path.rstrip("/").endswith("/stage/operator"):
+    if operator_api_allowed(request.method, request.url.path):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -101,7 +99,9 @@ def guard_operator_manufacturing(request: Request, user: User = Depends(get_curr
 
 
 def deny_delete_for_operator(current_user: User = Depends(get_current_user)) -> User:
-    if not user_is_admin(current_user) and "Operator" in get_role_names(current_user):
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if is_shop_floor_operator(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Operators are not allowed to perform delete operations.",
