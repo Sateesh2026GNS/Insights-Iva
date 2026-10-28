@@ -646,7 +646,9 @@ export function userCanAccessAnalyticsPath(user, pathname) {
 
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
+  if (isAdmin(user)) return true;
   const pathEarly = (pathname || "").replace(/\/$/, "") || "/";
+  if (isOperator(user) && !operatorPathAllowed(pathEarly)) return false;
   // Store Manager: inventory register & raw material tracker only (same Production Planning shell).
   if (pathEarly.startsWith("/production/planning") && storeManagerMayAccessProductionPlanning(user)) {
     return true;
@@ -654,8 +656,7 @@ export function userCanAccessPath(user, pathname) {
   if (isMySubscriptionSettingsPath(pathname)) {
     return userCanAccessMySubscription(user);
   }
-  if (isAdmin(user)) return true;
-  const path = (pathname || "").replace(/\/$/, "") || "/";
+  const path = pathEarly;
   if (path === "/admin/approvals") {
     if (isQualityTeam(user)) return false;
     return userCanAccessApprovalQueue(user);

@@ -99,22 +99,27 @@ def list_alerts(
         rows = list(db.scalars(stmt.order_by(Alert.triggered_at.desc(), Alert.id.desc())).all())
 
         if user and not user_is_admin(user):
-            role_names = {r.lower() for r in get_role_names(user)}
-            creator_names = {
-                str(name).strip().lower()
-                for name in (user.full_name, getattr(user, "name", None), user.email)
-                if name
-            }
-            filtered = []
-            for a in rows:
-                if not a.target_role:
-                    filtered.append(a)
-                    continue
-                targets = {t.strip().lower() for t in a.target_role.split(",") if t.strip()}
-                creator = str(a.created_by or "").strip().lower()
-                if targets & role_names or creator in creator_names:
-                    filtered.append(a)
-            rows = filtered
+            from app.services.operator_scope import is_shop_floor_operator, operator_can_see_alert
+
+            if is_shop_floor_operator(user):
+                rows = [a for a in rows if operator_can_see_alert(db, user, a)]
+            else:
+                role_names = {r.lower() for r in get_role_names(user)}
+                creator_names = {
+                    str(name).strip().lower()
+                    for name in (user.full_name, getattr(user, "name", None), user.email)
+                    if name
+                }
+                filtered = []
+                for a in rows:
+                    if not a.target_role:
+                        filtered.append(a)
+                        continue
+                    targets = {t.strip().lower() for t in a.target_role.split(",") if t.strip()}
+                    creator = str(a.created_by or "").strip().lower()
+                    if targets & role_names or creator in creator_names:
+                        filtered.append(a)
+                rows = filtered
 
         unread = sum(1 for a in rows if not a.is_read and a.status == "active")
         total = len(rows)

@@ -433,9 +433,15 @@ def api_get_bom(
 
 @router.get("/machines")
 def api_list_machines(user_tenant: tuple[User, int] = Depends(require_tenant("machines")), db: Session = Depends(get_db)):
-    _, tenant_id = user_tenant
+    user, tenant_id = user_tenant
     try:
-        return success_response("Machines retrieved", _svc(db, tenant_id).list_machines())
+        rows = _svc(db, tenant_id).list_machines()
+        from app.services.operator_scope import is_shop_floor_operator, resolve_operator_machine_ids
+
+        if is_shop_floor_operator(user):
+            allowed = set(resolve_operator_machine_ids(db, user))
+            rows = [row for row in rows if row.get("id") in allowed]
+        return success_response("Machines retrieved", rows)
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -532,8 +538,12 @@ def api_get_machine(
     user_tenant: tuple[User, int] = Depends(require_tenant("machines")),
     db: Session = Depends(get_db),
 ):
-    _, tenant_id = user_tenant
+    user, tenant_id = user_tenant
     try:
+        from app.services.operator_scope import is_shop_floor_operator, resolve_operator_machine_ids
+
+        if is_shop_floor_operator(user) and machine_id not in set(resolve_operator_machine_ids(db, user)):
+            raise HTTPException(status_code=404, detail="Machine not found")
         return success_response("Machine retrieved", _svc(db, tenant_id).get_machine(machine_id))
     except HTTPException:
         raise
@@ -552,7 +562,10 @@ def api_get_machine(
 
 @router.get("/production/plans")
 def api_production_plans(user_tenant: tuple[User, int] = Depends(require_tenant("production")), db: Session = Depends(get_db)):
-    _, tenant_id = user_tenant
+    user, tenant_id = user_tenant
+    from app.routers.operator_deps import reject_shop_floor_operator
+
+    reject_shop_floor_operator(user)
     return success_response("Production plans retrieved", _svc(db, tenant_id).list_production_plans())
 
 

@@ -82,49 +82,12 @@ export const OPERATOR_BLOCKED_CHILDREN = new Set([
 export const OPERATOR_ALLOWED_PATHS = new Set([
   "/",
   "/dashboard",
-  "/manufacturing/workflow",
   "/my-job-cards",
-  "/production",
-  "/production/dashboard",
-  // The Work Orders page switches operators to their server-scoped assignments.
-  "/production/work-orders",
   "/production/my-machine",
-  "/factory-monitor/machine-status",
-  "/factory-monitor/production-lines",
-  "/factory-monitor/live-production",
-  "/documents",
-  "/documents/production",
   "/alerts",
-  "/alerts/low-stock",
-  "/alerts/machine-failure",
-  "/alerts/production-delay",
-  "/alerts/maintenance",
-  "/alerts/quality",
-  "/alerts/safety",
-  "/alerts/general",
-  "/hr/attendance",
-  "/hr/attendance/approval",
-  "/hr/attendance/overtime",
-  "/hr/attendance/adjusted-leave",
-  "/hr/attendance/settings",
-  "/attendance",
-  "/hr/leave",
-  "/hr/leave/approvals",
-  "/admin/approvals",
-  "/hr/leave/holiday",
-  "/hr/leave/adjustment",
-  "/hr/leave/plans",
-  "/hr/leave/plans/create",
-  "/hr/leave/create",
-  "/leave",
+  "/documents",
+  "/chat",
   "/settings",
-  "/settings/my-account",
-  "/settings/my-account/devices",
-  "/settings/notifications",
-  "/settings/appearance",
-  "/settings/help",
-  "/settings/about",
-  "/settings/alerts",
 ]);
 
 /** HR Manager sidebar — HR module plus shared collaboration sections. */
@@ -308,28 +271,19 @@ export function qualityControlPathAllowed(pathname) {
   return false;
 }
 
+const OPERATOR_STAGE_PATH = /^\/manufacturing\/workflow\/order\/[^/]+\/operator$/;
+
+/** Strict Operator page allowlist. Anything else is denied. */
 export function operatorPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
-  if (path === "/") return true;
-  if (
-    path === "/my-job-cards" ||
-    path.startsWith("/my-job-cards/") ||
-    path.startsWith("/job-cards/") ||
-    path === "/sales/job-cards/create"
-  ) {
-    return true;
-  }
-  if (OPERATOR_BLOCKED_CHILDREN.has(path)) return false;
-  if (OPERATOR_ALLOWED_PATHS.has(path)) return true;
-  if (path.startsWith("/production/")) {
-    return OPERATOR_ALLOWED_CHILDREN.has(path);
-  }
-  if (path.startsWith("/manufacturing/")) return true;
-  if (path.startsWith("/factory-monitor/")) return true;
-  if (path.startsWith("/documents")) return true;
-  if (path.startsWith("/alerts")) return true;
-  if (path === "/settings" || path.startsWith("/settings/")) return true;
-  if (path.startsWith("/chat")) return true;
+  if (path === "/" || path === "/dashboard") return true;
+  if (path === "/my-job-cards" || path.startsWith("/my-job-cards/")) return true;
+  if (OPERATOR_STAGE_PATH.test(path)) return true;
+  if (path === "/production/my-machine") return true;
+  if (path === "/alerts") return true;
+  if (path === "/documents") return true;
+  if (path === "/chat" || path.startsWith("/chat/")) return true;
+  if (path === "/settings") return true;
   return false;
 }

@@ -20,6 +20,16 @@ def user_is_operator_role(user: User) -> bool:
     return "operator" in roles
 
 
+def is_shop_floor_operator(user: User) -> bool:
+    """Operator who is not also a manager or admin. Catalog and plant APIs stay open for those roles."""
+    if not user_is_operator_role(user):
+        return False
+    roles = {r.strip().lower() for r in get_role_names(user) if r}
+    if any("manager" in r or "admin" in r for r in roles):
+        return False
+    return True
+
+
 def resolve_operator_machine_ids(db: Session, user: User) -> list[int]:
     """Machines assigned directly or through an active work order for this operator."""
     ids: set[int] = set()
@@ -86,6 +96,85 @@ def recent_machine_status_events(
     )
 
 
+def operator_assigned_work_order_ids(db: Session, user: User):
+    stmt = select(WorkOrder.id).where(WorkOrder.tenant_id == user.tenant_id)
+    return scope_work_orders_for_operator(stmt, user, db)
+
+
+def operator_owns_sales_order(db: Session, user: User, sales_order_id: int) -> bool:
+    from app.models.production import ProductionOrder
+
+    stmt = (
+        select(WorkOrder.id)
+        .join(ProductionOrder, WorkOrder.production_order_id == ProductionOrder.id)
+        .where(
+            WorkOrder.tenant_id == user.tenant_id,
+            ProductionOrder.sales_order_id == sales_order_id,
+        )
+    )
+    stmt = scope_work_orders_for_operator(stmt, user, db)
+    return db.scalar(stmt) is not None
+
+
+def apply_operator_document_scope(stmt, db: Session, user: User):
+    """Keep documents that reference this operator's work orders, products, or sales orders."""
+    from sqlalchemy import and_, func, or_
+
+    from app.models.document import Document
+    from app.models.production import ProductionOrder
+
+    if not is_shop_floor_operator(user):
+        return stmt
+    wo_ids = operator_assigned_work_order_ids(db, user)
+    product_ids = (
+        select(ProductionOrder.product_id)
+        .join(WorkOrder, WorkOrder.production_order_id == ProductionOrder.id)
+        .where(WorkOrder.id.in_(wo_ids), ProductionOrder.product_id.is_not(None))
+    )
+    sales_ids = (
+        select(ProductionOrder.sales_order_id)
+        .join(WorkOrder, WorkOrder.production_order_id == ProductionOrder.id)
+        .where(WorkOrder.id.in_(wo_ids), ProductionOrder.sales_order_id.is_not(None))
+    )
+    ref = func.lower(Document.reference_type)
+    return stmt.where(
+        or_(
+            and_(ref.in_(("work_order", "workorder")), Document.reference_id.in_(wo_ids)),
+            and_(ref == "product", Document.reference_id.in_(product_ids)),
+            and_(ref.in_(("sales_order", "salesorder")), Document.reference_id.in_(sales_ids)),
+        )
+    )
+
+
+def operator_can_see_alert(db: Session, user: User, alert) -> bool:
+    """Operator sees an alert only when it is aimed at them, created by them, or tied to their work."""
+    creator_names = {
+        str(name).strip().lower()
+        for name in (user.full_name, getattr(user, "name", None), user.email)
+        if name
+    }
+    creator = str(getattr(alert, "created_by", None) or "").strip().lower()
+    if creator and creator in creator_names:
+        return True
+    targets = {
+        part.strip().lower()
+        for part in str(getattr(alert, "target_role", None) or "").split(",")
+        if part.strip()
+    }
+    if "operator" in targets:
+        return True
+    ref = str(getattr(alert, "reference_type", None) or "").strip().lower()
+    ref_id = getattr(alert, "reference_id", None)
+    if ref_id is None:
+        return False
+    if ref in {"machine", "machines"}:
+        return int(ref_id) in set(resolve_operator_machine_ids(db, user))
+    if ref in {"work_order", "workorder"}:
+        owned = db.scalars(operator_assigned_work_order_ids(db, user)).all()
+        return int(ref_id) in {int(i) for i in owned}
+    return False
+
+
 def current_work_order_for_machine(db: Session, tenant_id: int, machine_id: int) -> WorkOrder | None:
     return db.scalars(
         select(WorkOrder)
@@ -108,4 +197,6 @@ def assert_operator_work_order_access(
             return
     from fastapi import HTTPException
 
-    raise HTTPException(status_code=403, detail="Work order not in your assignment scope")
+    # Another operator's record is hidden (404). A forbidden capability stays 403 elsewhere.
+    status_code = 404 if is_shop_floor_operator(user) else 403
+    raise HTTPException(status_code=status_code, detail="Work order not found")

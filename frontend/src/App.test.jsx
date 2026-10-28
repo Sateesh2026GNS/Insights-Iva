@@ -11,11 +11,12 @@ describe("shouldShowChatbot", () => {
     expect(shouldShowChatbot({ role: "Operator" }, "/")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/my-job-cards")).toBe(true);
     expect(shouldShowChatbot({ role: "Operator" }, "/production/my-machine")).toBe(true);
-    expect(shouldShowChatbot({ role: "Operator" }, "/production/dashboard")).toBe(true);
-    expect(shouldShowChatbot({ role: "Operator" }, "/production/work-orders")).toBe(true);
-    expect(shouldShowChatbot({ role: "Operator" }, "/factory-monitor/machine-status")).toBe(true);
-    expect(shouldShowChatbot({ role: "Operator" }, "/iot/live-operations")).toBe(true);
-    expect(shouldShowChatbot({ role: "Operator" }, "/operations")).toBe(true);
+    expect(shouldShowChatbot({ role: "Operator" }, "/dashboard")).toBe(true);
+    expect(shouldShowChatbot({ role: "Operator" }, "/alerts")).toBe(true);
+    expect(shouldShowChatbot({ role: "Operator" }, "/documents")).toBe(true);
+    expect(shouldShowChatbot({ role: "Operator" }, "/production/dashboard")).toBe(false);
+    expect(shouldShowChatbot({ role: "Operator" }, "/production/work-orders")).toBe(false);
+    expect(shouldShowChatbot({ role: "Operator" }, "/factory-monitor/machine-status")).toBe(false);
   });
 
   it("hides the assistant on blocked modules and for users without module access", () => {

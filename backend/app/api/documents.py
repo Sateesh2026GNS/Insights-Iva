@@ -29,6 +29,10 @@ def create_document_endpoint(
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> DocumentRead:
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if is_shop_floor_operator(user):
+        raise HTTPException(403, "Operators cannot create documents")
     if not user.tenant_id or user.tenant_id < 1:
         raise HTTPException(400, "Tenant context required")
     if payload.tenant_id is not None and payload.tenant_id != user.tenant_id:
@@ -58,12 +62,12 @@ def create_document_endpoint(
 
 @router.get("", response_model=list[DocumentRead])
 def list_documents_endpoint(
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     doc_type: str | None = Query(None),
     db: Session = Depends(get_db),
 ) -> list[DocumentRead]:
     try:
-        return list_documents(db, tenant_id, doc_type)
+        return list_documents(db, user.tenant_id, doc_type, user=user)
     except HTTPException:
         raise
     except Exception as exc:
@@ -78,11 +82,11 @@ def list_documents_endpoint(
 @router.get("/{document_id}", response_model=DocumentRead)
 def get_document_endpoint(
     document_id: int,
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> DocumentRead:
     try:
-        doc = get_document(db, document_id, tenant_id)
+        doc = get_document(db, document_id, user.tenant_id, user=user)
         if not doc:
             raise HTTPException(404, "Document not found")
         return doc
@@ -104,6 +108,10 @@ def update_document_endpoint(
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> DocumentRead:
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if is_shop_floor_operator(user):
+        raise HTTPException(403, "Operators cannot update documents")
     try:
         doc = update_document(db, document_id, user.tenant_id, payload)
         if not doc:
@@ -133,6 +141,10 @@ def delete_document_endpoint(
     user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ):
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if is_shop_floor_operator(user):
+        raise HTTPException(403, "Operators cannot delete documents")
     try:
         if not delete_document(db, document_id, user.tenant_id):
             raise HTTPException(404, "Document not found")

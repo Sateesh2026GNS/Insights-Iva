@@ -368,8 +368,10 @@ APPROVAL_QUEUE_MODULES = ("admin", "hr", "procurement", "production", "inventory
 
 def require_approval_queue_access(current_user: User = Depends(get_current_user)) -> User:
     """Users who can see at least one approval category in the unified queue."""
+    from app.routers.operator_deps import reject_shop_floor_operator
     from app.services.approval_queue_service import user_can_access_approval_queue
 
+    reject_shop_floor_operator(current_user)
     if user_can_access_approval_queue(current_user):
         return current_user
     raise HTTPException(

@@ -2055,6 +2055,10 @@ def _get_operator_work_order(
     role_names = [r.lower() for r in get_role_names(user)]
     is_admin_or_mgr = user_is_admin(user) or any("manager" in r or "admin" in r or "supervisor" in r for r in role_names)
     if wo.assigned_user_id != user.id and not is_admin_or_mgr:
+        from app.services.operator_scope import is_shop_floor_operator
+
+        if is_shop_floor_operator(user):
+            raise HTTPException(status_code=404, detail="Work order not found")
         raise HTTPException(status_code=403, detail="Work order not assigned to you")
     return wo
 

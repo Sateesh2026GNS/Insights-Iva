@@ -193,34 +193,17 @@ PERMISSION_MATRIX = {
 # Settings sidebar links visible to Operator (personal prefs only; admin sections use module guards).
 OPERATOR_SIDEBAR_CHILDREN = frozenset({
     "/",
+    "/dashboard",
     "/my-job-cards",
-    "/production/work-orders",
-    "/production/schedule",
     "/production/my-machine",
-    "/production/my-entry",
     "/alerts",
-    "/alerts/low-stock",
-    "/alerts/machine-failure",
-    "/alerts/production-delay",
-    "/alerts/maintenance",
-    "/alerts/quality",
-    "/alerts/safety",
-    "/alerts/general",
     "/documents",
-    "/documents/production",
+    "/chat",
     "/settings",
-    "/settings/my-account",
-    "/settings/my-account/devices",
-    "/settings/appearance",
-    "/settings/notifications",
 })
 
 OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset({
     "/settings",
-    "/settings/my-account",
-    "/settings/my-account/devices",
-    "/settings/appearance",
-    "/settings/notifications",
 })
 
 STORE_MANAGER_ALLOWED_PATHS = frozenset({

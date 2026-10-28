@@ -54,9 +54,14 @@ def list_documents(
     db: Session,
     tenant_id: int,
     doc_type: str | None = None,
+    user=None,
 ) -> list[Document]:
     try:
         stmt = select(Document).where(Document.tenant_id == tenant_id)
+        if user is not None:
+            from app.services.operator_scope import apply_operator_document_scope
+
+            stmt = apply_operator_document_scope(stmt, db, user)
         if doc_type and doc_type.strip():
             target_dt = doc_type.strip().lower()
             stmt = stmt.where(func.lower(Document.doc_type) == target_dt)
@@ -84,13 +89,26 @@ def list_documents(
         ) from exc
 
 
-def get_document(db: Session, document_id: int, tenant_id: int | None = None) -> Document | None:
+def get_document(db: Session, document_id: int, tenant_id: int | None = None, user=None) -> Document | None:
     try:
         doc = db.get(Document, document_id)
         if not doc:
             return None
         if tenant_id is not None and doc.tenant_id != tenant_id:
             return None
+        if user is not None:
+            from app.services.operator_scope import apply_operator_document_scope, is_shop_floor_operator
+
+            if is_shop_floor_operator(user):
+                visible = db.scalar(
+                    apply_operator_document_scope(
+                        select(Document.id).where(Document.id == doc.id, Document.tenant_id == doc.tenant_id),
+                        db,
+                        user,
+                    )
+                )
+                if visible is None:
+                    return None
         return doc
     except SQLAlchemyError as exc:
         logger.exception("Database error in get_document document_id=%s: %s", document_id, exc)

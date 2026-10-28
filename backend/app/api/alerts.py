@@ -51,6 +51,15 @@ def create_alert_endpoint(
         payload.tenant_id = user.tenant_id
         if not payload.created_by:
             payload.created_by = getattr(user, "full_name", None) or getattr(user, "name", None) or user.email or "HR Manager"
+        from app.services.operator_scope import is_shop_floor_operator
+
+        if is_shop_floor_operator(user):
+            allowed = {"machine", "production_delay", "quality", "safety"}
+            if str(payload.alert_type or "").strip().lower() not in allowed:
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="Operators can report only machine, production delay, quality, or safety alerts",
+                )
         return create_alert(db, payload)
     except HTTPException:
         raise
