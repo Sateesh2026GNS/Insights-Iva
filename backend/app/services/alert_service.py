@@ -16,7 +16,7 @@ from app.services.alert_event_service import DEFAULT_LINKS, emit_alert, fanout_a
 from app.services.inventory_service import get_inventory_dashboard
 
 
-def create_alert(db: Session, payload: AlertCreate, fanout: bool = True) -> Alert:
+def create_alert(db: Session, payload: AlertCreate, fanout: bool = True, user: User | None = None) -> Alert:
     if not payload.title or not str(payload.title).strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -31,6 +31,11 @@ def create_alert(db: Session, payload: AlertCreate, fanout: bool = True) -> Aler
         a = Alert(**data)
         db.add(a)
         db.flush()
+        if user is not None:
+            from app.services.operator_scope import is_shop_floor_operator
+
+            if is_shop_floor_operator(user):
+                record_alert_read(db, a.id, user.id)
         fanout_alert_notifications(db, a)
         db.commit()
         db.refresh(a)

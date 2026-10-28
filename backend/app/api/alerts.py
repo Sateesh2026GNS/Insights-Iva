@@ -60,7 +60,14 @@ def create_alert_endpoint(
                     status_code=http_status.HTTP_403_FORBIDDEN,
                     detail="Operators can report only machine, production delay, quality, or safety alerts",
                 )
-        return create_alert(db, payload)
+        alert = create_alert(db, payload, user=user)
+        from app.schemas.alert import AlertRead as AlertReadSchema
+        from app.services.alert_service import read_alert_ids
+
+        presented = AlertReadSchema.model_validate(alert)
+        if is_shop_floor_operator(user):
+            presented.is_read = alert.id in read_alert_ids(db, user.id, [alert.id])
+        return presented
     except HTTPException:
         raise
     except SQLAlchemyError as exc:

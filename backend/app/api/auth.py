@@ -388,11 +388,12 @@ def get_me(
 @router.get("/profile", response_model=UserResponse)
 def get_auth_profile(
     request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserResponse:
     """Alias for /auth/me — JWT profile with company and role claims."""
-    return get_me(request=request, current_user=current_user, db=db)
+    return get_me(request=request, creds=creds, current_user=current_user, db=db)
 
 
 class AvatarUpdateRequest(BaseModel):

@@ -372,6 +372,11 @@ def update_machine_status_endpoint(
     allowed = _shop_floor_machine_ids(user, db)
     if allowed is not None and machine_id not in allowed:
         raise HTTPException(404, "Machine not found")
+    from app.services.operator_scope import is_shop_floor_operator
+    from app.services.production_service import assert_operator_machine_transition
+
+    if is_shop_floor_operator(user):
+        assert_operator_machine_transition(db, machine_id, tenant_id, payload.status)
     try:
         machine = update_machine_status(db, machine_id, tenant_id, payload.status, user=user)
         if not machine:

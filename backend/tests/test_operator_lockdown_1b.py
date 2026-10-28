@@ -212,34 +212,245 @@ def test_multi_role_keeps_privileged_access_and_exact_role_match(client, registe
     assert still_operator.status_code == 403, still_operator.text
 
 
+def _concrete(path, value):
+    concrete = path
+    while "{" in concrete:
+        start = concrete.index("{")
+        end = concrete.index("}", start)
+        concrete = concrete[:start] + str(value) + concrete[end + 1 :]
+    return concrete
+
+
+def test_operator_role_has_no_stable_code(client, register_admin):
+    """Roles are identified by name. The id is a per-tenant key, not a shared code."""
+    admin = register_admin()
+    columns = {column.name for column in Role.__table__.columns}
+    assert "name" in columns
+    assert "id" in columns
+    assert "code" not in columns
+    db = SessionLocal()
+    try:
+        role = db.scalars(
+            select(Role).where(Role.tenant_id == admin["user"]["tenant_id"], Role.name == "Operator")
+        ).one()
+        assert role.name == "Operator"
+        assert role.id > 0
+    finally:
+        db.close()
+
+
+def test_operator_machine_status_rejects_illegal_transition(client, register_admin):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    operator = _create_role_user(client, tenant_id, "Operator")
+    db = SessionLocal()
+    try:
+        machine = Machine(
+            tenant_id=tenant_id,
+            code="TR-1",
+            name="Transition press",
+            status="breakdown",
+            is_active=True,
+        )
+        db.add(machine)
+        db.flush()
+        user = db.get(User, operator["user"]["id"])
+        user.assigned_machine_id = machine.id
+        db.commit()
+        machine_id = machine.id
+    finally:
+        db.close()
+
+    denied = client.patch(
+        f"/api/masters/machines/{machine_id}/status",
+        headers=_headers(operator),
+        json={"status": "running"},
+    )
+    assert denied.status_code == 400, denied.text
+    assert "breakdown" in denied.text
+    assert "running" in denied.text
+    assert "Allowed next statuses" in denied.text
+
+    unknown = client.patch(
+        f"/api/masters/machines/{machine_id}/status",
+        headers=_headers(operator),
+        json={"status": "flying"},
+    )
+    assert unknown.status_code == 422, unknown.text
+
+
 def test_operator_default_deny_sweep(client, register_admin):
     admin = register_admin()
-    operator = _create_role_user(client, admin["user"]["tenant_id"], "Operator")
+    tenant_id = admin["user"]["tenant_id"]
+    operator = _create_role_user(client, tenant_id, "Operator")
+    other = _create_role_user(client, tenant_id, "Operator")
     headers = _headers(operator)
+    db = SessionLocal()
+    try:
+        machine = Machine(
+            tenant_id=tenant_id, code="SW-OTHER", name="Other", status="idle", is_active=True
+        )
+        db.add(machine)
+        db.flush()
+        other_user = db.get(User, other["user"]["id"])
+        other_user.assigned_machine_id = machine.id
+        db.commit()
+        real_id = machine.id
+    finally:
+        db.close()
+
+    from starlette.routing import Mount, WebSocketRoute
+
+    counts = {"total": 0, "allowlisted": 0, "403": 0, "404": 0, "2xx": 0, "other": 0, "skipped": 0}
+    skip_reasons = {}
     leaks = []
     seen = set()
+
+    def skip(reason):
+        counts["skipped"] += 1
+        skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+
+    def bucket(status_code):
+        if 200 <= status_code < 300:
+            counts["2xx"] += 1
+        elif status_code == 403:
+            counts["403"] += 1
+        elif status_code == 404:
+            counts["404"] += 1
+        else:
+            counts["other"] += 1
+
     for route in app.routes:
+        if isinstance(route, WebSocketRoute):
+            counts["total"] += 1
+            skip("websocket")
+            continue
+        if isinstance(route, Mount):
+            counts["total"] += 1
+            skip("mounted sub-application")
+            continue
         if not isinstance(route, APIRoute):
+            counts["total"] += 1
+            skip(f"not an API route ({type(route).__name__})")
             continue
         for method in sorted(route.methods or []):
+            counts["total"] += 1
             if method in {"HEAD", "OPTIONS"}:
+                skip(f"{method} is not called")
                 continue
-            concrete = route.path
-            while "{" in concrete:
-                start = concrete.index("{")
-                end = concrete.index("}", start)
-                concrete = concrete[:start] + "1" + concrete[end + 1 :]
-            key = (method, concrete)
+            fake_path = _concrete(route.path, 999999991)
+            real_path = _concrete(route.path, real_id)
+            key = (method, fake_path)
             if key in seen:
+                skip("duplicate method and path after parameter substitution")
                 continue
             seen.add(key)
-            if operator_api_allowed(method, concrete):
+            if operator_api_allowed(method, fake_path):
+                counts["allowlisted"] += 1
+                if method == "POST" and fake_path.rstrip("/").endswith("/auth/logout"):
+                    skip_reasons["allowlisted logout was not called, so the sweep token stays valid"] = 1
+                    continue
+                response = client.request(method, fake_path, headers=headers, follow_redirects=False)
+                bucket(response.status_code)
                 continue
-            response = client.request(method, concrete, headers=headers, follow_redirects=False)
-            if response.status_code not in (403, 404):
-                leaks.append(f"{method} {concrete} -> {response.status_code}")
+            fake = client.request(method, fake_path, headers=headers, follow_redirects=False)
+            real = fake
+            if real_path != fake_path:
+                real = client.request(method, real_path, headers=headers, follow_redirects=False)
+            for label, response in (("missing", fake), ("real", real)):
+                bucket(response.status_code)
+                if response.status_code != 403:
+                    leaks.append(f"{method} {fake_path if label == 'missing' else real_path} {label} id -> {response.status_code}")
+
+    denied_routes = counts["total"] - counts["allowlisted"] - counts["skipped"]
+    print(
+        "sweep "
+        f"total={counts['total']} allowlisted={counts['allowlisted']} "
+        f"403={counts['403']} 404={counts['404']} 2xx={counts['2xx']} "
+        f"other={counts['other']} skipped={counts['skipped']} "
+        f"denied_routes={denied_routes}"
+    )
+    for reason, count in sorted(skip_reasons.items()):
+        print(f"skip {count}: {reason}")
     if leaks:
-        print("Operator reached unlisted routes:")
+        print("Non-allowlisted routes that were not 403 before lookup:")
         for line in leaks:
             print(line)
     assert leaks == []
+
+    other_headers = _headers(other)
+    from tests.test_rbac_roles import _assign_work_order_to_operator
+    from app.models.document import Document
+    from app.models.alert import Alert
+    from app.models.production import WorkOrder
+    from datetime import datetime, timezone
+
+    _assign_work_order_to_operator(tenant_id, other["user"]["id"])
+    db = SessionLocal()
+    try:
+        wo = db.scalars(
+            select(WorkOrder).where(
+                WorkOrder.tenant_id == tenant_id, WorkOrder.work_order_number == "WO-OPERATOR-001"
+            )
+        ).one()
+        wo.assigned_user_id = other["user"]["id"]
+        doc = Document(
+            tenant_id=tenant_id,
+            doc_type="production",
+            title="Other operator SOP",
+            reference_type="work_order",
+            reference_id=wo.id,
+        )
+        alert = Alert(
+            tenant_id=tenant_id,
+            alert_type="machine",
+            title="Other operator alarm",
+            severity="medium",
+            status="active",
+            triggered_at=datetime.now(timezone.utc),
+            target_role="Store Manager",
+            created_by="Not Me",
+            reference_type="machine",
+            reference_id=real_id,
+        )
+        db.add_all([doc, alert])
+        db.commit()
+        wo_id, doc_id, alert_id = wo.id, doc.id, alert.id
+    finally:
+        db.close()
+
+    owned = [
+        ("GET", f"/api/work-orders/my/{wo_id}"),
+        ("GET", f"/api/machines/{real_id}"),
+        ("GET", f"/api/masters/machines/{real_id}"),
+        ("GET", f"/documents/{doc_id}"),
+        ("GET", f"/alerts/{alert_id}"),
+    ]
+    for method, path in owned:
+        response = client.request(method, path, headers=headers, follow_redirects=False)
+        assert response.status_code == 404, (method, path, response.status_code, response.text[:160])
+
+    progress = client.patch(
+        f"/manufacturing/workflow/production/job-cards/{wo_id}/progress",
+        headers=headers,
+        json={"produced_qty": 1},
+    )
+    assert progress.status_code == 404, progress.text
+    entry = client.post(
+        "/api/production-entries",
+        headers=headers,
+        json={"work_order_id": wo_id, "quantity_produced": 1, "quantity_rejected": 0},
+    )
+    assert entry.status_code == 404, entry.text
+    opened = client.post(
+        "/work-chat/conversations/direct",
+        headers=other_headers,
+        json={"user_id": admin["user"]["id"]},
+    )
+    assert opened.status_code == 200, opened.text
+    conversation_id = opened.json()["id"]
+    hidden_chat = client.get(
+        f"/work-chat/conversations/{conversation_id}/messages",
+        headers=headers,
+    )
+    assert hidden_chat.status_code == 404, hidden_chat.text

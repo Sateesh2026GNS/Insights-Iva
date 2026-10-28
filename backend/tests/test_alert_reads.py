@@ -102,3 +102,21 @@ def test_operator_read_state_is_per_user(client, register_admin):
     hidden = client.get(f"/alerts/{alert_id}", headers=_headers(second))
     assert hidden.status_code == 200
     assert hidden.json()["is_read"] is False
+
+
+def test_operator_create_alert_is_read_for_author(client, register_admin):
+    admin = register_admin()
+    operator = _create_role_user(client, admin["user"]["tenant_id"], "Operator")
+    created = client.post(
+        "/alerts",
+        headers=_headers(operator),
+        json={"title": "My machine stopped", "alert_type": "machine", "target_role": "Operator"},
+    )
+    assert created.status_code == 200, created.text
+    body = created.json()
+    assert body["is_read"] is True
+    listed = client.get("/alerts", headers=_headers(operator))
+    assert listed.status_code == 200, listed.text
+    item = next(row for row in listed.json()["items"] if row["id"] == body["id"])
+    assert item["is_read"] is True
+    assert all(row["id"] != body["id"] or row["is_read"] for row in listed.json()["items"])
