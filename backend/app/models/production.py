@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Boolean
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Boolean, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -140,6 +140,18 @@ class ProductionEntry(Base, TimestampMixin):
     """Shop-floor quantity entry by an operator (not the analytics report engine)."""
 
     __tablename__ = "production_entries"
+    __table_args__ = (
+        Index("ix_production_entries_operator_recorded", "operator_user_id", "recorded_at"),
+        Index("ix_production_entries_work_order_voided", "work_order_id", "voided_at"),
+        Index(
+            "uq_production_entries_operator_idempotency",
+            "operator_user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+            sqlite_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
@@ -151,5 +163,9 @@ class ProductionEntry(Base, TimestampMixin):
     reject_reason: Mapped[str | None] = mapped_column(String(255))
     shift: Mapped[str | None] = mapped_column(String(64))
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="operator", server_default=text("'operator'"))
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
     work_order = relationship("WorkOrder")
