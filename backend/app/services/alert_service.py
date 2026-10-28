@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 logger = logging.getLogger(__name__)
 
 from app.core.permissions import get_role_names, user_is_admin
-from app.models.alert import Alert
+from app.models.alert import Alert, AlertRead
 from app.models.user import User
 from app.schemas.alert import AlertCreate
 from app.services.alert_event_service import DEFAULT_LINKS, emit_alert, fanout_alert_notifications
@@ -54,6 +54,36 @@ def create_alert(db: Session, payload: AlertCreate, fanout: bool = True) -> Aler
 
 
 
+def read_alert_ids(db: Session, user_id: int, alert_ids: list[int]) -> set[int]:
+    if not alert_ids:
+        return set()
+    rows = db.scalars(
+        select(AlertRead.alert_id).where(
+            AlertRead.user_id == user_id,
+            AlertRead.alert_id.in_(alert_ids),
+        )
+    ).all()
+    return {int(row) for row in rows}
+
+
+def record_alert_read(db: Session, alert_id: int, user_id: int) -> None:
+    existing = db.scalar(
+        select(AlertRead.id).where(
+            AlertRead.alert_id == alert_id,
+            AlertRead.user_id == user_id,
+        )
+    )
+    if existing:
+        return
+    db.add(
+        AlertRead(
+            alert_id=alert_id,
+            user_id=user_id,
+            read_at=datetime.now(timezone.utc),
+        )
+    )
+
+
 def list_alerts(
     db: Session,
     tenant_id: int,
@@ -81,7 +111,7 @@ def list_alerts(
             stmt = stmt.where(Alert.module == module)
         if severity:
             stmt = stmt.where(Alert.severity == severity)
-        if is_read is not None:
+        if is_read is not None and user is None:
             stmt = stmt.where(Alert.is_read.is_(is_read))
         if date_from:
             stmt = stmt.where(Alert.triggered_at >= date_from)
@@ -121,7 +151,13 @@ def list_alerts(
                         filtered.append(a)
                 rows = filtered
 
-        unread = sum(1 for a in rows if not a.is_read and a.status == "active")
+        if user:
+            seen = read_alert_ids(db, user.id, [a.id for a in rows])
+            unread = sum(1 for a in rows if a.id not in seen and a.status == "active")
+            if is_read is not None:
+                rows = [a for a in rows if (a.id in seen) is bool(is_read)]
+        else:
+            unread = sum(1 for a in rows if not a.is_read and a.status == "active")
         total = len(rows)
         page = max(1, page)
         page_size = max(1, min(page_size, 200))
@@ -235,12 +271,19 @@ def resolve_alert(db: Session, alert_id: int, tenant_id: int | None = None, reso
         ) from exc
 
 
-def mark_alert_read(db: Session, alert_id: int, tenant_id: int) -> Alert | None:
+def mark_alert_read(db: Session, alert_id: int, tenant_id: int, user: User | None = None) -> Alert | None:
     try:
         alert = get_alert(db, alert_id, tenant_id)
         if not alert:
             return None
-        alert.is_read = True
+        if user is not None:
+            from app.services.operator_scope import is_shop_floor_operator, operator_can_see_alert
+
+            if is_shop_floor_operator(user) and not operator_can_see_alert(db, user, alert):
+                return None
+            record_alert_read(db, alert.id, user.id)
+        else:
+            alert.is_read = True
         db.commit()
         db.refresh(alert)
         return alert
@@ -264,16 +307,42 @@ def mark_alert_read(db: Session, alert_id: int, tenant_id: int) -> Alert | None:
 
 def mark_all_alerts_read(db: Session, tenant_id: int, user: User | None = None) -> int:
     try:
-        stmt = select(Alert).where(Alert.tenant_id == tenant_id, Alert.is_read.is_(False))
-        alerts = list(db.scalars(stmt).all())
-        updated_count = 0
-        for a in alerts:
-            if user and not user_is_admin(user) and a.target_role:
+        if user is None:
+            stmt = select(Alert).where(Alert.tenant_id == tenant_id, Alert.is_read.is_(False))
+            alerts = list(db.scalars(stmt).all())
+            for alert in alerts:
+                alert.is_read = True
+            db.commit()
+            return len(alerts)
+
+        from app.services.operator_scope import is_shop_floor_operator, operator_can_see_alert
+
+        alerts = list(db.scalars(select(Alert).where(Alert.tenant_id == tenant_id)).all())
+        shop_floor = is_shop_floor_operator(user)
+        visible = []
+        for alert in alerts:
+            if shop_floor:
+                if operator_can_see_alert(db, user, alert):
+                    visible.append(alert)
+                continue
+            if not user_is_admin(user) and alert.target_role:
                 role_names = {r.lower() for r in get_role_names(user)}
-                targets = {t.strip().lower() for t in a.target_role.split(",") if t.strip()}
-                if not (targets & role_names):
+                targets = {t.strip().lower() for t in alert.target_role.split(",") if t.strip()}
+                creator = str(alert.created_by or "").strip().lower()
+                creator_names = {
+                    str(name).strip().lower()
+                    for name in (user.full_name, getattr(user, "name", None), user.email)
+                    if name
+                }
+                if not (targets & role_names or creator in creator_names):
                     continue
-            a.is_read = True
+            visible.append(alert)
+        already = read_alert_ids(db, user.id, [a.id for a in visible])
+        updated_count = 0
+        for alert in visible:
+            if alert.id in already:
+                continue
+            record_alert_read(db, alert.id, user.id)
             updated_count += 1
         db.commit()
         return updated_count
