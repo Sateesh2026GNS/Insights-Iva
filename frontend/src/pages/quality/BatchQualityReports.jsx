@@ -18,7 +18,7 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageShell } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
@@ -361,7 +361,13 @@ export default function BatchQualityReports() {
     pass_rate: r.pass_rate != null ? `${r.pass_rate}%` : "—",
   }));
 
-  if (loading) return <Loader label="Loading batch quality reports..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="orange" kicker="Batch · Measure · Review" title="BATCH" accent="REPORTS">
+        <Loader label="Loading batch quality reports..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   const handleExport = (format) => {
     const rowsToExport = exportRows.length
@@ -392,7 +398,7 @@ export default function BatchQualityReports() {
   };
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="orange" kicker="Batch · Measure · Review" title="BATCH" accent="REPORTS">
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         subtitle="View and analyze quality results by batch"
@@ -751,6 +757,6 @@ export default function BatchQualityReports() {
         </div>
       ) : null}
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

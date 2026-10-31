@@ -6,6 +6,7 @@ export default function QualityAlerts() {
       title="Quality Alerts"
       subtitle="Defect reports, quality inspection rejections, and tolerance warnings."
       initialAlertType="quality"
+      planningTheme="cyan"
     />
   );
 }

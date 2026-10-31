@@ -1,0 +1,324 @@
+/* HR Manager pages aligned with Production Planning (Department Operating Plan navy toolkit).
+   Scoped to .hr-plan-page so Production Planning and other modules stay unchanged. */
+
+.hr-plan-page {
+  --mtk-accent: #dbeafe;
+  --color-primary: var(--mtk-head, #1d4ed8);
+  --color-primary-hover: var(--mtk-total, #1e3a8a);
+  width: 100%;
+  background: #f4f7fa;
+  color: #1a1a1a;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.hr-plan-page .mtk-hero__title h1,
+.hr-plan-page .mtk-hero__title p {
+  margin: 0;
+}
+
+.hr-plan-page .mtk-hero__title p {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.hr-plan-page .mtk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hr-plan-page .ui-page {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.hr-plan-page .space-y-5 > :not([hidden]) ~ :not([hidden]),
+.hr-plan-page .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 8px;
+}
+
+.hr-plan-page .hr-dashboard,
+.hr-plan-page .wfd-root,
+.hr-plan-page .hr-emp-onboard {
+  background: transparent;
+  color: #1a1a1a;
+  font-size: 11px;
+}
+
+.hr-plan-page .hr-dash-welcome-title,
+.hr-plan-page .hr-emp-onboard__title,
+.hr-plan-page .wfd-header h1 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.hr-plan-page .wfd-header,
+.hr-plan-page .hr-emp-onboard__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+}
+
+.hr-plan-page .wfd-kicker,
+.hr-plan-page .wfd-header p,
+.hr-plan-page .hr-emp-onboard__subtitle {
+  margin: 2px 0 0;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.hr-plan-page .hr-dash-card,
+.hr-plan-page .wfd-panel,
+.hr-plan-page .ui-card,
+.hr-plan-page .ui-list-card {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.hr-plan-page .hr-dash-card__header,
+.hr-plan-page .wfd-panel h2 {
+  margin: 0;
+  background: var(--mtk-head, #1d4ed8);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  padding: 5px 8px;
+  border: 0;
+}
+
+.hr-plan-page .hr-dash-card__header h2,
+.hr-plan-page .wfd-panel h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.hr-plan-page .hr-dash-badge {
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.hr-plan-page .hr-dash-card__body,
+.hr-plan-page .wfd-panel-body {
+  padding: 8px;
+}
+
+.hr-plan-page .hr-dash-stat,
+.hr-plan-page .wfd-kpi {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: none;
+  text-align: center;
+  padding: 6px 4px;
+}
+
+.hr-plan-page .hr-dash-stat__icon {
+  display: none;
+}
+
+.hr-plan-page .hr-dash-stat__label,
+.hr-plan-page .wfd-kpi span,
+.hr-plan-page .wfd-kpi small {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.hr-plan-page .hr-dash-stat__value,
+.hr-plan-page .wfd-kpi strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.hr-plan-page .wfd-kpis,
+.hr-plan-page .wfd-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.hr-plan-page .ui-grid-kpi {
+  gap: 6px;
+}
+
+.hr-plan-page .ui-kpi {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-top: 3px solid var(--mtk-head, #1d4ed8);
+  border-radius: 4px;
+  box-shadow: none !important;
+  background: #fff;
+  padding: 6px 8px;
+  transform: none !important;
+}
+
+.hr-plan-page .ui-kpi__label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.hr-plan-page .ui-kpi__value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.hr-plan-page .ui-table,
+.hr-plan-page table {
+  border-color: var(--mtk-border, #c5d0dc);
+}
+
+.hr-plan-page .ui-table th,
+.hr-plan-page .ui-table-head th,
+.hr-plan-page table thead th {
+  background: #e8eef4 !important;
+  color: #1a1a1a !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.hr-plan-page .ui-table td,
+.hr-plan-page table tbody td {
+  font-size: 10px;
+  padding: 4px 6px;
+}
+
+.hr-plan-page .ui-table tbody tr:nth-child(even) td,
+.hr-plan-page table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.hr-plan-page .ui-table tbody tr:hover td,
+.hr-plan-page table tbody tr:hover td {
+  background: #f1f5f9;
+}
+
+.hr-plan-page .ui-btn--primary,
+.hr-plan-page .ui-btn--add,
+.hr-plan-page .hr-emp-onboard__primary,
+.hr-plan-page .wfd-links a {
+  background: var(--mtk-head, #1d4ed8);
+  border-color: var(--mtk-head, #1d4ed8);
+  color: #fff;
+  min-height: 28px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+.hr-plan-page .wfd-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.hr-plan-page .wfd-links a {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+}
+
+.hr-plan-page .ui-btn--primary:hover:not(:disabled),
+.hr-plan-page .ui-btn--add:hover:not(:disabled) {
+  background: var(--mtk-total, #1e3a8a);
+  border-color: var(--mtk-total, #1e3a8a);
+}
+
+.hr-plan-page .ui-btn--secondary,
+.hr-plan-page .ui-btn--outline,
+.hr-plan-page .ui-btn--ghost {
+  min-height: 28px;
+  border-radius: 2px;
+  border-color: #c5d0dc;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.hr-plan-page .ui-label,
+.hr-plan-page label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.hr-plan-page input:focus,
+.hr-plan-page select:focus,
+.hr-plan-page textarea:focus,
+.hr-plan-page .ui-btn:focus-visible,
+.hr-plan-page a:focus-visible,
+.hr-plan-page button:focus-visible {
+  outline: 2px solid var(--mtk-head, #1d4ed8);
+  outline-offset: 1px;
+}
+
+.hr-plan-page .ui-page-btn--active {
+  background: var(--mtk-head, #1d4ed8) !important;
+  border-color: var(--mtk-head, #1d4ed8) !important;
+  color: #fff !important;
+}
+
+@layer base {
+  .hr-plan-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .hr-plan-page select,
+  .hr-plan-page textarea,
+  .hr-plan-page .ui-select,
+  .hr-plan-page .ui-input {
+    border-radius: 2px !important;
+    border-color: #c5d0dc !important;
+    background: #fff !important;
+    font-size: 11px !important;
+    color: #1a1a1a;
+  }
+}
+
+@media (max-width: 800px) {
+  .hr-plan-page .wfd-kpis,
+  .hr-plan-page .wfd-charts {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .hr-plan-page .wfd-kpis,
+  .hr-plan-page .wfd-charts,
+  .hr-plan-page .wfd-header,
+  .hr-plan-page .hr-emp-onboard__top {
+    grid-template-columns: 1fr;
+  }
+}

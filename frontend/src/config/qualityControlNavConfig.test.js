@@ -22,7 +22,11 @@ describe("qualityControlNavConfig", () => {
     expect(keys).not.toContain("inventory");
     const materials = QUALITY_CONTROL_NAV_ITEMS.find((n) => n.key === "materials");
     const paths = (materials?.children || []).map((c) => c.to);
-    expect(paths).toEqual(["/inventory/raw-materials", "/inventory/finished-goods"]);
+    expect(paths).toEqual([
+      "/inventory/raw-materials",
+      "/inventory/finished-goods",
+      "/inventory/settings",
+    ]);
   });
 
   it("includes NCR via defects route and quality inspections", () => {
@@ -40,9 +44,9 @@ describe("qualityControlNavConfig", () => {
     expect(flat.some((l) => /capa/i.test(l))).toBe(false);
   });
 
-  it("includes work chat and settings", () => {
+  it("includes work chat and does not link the general settings page", () => {
     expect(QUALITY_CONTROL_NAV_ITEMS.some((n) => n.key === "chat" && n.to === "/chat")).toBe(true);
-    expect(QUALITY_CONTROL_NAV_ITEMS.some((n) => n.key === "settings" && n.to === "/settings")).toBe(true);
+    expect(QUALITY_CONTROL_NAV_ITEMS.some((n) => n.to === "/settings")).toBe(false);
   });
 
   it("follows target section order", () => {
@@ -56,7 +60,6 @@ describe("qualityControlNavConfig", () => {
       "meetings",
       "chat",
       "analytics",
-      "settings",
     ]);
   });
 });
@@ -69,6 +72,10 @@ describe("qualityControlPathAllowed", () => {
     expect(qualityControlPathAllowed("/procurement/purchase-orders")).toBe(false);
     expect(qualityControlPathAllowed("/masters/products")).toBe(false);
     expect(qualityControlPathAllowed("/production/planning")).toBe(true);
+    expect(qualityControlPathAllowed("/inventory/settings")).toBe(true);
+    expect(qualityControlPathAllowed("/settings")).toBe(false);
+    expect(qualityControlPathAllowed("/settings/my-account")).toBe(true);
+    expect(qualityControlPathAllowed("/inventory/warehouses")).toBe(false);
     expect(qualityControlPathAllowed("/production/tasks")).toBe(false);
   });
 });

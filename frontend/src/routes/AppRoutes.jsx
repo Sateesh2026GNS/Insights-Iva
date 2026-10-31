@@ -242,6 +242,46 @@ export default function AppRoutes() {
         element={<P.InventorySettingsV2 />}
       />
       <Route
+        path="/inventory/godown-planner"
+        element={<P.GodownCapacityPlanner />}
+      />
+      <Route
+        path="/inventory/unit-converter"
+        element={<P.UnitConverter />}
+      />
+      <Route
+        path="/inventory/eoq-helper"
+        element={<P.EoqHelper />}
+      />
+      <Route
+        path="/inventory/stock-valuation"
+        element={<P.StockValuation />}
+      />
+      <Route
+        path="/inventory/hamali-cost"
+        element={<P.HamaliCost />}
+      />
+      <Route
+        path="/inventory/truck-load"
+        element={<P.TruckLoadPlanner />}
+      />
+      <Route
+        path="/inventory/damage-loss"
+        element={<P.DamageLoss />}
+      />
+      <Route
+        path="/inventory/storage-quotation"
+        element={<P.StorageQuotation />}
+      />
+      <Route
+        path="/inventory/gate-pass"
+        element={<P.GatePass />}
+      />
+      <Route
+        path="/inventory/godown-dashboard"
+        element={<P.GodownDashboard />}
+      />
+      <Route
         path="/inventory/list"
         element={<P.InventoryList />}
       />

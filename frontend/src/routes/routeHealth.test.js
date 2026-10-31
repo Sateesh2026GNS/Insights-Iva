@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -35,8 +35,16 @@ function extractLazyImportPaths(lazySource) {
 
 function resolveLazyFile(importPath) {
   const base = resolve(routesDir, importPath);
-  const candidates = [`${base}.jsx`, `${base}.js`, join(base, "index.jsx")];
-  return candidates.find((p) => existsSync(p));
+  const candidates = [base, `${base}.jsx`, `${base}.js`, join(base, "index.jsx")];
+  return candidates.find((p) => existsSync(p) && statSync(p).isFile());
+}
+
+function findJsxFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const file = join(directory, entry.name);
+    if (entry.isDirectory()) return findJsxFiles(file);
+    return entry.isFile() && entry.name.endsWith(".jsx") ? [file] : [];
+  });
 }
 
 function flattenNav(nodes, acc = []) {
@@ -83,6 +91,16 @@ describe("route health", () => {
   it("every lazy import resolves to an existing page file", () => {
     const missing = lazyImports.filter((p) => !resolveLazyFile(p));
     expect(missing).toEqual([]);
+  });
+
+  it("removes legacy Godown Toolkit branding from inventory pages", () => {
+    const inventoryPages = resolve(srcRoot, "pages", "inventory");
+    const brandedPages = findJsxFiles(inventoryPages).filter((file) =>
+      /GODOWN TOOLKIT|TOOL\s+\d{2}(?:\s*\/\s*15)?|gsp-hero__brand|gsp-hero__home/.test(
+        readFileSync(file, "utf8")
+      )
+    );
+    expect(brandedPages).toEqual([]);
   });
 
   it("registers core sales and job card routes", () => {

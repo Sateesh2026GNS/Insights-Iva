@@ -6,6 +6,7 @@ export default function ProductionDelayAlerts() {
       title="Production Delay Alerts"
       subtitle="Work orders or lines reporting operational delays."
       initialAlertType="production_delay"
+      planningTheme="orange"
     />
   );
 }

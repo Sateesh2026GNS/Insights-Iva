@@ -1,0 +1,320 @@
+/* Operator Dashboard only. Uses Team Capacity toolkit classes; does not restyle other dashboards. */
+
+.operator-dashboard {
+  background: #f4f7fa;
+  color: #1a1a1a;
+  padding-bottom: 16px;
+}
+
+.operator-dashboard .mtk-root {
+  margin-bottom: 0;
+}
+
+.operator-dashboard .mtk-kpi--link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.operator-dashboard .mtk-kpi--link:hover {
+  border-color: #0d9488;
+}
+
+.operator-dashboard .mtk-kpi--link:focus-visible,
+.operator-dashboard .op-dash-btn:focus-visible,
+.operator-dashboard .op-dash-filters button:focus-visible,
+.operator-dashboard .op-dash-panel-link:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+.operator-dashboard .op-dash-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  gap: 8px;
+}
+
+.operator-dashboard .op-dash-panel-link,
+.operator-dashboard .op-dash-icon-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.operator-dashboard .op-dash-panel-link {
+  right: 8px;
+}
+
+.operator-dashboard .op-dash-panel-link:hover {
+  text-decoration: underline;
+}
+
+.operator-dashboard .op-dash-icon-btn {
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+}
+
+.operator-dashboard .op-dash-icon-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.operator-dashboard .op-dash-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--mtk-border, #c5d0dc);
+  background: #fff;
+}
+
+.operator-dashboard .op-dash-filters button {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.operator-dashboard .op-dash-filters button[aria-selected="true"] {
+  background: #115e59;
+  border-color: #115e59;
+  color: #fff;
+}
+
+.operator-dashboard .op-dash-chart {
+  height: 168px;
+}
+
+.operator-dashboard .op-dash-empty {
+  margin: 0;
+  padding: 28px 8px;
+  text-align: center;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.operator-dashboard .op-dash-attendance,
+.operator-dashboard .op-dash-summary,
+.operator-dashboard .op-dash-machines {
+  padding: 8px;
+}
+
+.operator-dashboard .op-dash-attendance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.operator-dashboard .op-dash-attendance__name {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.operator-dashboard .op-dash-attendance__role,
+.operator-dashboard .op-dash-attendance__status {
+  margin: 2px 0 0;
+  font-size: 9px;
+  color: #64748b;
+}
+
+.operator-dashboard .op-dash-attendance__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.operator-dashboard .op-dash-timer {
+  font-size: 10px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.operator-dashboard .op-dash-timer--over {
+  color: #854d0e;
+}
+
+.operator-dashboard .op-dash-btn {
+  border: 0;
+  border-radius: 2px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+
+.operator-dashboard .op-dash-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.operator-dashboard .op-dash-btn--in {
+  background: #15803d;
+}
+
+.operator-dashboard .op-dash-btn--in:hover:not(:disabled) {
+  background: #166534;
+}
+
+.operator-dashboard .op-dash-btn--out {
+  background: #b91c1c;
+}
+
+.operator-dashboard .op-dash-btn--out:hover:not(:disabled) {
+  background: #991b1b;
+}
+
+.operator-dashboard .op-dash-summary {
+  list-style: none;
+  margin: 0;
+}
+
+.operator-dashboard .op-dash-summary li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px;
+  border-bottom: 1px solid #e8eef4;
+  font-size: 10px;
+  color: #334155;
+}
+
+.operator-dashboard .op-dash-summary li:last-child {
+  border-bottom: 0;
+}
+
+.operator-dashboard .op-dash-summary strong {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.operator-dashboard .op-dash-summary__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.operator-dashboard .op-dash-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.operator-dashboard .op-dash-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.operator-dashboard .op-dash-machine {
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  padding: 6px;
+  margin-bottom: 6px;
+  background: #fff;
+}
+
+.operator-dashboard .op-dash-machine__top,
+.operator-dashboard .op-dash-machine__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.operator-dashboard .op-dash-machine__bottom {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e8eef4;
+  font-size: 9px;
+  color: #475569;
+}
+
+.operator-dashboard .op-dash-machine h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.operator-dashboard .op-dash-machine__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.operator-dashboard .op-dash-machine__actions button {
+  border-radius: 2px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  background: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.operator-dashboard .op-dash-machine__actions button:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 1px;
+}
+
+.operator-dashboard .op-dash-export {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.operator-dashboard .mtk-table a {
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.operator-dashboard .mtk-table a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .operator-dashboard .mtk-hero__title h1 {
+    font-size: 15px;
+  }
+
+  .operator-dashboard .op-dash-attendance {
+    align-items: flex-start;
+  }
+}

@@ -125,6 +125,7 @@ class GoogleCalendarStatusRead(BaseModel):
     libraries_installed: bool = True
     redirect_uri: str | None = None
     default_timezone: str | None = None
+    missing_settings: list[str] = Field(default_factory=list)
 
 
 class GoogleConnectResponse(BaseModel):

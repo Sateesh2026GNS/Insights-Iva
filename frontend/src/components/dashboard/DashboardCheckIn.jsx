@@ -18,7 +18,7 @@ function formatTimer(secs) {
   return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(remainingSecs).padStart(2, "0")}`;
 }
 
-export default function DashboardCheckIn() {
+export default function DashboardCheckIn({ variant = "default" }) {
   const { user } = useAuth();
   const { addToast } = useToast();
 
@@ -29,6 +29,7 @@ export default function DashboardCheckIn() {
   const [checkInTime, setCheckInTime] = useState(null);
   const [checkOutTime, setCheckOutTime] = useState(null);
   const [formattedDuration, setFormattedDuration] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const syncState = useCallback(() => {
     if (!user) return;
@@ -72,6 +73,9 @@ export default function DashboardCheckIn() {
   const displayRole = user?.role_name || user?.role || "Employee";
 
   const handleCheckIn = async () => {
+    if (busy || checkedIn || actionLock.current) return;
+    actionLock.current = true;
+    setBusy(true);
     const now = Date.now();
     const today = new Date().toISOString().slice(0, 10);
     const timeStr = new Date(now).toLocaleTimeString("en-US", {
@@ -129,20 +133,26 @@ export default function DashboardCheckIn() {
 
     try {
       await clockIn({ record_date: today });
+      addToast(`Checked in successfully at ${timeStr}`, "success");
     } catch {
-      // Local state is authoritative
+      addToast("Checked in on this device. The attendance service did not confirm the punch.", "error");
+    } finally {
+      actionLock.current = false;
+      setBusy(false);
     }
-
-    addToast(`Checked in successfully at ${timeStr}`, "success");
   };
 
   const autoCheckedOutRef = useRef(false);
+  const actionLock = useRef(false);
 
   useEffect(() => {
     autoCheckedOutRef.current = false;
   }, [startTs]);
 
   const handleCheckOut = useCallback(async (customElapsed) => {
+    if (actionLock.current) return;
+    actionLock.current = true;
+    setBusy(true);
     const now = Date.now();
     const today = new Date().toISOString().slice(0, 10);
     const timeStr = new Date(now).toLocaleTimeString("en-US", {
@@ -224,14 +234,16 @@ export default function DashboardCheckIn() {
 
     try {
       await clockOut({ record_date: today });
+      const toastMsg = overtimeSecs > 0
+        ? `Shift completed (9 hrs standard shift + ${otStr} Overtime calculated)`
+        : `Checked out at ${timeStr} (${duration})`;
+      addToast(toastMsg, "success");
     } catch {
-      // Local state is authoritative
+      addToast("Checked out on this device. The attendance service did not confirm the punch.", "error");
+    } finally {
+      actionLock.current = false;
+      setBusy(false);
     }
-
-    const toastMsg = overtimeSecs > 0
-      ? `Shift completed (9 hrs standard shift + ${otStr} Overtime calculated)`
-      : `Checked out at ${timeStr} (${duration})`;
-    addToast(toastMsg, "success");
   }, [elapsed, checkInTime, user, displayName, displayRole, addToast]);
 
   useEffect(() => {
@@ -246,6 +258,42 @@ export default function DashboardCheckIn() {
     }, 1000);
     return () => window.clearInterval(interval);
   }, [checkedIn, startTs, handleCheckOut]);
+
+  if (variant === "toolkit") {
+    const statusLine = checkedIn
+      ? `Checked in today at ${checkInTime || "—"}`
+      : checkedOut
+        ? `Shift completed • In: ${checkInTime || "—"} | Out: ${checkOutTime || "—"} (${formattedDuration})`
+        : "Not checked in yet today";
+    return (
+      <section className="mtk-panel h-full">
+        <div className="mtk-panel__title">Attendance</div>
+        <div className="op-dash-attendance">
+          <div>
+            <p className="op-dash-attendance__name">{displayName}</p>
+            <p className="op-dash-attendance__role">{displayRole}</p>
+            <p className="op-dash-attendance__status">{statusLine}</p>
+          </div>
+          <div className="op-dash-attendance__actions">
+            {checkedIn ? (
+              <span className={elapsed >= 32400 ? "op-dash-timer op-dash-timer--over" : "op-dash-timer"}>
+                {elapsed >= 32400 ? `09:00:00 (+${formatTimer(elapsed - 32400)} OT)` : formatTimer(elapsed)}
+              </span>
+            ) : null}
+            {checkedIn ? (
+              <button type="button" onClick={() => handleCheckOut()} disabled={busy} className="op-dash-btn op-dash-btn--out">
+                Check Out
+              </button>
+            ) : (
+              <button type="button" onClick={handleCheckIn} disabled={busy} className="op-dash-btn op-dash-btn--in">
+                Check In
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-3.5 shadow-xs transition sm:flex-row sm:items-center sm:justify-between sm:p-4">
@@ -304,7 +352,8 @@ export default function DashboardCheckIn() {
             <button
               type="button"
               onClick={() => handleCheckOut()}
-              className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 active:scale-95"
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 active:scale-95 disabled:opacity-60"
             >
               <LogOut className="h-4 w-4" />
               <span>Check Out</span>
@@ -314,7 +363,8 @@ export default function DashboardCheckIn() {
           <button
             type="button"
             onClick={handleCheckIn}
-            className="inline-flex items-center gap-2 rounded-full bg-[#15803d] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#166534] active:scale-95"
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full bg-[#15803d] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#166534] active:scale-95 disabled:opacity-60"
           >
             <span className="grid h-5 w-5 place-items-center rounded-full border border-white/40 bg-white/20">
               <Clock className="h-3 w-3 text-white" />

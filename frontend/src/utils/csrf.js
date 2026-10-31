@@ -6,9 +6,7 @@ export function setCsrfToken(token) {
   memoryToken = token ? String(token).trim() : null;
 }
 
-/** Prefer in-memory token (from /auth/csrf JSON); fall back to cookie on same site. */
-export function getCsrfTokenFromCookie() {
-  if (memoryToken) return memoryToken;
+function readDocumentCsrfCookie() {
   if (typeof document === "undefined") return null;
   const parts = document.cookie.split(";").map((p) => p.trim());
   for (const part of parts) {
@@ -17,4 +15,15 @@ export function getCsrfTokenFromCookie() {
     }
   }
   return null;
+}
+
+/**
+ * Header must match the cookie the browser will send.
+ * Same-origin (Vite proxy) can read `iva_csrf`. Cross-origin cannot, so use the
+ * token returned in JSON by /auth/csrf or login.
+ */
+export function getCsrfTokenFromCookie() {
+  const fromDocument = readDocumentCsrfCookie();
+  if (fromDocument) return fromDocument;
+  return memoryToken;
 }

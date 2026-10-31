@@ -35,6 +35,10 @@ vi.mock("../../../api/approvalsApi", () => ({
   getMyApprovalCounts: vi.fn().mockResolvedValue({ data: { total: 0 } }),
 }));
 
+vi.mock("../../../api/operatorExecutionApi", () => ({
+  getMyProductionEntries: vi.fn().mockResolvedValue({ data: { items: [] } }),
+}));
+
 vi.mock("recharts", () => {
   const React = require("react");
   const Mock = ({ children }) => <div data-testid="recharts-mock">{children}</div>;
@@ -145,6 +149,8 @@ describe("ReferenceDashboard", () => {
     expect(screen.queryByText("refDashboard.shopFloorStatus")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.todaysProduction")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.machinesRunning")).not.toBeInTheDocument();
+    expect(document.querySelector(".mtk-theme--teal")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "OPERATOR DASHBOARD" })).not.toBeInTheDocument();
   });
 
   it("hides Quick Actions, Shop Floor, Top Machines, and Inventory Summary for Operator role", async () => {
@@ -170,6 +176,93 @@ describe("ReferenceDashboard", () => {
     expect(screen.queryByText("refDashboard.topMachines")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.inventorySummary")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.quickActions")).not.toBeInTheDocument();
+    expect(document.querySelector(".mtk-theme--teal")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "OPERATOR DASHBOARD" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check In" })).toBeInTheDocument();
+  });
+
+  it("opens operator KPI cards on allowed pages and keeps quality informational", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: "Operator", permissions: ["production"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({
+      data: {
+        ...fullDashboard,
+        dashboard_profile: "operator",
+        visible_sections: ["kpi", "todays_summary", "recent_work_orders", "production_overview"],
+        kpi_cards: [
+          { id: "my-work-orders", title: "My Work Orders", value: "0", trendLabel: "assigned to me", link: "/production/work-orders" },
+          { id: "assigned-machine", title: "Assigned Machine", value: "Unassigned", trendLabel: "no machine assigned", link: "/production/machines" },
+          { id: "quality-checks-pending", title: "Quality Checks Pending", value: "0", trendLabel: "not assigned", link: "/quality/in-process" },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("link", { name: /myWorkOrders/ })).toHaveAttribute("href", "/my-job-cards");
+    expect(screen.getByRole("link", { name: /assignedMachine/ })).toHaveAttribute("href", "/production/my-machine");
+    expect(screen.getByText("refDashboard.qualityChecksPending")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /qualityChecksPending/ })).not.toBeInTheDocument();
+    expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+  });
+
+  it("hides Departments, Pending Approvals, and Revenue/Cost Snapshot for operators only", async () => {
+    const sharedCards = [
+      { id: "departments", title: "Departments", value: "4", trendLabel: "active departments", link: "/masters/departments" },
+      { id: "pending-approvals", title: "Pending Approvals", value: "2", trendLabel: "awaiting action", link: "/admin/approvals" },
+      { id: "revenue-cost-snapshot", title: "Revenue/Cost Snapshot", value: "—", trendLabel: "no data this month", link: "/accounts/profit-loss" },
+      { id: "my-work-orders", title: "My Work Orders", value: "3", trendLabel: "assigned to me", link: "/my-job-cards" },
+    ];
+
+    mockUseAuth.mockReturnValue({
+      user: { role: "Operator", permissions: ["production"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({
+      data: {
+        ...fullDashboard,
+        dashboard_profile: "operator",
+        visible_sections: ["kpi", "todays_summary", "recent_work_orders", "production_overview"],
+        kpi_cards: sharedCards,
+      },
+    });
+
+    const operatorView = render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("link", { name: /myWorkOrders/ })).toBeInTheDocument();
+    expect(screen.queryByText("refDashboard.departments")).not.toBeInTheDocument();
+    expect(screen.queryByText("refDashboard.pendingApprovals")).not.toBeInTheDocument();
+    expect(screen.queryByText("refDashboard.revenueCostSnapshot")).not.toBeInTheDocument();
+    operatorView.unmount();
+
+    mockUseAuth.mockReturnValue({
+      user: { role: "Admin", permissions: ["*"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({
+      data: {
+        ...fullDashboard,
+        dashboard_profile: "admin",
+        kpi_cards: sharedCards,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("refDashboard.departments")).toBeInTheDocument();
+    expect(screen.getByText("refDashboard.pendingApprovals")).toBeInTheDocument();
+    expect(screen.getByText("refDashboard.revenueCostSnapshot")).toBeInTheDocument();
   });
 
   it("renders all four period tabs (Daily, Weekly, Monthly, Yearly) in Production Overview", async () => {

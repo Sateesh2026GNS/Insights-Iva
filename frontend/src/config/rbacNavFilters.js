@@ -215,6 +215,7 @@ export const QUALITY_CONTROL_ALLOWED_CHILDREN = new Set([
   "/production/planning",
   "/inventory/raw-materials",
   "/inventory/finished-goods",
+  "/inventory/settings",
   "/alerts",
   "/alerts/quality",
   "/alerts/production-delay",
@@ -223,7 +224,6 @@ export const QUALITY_CONTROL_ALLOWED_CHILDREN = new Set([
   "/meetings",
   "/chat",
   "/analytics/production",
-  "/settings",
   "/my-job-cards",
 ]);
 
@@ -247,6 +247,7 @@ export function qualityControlPathAllowed(pathname) {
   if (path.startsWith("/production/planning")) return true;
   if (path.startsWith("/inventory/raw-materials")) return true;
   if (path.startsWith("/inventory/finished-goods")) return true;
+  if (path === "/inventory/settings" || path.startsWith("/inventory/settings/")) return true;
   if (path.startsWith("/alerts/")) {
     return (
       path === "/alerts" ||
@@ -260,7 +261,7 @@ export function qualityControlPathAllowed(pathname) {
   if (path.startsWith("/chat")) return true;
   if (path === "/analytics/production" || path.startsWith("/analytics/production/")) return true;
   if (path.startsWith("/manufacturing/workflow")) return true;
-  if (path === "/settings" || path.startsWith("/settings/")) return true;
+  if (path.startsWith("/settings/")) return true;
   return false;
 }
 

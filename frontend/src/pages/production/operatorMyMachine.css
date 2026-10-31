@@ -1,0 +1,234 @@
+/* My Machine — Department Operating Plan toolkit (mtk-theme--navy). Scoped to this page. */
+
+.operator-my-machine {
+  background: #f4f7fa;
+  color: #1a1a1a;
+  font-size: 11px;
+}
+
+.operator-my-machine .mtk-root {
+  margin-bottom: 0;
+}
+
+.operator-my-machine .mtk-hero__title h1 {
+  margin: 4px 0 2px;
+}
+
+.operator-my-machine .mtk-hero__title p {
+  margin: 0;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.operator-my-machine .mtk-panel__title {
+  margin: 0;
+}
+
+.operator-my-machine .mtk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.operator-my-machine__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.operator-my-machine__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.operator-my-machine__empty {
+  padding: 16px 8px 12px;
+  text-align: center;
+}
+
+.operator-my-machine__empty h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.operator-my-machine__empty p {
+  margin: 4px auto 8px;
+  max-width: 36rem;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.operator-my-machine__machine,
+.operator-my-machine__facts,
+.operator-my-machine__history,
+.operator-my-machine__instructions,
+.operator-my-machine__muted,
+.operator-my-machine__job-number,
+.operator-my-machine__actions {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.operator-my-machine__machine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.operator-my-machine__code,
+.operator-my-machine__job-number {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.operator-my-machine__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.operator-my-machine__facts dt {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.operator-my-machine__facts dd {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.operator-my-machine__muted {
+  margin: 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.operator-my-machine__history,
+.operator-my-machine__instructions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  list-style: none;
+}
+
+.operator-my-machine__history li,
+.operator-my-machine__instructions li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.operator-my-machine__history time {
+  color: #64748b;
+}
+
+.operator-my-machine__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.operator-my-machine .ui-btn {
+  min-height: 28px;
+  border-radius: 2px;
+  font-size: 10px;
+}
+
+.operator-my-machine .ui-btn:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.operator-my-machine__form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 8px 8px;
+  padding: 8px;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #f8fafc;
+}
+
+.operator-my-machine__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.operator-my-machine__form input,
+.operator-my-machine__form textarea {
+  width: 100%;
+  border: 1px solid var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+  background: #fff;
+  color: #1a1a1a;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 450;
+}
+
+.operator-my-machine__form input:focus,
+.operator-my-machine__form textarea:focus {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+}
+
+.operator-my-machine__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.operator-my-machine__form-error {
+  margin: 0;
+  color: #991b1b;
+  font-size: 10px;
+}
+
+@media (max-width: 800px) {
+  .operator-my-machine__facts {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .operator-my-machine__facts,
+  .operator-my-machine__machine {
+    grid-template-columns: 1fr;
+  }
+
+  .operator-my-machine__machine {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

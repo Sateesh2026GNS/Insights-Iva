@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import extract, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import extract, func, or_, select
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.accounts import Expense, Income
 from app.models.inventory import InventoryItem, StockLevel
 from app.models.machine import Machine
 from app.models.procurement import MaterialRequest
+from app.models.manufacturing_workflow import (
+    ManufacturingWorkflowTransition,
+    SalesOrderMaterialCheck,
+)
 from app.models.production import ProductionOrder, WorkOrder
 from app.models.sales import Invoice, SalesOrder
 from app.models.user import User
@@ -554,12 +559,138 @@ def _operator_work_order_rows(assigned: list[dict]) -> list[dict]:
     return rows
 
 
+_IST = ZoneInfo("Asia/Kolkata")
+_OPERATOR_CLOSED = {"completed", "closed", "done", "cancelled", "canceled", "rejected"}
+_OPERATOR_STARTED = {"in_progress", "running", "paused"}
+_OPERATOR_NOT_STARTED = {"draft", "planned", "pending", "released", "material_ready", "machine_ready"}
+_JOB_CARDS = "/my-job-cards"
+_MY_MACHINE = "/production/my-machine"
+
+
+def _wo_status(wo: WorkOrder) -> str:
+    return "_".join(str(wo.status or "").strip().lower().split())
+
+
+def _as_ist_date(value) -> date | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(_IST).date()
+    if isinstance(value, date):
+        return value
+    return None
+
+
+def _covers_business_today(wo: WorkOrder, today: date) -> bool:
+    start = _as_ist_date(wo.planned_start)
+    end = _as_ist_date(wo.planned_end)
+    if start and end:
+        return start <= today <= end
+    if start or end:
+        return (start or end) == today
+    return False
+
+
+def _qty_text(value: float) -> str:
+    if value == int(value):
+        return str(int(value))
+    return f"{value:.1f}"
+
+
+def _operator_work_orders(db: Session, user: User) -> list[WorkOrder]:
+    from app.services.operator_scope import scope_work_orders_for_operator
+
+    stmt = select(WorkOrder).where(WorkOrder.tenant_id == user.tenant_id)
+    stmt = scope_work_orders_for_operator(stmt, user, db)
+    return list(db.scalars(stmt.order_by(WorkOrder.id.desc())).all())
+
+
+def _operator_machines(db: Session, user: User) -> list[Machine]:
+    from app.services.operator_scope import operator_machines_query
+
+    return list(db.scalars(operator_machines_query(db, user).order_by(Machine.name.asc(), Machine.id.asc())).all())
+
+
+def _machine_status_value(machines: list[Machine]) -> tuple[str, str]:
+    if not machines:
+        return "Unavailable", "no machine assigned"
+    labels = []
+    for machine in machines:
+        text = str(machine.status or "").strip()
+        labels.append(text.replace("_", " ").title() if text else "")
+    known = [label for label in labels if label]
+    if len(machines) > 1 and len(set(known)) != 1:
+        return "Unavailable", "multiple machines"
+    if len(known) == 1 or (known and len(set(known)) == 1):
+        return known[0], "live status"
+    return "Unavailable", "status not recorded"
+
+
+def _completed_today_count(db: Session, tenant_id: int, work_order_ids: list[int], today: date) -> int:
+    if not work_order_ids:
+        return 0
+    rows = db.scalars(
+        select(ManufacturingWorkflowTransition).where(
+            ManufacturingWorkflowTransition.tenant_id == tenant_id,
+            ManufacturingWorkflowTransition.work_order_id.in_(work_order_ids),
+            or_(
+                ManufacturingWorkflowTransition.action == "PRODUCTION_COMPLETED",
+                ManufacturingWorkflowTransition.new_status == "PRODUCTION_COMPLETED",
+            ),
+        )
+    ).all()
+    return len({row.work_order_id for row in rows if row.work_order_id and _as_ist_date(row.created_at) == today})
+
+
+def _material_availability(db: Session, tenant_id: int, open_orders: list[WorkOrder]) -> tuple[str, str]:
+    if not open_orders:
+        return "0", "no open jobs"
+    po_ids = [wo.production_order_id for wo in open_orders if wo.production_order_id]
+    if not po_ids:
+        return "Unavailable", "no material check"
+    orders = db.scalars(
+        select(ProductionOrder).where(
+            ProductionOrder.tenant_id == tenant_id,
+            ProductionOrder.id.in_(po_ids),
+        )
+    ).all()
+    sales_by_po = {po.id: po.sales_order_id for po in orders if po.sales_order_id}
+    if not sales_by_po:
+        return "Unavailable", "no material check"
+    from app.services.stage_job_card_service import _availability_status
+
+    checks = db.scalars(
+        select(SalesOrderMaterialCheck)
+        .options(selectinload(SalesOrderMaterialCheck.lines))
+        .where(
+            SalesOrderMaterialCheck.tenant_id == tenant_id,
+            SalesOrderMaterialCheck.sales_order_id.in_(list(set(sales_by_po.values()))),
+        )
+    ).all()
+    lines_by_sales: dict[int, list] = {}
+    for check in checks:
+        lines_by_sales.setdefault(check.sales_order_id, []).extend(check.lines or [])
+    ready = 0
+    assessed = 0
+    for wo in open_orders:
+        lines = lines_by_sales.get(sales_by_po.get(wo.production_order_id)) or []
+        if not lines:
+            continue
+        assessed += 1
+        if all(
+            _availability_status(float(line.required_qty or 0), float(line.available_qty or 0)) == "Available"
+            for line in lines
+        ):
+            ready += 1
+    if assessed == 0:
+        return "Unavailable", "no material check"
+    return f"{ready}/{assessed}", "jobs fully available"
+
+
 def _operator_assigned_machine(db: Session, tenant_id: int, user: User | None) -> list[dict]:
-    machine_id = getattr(user, "assigned_machine_id", None) if user else None
-    if not machine_id:
-        return []
-    machine = db.get(Machine, machine_id)
-    if not machine or machine.tenant_id != tenant_id:
+    if not user or user.tenant_id != tenant_id:
         return []
     return [
         {
@@ -570,70 +701,54 @@ def _operator_assigned_machine(db: Session, tenant_id: int, user: User | None) -
             "department": machine.department,
             "production_line": machine.production_line,
         }
+        for machine in _operator_machines(db, user)
     ]
 
 
-def build_operator_kpis(db: Session, tenant_id: int, user: User, ctx: dict[str, Any]) -> list[dict]:
-    from app.services.operator_service import COMPLETED_STATUSES, RUNNING_STATUSES, OperatorService
+def build_operator_kpis(db: Session, tenant_id: int, user: User, _ctx: dict[str, Any]) -> list[dict]:
+    """Operator KPI cards from this user's scoped work orders and machines.
 
-    svc = OperatorService(db, tenant_id)
-    assigned = svc.list_assigned_work_orders(user) or []
-    today_wos = svc.list_today_work_orders(user) or []
-
-    def _status(wo: dict) -> str:
-        return str(wo.get("status") or "").lower()
-
-    completed_today = sum(1 for w in today_wos if _status(w) in COMPLETED_STATUSES)
-    in_progress = sum(1 for w in assigned if _status(w) in RUNNING_STATUSES or _status(w) == "paused")
-    pending = sum(
-        1
-        for w in assigned
-        if _status(w) not in COMPLETED_STATUSES and _status(w) not in RUNNING_STATUSES and _status(w) != "paused"
-    )
-    target = sum(float(w.get("planned_quantity") or w.get("qty") or 0) for w in today_wos)
-
-    machine_name = "—"
-    machine_status = "—"
-    machine_id = getattr(user, "assigned_machine_id", None)
-    if machine_id:
-        machine = db.get(Machine, machine_id)
-        if machine and machine.tenant_id == tenant_id:
-            machine_name = machine.name or machine.code or str(machine_id)
-            machine_status = (machine.status or "unknown").replace("_", " ").title()
-
-    # Material availability: assigned WOs with materials_issued flag when present
-    material_ready = sum(1 for w in assigned if w.get("materials_issued") is True)
-    material_total = len(assigned)
-    material_label = f"{material_ready}/{material_total}" if material_total else "0"
-
-    qc_pending = sum(
-        1 for w in assigned if _status(w) in ("qc_pending", "pending_qc", "completed") or w.get("qc_status") == "pending"
-    )
+    Quality inspections are owned by the quality team. Shop-floor operators have
+    no quality action, so that card is a real zero and is not a link.
+    """
+    if user.tenant_id != tenant_id:
+        return []
+    today = datetime.now(_IST).date()
+    orders = _operator_work_orders(db, user)
+    open_orders = [wo for wo in orders if _wo_status(wo) not in _OPERATOR_CLOSED]
+    today_orders = [wo for wo in orders if _covers_business_today(wo, today)]
+    in_progress = sum(1 for wo in open_orders if _wo_status(wo) in _OPERATOR_STARTED)
+    pending = sum(1 for wo in open_orders if _wo_status(wo) in _OPERATOR_NOT_STARTED)
+    if today_orders:
+        target_value = _qty_text(sum(float(wo.planned_quantity or 0) for wo in today_orders))
+        target_label = "planned qty"
+    else:
+        target_value = "Unavailable"
+        target_label = "no plan for today"
+    machines = _operator_machines(db, user)
+    if not machines:
+        machine_value = "Unassigned"
+        machine_label = "no machine assigned"
+    elif len(machines) == 1:
+        machine_value = machines[0].name or machines[0].code or "Unassigned"
+        machine_label = "my machine"
+    else:
+        machine_value = str(len(machines))
+        machine_label = "machines"
+    status_value, status_label = _machine_status_value(machines)
+    material_value, material_label = _material_availability(db, tenant_id, open_orders)
+    completed_today = _completed_today_count(db, tenant_id, [wo.id for wo in orders], today)
 
     return [
-        _kpi("my-work-orders", "My Work Orders", len(assigned), trend="", trend_label="assigned to me", link="/production/work-orders"),
-        _kpi("todays-target", "Today's Target", int(target), trend="", trend_label="planned qty", link="/production/work-orders"),
-        _kpi("completed-today", "Completed Today", completed_today, trend="", trend_label="finished today", link="/production/work-orders"),
-        _kpi("operator-in-progress", "In Progress", in_progress, trend="", trend_label="running now", link="/production/work-orders"),
-        _kpi("pending-tasks", "Pending Tasks", pending, trend="", trend_label="not started", link="/production/work-orders"),
-        _kpi("assigned-machine", "Assigned Machine", machine_name, trend="", trend_label="my machine", link="/production/machines"),
-        _kpi("machine-status", "Machine Status", machine_status, trend="", trend_label="live status", link="/factory-monitor/machine-status"),
-        _kpi(
-            "material-availability",
-            "Material Availability",
-            material_label,
-            trend="",
-            trend_label="issued / assigned",
-            link="/inventory",
-        ),
-        _kpi(
-            "quality-checks-pending",
-            "Quality Checks Pending",
-            qc_pending,
-            trend="",
-            trend_label="awaiting QC",
-            link="/quality/in-process",
-        ),
+        _kpi("my-work-orders", "My Work Orders", len(open_orders), trend="", trend_label="assigned to me", link=_JOB_CARDS),
+        _kpi("todays-target", "Today's Target", target_value, trend="", trend_label=target_label, link=_JOB_CARDS),
+        _kpi("completed-today", "Completed Today", completed_today, trend="", trend_label="finished today", link=_JOB_CARDS),
+        _kpi("operator-in-progress", "In Progress", in_progress, trend="", trend_label="started", link=_JOB_CARDS),
+        _kpi("pending-tasks", "Pending Tasks", pending, trend="", trend_label="not started", link=_JOB_CARDS),
+        _kpi("assigned-machine", "Assigned Machine", machine_value, trend="", trend_label=machine_label, link=_MY_MACHINE),
+        _kpi("machine-status", "Machine Status", status_value, trend="", trend_label=status_label, link=_MY_MACHINE),
+        _kpi("material-availability", "Material Availability", material_value, trend="", trend_label=material_label, link=_JOB_CARDS),
+        _kpi("quality-checks-pending", "Quality Checks Pending", 0, trend="", trend_label="not assigned", link=None),
     ]
 
 
@@ -797,15 +912,23 @@ def apply_role_dashboard(
         payload["shop_floor"] = {}
         payload["inventory_blocks"] = []
     elif profile == "operator":
-        assigned = []
+        recent_rows: list[dict] = []
         if not user:
             payload["kpi_cards"] = []
         else:
             payload["kpi_cards"] = build_operator_kpis(db, tenant_id, user, ctx)
-            from app.services.operator_service import OperatorService
+            from app.services.work_order_service import _to_list_read
 
-            assigned = OperatorService(db, tenant_id).list_assigned_work_orders(user) or []
-        payload["recent_work_orders"] = _operator_work_order_rows(assigned)
+            open_orders = [
+                wo
+                for wo in _operator_work_orders(db, user)
+                if _wo_status(wo) not in _OPERATOR_CLOSED
+            ]
+            recent_rows = [
+                _to_list_read(db, tenant_id, wo).model_dump(mode="json")
+                for wo in open_orders[:8]
+            ]
+        payload["recent_work_orders"] = _operator_work_order_rows(recent_rows)
         payload["top_machines"] = _operator_assigned_machine(db, tenant_id, user)
         payload["shop_floor_status"] = []
         payload["inventory_blocks"] = []

@@ -704,7 +704,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
-          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
@@ -751,7 +750,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
-          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
@@ -909,7 +907,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 <NavLink
                   to={section.to}
                   end={section.end}
-                  isActive={linkIsActive(section)}
                   onMouseEnter={() => prefetchRouteChunk(section.to)}
                   onFocus={() => prefetchRouteChunk(section.to)}
                   onClick={() => onClose?.()}
@@ -930,7 +927,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                       <NavLink
                         to={section.to}
                         end={section.end}
-                        isActive={linkIsActive(section)}
                         onMouseEnter={() => prefetchRouteChunk(section.to)}
                         onFocus={() => prefetchRouteChunk(section.to)}
                         onClick={() => onClose?.()}
@@ -985,7 +981,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                           key={`${section.key}-${child.to}-${child.label || child.key}`}
                           to={child.to}
                           end={child.end}
-                          isActive={linkIsActive(child)}
                           onMouseEnter={() => prefetchRouteChunk(child.to)}
                           onFocus={() => prefetchRouteChunk(child.to)}
                           onClick={() => onClose?.()}
@@ -1021,7 +1016,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                                 key={`flyout-${section.key}-${child.to}-${child.label || child.key}`}
                                 to={child.to}
                                 end={child.end}
-                                isActive={linkIsActive(child)}
                                 onMouseEnter={() => prefetchRouteChunk(child.to)}
                                 onFocus={() => prefetchRouteChunk(child.to)}
                                 onClick={() => onClose?.()}

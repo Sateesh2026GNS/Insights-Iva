@@ -51,6 +51,7 @@ import {
 import { stageJobCardUrl } from "../../utils/workflowStageRoutes";
 import { resolveManualJobCardId, scrollToJobCardDocumentPanel } from "../../utils/manualSalesJobCard";
 import { computeProductionJobCardKpis } from "../../utils/productionJobCardQueueKpis";
+import { computeOperatorJobCardKpis } from "../../utils/operatorJobCardQueueKpis";
 import "../../styles/my-job-cards-page.css";
 import "../../styles/manufacturing-toolkit.css";
 import "../../styles/sales-job-card-toolkit.css";
@@ -210,6 +211,7 @@ export default function MyJobCardsPage() {
   const productionQueueMode = effectiveTeam === "production" && !operatorMode;
   const salesToolkitMode = effectiveTeam === "sales";
   const plannerChrome = productionQueueMode || salesToolkitMode;
+  const toolkitQueue = plannerChrome || operatorMode;
   const showStockFilter = storeMode;
   const storeKpiCounts = queueMeta?.counts || {};
   const storePendingCount = Number(storeKpiCounts.store_pending || 0);
@@ -659,6 +661,7 @@ export default function MyJobCardsPage() {
     [filtered]
   );
   const salesKpis = useMemo(() => computeSalesJobCardKpis(filtered), [filtered]);
+  const operatorKpis = useMemo(() => computeOperatorJobCardKpis(filtered), [filtered]);
 
   const sectionTitle = storeMode
     ? "Sales Orders / Job Cards from Sales"
@@ -688,7 +691,7 @@ export default function MyJobCardsPage() {
     <div
       id="my-job-cards-filters-panel"
       className={
-        plannerChrome
+        toolkitQueue
           ? "my-job-cards-page__planner-filters"
           : "my-job-cards-page__filters-panel"
       }
@@ -707,7 +710,7 @@ export default function MyJobCardsPage() {
         onClear={clearFilters}
         onApply={handleApplyFilters}
         onSearchKeyDown={handleSearchKeyDown}
-        plannerLayout={plannerChrome}
+        plannerLayout={toolkitQueue}
       />
     </div>
   ) : null;
@@ -723,7 +726,7 @@ export default function MyJobCardsPage() {
       skeletonRows={8}
       skeletonCols={11}
       errorTitle="Could not load job cards"
-      className={plannerChrome ? "my-job-cards-page__planner-async" : "p-4"}
+      className={toolkitQueue ? "my-job-cards-page__planner-async" : "p-4"}
     >
       <JobCardQueueTable
         rows={pageRows.map((row, idx) => ({ ...row, __sno: from + idx + 1 }))}
@@ -735,7 +738,7 @@ export default function MyJobCardsPage() {
         snoOffset={from}
         storeMode={storeMode}
         erpLayout
-        plannerLayout={plannerChrome}
+        plannerLayout={toolkitQueue}
         onDelete={
           storeMode
             ? undefined
@@ -754,7 +757,7 @@ export default function MyJobCardsPage() {
       {listTotal > 0 ? (
         <div
           className={
-            plannerChrome
+            toolkitQueue
               ? "my-job-cards-page__planner-pagination"
               : "my-job-cards-page__pagination"
           }
@@ -777,9 +780,11 @@ export default function MyJobCardsPage() {
     </AsyncPageBody>
   );
 
-  const queueSection = plannerChrome ? (
+  const queueSection = toolkitQueue ? (
     <section className="mtk-panel my-job-cards-page__planner-panel">
-      <div className="mtk-panel__title">{salesToolkitMode ? "Sales Job Card Queue" : "Production Job Card Queue"}</div>
+      <div className="mtk-panel__title">
+        {salesToolkitMode ? "Sales Job Card Queue" : operatorMode ? "Operator Job Cards" : "Production Job Card Queue"}
+      </div>
       <div className="my-job-cards-page__planner-toolbar">
         <span className="my-job-cards-page__planner-total">Total: {listTotal}</span>
         <div className="my-job-cards-page__planner-toolbar-actions">
@@ -968,6 +973,62 @@ export default function MyJobCardsPage() {
           </div>
 
           <div className="mtk-body">{queueSection}</div>
+        </div>
+        {modals}
+      </div>
+    );
+  }
+
+  if (operatorMode) {
+    const documentPanel = manualDocumentView ? (
+      <SalesJobCardDocumentPanel
+        key={activeJobCardId || "empty-operator-manual"}
+        jobCardId={activeJobCardId}
+        row={activeRow}
+        listPath={myJobCardsListPath}
+        showEmptyShell={!activeJobCardId}
+        emptyMessage="Select a job card from the list below to view the Sales Job Card."
+      />
+    ) : (
+      <OperatorJobCardDocumentPanel
+        key={activeOrderId || activeJobCardId || "empty-operator"}
+        orderId={activeOrderId || null}
+        row={activeRow}
+        onQueueRefresh={() => load(true)}
+        showEmptyShell={!activeOrderId && !activeJobCardId}
+        emptyMessage={
+          filtered.length === 0
+            ? "Production assignments appear here when work orders are assigned to you."
+            : "Select a job card from the list below to open the Operator Job Card."
+        }
+      />
+    );
+
+    return (
+      <div className="my-job-cards-page my-job-cards-page--operator min-h-full">
+        <div className="mtk-root mtk-theme--yellow">
+          <header className="mtk-hero">
+            <div className="mtk-hero__row">
+              <span>Plan · Execute · Record · Complete</span>
+            </div>
+            <div className="mtk-hero__title">
+              <h1>Operator Job Cards</h1>
+              <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+            </div>
+          </header>
+          <div className="mtk-kpi-row" aria-label="Operator job card summary">
+            {operatorKpis.map((kpi) => (
+              <div key={kpi.label} className="mtk-kpi">
+                <div className={`mtk-kpi__icon mtk-kpi__icon--${kpi.tone}`}>{kpi.icon}</div>
+                <div className="mtk-kpi__label">{kpi.label}</div>
+                <div className="mtk-kpi__value">{kpi.value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mtk-body">
+            <div className="my-job-cards-page__operator-document">{documentPanel}</div>
+            {queueSection}
+          </div>
         </div>
         {modals}
       </div>

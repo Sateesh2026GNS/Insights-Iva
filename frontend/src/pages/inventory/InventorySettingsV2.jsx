@@ -18,6 +18,8 @@ import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import { SettingsPageShell } from "../settings/settingsUi";
+import useAuth from "../../hooks/useAuth";
+import { userCanAccessPath } from "../../config/permissions";
 import { useToast } from "../../context/ToastContext";
 import { apiErrorMessage } from "../../utils/apiError";
 
@@ -142,6 +144,8 @@ function SettingsCard({ id, icon: Icon, iconBg, iconColor, title, description, c
 
 export default function InventorySettingsV2() {
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const canOpenGeneralSettings = userCanAccessPath(user, "/settings");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(DEFAULTS);
@@ -206,7 +210,7 @@ export default function InventorySettingsV2() {
     <SettingsPageShell heroTitle="Inventory" heroHighlight="Settings" heroSubtitle="Stock valuation, warnings, and warehouse defaults.">
     <div className="min-w-0 space-y-5">
       <PageHeader variant="inventory"
-        backTo="/settings"
+        backTo={canOpenGeneralSettings ? "/settings" : undefined}
         backLabel="Back to Settings"
         action={
           <InventoryHeaderControls

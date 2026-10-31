@@ -13,7 +13,8 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
@@ -287,7 +288,13 @@ export default function BreakdownReports() {
     },
   ];
 
-  if (loading) return <Loader label="Loading breakdown maintenance..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="red" kicker="Report · Repair · Restore" title="BREAKDOWN" accent="MAINTENANCE">
+        <Loader label="Loading breakdown maintenance..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   const exportRows = filtered.map((r) => ({
     breakdown_number: r.breakdown_number,
@@ -315,7 +322,7 @@ export default function BreakdownReports() {
   };
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="red" kicker="Report · Repair · Restore" title="BREAKDOWN" accent="MAINTENANCE">
     <div className="space-y-5 pb-4">
       <PageHeader
         subtitle="Critical production breakdowns — downtime tracking, MTTR, and repair workflow."
@@ -539,6 +546,6 @@ export default function BreakdownReports() {
         </div>
       )}
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

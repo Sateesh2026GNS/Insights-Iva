@@ -25,6 +25,7 @@ import {
   resolveAlert,
 } from "../../api/alertsApi";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { getTeamDirectory } from "../../api/adminApi";
 import { isAdmin, isOperator, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
@@ -133,7 +134,7 @@ function normalizeAlert(a) {
   };
 }
 
-export default function AlertsDashboard({ initialAlertType = null, title, subtitle, topContent = null, salesManager = false, shellClassName = "" }) {
+export default function AlertsDashboard({ initialAlertType = null, title, subtitle, topContent = null, salesManager = false, shellClassName = "", planningTheme = "" }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -493,8 +494,24 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
     }
   };
 
-  if (loading) {
+  const alertWords = String(title || "Alerts").trim().split(/\s+/);
+  const wrapPlanning = (node) => {
+    if (!planningTheme) return node;
     return (
+      <InventoryPlanningShell
+        theme={planningTheme}
+        kicker="Monitor · Acknowledge · Resolve"
+        title={alertWords[0].toUpperCase()}
+        accent={alertWords.slice(1).join(" ").toUpperCase()}
+        subtitle={subtitle || "Monitor, acknowledge, and resolve system alerts across modules."}
+      >
+        {node}
+      </InventoryPlanningShell>
+    );
+  };
+
+  if (loading) {
+    return wrapPlanning(
       <ListPageShell className={shellClassName}>
       <div className="alerts-page-loading space-y-5 pb-4">
         <div className="h-8 w-48 animate-pulse rounded bg-[var(--color-surface-muted)]" />
@@ -509,7 +526,7 @@ export default function AlertsDashboard({ initialAlertType = null, title, subtit
     );
   }
 
-  return (
+  return wrapPlanning(
     <ListPageShell className={shellClassName}>
     <div className="alerts-page-body min-w-0 space-y-5 pb-4">
       {topContent}

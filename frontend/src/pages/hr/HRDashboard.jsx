@@ -381,8 +381,11 @@ function CheckInPanel({ user, onAttendanceChange }) {
   );
 }
 
-function DonutChart({ data, centerValue, emptyColor = "#173e73", innerRadius = 60, outerRadius = 82 }) {
-  const chartData = data?.length ? data : [{ name: "Empty", value: 1, color: emptyColor }];
+function DonutChart({ data, centerValue, innerRadius = 60, outerRadius = 82 }) {
+  if (!data?.length) {
+    return <p className="text-center text-[11px] font-medium text-[#64748b]">No data available.</p>;
+  }
+  const chartData = data;
   return (
     <div className="relative mx-auto flex h-52 w-full max-w-[220px] items-center justify-center">
       <ResponsiveContainer width="100%" height="100%">
@@ -550,16 +553,15 @@ export default function HRDashboard() {
     load();
   }, [load]);
 
-  const userName = user?.full_name || user?.name || "Satish Gogulothu";
+  const userName = user?.full_name || user?.name || "";
 
   const overallChart = useMemo(() => {
-    const hired = data.hired_total || 0;
-    const exits = data.exits_total || 0;
-    if (!hired && !exits) return [{ name: "Employees", value: 1, color: "#164e96" }];
+    const hired = Number(data.hired_total) || 0;
+    const exits = Number(data.exits_total) || 0;
     const items = [];
-    if (hired > 0) items.push({ name: "Hired", value: hired, color: "#164e96" });
+    if (hired > 0) items.push({ name: "Hired", value: hired, color: "#1d4ed8" });
     if (exits > 0) items.push({ name: "Exits", value: exits, color: "#93c5fd" });
-    return items.length ? items : [{ name: "Employees", value: 1, color: "#164e96" }];
+    return items;
   }, [data.hired_total, data.exits_total]);
 
   const expenseChart = useMemo(
@@ -602,15 +604,15 @@ export default function HRDashboard() {
         <div className="flex flex-col gap-4">
           <DashCard title="Employee Analytics" action={<MonthBadge>{data.analytics_month_label || "Sep – 2026"}</MonthBadge>}>
             <div className="grid grid-cols-3 gap-2.5">
-              <StatMini icon={Users} label="Active" value={data.active_employees ?? 1} tone="teal" />
-              <StatMini icon={UserCheck} label="Hired" value={data.hired_month ?? 1} tone="blue" />
+              <StatMini icon={Users} label="Active" value={data.active_employees ?? "—"} tone="teal" />
+              <StatMini icon={UserCheck} label="Hired" value={data.hired_month ?? "—"} tone="blue" />
               <StatMini icon={UserMinus} label="Exits" value={data.exits_month ?? 0} tone="gray" />
             </div>
           </DashCard>
 
           <DashCard action={<MonthBadge>Today</MonthBadge>}>
             <div className="grid grid-cols-3 gap-2.5">
-              <StatMini icon={UserCheck} label="Present" value={data.present_today ?? 1} tone="green" />
+              <StatMini icon={UserCheck} label="Present" value={data.present_today ?? "—"} tone="green" />
               <StatMini icon={Users} label="Absent" value={data.absent_today ?? 0} tone="pink" />
               <StatMini icon={Umbrella} label="On leave" value={data.on_leave_today ?? 0} tone="sky" />
             </div>
@@ -645,8 +647,7 @@ export default function HRDashboard() {
         >
           <DonutChart
             data={overallChart}
-            centerValue={data.overall_employees ?? 1}
-            emptyColor="#173e73"
+            centerValue={data.overall_employees ?? "—"}
             outerRadius={82}
             innerRadius={60}
           />

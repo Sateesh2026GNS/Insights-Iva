@@ -262,8 +262,26 @@ describe("Quality Control path access", () => {
     expect(userCanAccessPath(qc, "/quality/defects")).toBe(true);
     expect(userCanAccessPath(qc, "/inventory/raw-materials")).toBe(true);
     expect(userCanAccessPath(qc, "/production/planning")).toBe(true);
-    expect(userCanAccessPath(qc, "/settings")).toBe(true);
+    expect(userCanAccessPath(qc, "/settings")).toBe(false);
+    expect(userCanAccessPath(qc, "/inventory/settings")).toBe(true);
     expect(userCanAccessPath(qc, "/chat")).toBe(true);
+  });
+
+  it("keeps personal settings and blocks the general settings page", () => {
+    const live = {
+      role: "Quality Control",
+      permissions: ["dashboard", "quality", "production", "inventory", "documents", "alerts", "analytics", "meetings"],
+    };
+    expect(userCanAccessPath(live, "/settings")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/my-account")).toBe(true);
+    expect(userCanAccessPath(live, "/settings/notifications")).toBe(true);
+    expect(userCanAccessPath(live, "/settings/appearance")).toBe(true);
+    expect(userCanAccessPath(live, "/inventory/settings")).toBe(true);
+    expect(userCanAccessPath(live, "/inventory/warehouses")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/users")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/company")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/production")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/security")).toBe(false);
   });
 
   it("blocks masters, procurement, and inventory admin URLs", () => {

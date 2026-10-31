@@ -52,3 +52,46 @@ def test_finance_analytics_endpoint_handles_unexpected_error():
 
     assert exc_info.value.status_code == 500
     assert "An unexpected error occurred" in exc_info.value.detail
+
+
+def test_get_finance_analytics_allows_loss_months():
+    """A month with expenses above revenue must still return finance analytics."""
+    mock_db = MagicMock()
+    mock_db.scalars.return_value.all.return_value = []
+    profit = {
+        "total_revenue": 100,
+        "total_expense": 250,
+        "total_profit": -150,
+        "overall_margin_percent": -150,
+        "monthly": [{
+            "month": "Jan",
+            "revenue": 0,
+            "expense": 10,
+            "profit": -10,
+            "margin_percent": -100,
+        }],
+    }
+    hub = MagicMock(
+        cash_flow_trend=[{"month": "Jan", "inflow": 20, "outflow": 30}],
+        profit_trend=[{"month": "Jan", "amount": -10}],
+    )
+    ar = MagicMock(
+        total_receivables=0,
+        aging_0_30=0,
+        aging_31_60=0,
+        aging_61_90=0,
+        aging_90_plus=0,
+    )
+    ap = MagicMock(outstanding_payables=0)
+
+    with (
+        patch("app.services.analytics_extended_service.get_profit_analysis", return_value=profit),
+        patch("app.services.finance_extended_service.get_ar_summary", return_value=ar),
+        patch("app.services.finance_extended_service.get_ap_summary", return_value=ap),
+        patch("app.services.finance_extended_service.get_finance_hub", return_value=hub),
+    ):
+        result = get_finance_analytics(mock_db, tenant_id=1, year=2026)
+
+    assert result.profit_trend[0].value == -10
+    assert result.monthly_margin[0].value == -100
+    assert result.kpis[2].value == -150

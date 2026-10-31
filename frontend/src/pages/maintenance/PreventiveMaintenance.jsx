@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import KpiCard from "../../components/common/KpiCard";
 import PageHeader from "../../components/common/PageHeader";
 
@@ -227,10 +228,16 @@ export default function PreventiveMaintenance() {
     },
   ];
 
-  if (loading) return <Loader label="Loading preventive maintenance..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="emerald" kicker="Schedule · Service · Prevent" title="PREVENTIVE" accent="MAINTENANCE">
+        <Loader label="Loading preventive maintenance..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="emerald" kicker="Schedule · Service · Prevent" title="PREVENTIVE" accent="MAINTENANCE">
     <div className="space-y-5 pb-5">
       <PageHeader
         subtitle="Schedule and track recurring maintenance tasks across all machines."
@@ -494,6 +501,6 @@ export default function PreventiveMaintenance() {
         </div>
       )}
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

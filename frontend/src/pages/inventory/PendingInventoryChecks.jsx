@@ -7,7 +7,8 @@ import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
 import Pagination from "../../components/common/Pagination";
 import RowActionMenu from "../../components/common/RowActionMenu";
-import { ListPageCard, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
@@ -85,7 +86,13 @@ export default function PendingInventoryChecks() {
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <ListPageShell className="space-y-5 pb-4">
+    <InventoryPlanningShell
+      theme="navy"
+      kicker="Check · Reserve · Release"
+      title="MATERIAL"
+      accent="AVAILABILITY"
+      subtitle="Check stock against confirmed orders"
+    >
       <StoreManagerNav />
 
       <ListPageCard>
@@ -209,6 +216,6 @@ export default function PendingInventoryChecks() {
           </div>
         ) : null}
       </ListPageCard>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

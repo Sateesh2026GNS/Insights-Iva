@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageShell } from "../../components/common/ListPageShell";
@@ -236,9 +237,12 @@ export default function IncomingInspection() {
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedSuppliers, setSelectedSuppliers] = useState([]);
   const [selectedMaterials, setSelectedMaterials] = useState([]);
-  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedStatuses, setSelectedStatuses] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get("status");
+    return STATUS_OPTIONS.some((option) => option.value === raw) ? [raw] : [];
+  });
   const [dateFilter, setDateFilter] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(() => selectedStatuses.length > 0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -429,7 +433,13 @@ export default function IncomingInspection() {
     inspector: r.inspector,
   }));
 
-  if (loading) return <Loader label="Loading incoming inspections..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="orange" kicker="Receive · Inspect · Release" title="INCOMING" accent="INSPECTION">
+        <Loader label="Loading incoming inspections..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   const handleExport = (format) => {
     if (format === "pdf") {
@@ -441,6 +451,7 @@ export default function IncomingInspection() {
   };
 
   return (
+    <InventoryPlanningShell theme="orange" kicker="Receive · Inspect · Release" title="INCOMING" accent="INSPECTION">
     <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
@@ -914,5 +925,6 @@ export default function IncomingInspection() {
       ) : null}
     </div>
     </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

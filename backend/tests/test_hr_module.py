@@ -2,6 +2,49 @@
 
 from datetime import date
 
+from app.core.database import SessionLocal
+from app.models.hr import AttendanceRecord, Employee, Shift
+
+
+def test_attendance_enriched_resolves_employee_and_shift(client, register_admin):
+    auth = register_admin()
+    tenant_id = auth["user"]["tenant_id"]
+    db = SessionLocal()
+    try:
+        employee = Employee(
+            tenant_id=tenant_id,
+            employee_code=f"HR-ATT-{tenant_id}",
+            full_name="Attendance Person",
+            is_active=True,
+        )
+        shift = Shift(tenant_id=tenant_id, name="Morning", is_active=True)
+        db.add_all([employee, shift])
+        db.flush()
+        db.add(
+            AttendanceRecord(
+                tenant_id=tenant_id,
+                employee_id=employee.id,
+                shift_id=shift.id,
+                record_date=date.today(),
+                status="present",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    listing = client.get("/hr/attendance/enriched", headers=auth["headers"])
+    assert listing.status_code == 200, listing.text
+    row = next(item for item in listing.json() if item["employee_name"] == "Attendance Person")
+    assert row["shift"] == "Morning"
+    assert row["status"] == "present"
+
+    summary = client.get("/hr/attendance/summary", headers=auth["headers"])
+    assert summary.status_code == 200, summary.text
+
+    payroll = client.get("/hr/payroll/enriched", headers=auth["headers"])
+    assert payroll.status_code == 200, payroll.text
+
 
 def test_hr_dashboard_extended(client, register_admin):
     auth = register_admin()
@@ -120,11 +163,70 @@ def test_expense_claim(client, register_admin):
         headers=auth["headers"],
         json={"ids": [claim_id], "status": "approved"},
     )
-    assert approve_resp.status_code == 200
+    assert approve_resp.status_code == 403
 
     del_resp = client.delete(f"/hr/expenses/my/{claim_id}", headers=auth["headers"])
     assert del_resp.status_code == 200
 
+
+
+def test_self_approval_is_rejected(client, register_admin, make_restricted_user):
+    auth = register_admin()
+    created = client.post(
+        "/hr/expenses/my",
+        headers=auth["headers"],
+        json={
+            "expense_name": "Own claim",
+            "expense_category": "travel",
+            "amount": 800,
+            "expense_date": str(date.today()),
+        },
+    )
+    assert created.status_code == 200
+    claim_id = created.json()["id"]
+
+    denied = client.post(
+        "/hr/expenses/approvals/approve",
+        headers=auth["headers"],
+        json={"ids": [claim_id], "status": "approved"},
+    )
+    assert denied.status_code == 403
+
+    still = client.get("/hr/expenses/approvals", headers=auth["headers"])
+    row = next(item for item in still.json() if item["id"] == claim_id)
+    assert str(row["status"]).lower() != "approved"
+
+    approver = make_restricted_user(auth["user"]["tenant_id"], ["hr"])
+    allowed = client.post(
+        "/hr/expenses/approvals/approve",
+        headers=approver["headers"],
+        json={"ids": [claim_id], "status": "approved"},
+    )
+    assert allowed.status_code == 200
+
+
+def test_accounts_user_cannot_approve_expenses(client, register_admin, make_restricted_user):
+    auth = register_admin()
+    created = client.post(
+        "/hr/expenses/my",
+        headers=auth["headers"],
+        json={
+            "expense_name": "Needs HR",
+            "expense_category": "travel",
+            "amount": 500,
+            "expense_date": str(date.today()),
+            "created_by_name": "Someone Else",
+        },
+    )
+    assert created.status_code == 200
+    claim_id = created.json()["id"]
+    accountant = make_restricted_user(auth["user"]["tenant_id"], ["accounts"])
+    denied = client.post(
+        "/hr/expenses/approvals/approve",
+        headers=accountant["headers"],
+        json={"ids": [claim_id], "status": "approved"},
+    )
+    assert denied.status_code == 403
 
 
 def test_holiday_and_leave_plan(client, register_admin):

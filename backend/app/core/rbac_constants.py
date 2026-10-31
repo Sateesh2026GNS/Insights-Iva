@@ -135,6 +135,7 @@ PERMISSION_MATRIX = {
             "alerts",
             "analytics",
             "meetings",
+            "settings",
         ],
         "actions": [
             "quality:read",

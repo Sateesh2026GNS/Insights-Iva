@@ -78,6 +78,17 @@ def _permissions_for_role_name(name: str) -> list[str]:
     return sorted(set(perms))
 
 
+def _with_role_baseline(role_name: str | None, perms: set[str]) -> set[str]:
+    """Keep stored role JSON, and include Settings for Quality Control.
+
+    Older Quality Control rows were saved before Settings was part of the role.
+    Admin-only modules are not added here.
+    """
+    if role_name == "Quality Control":
+        perms.add("settings")
+    return perms
+
+
 def get_user_permissions(user: User) -> set[str]:
     perms: set[str] = set()
     if not user:
@@ -90,7 +101,7 @@ def get_user_permissions(user: User) -> set[str]:
                 role if isinstance(role, str) else None
             )
             if normalized:
-                perms.update(normalized)
+                perms.update(_with_role_baseline(role_name, set(normalized)))
             elif role_name and role_name in PERMISSION_MATRIX:
                 perms.update(_permissions_for_role_name(role_name))
         if not roles:

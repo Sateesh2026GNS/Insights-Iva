@@ -258,6 +258,7 @@ export function userHasModule(user, module) {
   if (isAdmin(user)) return true;
   const perms = getEffectivePermissions(user);
   if (perms.includes("*") || perms.includes(module)) return true;
+  if (module === "settings" && hasRole(user, "Quality Control")) return true;
   return perms.some((p) => typeof p === "string" && p.startsWith(`${module}:`));
 }
 
@@ -293,6 +294,16 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/store/reports",
   "/inventory/dashboard",
   "/inventory/settings",
+  "/inventory/godown-planner",
+  "/inventory/unit-converter",
+  "/inventory/eoq-helper",
+  "/inventory/stock-valuation",
+  "/inventory/hamali-cost",
+  "/inventory/truck-load",
+  "/inventory/damage-loss",
+  "/inventory/storage-quotation",
+  "/inventory/gate-pass",
+  "/inventory/godown-dashboard",
   "/inventory/raw-materials",
   "/inventory/finished-goods",
   "/inventory/stock-transfer",
@@ -581,6 +592,8 @@ export function userCanAccessSettingsSection(user, sectionId) {
   if (sectionId === MY_SUBSCRIPTION_SETTINGS_SECTION_ID) {
     return userCanAccessMySubscription(user);
   }
+  const routeModule = getModuleForPath(`/settings/${sectionId}`);
+  if (routeModule === "admin" && !userCanAccess(user, "admin")) return false;
   return userCanAccess(user, getSettingsSectionModule(sectionId));
 }
 

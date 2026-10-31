@@ -638,8 +638,14 @@ def create_adjustment(db: Session, tenant_id: int, payload: StockAdjustmentCreat
             StockLevel.item_id == payload.item_id,
         )
     ).first()
-    old_qty = sl.quantity if sl else 0
-    diff = payload.new_qty - old_qty
+    old_raw = float(sl.quantity) if sl and sl.quantity is not None else 0.0
+    if not old_raw.is_integer():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Stock adjustments store whole quantities, and the on-hand quantity is fractional.",
+        )
+    old_qty = int(old_raw)
+    diff = int(payload.new_qty) - old_qty
     a_date = date.today()
     if payload.adjustment_date and payload.adjustment_date.strip():
         try:

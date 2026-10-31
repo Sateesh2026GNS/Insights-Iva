@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import AppRoutes from "./routes/AppRoutes";
+import HrPlanningLayout from "./components/hr/HrPlanningLayout";
 import RouteFallback from "./components/common/RouteFallback";
 import NavigationProgressBar from "./components/common/NavigationProgressBar";
 import NavigationLoadingOverlay from "./components/common/NavigationLoadingOverlay";
@@ -14,11 +15,11 @@ import AppShellBottomActionBar from "./components/layout/AppShellBottomActionBar
 import Button from "./components/common/Button";
 import useAuth from "./hooks/useAuth";
 import useSettings from "./context/SettingsContext";
+import { isStoreManager } from "./config/permissions";
 import { resolveErpAiAssistantMode, erpPageContextLabel } from "./utils/erpAiAssistant";
 import { triggerServerWakeup, startServerKeepAlive, stopServerKeepAlive } from "./utils/serverWakeup";
 
 const ErpAiAssistant = lazy(() => import("./components/ai/ErpAiAssistant"));
-const OperatorSafetyFab = lazy(() => import("./components/operator/OperatorSafetyFab"));
 
 function normalizePath(pathname) {
   return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -210,6 +211,16 @@ export default function App() {
     location.pathname === "/inventory" ||
     location.pathname.startsWith("/inventory/items/") ||
     location.pathname === "/inventory/settings" ||
+    location.pathname === "/inventory/godown-planner" ||
+    location.pathname === "/inventory/unit-converter" ||
+    location.pathname === "/inventory/eoq-helper" ||
+    location.pathname === "/inventory/stock-valuation" ||
+    location.pathname === "/inventory/hamali-cost" ||
+    location.pathname === "/inventory/truck-load" ||
+    location.pathname === "/inventory/damage-loss" ||
+    location.pathname === "/inventory/storage-quotation" ||
+    location.pathname === "/inventory/gate-pass" ||
+    location.pathname === "/inventory/godown-dashboard" ||
     location.pathname === "/settings/change-template" ||
     location.pathname === "/settings/template-settings" ||
     location.pathname === "/settings/invoice-template" ||
@@ -249,6 +260,14 @@ export default function App() {
   const isDocumentsLibrary = isDocumentsLibraryRoute(location.pathname);
   const isEInvoiceLogin = location.pathname === "/sales/e-invoice";
   const path = normalizePath(location.pathname);
+  const isStoreManagerProductPage =
+    isStoreManager(user) &&
+    (path === "/products" ||
+      path.startsWith("/products/") ||
+      path === "/masters/products" ||
+      path.startsWith("/masters/products/") ||
+      path === "/master/products" ||
+      path.startsWith("/master/products/"));
   const isJobCardAuthoring =
     path === "/sales/job-cards/create" || /^\/sales\/job-cards\/[^/]+\/edit$/.test(path);
   const isCustomerForm =
@@ -258,6 +277,7 @@ export default function App() {
   /** Full-bleed editors keep their own chrome; list/dashboard surfaces use Products page surface. */
   const isFullBleedSales =
     isInvoiceEditor || isSalesDocList || isEInvoiceLogin || path === "/" || isJobCardsWorkspace || isCustomerForm;
+  const isHrModule = path === "/hr" || path.startsWith("/hr/");
 
   if (isShellLessRoute(location.pathname)) {
     const path = normalizePath(location.pathname);
@@ -373,10 +393,12 @@ export default function App() {
           <div
             className={
               isInvoiceEditor || isEInvoiceLogin || isFullBleedSales
-                ? "flex min-h-0 flex-1 flex-col"
+                ? `flex min-h-0 flex-1 flex-col ${isStoreManagerProductPage ? "pt-5" : ""}`
                 : isSettings
-                  ? "settings-page min-h-0 flex-1"
-                  : "ui-page ui-stack min-w-0 w-full"
+                  ? `settings-page min-h-0 flex-1 ${isStoreManager(user) ? "pt-5" : ""}`
+                  : isHrModule
+                ? "hr-plan-slot min-h-0 min-w-0 w-full flex-1"
+                : "ui-page ui-stack min-w-0 w-full"
             }
           >
             <Suspense
@@ -388,14 +410,17 @@ export default function App() {
             >
               <RouteErrorBoundary>
                 <PageTransition fillViewport={isInvoiceEditor || isEInvoiceLogin}>
-                  <AppRoutes />
+                  {isHrModule ? (
+                    <HrPlanningLayout>
+                      <AppRoutes />
+                    </HrPlanningLayout>
+                  ) : (
+                    <AppRoutes />
+                  )}
                 </PageTransition>
               </RouteErrorBoundary>
             </Suspense>
           </div>
-          <Suspense fallback={null}>
-            <OperatorSafetyFab />
-          </Suspense>
         </main>
         {user && !isInvoiceEditor && !isEInvoiceLogin ? <AppShellBottomActionBar /> : null}
         {!isInvoiceEditor ? (

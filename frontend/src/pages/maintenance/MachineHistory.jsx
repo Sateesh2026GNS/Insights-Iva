@@ -24,7 +24,8 @@ import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
 import MaintenanceErrorState from "../../components/maintenance/MaintenanceErrorState";
@@ -313,7 +314,13 @@ export default function MachineHistory() {
     setPage(1);
   };
 
-  if (loading) return <Loader label="Loading machine history..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="slate" kicker="Track · Service · History" title="MACHINE" accent="HISTORY">
+        <Loader label="Loading machine history..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   const handleExport = async (format) => {
     const data = mapHistoryExportRows(filtered);
@@ -330,7 +337,7 @@ export default function MachineHistory() {
   };
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="slate" kicker="Track · Service · History" title="MACHINE" accent="HISTORY">
     <div className="min-w-0 space-y-5 pb-5">
       <PageHeader
         subtitle="Track machine usage, maintenance, breakdowns, and activities"
@@ -632,6 +639,6 @@ export default function MachineHistory() {
         </ListPageCardBody>
       </ListPageCard>
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

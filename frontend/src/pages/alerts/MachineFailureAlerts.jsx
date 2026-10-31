@@ -6,6 +6,7 @@ export default function MachineFailureAlerts() {
       title="Machine Failure Alerts"
       subtitle="Machines reporting faults or breakdowns."
       initialAlertType="machine_failure"
+      planningTheme="rose"
     />
   );
 }

@@ -1,0 +1,68 @@
+.gsp select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #f5d76e;
+  background: #fff7cc;
+  border-radius: 2px;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+.gsp-eoq-chart {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.gsp-eoq-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 10px;
+  color: #475569;
+}
+
+.gsp-eoq-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gsp-eoq-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  border-radius: 99px;
+}
+
+.gsp-eoq-total-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 120px;
+}
+
+.gsp-eoq-inline-bar {
+  width: 100%;
+  max-width: 100px;
+  margin-left: auto;
+}
+
+.gsp-eoq-inline-bar i {
+  background: #16a34a;
+}
+
+.gsp-eoq-row--best td {
+  background: #ecfdf3;
+  font-weight: 700;
+}
+
+.gsp-eoq-table td:nth-child(5) {
+  min-width: 140px;
+}

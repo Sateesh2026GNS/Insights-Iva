@@ -60,4 +60,11 @@ services:
         value: "true"
       - key: AGENT_WRITE_TOOLS_ENABLED
         value: "false"
+      # Google Calendar OAuth — set in the Render dashboard. Do not commit real values.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        sync: false
 

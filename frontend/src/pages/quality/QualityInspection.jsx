@@ -1,17 +1,25 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ResourcePage from "../../components/common/ResourcePage";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { StatusBadge } from "../../components/common/Table";
 import { getInspections, createInspection } from "../../api/qualityApi";
 
+const INSPECTION_RESULT_FILTERS = ["pass", "fail", "rework"];
+
 export default function QualityInspection() {
+  const [params] = useSearchParams();
+  const result = params.get("result") || "";
+  const initialFilterValues = INSPECTION_RESULT_FILTERS.includes(result) ? { result } : null;
+
   return (
+    <InventoryPlanningShell theme="orange" kicker="Inspect · Record · Release" title="INSPECTION" accent="RECORDS">
     <ResourcePage
       title="Quality Inspection"
       subtitle="Perform and record quality inspections."
       headerAction={(
         <Link
           to="/my-job-cards?dept=quality"
-          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/70 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="inline-flex min-h-7 items-center justify-center rounded-sm border border-[#c5d0dc] bg-white px-3 text-[11px] font-bold text-[#1a1a1a] hover:bg-[#fff7ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#c2410c]"
         >
           Open Quality Check Queue
         </Link>
@@ -19,6 +27,8 @@ export default function QualityInspection() {
       fetcher={getInspections}
       createFn={createInspection}
       createLabel="+ New Inspection"
+      openCreateOnMount={params.get("new") === "1"}
+      initialFilterValues={initialFilterValues}
       emptyTitle="No inspections yet"
       emptyDescription="Record your first quality inspection."
       tableToolbarClassName="quality-inspection-toolbar"
@@ -66,5 +76,6 @@ export default function QualityInspection() {
         { name: "notes", label: "Notes", type: "textarea", full: true },
       ]}
     />
+    </InventoryPlanningShell>
   );
 }

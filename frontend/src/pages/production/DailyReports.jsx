@@ -16,9 +16,9 @@ import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import NavyMastersShell from "../../components/common/NavyMastersShell";
 import Loader from "../../components/common/Loader";
-import PageHeader from "../../components/common/PageHeader";
 import { SearchBar } from "../../components/common/SearchFilter";
 import StatusBadge from "../../components/common/StatusBadge";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
@@ -561,19 +561,24 @@ export default function DailyReports() {
   };
 
   if (loading && reports.length === 0) {
-    return <Loader label="Loading daily production reports…" />;
+    return (
+      <NavyMastersShell theme="blue" kicker="Record · Yield · Review" title="PRODUCTION" accent="REPORTS">
+        <Loader label="Loading daily production reports…" />
+      </NavyMastersShell>
+    );
   }
 
   return (
-    <ListPageShell>
-      <PageHeader
-        subtitle="Shift output, scrap, downtime, and yield by work order."
-        action={
-          <Button type="button" variant="add" onClick={() => setShowNew(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-            New Report
-          </Button>
-        }
-      />
+    <NavyMastersShell theme="blue"
+      kicker="Record · Yield · Review"
+      title="PRODUCTION"
+      accent="REPORTS"
+      actions={
+        <Button type="button" variant="add" onClick={() => setShowNew(true)} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+          New Report
+        </Button>
+      }
+    >
       <div className="ui-grid-kpi">
         <ClickableKpiCard onClick={() => applyKpiPreset("all")} title="Show all reports">
           <KpiCard label="Produced" value={kpis.produced.toLocaleString()} icon={Factory} tone="primary" meta="Click to filter" />
@@ -718,6 +723,6 @@ export default function DailyReports() {
       </ListPageCard>
 
       {showNew ? <NewReportModal onClose={() => setShowNew(false)} onSuccess={loadReports} /> : null}
-    </ListPageShell>
+    </NavyMastersShell>
   );
 }

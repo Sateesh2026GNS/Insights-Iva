@@ -35,6 +35,16 @@ export const LowStockItemsPage = lazy(() => import("../pages/inventory/LowStockI
 export const OutOfStockItemsPage = lazy(() => import("../pages/inventory/OutOfStockItemsPage"));
 export const InventoryItemDetailV2 = lazy(() => import("../pages/inventory/InventoryItemDetailV2"));
 export const InventorySettingsV2 = lazy(() => import("../pages/inventory/InventorySettingsV2"));
+export const GodownCapacityPlanner = lazy(() => import("../pages/inventory/GodownCapacityPlanner.jsx"));
+export const UnitConverter = lazy(() => import("../pages/inventory/UnitConverter"));
+export const EoqHelper = lazy(() => import("../pages/inventory/EoqHelper"));
+export const StockValuation = lazy(() => import("../pages/inventory/StockValuation"));
+export const HamaliCost = lazy(() => import("../pages/inventory/HamaliCost"));
+export const TruckLoadPlanner = lazy(() => import("../pages/inventory/TruckLoadPlanner"));
+export const DamageLoss = lazy(() => import("../pages/inventory/DamageLoss"));
+export const StorageQuotation = lazy(() => import("../pages/inventory/StorageQuotation"));
+export const GatePass = lazy(() => import("../pages/inventory/GatePass"));
+export const GodownDashboard = lazy(() => import("../pages/inventory/GodownDashboard"));
 export const InventoryList = lazy(() => import("../pages/inventory/InventoryList"));
 export const RawMaterials = lazy(() => import("../pages/inventory/RawMaterials"));
 export const FinishedGoods = lazy(() => import("../pages/inventory/FinishedGoods"));
