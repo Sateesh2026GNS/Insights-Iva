@@ -20,6 +20,17 @@ export function formatSimpleToastMessage(text, isError, type = "success") {
     if (raw.startsWith("Upload rejected:")) return raw;
     const lower = raw.toLowerCase();
     if (
+      lower.includes("resend") ||
+      lower.includes("brevo") ||
+      lower.includes("domain") ||
+      lower.includes("test mode") ||
+      lower.includes("email service") ||
+      lower.includes("report email") ||
+      lower.includes("timed out")
+    ) {
+      return raw;
+    }
+    if (
       lower.includes("value error") ||
       lower.includes("validation error") ||
       lower.includes("validation failed") ||

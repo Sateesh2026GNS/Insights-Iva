@@ -180,6 +180,18 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("RESEND_API_KEY", "resend_api_key"),
     )
+    resend_from_email: str = Field(
+        default="",
+        validation_alias=AliasChoices("RESEND_FROM_EMAIL", "resend_from_email"),
+    )
+    brevo_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("BREVO_API_KEY", "brevo_api_key"),
+    )
+    brevo_sender_email: str = Field(
+        default="admin@codeviasoftware.com",
+        validation_alias=AliasChoices("BREVO_SENDER_EMAIL", "brevo_sender_email"),
+    )
 
     @field_validator("smtp_password", mode="before")
     @classmethod

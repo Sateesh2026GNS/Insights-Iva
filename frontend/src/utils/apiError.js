@@ -142,6 +142,14 @@ const REPORT_EMAIL_CODE_MESSAGES = {
 
 function reportEmailDetailMessage(detail, fallback) {
   if (detail == null || detail === "") return null;
+  if (typeof detail === "string" && detail.trim().startsWith("{") && detail.trim().endsWith("}")) {
+    try {
+      const parsed = JSON.parse(detail.replace(/'/g, '"'));
+      if (parsed && typeof parsed === "object") {
+        detail = parsed;
+      }
+    } catch {}
+  }
   if (typeof detail === "object" && !Array.isArray(detail)) {
     const code = detail.code;
     if (code && REPORT_EMAIL_CODE_MESSAGES[code]) {

@@ -93,7 +93,10 @@ def _settings():
 def smtp_missing_env_var_names() -> list[str]:
     """Names of unset SMTP settings (for server logs only — never log secret values)."""
     s = _settings()
-    raw_resend = getattr(s, "resend_api_key", "")
+    raw_brevo = getattr(s, "brevo_api_key", "") or os.environ.get("BREVO_API_KEY", "")
+    if isinstance(raw_brevo, str) and raw_brevo.strip():
+        return []
+    raw_resend = getattr(s, "resend_api_key", "") or os.environ.get("RESEND_API_KEY", "")
     if isinstance(raw_resend, str) and raw_resend.strip():
         return []
     missing = []
@@ -166,10 +169,11 @@ def email_delivery_http_detail(exc: EmailDeliveryError) -> dict[str, str]:
         "resend.com/domains" in detail_lower
         or "verify a domain" in detail_lower
         or "testing emails to your own" in detail_lower
-        or "not verified" in detail_lower
         or "only send testing" in detail_lower
     ):
-        msg = "Email service is in test mode. To send reports to any email address, please verify your domain at resend.com/domains or ensure SMTP credentials are configured."
+        msg = "Email domain not verified in Resend. To send to any email address, please verify your domain at resend.com/domains or configure Brevo."
+    elif "brevo" in detail_lower and ("unauthorized" in detail_lower or "401" in detail_lower or "key" in detail_lower):
+        msg = "Brevo API authentication failed. Please check BREVO_API_KEY in server configuration."
     return {"message": msg, "code": code}
 
 
@@ -278,6 +282,81 @@ def _classify_delivery_failure(exc: Exception) -> EmailDeliveryError:
     )
 
 
+def _send_via_brevo(
+    api_key: str,
+    to: str,
+    subject: str,
+    body: str,
+    *,
+    cc: str | None = None,
+    html: str | None = None,
+    attachments: list[tuple[str, bytes, str]] | None = None,
+    from_email: str | None = None,
+) -> None:
+    import base64
+    import json
+    import re
+    import urllib.error
+    import urllib.request
+
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "api-key": api_key.strip(),
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "InsightsIva/1.0",
+    }
+
+    sender_email = (
+        (os.environ.get("BREVO_SENDER_EMAIL") or "").strip()
+        or (from_email or "").strip()
+        or "admin@codeviasoftware.com"
+    )
+    if "<" in sender_email and ">" in sender_email:
+        sender_email = sender_email.split("<")[-1].split(">")[0].strip()
+
+    payload = {
+        "sender": {"name": "Insights Iva", "email": sender_email},
+        "to": [{"email": to.strip()}],
+        "subject": subject,
+        "textContent": body,
+        "htmlContent": html or f"<div style='font-family:sans-serif;'>{body.replace(chr(10), '<br/>')}</div>",
+    }
+    if cc:
+        payload["cc"] = [{"email": c.strip()} for c in re.split(r"[,;]+", str(cc)) if c.strip()]
+
+    if attachments:
+        payload["attachment"] = [
+            {
+                "name": filename,
+                "content": base64.b64encode(content).decode("utf-8"),
+            }
+            for filename, content, mime in attachments
+        ]
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode())
+            logger.info("email_sent_via_brevo_api to=%s message_id=%s", to, data.get("messageId"))
+    except urllib.error.HTTPError as exc:
+        err_body = exc.read().decode()
+        logger.error("brevo_api_http_error code=%s body=%s", exc.code, err_body)
+        raise EmailDeliveryError(
+            PUBLIC_MSG_SEND_FAILED,
+            reason="delivery",
+            internal_detail=f"Brevo API HTTP {exc.code}: {err_body}",
+        ) from exc
+    except Exception as exc:
+        logger.error("brevo_api_failed: %s", exc)
+        raise _classify_delivery_failure(exc) from exc
+
+
 def _send_via_resend(
     api_key: str,
     to: str,
@@ -305,8 +384,8 @@ def _send_via_resend(
     resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
     if resend_from:
         sender = resend_from
-    elif from_email and not any(d in from_email.lower() for d in ("codeviasoftware.com", "gmail.com", "yahoo.com", "outlook.com")):
-        sender = from_email
+    elif from_email and not any(d in from_email.lower() for d in ("gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "live.com")):
+        sender = f"Insights Iva <{from_email}>" if "<" not in from_email else from_email
     else:
         sender = "Insights Iva <onboarding@resend.dev>"
 
@@ -358,23 +437,58 @@ def _send_via_smtplib(
 ) -> None:
     _require_smtp()
     s = _settings()
-    resend_err_to_raise = None
-    raw_resend = getattr(s, "resend_api_key", "")
-    
-    # Check if Resend is in sandbox/testing mode:
-    # In test mode without custom verified domain, Resend only delivers to the owner (admin@codeviasoftware.com).
-    # If the recipient is different, prioritize direct Gmail SMTP so delivery succeeds to any email.
-    resend_from = (os.environ.get("RESEND_FROM_EMAIL") or "").strip()
-    is_resend_custom_domain = bool(resend_from and "onboarding@resend.dev" not in resend_from.lower())
-    recipient_allowed_by_resend = is_resend_custom_domain or to.strip().lower() in ("admin@codeviasoftware.com",)
+    http_delivery_error = None
 
-    if isinstance(raw_resend, str) and raw_resend.strip() and recipient_allowed_by_resend:
+    # 1. Try Brevo HTTPS API first if configured (works across all cloud platforms)
+    raw_brevo = getattr(s, "brevo_api_key", "") or os.environ.get("BREVO_API_KEY", "")
+    if isinstance(raw_brevo, str) and raw_brevo.strip():
         try:
-            _send_via_resend(raw_resend.strip(), to, subject, body, cc=cc, html=html, attachments=attachments, from_email=s.smtp_from_email)
+            _send_via_brevo(raw_brevo.strip(), to, subject, body, cc=cc, html=html, attachments=attachments, from_email=s.smtp_from_email)
+            return
+        except EmailDeliveryError as brevo_err:
+            logger.warning("brevo_delivery_failed_falling_back to=%s: %s", to, brevo_err.internal_detail)
+            http_delivery_error = brevo_err
+
+    # 2. Try Resend HTTPS API if configured
+    raw_resend = getattr(s, "resend_api_key", "") or os.environ.get("RESEND_API_KEY", "")
+    if isinstance(raw_resend, str) and raw_resend.strip():
+        try:
+            _send_via_resend(raw_resend, to, subject, body, cc=cc, html=html, attachments=attachments, from_email=s.smtp_from_email)
             return
         except EmailDeliveryError as resend_err:
-            logger.warning("resend_delivery_failed_attempting_direct_smtp to=%s: %s", to, resend_err.internal_detail)
-            resend_err_to_raise = resend_err
+            logger.warning("resend_delivery_failed to=%s: %s", to, resend_err.internal_detail)
+            detail_lower = (resend_err.internal_detail or "").lower()
+            is_testing_restriction = (
+                "resend.com/domains" in detail_lower
+                or "verify a domain" in detail_lower
+                or "testing emails to your own" in detail_lower
+                or "only send testing" in detail_lower
+            )
+            # When Resend is in testing mode (unverified domain), external recipients are rejected by Resend.
+            # Deliver to the verified account owner (admin@codeviasoftware.com) with the intended recipient annotated,
+            # allowing mailbox forwarding (Option 3) to deliver the email directly to mltejaswi1@gmail.com.
+            fallback_owner = (s.smtp_user or "admin@codeviasoftware.com").strip()
+            if is_testing_restriction and to.strip().lower() != fallback_owner.lower():
+                try:
+                    fwd_subj = f"[For: {to}] {subject}"
+                    fwd_body = f"Intended recipient: {to}\n\n{body}"
+                    fwd_banner = f"<div style='background:#f4f4f7;border-left:4px solid #002C66;padding:10px 14px;border-radius:4px;margin-bottom:16px;font-family:sans-serif;font-size:13px;color:#1a1a1f;'><strong>Intended Recipient:</strong> {to}</div>"
+                    fwd_html = fwd_banner + (html or f"<div>{body}</div>")
+                    logger.info("resend_testing_mode_rerouting to=%s via_owner=%s", to, fallback_owner)
+                    _send_via_resend(
+                        raw_resend.strip(),
+                        fallback_owner,
+                        fwd_subj,
+                        fwd_body,
+                        html=fwd_html,
+                        attachments=attachments,
+                        from_email=s.smtp_from_email,
+                    )
+                    return
+                except Exception as route_err:
+                    logger.warning("resend_owner_reroute_failed: %s", route_err)
+
+            http_delivery_error = resend_err
             if not (s.smtp_user and s.smtp_password):
                 raise
 
@@ -447,8 +561,8 @@ def _send_via_smtplib(
             last_exc = exc
             logger.warning("SMTP send failed on port %s for host %s: %s", port, host, exc)
 
-    if resend_err_to_raise:
-        raise resend_err_to_raise
+    if http_delivery_error:
+        raise http_delivery_error
 
     if last_exc:
         raise _classify_delivery_failure(last_exc)

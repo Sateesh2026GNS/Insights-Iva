@@ -321,6 +321,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             formatted_errors.append(msg)
 
     first_detail = "Enter valid inputs"
+    if any("to_email" in str(e).lower() for e in formatted_errors):
+        first_detail = "Please enter a valid recipient email address."
 
     if request.url.path.startswith("/api/"):
         from app.utils.api_response import error_response

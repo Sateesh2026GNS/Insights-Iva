@@ -171,9 +171,22 @@ def test_resend_testing_mode_falls_back_to_direct_smtp():
 
         _send_via_smtplib("external@example.com", "Test", "Body")
 
-        mock_resend.assert_called_once()
+        assert mock_resend.call_count >= 1
         mock_ssl.assert_called_once()
         mock_server.login.assert_called_once_with("admin@codeviasoftware.com", "password")
 
+def test_send_via_brevo_dispatches_http_request():
+    from app.services.email_service import _send_via_brevo
 
+    with patch("urllib.request.urlopen") as mock_urlopen:
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = b'{"messageId": "msg_brevo_123"}'
+        mock_urlopen.return_value.__enter__.return_value = mock_resp
+
+        _send_via_brevo("brevo_mock_key", "mltejaswi1@gmail.com", "Subject", "Body", attachments=[("report.pdf", b"%PDF", "application/pdf")])
+
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args[0][0]
+        assert req.full_url == "https://api.brevo.com/v3/smtp/email"
+        assert req.headers["Api-key"] == "brevo_mock_key"
 
