@@ -348,7 +348,10 @@ def _permissions_for_role_record(role) -> list[str]:
             raw = [raw]
     normalized = list(raw) if isinstance(raw, (list, tuple, set)) else []
     if normalized:
-        return sorted(set(normalized))
+        perms = set(normalized)
+        if getattr(role, "name", None) == "Quality Control":
+            perms.add("settings")
+        return sorted(perms)
     spec = PERMISSION_MATRIX.get(getattr(role, "name", ""), {})
     perms = list(spec.get("modules", []))
     perms.extend(spec.get("actions", []))

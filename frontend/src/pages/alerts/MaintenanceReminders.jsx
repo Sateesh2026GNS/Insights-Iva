@@ -6,6 +6,7 @@ export default function MaintenanceReminders() {
       title="Maintenance Alerts"
       subtitle="Scheduled maintenance reminders and breakdown services due."
       initialAlertType="maintenance"
+      planningTheme="steel"
     />
   );
 }

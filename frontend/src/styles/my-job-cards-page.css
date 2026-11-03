@@ -1149,3 +1149,78 @@
 .my-job-cards-page--planner .my-job-cards-table--planner tbody tr:hover td {
   background-color: #ecfdf5;
 }
+
+/* Operator queue — Project Timeline toolkit (mtk-theme--yellow). */
+.my-job-cards-page--operator {
+  width: 100%;
+  max-width: none;
+  background: #f4f7fa;
+  font-size: 11px;
+  color: #1a1a1a;
+}
+
+.my-job-cards-page--operator .mtk-hero__title h1,
+.my-job-cards-page--operator .mtk-hero__title p {
+  margin: 0;
+}
+
+.my-job-cards-page--operator .mtk-hero__title p {
+  margin-top: 2px;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.my-job-cards-page--operator .mtk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.my-job-cards-page--operator .my-job-cards-page__planner-total {
+  color: var(--mtk-total, #854d0e);
+}
+
+.my-job-cards-page--operator .my-job-cards-page__operator-document {
+  min-width: 0;
+}
+
+.my-job-cards-page--operator .my-job-cards-page__operator-document .op-job,
+.my-job-cards-page--operator .my-job-cards-page__operator-document .ui-card {
+  border-color: var(--mtk-border, #c5d0dc);
+  border-radius: 2px;
+}
+
+.my-job-cards-page--operator .my-job-cards-table--planner .mtk-table th.my-job-cards-table__actions-col,
+.my-job-cards-page--operator .my-job-cards-table--planner .mtk-table td.my-job-cards-table__actions-col {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background-color: #fff;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.06);
+}
+
+.my-job-cards-page--operator .my-job-cards-table--planner .mtk-table thead th.my-job-cards-table__actions-col {
+  background-color: #e8eef4 !important;
+  z-index: 3;
+}
+
+.my-job-cards-page--operator .my-job-cards-table__row--selected-planner td {
+  background-color: #fef9c3 !important;
+}
+
+.my-job-cards-page--operator .my-job-cards-table--planner tbody tr:hover td {
+  background-color: #fefce8;
+}
+
+.my-job-cards-page--operator .ui-btn:focus-visible,
+.my-job-cards-page--operator input:focus-visible,
+.my-job-cards-page--operator select:focus-visible {
+  outline: 2px solid #a16207;
+  outline-offset: 1px;
+}
+
+@media (max-width: 800px) {
+  .my-job-cards-page--operator .mtk-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -41,6 +41,7 @@ export default function LowStockAlerts() {
       title="Low Stock Alerts"
       subtitle="Items at or below their reorder level."
       initialAlertType="low_stock"
+      planningTheme="gold"
       topContent={banner}
     />
   );

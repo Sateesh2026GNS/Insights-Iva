@@ -135,6 +135,7 @@ PERMISSION_MATRIX = {
             "alerts",
             "analytics",
             "meetings",
+            "settings",
         ],
         "actions": [
             "quality:read",
@@ -190,38 +191,12 @@ PERMISSION_MATRIX = {
 
 # Sidebar / route paths Store Manager may see.
 # Module grants stay broader so GRN/dispatch APIs still authorize; UI is narrowed here.
-# Settings sidebar links visible to Operator (personal prefs only; admin sections use module guards).
-OPERATOR_SIDEBAR_CHILDREN = frozenset({
-    "/",
-    "/my-job-cards",
-    "/production/work-orders",
-    "/production/schedule",
-    "/production/my-machine",
-    "/production/my-entry",
-    "/alerts",
-    "/alerts/low-stock",
-    "/alerts/machine-failure",
-    "/alerts/production-delay",
-    "/alerts/maintenance",
-    "/alerts/quality",
-    "/alerts/safety",
-    "/alerts/general",
-    "/documents",
-    "/documents/production",
-    "/settings",
-    "/settings/my-account",
-    "/settings/my-account/devices",
-    "/settings/appearance",
-    "/settings/notifications",
-})
+# Settings sidebar links visible to Operator. Paths come from the shared page allowlist.
+from app.core.operator_allowlist import OPERATOR_PAGE_EXACT as OPERATOR_SIDEBAR_CHILDREN
 
-OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset({
-    "/settings",
-    "/settings/my-account",
-    "/settings/my-account/devices",
-    "/settings/appearance",
-    "/settings/notifications",
-})
+OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset(
+    path for path in OPERATOR_SIDEBAR_CHILDREN if path == "/settings" or path.startswith("/settings/")
+)
 
 STORE_MANAGER_ALLOWED_PATHS = frozenset({
     "/",

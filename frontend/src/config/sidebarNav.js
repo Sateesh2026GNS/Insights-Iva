@@ -129,6 +129,7 @@ export const SIDEBAR_NAV = [
     labelKey: "erpNav.finance",
     icon: Landmark,
     children: [
+      { label: "Dashboard", to: "/accounts/dashboard", module: "accounts", end: true },
       { label: "Receivables", to: "/finance/accounts-receivable", module: "accounts" },
       { label: "Payables", to: "/accounts/accounts-payable", module: "accounts" },
       { label: "Payments", to: "/finance/payment-tracking", module: "accounts" },

@@ -305,7 +305,7 @@ export default function StageJobCardPage() {
   const inspectionId = card?.inspection_id;
 
   const saveOperatorProgress = async () => {
-    if (!woId) return;
+    if (!woId || submitting) return;
     setSubmitting(true);
     try {
       await updateProductionProgress(woId, {
@@ -326,6 +326,8 @@ export default function StageJobCardPage() {
   };
 
   const runAction = async (action) => {
+    if (submitting) return;
+    if (stage === "operator" && !(card?.allowed_actions || []).includes(action)) return;
     setSubmitting(true);
     try {
       if (stage === "inventory_check") {

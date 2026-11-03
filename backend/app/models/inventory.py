@@ -254,6 +254,7 @@ class StockAdjustment(Base, TimestampMixin):
     new_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     difference: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reason: Mapped[str] = mapped_column(String(64), nullable=False)
+    remarks: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     approved_by: Mapped[str | None] = mapped_column(String(255))
     adjustment_date: Mapped[date | None] = mapped_column(Date)

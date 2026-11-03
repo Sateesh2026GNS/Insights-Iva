@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Download, Printer } from "lucide-react";
+import { ChevronDown, ChevronUp, Printer } from "lucide-react";
 
 import Button from "../common/Button";
 import CommonStatusBadge from "../common/StatusBadge";
@@ -57,7 +57,6 @@ export default function OperatorJobCardDocumentPanel({
   const [productionForm, setProductionForm] = useState(emptyProductionForm(null));
   const [submitting, setSubmitting] = useState(false);
   const [salesRefOpen, setSalesRefOpen] = useState(false);
-  const [executionOpen, setExecutionOpen] = useState(true);
 
   const {
     loading: soLoading,
@@ -136,7 +135,7 @@ export default function OperatorJobCardDocumentPanel({
   const woId = operatorContext?.execution?.work_order_id || operatorContext?.production_plan?.work_order_id;
 
   const saveOperatorProgress = async () => {
-    if (!woId) return;
+    if (!woId || submitting) return;
     setSubmitting(true);
     try {
       await updateProductionProgress(woId, {
@@ -158,7 +157,9 @@ export default function OperatorJobCardDocumentPanel({
   };
 
   const runAction = async (action) => {
-    if (!woId) return;
+    if (!woId || submitting) return;
+    const allowed = new Set(operatorContext?.allowed_actions || []);
+    if (!allowed.has(action)) return;
     setSubmitting(true);
     try {
       if (action === "start_work") {
@@ -235,15 +236,6 @@ export default function OperatorJobCardDocumentPanel({
             >
               Print
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!showDocument}
-              onClick={handlePrint}
-              leftIcon={<Download className="h-4 w-4" aria-hidden />}
-            >
-              Download PDF
-            </Button>
           </div>
         </div>
 
@@ -277,37 +269,25 @@ export default function OperatorJobCardDocumentPanel({
                   className="mb-4"
                 />
               ) : null}
-              <OperatorJobCardDocument
-                operatorContext={operatorContext}
-                soCard={soCard}
-                row={row}
-                companyProfile={profile}
-                assignedUser={user}
+              <OperatorJobCardBody
+                card={operatorContext}
+                form={productionForm}
+                onChange={(key, value) => setProductionForm((f) => ({ ...f, [key]: value }))}
+                submitting={submitting}
+                onAction={runAction}
+                onSaveProgress={saveOperatorProgress}
               />
 
-              <section className="ui-card my-job-cards-page__execution-panel">
-                <button
-                  type="button"
-                  className="my-job-cards-page__sales-ref-toggle"
-                  onClick={() => setExecutionOpen((o) => !o)}
-                  aria-expanded={executionOpen}
-                >
-                  <span>Production Execution</span>
-                  {executionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {executionOpen ? (
-                  <div className="my-job-cards-page__execution-body">
-                    <OperatorJobCardBody
-                      card={operatorContext}
-                      form={productionForm}
-                      onChange={(key, value) => setProductionForm((f) => ({ ...f, [key]: value }))}
-                      submitting={submitting}
-                      onAction={runAction}
-                      onSaveProgress={saveOperatorProgress}
-                    />
-                  </div>
-                ) : null}
-              </section>
+              <details className="op-job-print">
+                <summary>Printable job card</summary>
+                <OperatorJobCardDocument
+                  operatorContext={operatorContext}
+                  soCard={soCard}
+                  row={row}
+                  companyProfile={profile}
+                  assignedUser={user}
+                />
+              </details>
             </>
           ) : null}
         </div>

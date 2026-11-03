@@ -1,0 +1,328 @@
+/* Inventory pages aligned with Production Planning toolkit dashboards.
+   Scoped to .inv-plan-page so Project Timeline, Resource Planning, and Workload Analysis stay unchanged. */
+
+.inv-plan-page {
+  --color-primary: var(--mtk-head);
+  --color-primary-hover: var(--mtk-total);
+  width: 100%;
+  background: #f4f7fa;
+  color: #1a1a1a;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Page accents. Scoped to .inv-plan-page so Production Planning reference screens stay unchanged. */
+.inv-plan-page.inv-plan--green { background: #f0fdf4; }
+.inv-plan-page.inv-plan--teal { background: #f0fdfa; }
+.inv-plan-page.inv-plan--blue {
+  --mtk-hero: #1e3a8a;
+  --mtk-hero-mid: #2563eb;
+  --mtk-head: #1d4ed8;
+  --mtk-total: #1e3a8a;
+  --mtk-accent: #dbeafe;
+  background: #eff6ff;
+}
+.inv-plan-page.inv-plan--indigo { background: #eef2ff; }
+.inv-plan-page.inv-plan--emerald {
+  --mtk-hero: #065f46;
+  --mtk-hero-mid: #059669;
+  --mtk-head: #047857;
+  --mtk-total: #064e3b;
+  --mtk-accent: #d1fae5;
+  background: #ecfdf5;
+}
+.inv-plan-page.inv-plan--red { background: #fef2f2; }
+.inv-plan-page.inv-plan--slate {
+  --mtk-hero: #1e293b;
+  --mtk-hero-mid: #475569;
+  --mtk-head: #334155;
+  --mtk-total: #0f172a;
+  --mtk-accent: #e2e8f0;
+  background: #f8fafc;
+}
+.inv-plan-page.inv-plan--violet {
+  --mtk-hero: #5b21b6;
+  --mtk-hero-mid: #7c3aed;
+  --mtk-head: #6d28d9;
+  --mtk-total: #4c1d95;
+  --mtk-accent: #ede9fe;
+  background: #f5f3ff;
+}
+.inv-plan-page.inv-plan--amber {
+  --mtk-hero: #92400e;
+  --mtk-hero-mid: #d97706;
+  --mtk-head: #b45309;
+  --mtk-total: #78350f;
+  --mtk-accent: #451a03;
+  background: #fffbeb;
+}
+.inv-plan-page.inv-plan--amber .mtk-hero { color: #1c1917; }
+.inv-plan-page.inv-plan--orange { background: #fff7ed; }
+.inv-plan-page.inv-plan--rose {
+  --mtk-hero: #9f1239;
+  --mtk-hero-mid: #be123c;
+  --mtk-head: #9f1239;
+  --mtk-total: #881337;
+  --mtk-accent: #ffe4e6;
+  background: #fff1f2;
+}
+.inv-plan-page.inv-plan--cyan {
+  --mtk-hero: #155e75;
+  --mtk-hero-mid: #0e7490;
+  --mtk-head: #155e75;
+  --mtk-total: #164e63;
+  --mtk-accent: #cffafe;
+  background: #ecfeff;
+}
+.inv-plan-page.inv-plan--gold { background: #fffbeb; }
+.inv-plan-page.inv-plan--steel {
+  --mtk-hero: #1e3a5f;
+  --mtk-hero-mid: #1e40af;
+  --mtk-head: #1e3a8a;
+  --mtk-total: #172554;
+  --mtk-accent: #dbeafe;
+  background: #eff6ff;
+}
+
+.inv-plan-page .mtk-hero__title p {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+.inv-plan-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.inv-plan-page .ui-page {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.inv-plan-page .erp-hero-header,
+.inv-plan-page .inventory-hero-header {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 0 8px !important;
+  min-height: 0 !important;
+  color: #1a1a1a;
+}
+
+.inv-plan-page .erp-hero-header__title,
+.inv-plan-page .inventory-hero-header__title {
+  display: none !important;
+}
+
+.inv-plan-page .erp-hero-header__subtitle,
+.inv-plan-page .inventory-hero-header__subtitle {
+  color: #475569 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+.inv-plan-page .alerts-page-badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0;
+  padding: 1px 6px;
+}
+
+.inv-plan-page .space-y-5 > :not([hidden]) ~ :not([hidden]),
+.inv-plan-page .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 8px;
+}
+
+.inv-plan-page .ui-grid-kpi {
+  gap: 6px;
+}
+
+.inv-plan-page .ui-kpi {
+  border: 1px solid var(--mtk-border);
+  border-top: 3px solid var(--mtk-head);
+  border-radius: 4px;
+  box-shadow: none !important;
+  background: #fff;
+  padding: 6px 8px;
+  transform: none !important;
+}
+
+.inv-plan-page .ui-kpi:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.inv-plan-page .ui-kpi__label {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.inv-plan-page .ui-kpi__value {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.inv-plan-page .ui-kpi__meta {
+  font-size: 8px;
+  color: #64748b;
+}
+
+.inv-plan-page .ui-list-card,
+.inv-plan-page .ui-card {
+  border: 1px solid var(--mtk-border);
+  border-top: 3px solid var(--mtk-head);
+  border-radius: 2px;
+  box-shadow: none;
+  background: #fff;
+}
+
+.inv-plan-page .ui-list-card__body {
+  padding: 8px;
+}
+
+.inv-plan-page .ui-table,
+.inv-plan-page .ui-table th,
+.inv-plan-page .ui-table td {
+  border-color: var(--mtk-border);
+}
+
+.inv-plan-page .ui-table th,
+.inv-plan-page .ui-table-head th {
+  background: #e8eef4 !important;
+  color: #1a1a1a !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.inv-plan-page .ui-table td {
+  font-size: 9px;
+  padding: 4px;
+}
+
+.inv-plan-page .ui-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.inv-plan-page .ui-table tbody tr:hover td {
+  background: #f1f5f9;
+}
+
+.inv-plan-page .ui-btn--primary,
+.inv-plan-page .ui-btn--add {
+  background: var(--mtk-head) !important;
+  border-color: var(--mtk-head) !important;
+  color: #fff !important;
+  min-height: 28px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.inv-plan-page .ui-btn--primary:hover:not(:disabled),
+.inv-plan-page .ui-btn--add:hover:not(:disabled) {
+  background: var(--mtk-total) !important;
+  border-color: var(--mtk-total) !important;
+}
+
+.inv-plan-page .ui-btn--secondary,
+.inv-plan-page .ui-btn--outline {
+  min-height: 28px;
+  border-radius: 2px;
+  border-color: #c5d0dc;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.inv-plan-page button.rounded-2xl {
+  height: 28px !important;
+  min-height: 28px;
+  border-radius: 2px !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.inv-plan-page button.bg-blue-600 {
+  background: var(--mtk-head) !important;
+}
+
+.inv-plan-page button.bg-blue-600:hover {
+  background: var(--mtk-total) !important;
+}
+
+.inv-plan-page .ui-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.inv-plan-page .ui-page-btn--active {
+  background: var(--mtk-head) !important;
+  border-color: var(--mtk-head) !important;
+  color: #fff !important;
+}
+
+.inv-plan-page input:focus,
+.inv-plan-page select:focus,
+.inv-plan-page textarea:focus,
+.inv-plan-page .ui-btn:focus-visible {
+  outline: 2px solid var(--mtk-head);
+  outline-offset: 1px;
+}
+
+.inv-plan-dialog {
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+.inv-plan-dialog .ui-btn--primary,
+.inv-plan-dialog .ui-btn--add {
+  background: var(--mtk-head);
+  border-color: var(--mtk-head);
+  border-radius: 2px;
+  min-height: 28px;
+  font-size: 11px;
+}
+
+@layer base {
+  .inv-plan-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .inv-plan-page select,
+  .inv-plan-page .ui-select,
+  .inv-plan-page .ui-input {
+    border-radius: 2px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    border-color: #c5d0dc !important;
+    background: #fff !important;
+    font-size: 11px !important;
+  }
+
+  .inv-plan-page textarea {
+    height: auto !important;
+    min-height: 64px !important;
+    border-radius: 2px !important;
+    border-color: #c5d0dc !important;
+    font-size: 11px !important;
+  }
+}

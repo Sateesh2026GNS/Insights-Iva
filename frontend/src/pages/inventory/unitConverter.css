@@ -1,0 +1,138 @@
+.gsp-convert .gsp-kpis strong {
+  font-size: 20px;
+}
+
+.gsp-kpi--purple strong,
+.gsp-kpi--purple svg {
+  color: #7c3aed;
+}
+
+.gsp-convert-art {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex: none;
+}
+
+.gsp-boxes {
+  display: grid;
+  grid-template-columns: 18px 18px;
+  gap: 3px;
+  align-items: end;
+}
+
+.gsp-boxes span {
+  display: block;
+  background: linear-gradient(#f8e2b8, #c4843a);
+  border: 1px solid #9a5b16;
+  border-radius: 2px;
+  box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.28);
+}
+
+.gsp-boxes span:nth-child(1) { height: 16px; }
+.gsp-boxes span:nth-child(2) { height: 28px; }
+.gsp-boxes span:nth-child(3) { height: 20px; grid-column: 1 / -1; }
+
+.gsp-convert h3 {
+  margin: 12px 0 4px;
+  padding: 0;
+  border: 0;
+  color: #0b3a66;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gsp-convert select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #f5d76e;
+  background: #fff7cc;
+  border-radius: 2px;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+.gsp-factor {
+  font-weight: 700;
+}
+
+.gsp-convert .gsp-bars--kg li {
+  grid-template-columns: 148px 1fr;
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.gsp-convert .gsp-bars--kg .gsp-bar {
+  height: 8px;
+}
+
+.gsp-convert .gsp-axis {
+  margin-left: 154px;
+}
+
+.gsp-unit-table {
+  min-width: 1180px;
+}
+
+.gsp-unit-table th:nth-child(-n + 3),
+.gsp-unit-table td:nth-child(-n + 3) {
+  text-align: left;
+}
+
+.gsp-unit-table input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 2px;
+  padding: 2px 4px;
+  font: inherit;
+  color: inherit;
+}
+
+.gsp-unit-table input:focus {
+  outline: none;
+  border-color: #d4a017;
+  background: #fff;
+}
+
+.gsp-unit-table .is-input {
+  background: #fff7cc;
+}
+
+.gsp-unit-table .is-calc {
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.gsp-unit-table .is-input input {
+  text-align: right;
+}
+
+.gsp-unit-table td:nth-child(-n + 3) input {
+  text-align: left;
+}
+
+.gsp-unit-stack {
+  position: relative;
+  min-width: 78px;
+  color: #0f172a;
+}
+
+.gsp-unit-stack .gsp-val-bar {
+  top: 4px;
+  bottom: 4px;
+  opacity: 0.9;
+}
+
+.gsp-unit-stack strong {
+  position: relative;
+  z-index: 1;
+}
+
+.gsp-unit-stack.is-on-bar strong {
+  color: #fff;
+}

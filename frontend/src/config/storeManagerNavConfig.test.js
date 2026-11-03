@@ -66,6 +66,26 @@ describe("storeManagerNavConfig inventory submenu", () => {
     expect(paths).toContain("/inventory");
     expect(paths).toContain("/inventory/material-requests");
     expect(paths).toContain("/inventory/issue-materials");
+    expect(paths).toContain("/inventory/godown-planner");
+    expect(children.find((c) => c.to === "/inventory/godown-planner")?.label).toBe("Godown Planner");
+    expect(paths).toContain("/inventory/unit-converter");
+    expect(children.find((c) => c.to === "/inventory/unit-converter")?.label).toBe("Unit Converter");
+    expect(paths).toContain("/inventory/stock-valuation");
+    expect(children.find((c) => c.to === "/inventory/stock-valuation")?.label).toBe("Stock Valuation");
+    expect(paths).toContain("/inventory/eoq-helper");
+    expect(children.find((c) => c.to === "/inventory/eoq-helper")?.label).toBe("EOQ Helper");
+    expect(paths).toContain("/inventory/hamali-cost");
+    expect(children.find((c) => c.to === "/inventory/hamali-cost")?.label).toBe("Hamali Cost");
+    expect(paths).toContain("/inventory/truck-load");
+    expect(children.find((c) => c.to === "/inventory/truck-load")?.label).toBe("Truck Load Planner");
+    expect(paths).toContain("/inventory/damage-loss");
+    expect(children.find((c) => c.to === "/inventory/damage-loss")?.label).toBe("Damage & Loss");
+    expect(paths).toContain("/inventory/storage-quotation");
+    expect(children.find((c) => c.to === "/inventory/storage-quotation")?.label).toBe("Storage Quotation");
+    expect(paths).toContain("/inventory/gate-pass");
+    expect(children.find((c) => c.to === "/inventory/gate-pass")?.label).toBe("Gate Pass");
+    expect(paths).toContain("/inventory/godown-dashboard");
+    expect(children.find((c) => c.to === "/inventory/godown-dashboard")?.label).toBe("Godown Dashboard");
   });
 
   it("includes manufacturing toolkit links for inventory register and raw materials", () => {

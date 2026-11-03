@@ -195,6 +195,10 @@ api.interceptors.request.use((config) => {
         return Promise.reject(err);
       }
       attachAuthHeaders(config);
+    } else {
+      // Platform auth has no tenant Bearer. A leftover ERP session cookie still
+      // requires the double-submit CSRF header on verify-otp and resend-otp.
+      attachCsrfHeader(config);
     }
   } catch {}
 

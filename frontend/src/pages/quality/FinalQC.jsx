@@ -17,13 +17,12 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageShell } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import EmptyState from "../../components/common/EmptyState";
-import PageHeader from "../../components/common/PageHeader";
 import { SerialNumberCell, SerialNumberHeader } from "../../components/common/SerialNumberCell";
 import { useToast } from "../../context/ToastContext";
 import { createFinalQC, getFinalEnriched, getFinalSummary } from "../../api/qualityApi";
@@ -103,9 +102,12 @@ export default function FinalQC() {
   const [search, setSearch] = useState("");
   const [customerFilter, setCustomerFilter] = useState("");
   const [salesOrderFilter, setSalesOrderFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get("status") || "";
+    return ["passed", "in_progress", "failed"].includes(raw) ? raw : "";
+  });
   const [dateFilter, setDateFilter] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(() => Boolean(statusFilter));
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -264,7 +266,13 @@ export default function FinalQC() {
     result: processResultLabel(r) || "—",
   }));
 
-  if (loading) return <Loader label="Loading final QC..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="orange" kicker="Inspect · Approve · Release" title="FINAL" accent="QC">
+        <Loader label="Loading final QC..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   const handleExport = (format) => {
     if (format === "pdf") {
@@ -276,21 +284,20 @@ export default function FinalQC() {
   };
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="orange"
+      kicker="Inspect · Approve · Release"
+      title="FINAL"
+      accent="QC"
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
+          <Button variant="add" onClick={openNewFinalQCForm} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+            New Final QC
+          </Button>
+        </div>
+      }
+    >
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader
-        title="Final QC"
-        showTitle
-        subtitle="Monitor and manage pre-dispatch quality checks before packing and dispatch"
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <ExportDownloadMenu disabled={!exportRows.length} onExport={handleExport} />
-            <Button variant="add" onClick={openNewFinalQCForm} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              New Final QC
-            </Button>
-          </div>
-        }
-      />
 
       <div className="ui-card ui-card--padded space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -675,6 +682,6 @@ export default function FinalQC() {
         </div>
       ) : null}
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

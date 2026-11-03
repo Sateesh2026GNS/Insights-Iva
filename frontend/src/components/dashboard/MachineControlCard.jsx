@@ -5,7 +5,7 @@ import { getMachines, updateMachineStatus } from "../../api/productionApi";
 import useAuth from "../../hooks/useAuth";
 import { useToast } from "../../context/ToastContext";
 
-export default function MachineControlCard({ initialMachines = null, onRefreshData }) {
+export default function MachineControlCard({ initialMachines = null, onRefreshData, scoped = false, variant = "default" }) {
   const { user } = useAuth();
   const { addToast } = useToast();
 
@@ -16,6 +16,13 @@ export default function MachineControlCard({ initialMachines = null, onRefreshDa
   const [downtimeReason, setDowntimeReason] = useState("");
 
   const loadMachines = useCallback(async (isRefresh = false) => {
+    if (scoped) {
+      if (isRefresh) setRefreshing(true);
+      onRefreshData?.();
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
@@ -29,7 +36,7 @@ export default function MachineControlCard({ initialMachines = null, onRefreshDa
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [onRefreshData, scoped]);
 
   useEffect(() => {
     if (initialMachines) {
@@ -91,6 +98,96 @@ export default function MachineControlCard({ initialMachines = null, onRefreshDa
     setDowntimeReason("");
   };
 
+  if (variant === "toolkit") {
+    return (
+      <section className="mtk-panel h-full">
+        <div className="mtk-panel__title op-dash-panel-title">
+          <button
+            type="button"
+            className="op-dash-icon-btn"
+            onClick={() => loadMachines(true)}
+            disabled={refreshing}
+            aria-label="Refresh machines"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
+          <span>Machine Control</span>
+          <Link to="/production/machines" className="op-dash-panel-link">All Machines</Link>
+        </div>
+        <div className="op-dash-machines">
+          <div className="op-dash-counts">
+            <span className="mtk-pill mtk-pill--success">Running {runningCount}</span>
+            <span className="mtk-pill mtk-pill--warning">Idle {idleCount}</span>
+            <span className="mtk-pill mtk-pill--danger">Stopped {stoppedCount}</span>
+          </div>
+          {loading ? <p className="op-dash-empty">Loading machines…</p> : null}
+          {!loading && displayedMachines.length === 0 ? (
+            <p className="op-dash-empty">No machine assigned. Ask a supervisor to assign one.</p>
+          ) : null}
+          {!loading && displayedMachines.length > 0
+            ? displayedMachines.map((m, idx) => {
+              const st = String(m.status || "").toLowerCase();
+              const isRunning = st === "running" || st === "active";
+              const isStopped = st === "stopped" || st === "breakdown" || st === "maintenance" || st === "offline";
+              const tone = isRunning ? "success" : isStopped ? "danger" : st ? "warning" : "neutral";
+              return (
+                <article key={m.id || idx} className="op-dash-machine">
+                  <div className="op-dash-machine__top">
+                    <div>
+                      <h4>{m.name || m.code || `Machine ${m.id ?? idx + 1}`}</h4>
+                      {m.code ? <p className="op-dash-attendance__status">{m.code}</p> : null}
+                    </div>
+                    <span className={`mtk-pill mtk-pill--${tone}`}>{st || "unavailable"}</span>
+                  </div>
+                  <div className="op-dash-machine__bottom">
+                    <span>{m.assigned_operator || m.operator_name || operatorName || "Unassigned"}</span>
+                    <div className="op-dash-machine__actions">
+                      {isRunning ? (
+                        <button type="button" onClick={() => handleStatusChange(m.id, "stopped")}>Stop</button>
+                      ) : (
+                        <button type="button" onClick={() => handleStatusChange(m.id, "running")}>Start</button>
+                      )}
+                      {isStopped ? (
+                        <button type="button" onClick={() => setReasonModalMachine(m)}>Reason</button>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+            : null}
+        </div>
+        {reasonModalMachine ? (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-sm border border-[#c5d0dc] bg-white p-4">
+              <h4 className="text-sm font-bold text-slate-900">Stop reason for {reasonModalMachine.name}</h4>
+              <form onSubmit={handleReasonSubmit} className="mt-3 space-y-3">
+                <select
+                  value={downtimeReason}
+                  onChange={(e) => setDowntimeReason(e.target.value)}
+                  className="w-full border border-[#c5d0dc] bg-white p-2 text-xs"
+                >
+                  <option value="">Select reason</option>
+                  <option value="Maintenance">Maintenance</option>
+                  <option value="Tool Change">Tool Change / Setup</option>
+                  <option value="Material Shortage">Material Shortage</option>
+                  <option value="Operator Breakdown">Operator Break</option>
+                  <option value="Quality Inspection">Quality Inspection</option>
+                </select>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setReasonModalMachine(null)} className="px-3 py-1.5 text-xs font-semibold text-slate-600">
+                    Cancel
+                  </button>
+                  <button type="submit" className="op-dash-btn op-dash-btn--out">Confirm stop</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all">
       {/* Header */}
@@ -140,9 +237,9 @@ export default function MachineControlCard({ initialMachines = null, onRefreshDa
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <Cpu className="h-6 w-6" />
           </div>
-          <p className="text-sm font-semibold text-slate-700">No machines assigned</p>
-          <p className="mt-1 text-xs text-slate-400">
-            Assigned machines will automatically appear here when added.
+          <p className="text-sm font-semibold text-slate-700">No machine assigned</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Your assigned machine appears here. Ask a supervisor to assign one if this stays empty.
           </p>
         </div>
       ) : (
@@ -179,9 +276,11 @@ export default function MachineControlCard({ initialMachines = null, onRefreshDa
                         {m.code || idx + 1}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {m.department || "Machining"} {m.production_line ? `· ${m.production_line}` : "· Line A"}
-                    </p>
+                    {m.department || m.production_line ? (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {[m.department, m.production_line].filter(Boolean).join(" · ")}
+                      </p>
+                    ) : null}
                   </div>
                   <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold capitalize ${pillBg}`}>
                     <span className="h-1.5 w-1.5 rounded-full bg-current" />

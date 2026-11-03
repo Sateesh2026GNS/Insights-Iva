@@ -39,6 +39,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import get_settings
 from app.middleware.csrf_middleware import CsrfMiddleware
+from app.middleware.operator_allowlist import OperatorAllowlistMiddleware
 from app.core.logging_config import get_logger, setup_logging
 
 from app.api.accounts import router as accounts_router
@@ -66,6 +67,7 @@ from app.api.departments import router as departments_router
 from app.api.hr import router as hr_router
 from app.api.integration import router as integration_router
 from app.api.inventory import router as inventory_router
+from app.api.godown_toolkit import router as godown_toolkit_router
 from app.api.inventory_v2 import router as inventory_v2_router
 from app.api.iot import router as iot_router
 from app.api.maintenance import router as maintenance_router
@@ -181,6 +183,7 @@ if _cors_regex:
     _cors_kwargs["allow_origin_regex"] = _cors_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 app.add_middleware(CsrfMiddleware)
+app.add_middleware(OperatorAllowlistMiddleware)
 
 
 @app.middleware("http")
@@ -616,6 +619,8 @@ app.include_router(departments_router)
 app.include_router(hr_router)
 app.include_router(inventory_router)
 app.include_router(inventory_router, prefix="/api")
+app.include_router(godown_toolkit_router)
+app.include_router(godown_toolkit_router, prefix="/api")
 app.include_router(inventory_v2_router)
 app.include_router(inventory_v2_router, prefix="/api")
 app.include_router(alerts_router)

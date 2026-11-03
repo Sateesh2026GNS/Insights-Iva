@@ -14,7 +14,8 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
@@ -286,10 +287,16 @@ export default function MaintenanceSchedule() {
     },
   ];
 
-  if (loading) return <Loader label="Loading maintenance schedules..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="violet" kicker="Plan · Assign · Repeat" title="MAINTENANCE" accent="SCHEDULE">
+        <Loader label="Loading maintenance schedules..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="violet" kicker="Plan · Assign · Repeat" title="MAINTENANCE" accent="SCHEDULE">
     <div className="space-y-5 pb-5">
       <PageHeader
         subtitle="Define and automate recurring preventive maintenance schedules."
@@ -508,6 +515,6 @@ export default function MaintenanceSchedule() {
         </div>
       )}
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

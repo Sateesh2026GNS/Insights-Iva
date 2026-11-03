@@ -216,6 +216,9 @@ def clock_in_endpoint(
     user: User = Depends(ATT_PERM),
     db: Session = Depends(get_db),
 ):
+    from app.routers.operator_deps import reject_shop_floor_operator
+
+    reject_shop_floor_operator(user)
     return record_clock_in(db, user.tenant_id, employee_id, record_date, user=user)
 
 

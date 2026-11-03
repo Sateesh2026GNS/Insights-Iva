@@ -1,89 +1,151 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { createAlert } from "../../api/alertsApi";
+import { getMyMachines } from "../../api/operatorExecutionApi";
+import { useToast } from "../../context/ToastContext";
+import { apiErrorMessage } from "../../utils/apiError";
 import Button from "../common/Button";
-import { FormField, Input, Textarea } from "../common/FormField";
+import { Input, Textarea } from "../common/FormField";
+import StatusBadge from "../common/StatusBadge";
 import MaterialTable from "./MaterialTable";
 import JobCardActions from "./JobCardActions";
-import { CardSectionHeader, fmtDeliveryDisplay, NOTES_MAX } from "./jobCardUiShared";
+import { fmtDeliveryDisplay, NOTES_MAX } from "./jobCardUiShared";
+import "./operatorJobCard.css";
 
-function ReadOnlyField({ label, value, className = "" }) {
-  const fieldId = useId();
-  return (
-    <FormField label={label} className={className} htmlFor={fieldId}>
-      <Input id={fieldId} value={value ?? "—"} readOnly />
-    </FormField>
-  );
+const ACTION_LABELS = {
+  start_work: "Start Work",
+  pause: "Pause Work",
+  resume: "Resume Work",
+  complete_production: "Complete job and send to Quality",
+};
+
+function asNumber(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isNaN(number) ? null : number;
 }
 
-function fmtQty(qty, unit = "Nos") {
-  if (qty == null || qty === "") return "—";
-  const n = Number(qty);
-  if (Number.isNaN(n)) return String(qty);
-  return `${n.toLocaleString("en-IN")} ${unit}`;
+function formatQty(value, unit) {
+  const number = asNumber(value);
+  if (number == null) return "—";
+  const qty = number.toLocaleString("en-IN");
+  return unit ? `${qty} ${unit}` : qty;
 }
 
-function mapMaterialStatus(status) {
-  if (status === "Partial") return "Shortage";
-  if (status === "Not Available") return "Shortage";
-  return status || "—";
+function displayDate(value) {
+  if (value == null || value === "") return "—";
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return fmtDeliveryDisplay(text) || text;
+  return text;
 }
 
-function toDateTimeLocalValue(display) {
-  if (!display) return "";
-  const d = new Date(display.includes("T") ? display : display.replace(/(\d{2})-(\w{3})-(\d{4})/, "$3-$2-$1"));
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function statusTone(label) {
+  const key = String(label || "").trim().toLowerCase();
+  if (key === "in progress" || key === "assigned") return "info";
+  if (key === "paused" || key === "quality check") return "warning";
+  if (key === "completed") return "success";
+  return "neutral";
+}
+
+function machineTone(status) {
+  const key = String(status || "").trim().toLowerCase();
+  if (key === "running" || key === "active") return "success";
+  if (key === "idle") return "info";
+  if (key === "maintenance") return "warning";
+  if (key === "stopped" || key === "breakdown" || key === "offline") return "danger";
+  return "neutral";
 }
 
 function validateProductionForm({ produced, rejected, rework, target, remarks }) {
   const errors = {};
-  const p = produced === "" ? null : Number(produced);
-  const r = rejected === "" ? 0 : Number(rejected);
-  const w = rework === "" ? 0 : Number(rework);
-  if (produced !== "" && (Number.isNaN(p) || p < 0)) errors.produced_qty = "Enter a valid quantity";
-  if (rejected !== "" && (Number.isNaN(r) || r < 0)) errors.rejected_qty = "Cannot be negative";
-  if (rework !== "" && (Number.isNaN(w) || w < 0)) errors.rework_qty = "Cannot be negative";
-  if (p != null && target > 0 && p > target) errors.produced_qty = `Cannot exceed target (${target})`;
+  const producedNumber = produced === "" ? null : Number(produced);
+  const rejectedNumber = rejected === "" ? 0 : Number(rejected);
+  const reworkNumber = rework === "" ? 0 : Number(rework);
+  if (produced !== "" && (Number.isNaN(producedNumber) || producedNumber < 0)) errors.produced_qty = "Enter a valid quantity";
+  if (rejected !== "" && (Number.isNaN(rejectedNumber) || rejectedNumber < 0)) errors.rejected_qty = "Cannot be negative";
+  if (rework !== "" && (Number.isNaN(reworkNumber) || reworkNumber < 0)) errors.rework_qty = "Cannot be negative";
+  if (producedNumber != null && target != null && target > 0 && producedNumber > target) {
+    errors.produced_qty = `Cannot exceed target (${target})`;
+  }
   if (remarks && remarks.length > NOTES_MAX) errors.notes = `Maximum ${NOTES_MAX} characters`;
   return errors;
 }
 
-export default function OperatorJobCardBody({
-  card,
-  form,
-  onChange,
-  submitting,
-  onAction,
-  onSaveProgress,
-}) {
-  const [fieldErrors, setFieldErrors] = useState({});
+function textOrNull(value) {
+  const text = String(value || "").trim();
+  return text && text !== "—" ? text : null;
+}
 
+export default function OperatorJobCardBody({ card, form, onChange, submitting, onAction, onSaveProgress }) {
+  const { addToast } = useToast();
+  const busy = useRef(false);
   const product = card?.product_info || {};
   const instructions = card?.production_instructions || {};
   const execution = card?.execution || {};
   const header = card?.header_panel || {};
-  const unit = product.unit || card?.summary_panel?.uom || "Nos";
-  const targetQty = Number(execution.target_qty ?? execution.planned_qty ?? product.target_quantity ?? 0);
-  const producedQty = Number(form.produced_qty || execution.produced_qty || 0);
-  const rejectedQty = Number(form.rejected_qty || execution.rejected_qty || 0);
-  const reworkQty = Number(form.rework_qty || execution.rework_qty || 0);
+  const unit = product.unit || "Nos";
+  const target = asNumber(execution.target_qty ?? execution.planned_qty ?? product.target_quantity);
+  const completed = asNumber(execution.produced_qty ?? execution.completed_qty);
+  const pending = target != null && completed != null ? Math.max(0, target - completed) : null;
+  const progressPct = target != null && target > 0 && completed != null
+    ? Math.min(100, Math.round((completed / target) * 100))
+    : null;
   const editable = Boolean(card?.editable);
-  const completed = !editable && ["Completed", "Quality Check"].includes(card?.status_label);
+  const qualityHold = ["Completed", "Quality Check"].includes(card?.status_label);
+  const workInstructions = textOrNull(instructions.work_instructions || card?.work_instructions);
+  const safetyInstructions = textOrNull(instructions.safety_instructions);
+  const specialInstructions = textOrNull(instructions.special_instructions);
+  const duration = textOrNull(instructions.standard_production_time);
+  const workOrderNo = textOrNull(execution.task);
+  const rawOperation = textOrNull(instructions.operation || card?.production_process);
+  const operation = rawOperation && rawOperation !== workOrderNo ? rawOperation : null;
+  const machineId = execution.machine_id;
+  const workOrderId = execution.work_order_id;
 
-  const progressPct = useMemo(() => {
-    if (!targetQty || targetQty <= 0) return producedQty > 0 ? 100 : 0;
-    return Math.min(100, Math.round((producedQty / targetQty) * 100));
-  }, [producedQty, targetQty]);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [machineStatus, setMachineStatus] = useState(null);
+  const [machineStatusState, setMachineStatusState] = useState(machineId ? "loading" : "missing");
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [issueTitle, setIssueTitle] = useState("");
+  const [issueMessage, setIssueMessage] = useState("");
+  const [issueError, setIssueError] = useState("");
+  const [issueNotice, setIssueNotice] = useState("");
+
+  useEffect(() => {
+    if (!machineId) {
+      setMachineStatus(null);
+      setMachineStatusState("missing");
+      return undefined;
+    }
+    let cancelled = false;
+    setMachineStatusState("loading");
+    getMyMachines()
+      .then((res) => {
+        if (cancelled) return;
+        const items = res.data?.items || [];
+        const match = items.find((machine) => String(machine.id) === String(machineId));
+        setMachineStatus(match?.status ? String(match.status) : null);
+        setMachineStatusState(match ? "ready" : "unavailable");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMachineStatus(null);
+          setMachineStatusState("unavailable");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [machineId]);
 
   const materialColumns = useMemo(
     () => [
       { key: "material_name", label: "Material" },
-      { key: "material_code", label: "Material Code" },
-      { key: "required_qty", label: "Required Qty" },
-      { key: "available_qty", label: "Available Qty" },
+      { key: "material_code", label: "Code" },
+      { key: "required_qty", label: "Required" },
+      { key: "available_qty", label: "Available" },
       { key: "unit", label: "Unit" },
-      { key: "availability_status", label: "Status" },
+      { key: "availability_status", label: "Availability" },
     ],
     []
   );
@@ -92,7 +154,9 @@ export default function OperatorJobCardBody({
     () =>
       (card?.materials || []).map((row) => ({
         ...row,
-        availability_status: mapMaterialStatus(row.availability_status),
+        availability_status: row.availability_status === "Partial" || row.availability_status === "Not Available"
+          ? "Shortage"
+          : row.availability_status || "—",
       })),
     [card?.materials]
   );
@@ -102,224 +166,324 @@ export default function OperatorJobCardBody({
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const handleSaveProgress = async () => {
+  const validate = () => {
     const errors = validateProductionForm({
       produced: form.produced_qty,
       rejected: form.rejected_qty,
       rework: form.rework_qty,
-      target: targetQty,
+      target,
       remarks: form.notes,
     });
-    if (Object.keys(errors).length) {
-      setFieldErrors(errors);
-      return;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveProgress = async () => {
+    if (submitting || busy.current || !validate()) return;
+    busy.current = true;
+    try {
+      await onSaveProgress?.();
+    } finally {
+      busy.current = false;
     }
-    await onSaveProgress?.();
   };
 
   const handleComplete = async (action) => {
-    const errors = validateProductionForm({
-      produced: form.produced_qty,
-      rejected: form.rejected_qty,
-      rework: form.rework_qty,
-      target: targetQty,
-      remarks: form.notes,
-    });
-    if (Object.keys(errors).length) {
-      setFieldErrors(errors);
-      return;
+    if (submitting || busy.current) return;
+    if (action === "complete_production" && !validate()) return;
+    busy.current = true;
+    try {
+      await onAction?.(action);
+    } finally {
+      busy.current = false;
     }
-    await onAction?.(action);
   };
 
-  const operatorActions = (card?.allowed_actions || []).filter((a) => a !== "view");
+  const submitIssue = async (event) => {
+    event.preventDefault();
+    if (submitting || busy.current || !workOrderId) return;
+    const title = issueTitle.trim();
+    if (!title) {
+      setIssueError("Enter a short title for the issue.");
+      return;
+    }
+    setIssueError("");
+    setIssueNotice("");
+    busy.current = true;
+    try {
+      await createAlert({
+        title,
+        message: issueMessage.trim() || null,
+        alert_type: "production_delay",
+        severity: "medium",
+        status: "active",
+        reference_type: "work_order",
+        reference_id: workOrderId,
+        target_role: "Operator,Production Manager",
+      });
+      setIssueOpen(false);
+      setIssueTitle("");
+      setIssueMessage("");
+      setIssueNotice("Issue reported.");
+      addToast("Issue reported", "success");
+    } catch (err) {
+      setIssueError(apiErrorMessage(err, "The issue could not be reported."));
+    } finally {
+      busy.current = false;
+    }
+  };
+
+  const operatorActions = (card?.allowed_actions || []).filter((action) =>
+    ["start_work", "pause", "resume", "complete_production"].includes(action)
+  );
 
   return (
-    <div className="ui-stack">
-      {/* Assignment header */}
-      <article className="ui-card overflow-hidden">
-        <CardSectionHeader title="Job Card Details" />
-        <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ReadOnlyField label="Job Card No." value={header.job_card_no || card?.card_number} />
-          <ReadOnlyField label="Sales Order" value={header.sales_order_no || card?.sales_order_no} />
-          <ReadOnlyField label="Assigned Operator" value={header.assigned_operator} />
-          <ReadOnlyField label="Production Manager" value={header.production_manager || card?.assigned_by} />
-          <ReadOnlyField
-            label="Due Date"
-            value={header.due_date ? fmtDeliveryDisplay(header.due_date) : fmtDeliveryDisplay(product.delivery_date)}
-          />
-          <ReadOnlyField label="Status" value={card?.status_label || header.status} />
+    <div className="op-job">
+      <header className="op-job__header">
+        <div>
+          <p className="op-job__kicker">Job card</p>
+          <h2>{header.job_card_no || card?.card_number || "Job card number unavailable"}</h2>
+          <p className="op-job__product">
+            {product.product_name || "Product unavailable"}
+            {product.product_code ? ` · ${product.product_code}` : ""}
+          </p>
         </div>
-      </article>
+        {card?.status_label ? (
+          <StatusBadge tone={statusTone(card.status_label)}>{card.status_label}</StatusBadge>
+        ) : (
+          <p className="op-job__muted">Status unavailable</p>
+        )}
+      </header>
 
-      {/* Product information */}
-      <article className="ui-card overflow-hidden">
-        <CardSectionHeader title="Product Information" />
-        <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <ReadOnlyField label="Product Name" value={product.product_name || card?.summary_panel?.product} />
-          <ReadOnlyField label="Product Code / SKU" value={product.product_code} />
-          <ReadOnlyField label="Customer" value={product.customer || card?.summary_panel?.customer} />
-          <ReadOnlyField label="Required Quantity" value={fmtQty(product.required_quantity, unit)} />
-          <ReadOnlyField label="Target Quantity" value={fmtQty(product.target_quantity ?? targetQty, unit)} />
-          <ReadOnlyField label="Unit" value={unit} />
-          <ReadOnlyField
-            label="Delivery Date"
-            value={fmtDeliveryDisplay(product.delivery_date)}
-          />
+      <section className="op-job__section" aria-label="Assignment">
+        <dl className="op-job__meta">
+          <div>
+            <dt>Work order</dt>
+            <dd>{workOrderNo || "—"}</dd>
+          </div>
+          <div>
+            <dt>Operator</dt>
+            <dd>{header.assigned_operator || "—"}</dd>
+          </div>
+          <div>
+            <dt>Priority</dt>
+            <dd>{header.priority || "—"}</dd>
+          </div>
+          <div>
+            <dt>Assigned</dt>
+            <dd>{displayDate(card?.assigned_date)}</dd>
+          </div>
+          <div>
+            <dt>Due</dt>
+            <dd>{displayDate(header.due_date)}</dd>
+          </div>
+          {execution.actual_start_time ? (
+            <div>
+              <dt>Started</dt>
+              <dd>{execution.actual_start_time}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </section>
+
+      <section className="op-job__section" aria-labelledby="op-job-progress">
+        <h3 id="op-job-progress">Production progress</h3>
+        <div className="op-job__progress">
+          <p>Target<strong>{formatQty(target, unit)}</strong></p>
+          <p>Completed<strong>{formatQty(completed, unit)}</strong></p>
+          <p>Pending<strong>{formatQty(pending, unit)}</strong></p>
+          <p>Progress<strong>{progressPct == null ? "—" : `${progressPct}%`}</strong></p>
         </div>
-      </article>
+        {progressPct != null ? (
+          <div
+            className="op-job__meter"
+            role="progressbar"
+            aria-valuenow={progressPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Production progress"
+          >
+            <span style={{ width: `${progressPct}%` }} />
+          </div>
+        ) : (
+          <p className="op-job__muted" style={{ marginTop: "0.75rem" }}>
+            Progress is unavailable until a target quantity is recorded.
+          </p>
+        )}
+      </section>
 
-      {/* Materials */}
-      <article className="ui-card overflow-hidden">
-        <CardSectionHeader title="Material Information" />
-        <MaterialTable columns={materialColumns} rows={materialRows} editable={false} />
-      </article>
+      <div className="op-job__split">
+        <section className="op-job__section" aria-labelledby="op-job-machine">
+          <h3 id="op-job-machine">Machine and operation</h3>
+          <dl className="op-job__facts">
+            <div>
+              <dt>Machine</dt>
+              <dd>{execution.machine_name || instructions.machine || card?.machine || "—"}</dd>
+            </div>
+            <div>
+              <dt>Machine code</dt>
+              <dd>{execution.machine_code || "—"}</dd>
+            </div>
+            <div>
+              <dt>Machine status</dt>
+              <dd>
+                {machineStatusState === "loading" ? "Loading…" : null}
+                {machineStatusState === "ready" && machineStatus ? (
+                  <StatusBadge tone={machineTone(machineStatus)}>{machineStatus}</StatusBadge>
+                ) : null}
+                {machineStatusState === "ready" && !machineStatus ? "Status unavailable" : null}
+                {machineStatusState === "unavailable" || machineStatusState === "missing" ? "Status unavailable" : null}
+              </dd>
+            </div>
+            <div>
+              <dt>Operation</dt>
+              <dd>{operation || "—"}</dd>
+            </div>
+            {duration ? (
+              <div>
+                <dt>Expected duration</dt>
+                <dd>{duration}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </section>
 
-      {/* Production instructions */}
-      <article className="ui-card overflow-hidden">
-        <CardSectionHeader title="Production Instructions" />
-        <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <ReadOnlyField label="Operation / Process" value={instructions.operation || card?.production_process} />
-          <ReadOnlyField label="Machine" value={instructions.machine || card?.machine || execution.machine_name} />
-          <ReadOnlyField label="Target Quantity" value={fmtQty(instructions.target_quantity ?? targetQty, unit)} />
-          <ReadOnlyField label="Standard Production Time" value={instructions.standard_production_time || "—"} />
-          <div className="sm:col-span-2">
-            <Textarea
-              label="Work Instructions"
-              rows={3}
-              value={instructions.work_instructions || card?.work_instructions || "—"}
-              readOnly
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <Textarea label="Safety Instructions" rows={2} value={instructions.safety_instructions || "—"} readOnly />
-          </div>
-          <div className="sm:col-span-2">
-            <Textarea label="Special Instructions" rows={2} value={instructions.special_instructions || "—"} readOnly />
-          </div>
-        </div>
-      </article>
+        <section className="op-job__section" aria-labelledby="op-job-instructions">
+          <h3 id="op-job-instructions">Instructions</h3>
+          {workInstructions ? <p className="op-job__note">{workInstructions}</p> : null}
+          {safetyInstructions ? (
+            <p className="op-job__note">
+              <strong>Safety. </strong>
+              {safetyInstructions}
+            </p>
+          ) : null}
+          {specialInstructions ? (
+            <p className="op-job__note">
+              <strong>Special. </strong>
+              {specialInstructions}
+            </p>
+          ) : null}
+          {!workInstructions && !safetyInstructions && !specialInstructions ? (
+            <p className="op-job__muted">No production instructions were provided for this job card.</p>
+          ) : null}
+        </section>
+      </div>
 
-      {/* Progress */}
-      <article className="ui-card overflow-hidden">
-        <CardSectionHeader title="Production Progress" />
-        <div className="space-y-3 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span>
-              Target: <strong className="ui-num">{targetQty.toLocaleString("en-IN")}</strong>
-            </span>
-            <span>
-              Produced: <strong className="ui-num text-[var(--color-success)]">{producedQty.toLocaleString("en-IN")}</strong>
-            </span>
-            <span>
-              Progress: <strong>{progressPct}%</strong>
-            </span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
-            <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-300"
-              style={{ width: `${progressPct}%` }}
-              role="progressbar"
-              aria-valuenow={progressPct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
-          <div className="flex flex-wrap gap-4 text-xs text-[var(--color-text-muted)]">
-            <span>Rejected: {rejectedQty.toLocaleString("en-IN")}</span>
-            <span>Rework: {reworkQty.toLocaleString("en-IN")}</span>
-          </div>
-        </div>
-      </article>
+      <section className="op-job__section" aria-labelledby="op-job-materials">
+        <h3 id="op-job-materials">Materials</h3>
+        {materialRows.length === 0 ? (
+          <p className="op-job__muted">No material check has been recorded for this job card.</p>
+        ) : (
+          <MaterialTable columns={materialColumns} rows={materialRows} editable={false} />
+        )}
+      </section>
 
-      {/* Operator production */}
-      <article className="ui-card overflow-hidden" id="operator-production-entry">
-        <CardSectionHeader title="Operator Production" />
-        <div className="grid gap-4 p-4 sm:grid-cols-2">
+      {qualityHold ? (
+        <section className="op-job__section" aria-labelledby="op-job-quality">
+          <h3 id="op-job-quality">Quality</h3>
+          <p className="op-job__muted">
+            {card.status_label === "Quality Check"
+              ? "This job is waiting for Quality inspection. Operators cannot approve or reject it."
+              : "Production is complete. Quality approval is handled by the quality team, not the operator."}
+          </p>
+        </section>
+      ) : null}
+
+      <section className="op-job__section" id="operator-production-entry" aria-labelledby="op-job-entry">
+        <h3 id="op-job-entry">Record production</h3>
+        <div className="op-job__form">
           <Input
-            label="Produced Quantity"
+            label="Produced quantity"
             error={fieldErrors.produced_qty}
             type="number"
             min={0}
             step="any"
             value={form.produced_qty}
-            onChange={(e) => handleField("produced_qty", e.target.value)}
+            onChange={(event) => handleField("produced_qty", event.target.value)}
             disabled={!editable}
           />
           <Input
-            label="Rejected Quantity"
+            label="Rejected quantity"
             error={fieldErrors.rejected_qty}
             type="number"
             min={0}
             step="any"
             value={form.rejected_qty}
-            onChange={(e) => handleField("rejected_qty", e.target.value)}
+            onChange={(event) => handleField("rejected_qty", event.target.value)}
             disabled={!editable}
           />
           <Input
-            label="Rework Quantity"
+            label="Rework quantity"
             error={fieldErrors.rework_qty}
             type="number"
             min={0}
             step="any"
             value={form.rework_qty}
-            onChange={(e) => handleField("rework_qty", e.target.value)}
+            onChange={(event) => handleField("rework_qty", event.target.value)}
             disabled={!editable}
           />
           <Input
-            label="Actual Start Time"
+            label="Actual start"
             type="datetime-local"
-            value={form.actual_start_time || toDateTimeLocalValue(execution.actual_start_time)}
-            onChange={(e) => handleField("actual_start_time", e.target.value)}
+            value={form.actual_start_time || ""}
+            onChange={(event) => handleField("actual_start_time", event.target.value)}
             disabled={!editable}
           />
           <Input
-            label="Actual End Time"
+            label="Actual end"
             type="datetime-local"
-            value={form.actual_end_time || toDateTimeLocalValue(execution.actual_end_time)}
-            onChange={(e) => handleField("actual_end_time", e.target.value)}
+            value={form.actual_end_time || ""}
+            onChange={(event) => handleField("actual_end_time", event.target.value)}
             disabled={!editable}
           />
-          <div className="sm:col-span-2">
+          <div className="op-job__wide">
             <Textarea
-              label="Operator Remarks"
+              label="Remarks"
               error={fieldErrors.notes}
-              rows={3}
+              rows={2}
               maxLength={NOTES_MAX}
-              placeholder="Production notes, downtime, tool changes…"
               value={form.notes}
-              onChange={(e) => handleField("notes", e.target.value)}
+              onChange={(event) => handleField("notes", event.target.value)}
               disabled={!editable}
             />
           </div>
         </div>
-
-        {editable ? (
-          <div className="flex flex-wrap gap-2 border-t border-[var(--color-border-muted)] bg-[var(--color-surface-muted)]/50 px-4 py-3">
-            <Button variant="outline" size="sm" loading={submitting} onClick={handleSaveProgress}>
-              Save Progress
+        <div className="op-job__actions">
+          {editable ? (
+            <Button type="button" variant="primary" size="sm" loading={submitting} onClick={handleSaveProgress}>
+              Update Production
             </Button>
-          </div>
-        ) : null}
-
-        {completed ? (
-          <p className="border-t border-[var(--color-border-muted)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
-            Production is complete. This job has been sent to Quality Check.
-          </p>
-        ) : (
+          ) : null}
+          {workOrderId ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setIssueOpen((open) => !open)}>
+              Report Issue
+            </Button>
+          ) : null}
+        </div>
+        {issueNotice ? <p className="op-job__muted" role="status">{issueNotice}</p> : null}
+        {operatorActions.length > 0 && !qualityHold ? (
           <JobCardActions
             actions={operatorActions}
             loading={submitting}
             onAction={handleComplete}
-            labels={{
-              start_work: "Start Production",
-              pause: "Pause",
-              resume: "Resume",
-              complete_production: "Complete Production & Send to Quality",
-            }}
+            labels={ACTION_LABELS}
           />
-        )}
-      </article>
+        ) : null}
+        {issueOpen ? (
+          <form className="op-job__issue" onSubmit={submitIssue}>
+            <label>
+              Issue title
+              <input value={issueTitle} onChange={(event) => setIssueTitle(event.target.value)} maxLength={255} />
+            </label>
+            <label>
+              Details
+              <textarea value={issueMessage} onChange={(event) => setIssueMessage(event.target.value)} rows={2} />
+            </label>
+            {issueError ? <p className="op-job__muted" role="alert">{issueError}</p> : null}
+            <Button type="submit" variant="primary" size="sm" loading={submitting}>Submit issue</Button>
+          </form>
+        ) : null}
+      </section>
     </div>
   );
 }

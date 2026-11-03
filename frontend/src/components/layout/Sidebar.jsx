@@ -59,6 +59,7 @@ import {
   OPERATOR_ALLOWED_CHILDREN,
   OPERATOR_BLOCKED_CHILDREN,
   OPERATOR_BLOCKED_SECTIONS,
+  operatorPathAllowed,
 } from "../../config/rbacNavFilters";
 import {
   SIDEBAR_NAV,
@@ -69,14 +70,6 @@ import {
   isSidebarLinkActive,
 } from "../../config/sidebarNav";
 
-const ACCOUNTS_DASHBOARD_PATH_ONLY = "/accounts/dashboard";
-
-function stripFinanceDashboardDuplicate(children) {
-  return (children || []).filter((c) => {
-    const pathOnly = (c.to || c.path || "").split("?")[0];
-    return pathOnly !== ACCOUNTS_DASHBOARD_PATH_ONLY;
-  });
-}
 import { ACCOUNTS_DASHBOARD_PATH, SALES_DASHBOARD_PATH } from "../../utils/roleRedirect";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 import { SALES_MANAGER_NAV_ITEMS } from "../../config/salesManagerNavConfig";
@@ -333,6 +326,7 @@ export function filterStaticNav(user) {
       }
       if (isOp) {
         if (node.managerOnly) return false;
+        if (node.to && !operatorPathAllowed(pathOnly || node.to)) return false;
         if (node.to && (OPERATOR_BLOCKED_CHILDREN.has(node.to) || OPERATOR_BLOCKED_CHILDREN.has(pathOnly))) return false;
         if (section.key === "production" && node.to && !node.operatorOnly) {
           if (!OPERATOR_ALLOWED_CHILDREN.has(node.to) && !OPERATOR_ALLOWED_CHILDREN.has(pathOnly)) return false;
@@ -353,10 +347,6 @@ export function filterStaticNav(user) {
       return true;
     });
     if (children.length === 0) return null;
-    if (isAcct && section.key === "finance") {
-      children = stripFinanceDashboardDuplicate(children);
-      if (children.length === 0) return null;
-    }
     return { ...section, children };
   }).filter(Boolean);
 
@@ -496,9 +486,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
               }
               return true;
             });
-            if (section.key === "finance") {
-              children = stripFinanceDashboardDuplicate(children);
-            }
             if (children.length === 0) return null;
             return { ...section, children };
           })
@@ -717,7 +704,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
-          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
@@ -764,7 +750,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
-          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
@@ -922,7 +907,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 <NavLink
                   to={section.to}
                   end={section.end}
-                  isActive={linkIsActive(section)}
                   onMouseEnter={() => prefetchRouteChunk(section.to)}
                   onFocus={() => prefetchRouteChunk(section.to)}
                   onClick={() => onClose?.()}
@@ -943,7 +927,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                       <NavLink
                         to={section.to}
                         end={section.end}
-                        isActive={linkIsActive(section)}
                         onMouseEnter={() => prefetchRouteChunk(section.to)}
                         onFocus={() => prefetchRouteChunk(section.to)}
                         onClick={() => onClose?.()}
@@ -998,7 +981,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                           key={`${section.key}-${child.to}-${child.label || child.key}`}
                           to={child.to}
                           end={child.end}
-                          isActive={linkIsActive(child)}
                           onMouseEnter={() => prefetchRouteChunk(child.to)}
                           onFocus={() => prefetchRouteChunk(child.to)}
                           onClick={() => onClose?.()}
@@ -1034,7 +1016,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                                 key={`flyout-${section.key}-${child.to}-${child.label || child.key}`}
                                 to={child.to}
                                 end={child.end}
-                                isActive={linkIsActive(child)}
                                 onMouseEnter={() => prefetchRouteChunk(child.to)}
                                 onFocus={() => prefetchRouteChunk(child.to)}
                                 onClick={() => onClose?.()}

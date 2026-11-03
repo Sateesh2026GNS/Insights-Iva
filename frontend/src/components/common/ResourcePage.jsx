@@ -37,6 +37,8 @@ export default function ResourcePage({
   rowActions,
   transformPayload,
   tableToolbarClassName = "",
+  initialFilterValues = null,
+  openCreateOnMount = false,
 }) {
   const fields = fieldsProp || formFields || [];
   const { user } = useAuth();
@@ -109,6 +111,15 @@ export default function ResourcePage({
     setFieldErrors({});
     setOpen(true);
   };
+
+  const createOpened = useRef(false);
+  useEffect(() => {
+    if (!openCreateOnMount || createOpened.current || isOperator || !createFn) return;
+    createOpened.current = true;
+    setForm(initialForm);
+    setFieldErrors({});
+    setOpen(true);
+  }, [openCreateOnMount, isOperator, createFn, initialForm]);
 
   const setField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -213,6 +224,7 @@ export default function ResourcePage({
             searchPlaceholder="Search"
             searchKeys={searchKeys}
             filters={filters}
+            initialFilterValues={initialFilterValues}
             toolbarClassName={tableToolbarClassName}
             emptyState={
               <EmptyState
