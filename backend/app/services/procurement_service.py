@@ -61,7 +61,7 @@ def emit_purchase_requisition_received_alert(db: Session, mr: MaterialRequest) -
 
 
 def update_purchase_order_status(
-    db: Session, po_id: int, tenant_id: int, status: str
+    db: Session, po_id: int, tenant_id: int, status: str, *, commit: bool = True
 ) -> PurchaseOrder | None:
     po = db.scalars(
         select(PurchaseOrder).where(
@@ -71,14 +71,23 @@ def update_purchase_order_status(
     if not po:
         return None
     po.status = status
-    db.commit()
-    db.refresh(po)
+    if commit:
+        db.commit()
+        db.refresh(po)
+    else:
+        db.flush()
     return po
 
 
-def create_purchase_order(db: Session, payload: PurchaseOrderCreate) -> PurchaseOrder:
+def create_purchase_order(
+    db: Session,
+    payload: PurchaseOrderCreate,
+    *,
+    submitted_by_user_id: int | None = None,
+) -> PurchaseOrder:
     po = PurchaseOrder(
         tenant_id=payload.tenant_id,
+        submitted_by_user_id=submitted_by_user_id,
         supplier_id=payload.supplier_id,
         po_number=payload.po_number,
         order_date=payload.order_date,
@@ -292,10 +301,15 @@ def list_purchase_orders(db: Session, tenant_id: int) -> list[PurchaseOrder]:
 
 
 def create_material_request(
-    db: Session, payload: MaterialRequestCreate, *, commit: bool = True
+    db: Session,
+    payload: MaterialRequestCreate,
+    *,
+    commit: bool = True,
+    submitted_by_user_id: int | None = None,
 ) -> MaterialRequest:
     mr = MaterialRequest(
         tenant_id=payload.tenant_id,
+        submitted_by_user_id=submitted_by_user_id,
         mr_number=payload.mr_number,
         request_date=payload.request_date,
         required_date=payload.required_date,
@@ -477,6 +491,8 @@ def approve_material_request(
     approved: bool = True,
     notes: str | None = None,
     approved_by: str | None = None,
+    commit: bool = True,
+    emit_event: bool = True,
 ) -> MaterialRequest:
     """Purchase Manager approval gate before PO creation."""
     mr = get_material_request(db, tenant_id, mr_id)
@@ -498,25 +514,33 @@ def approve_material_request(
         extra = " — ".join(p for p in (suffix, notes) if p)
         mr.notes = ((mr.notes or "") + f"\n{extra}").strip()
 
-    db.commit()
-    db.refresh(mr)
-    try:
-        from app.services.alert_event_service import emit_alert
+    if commit:
+        db.commit()
+        db.refresh(mr)
+    else:
+        db.flush()
+    if emit_event:
+        try:
+            from app.services.alert_event_service import emit_alert
 
-        emit_alert(
-            db,
-            tenant_id=tenant_id,
-            alert_type="purchase_requisition_approved" if approved else "purchase_requisition_rejected",
-            title=f"PR {mr.approval_status}: {mr.mr_number}",
-            message=f"Material request {mr.mr_number} {mr.approval_status}",
-            severity="medium" if approved else "high",
-            link="/procurement/material-requests",
-            reference_type="material_request",
-            reference_id=mr.id,
-            created_by="Purchase",
-        )
-    except Exception:
-        pass
+            emit_alert(
+                db,
+                tenant_id=tenant_id,
+                alert_type="purchase_requisition_approved" if approved else "purchase_requisition_rejected",
+                title=f"PR {mr.approval_status}: {mr.mr_number}",
+                message=f"Material request {mr.mr_number} {mr.approval_status}",
+                severity="medium" if approved else "high",
+                link="/procurement/material-requests",
+                reference_type="material_request",
+                reference_id=mr.id,
+                created_by="Purchase",
+                commit=commit,
+            )
+        except Exception:
+            if commit:
+                pass
+            else:
+                raise
     return mr
 
 

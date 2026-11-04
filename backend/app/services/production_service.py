@@ -41,7 +41,12 @@ def list_products(db: Session, tenant_id: int) -> list[Product]:
     return list(db.scalars(stmt).all())
 
 
-def create_production_order(db: Session, payload: ProductionOrderCreate) -> ProductionOrder:
+def create_production_order(
+    db: Session,
+    payload: ProductionOrderCreate,
+    *,
+    submitted_by_user_id: int | None = None,
+) -> ProductionOrder:
     if payload.product_id:
         product = db.scalars(
             select(Product).where(
@@ -121,6 +126,7 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
         payload.order_number = order_num
 
     data = payload.model_dump(exclude={"product_name", "produced_quantity"})
+    data["submitted_by_user_id"] = submitted_by_user_id
     actual_qty = data.get("actual_quantity") if data.get("actual_quantity") is not None else payload.produced_quantity
     if "produced_quantity" in data:
         data.pop("produced_quantity", None)

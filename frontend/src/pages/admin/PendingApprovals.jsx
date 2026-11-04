@@ -11,6 +11,7 @@ import usePermissions from "../../hooks/usePermissions";
 import { userCanAccessApprovalQueue } from "../../config/permissions";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useToast } from "../../context/ToastContext";
+import { openEntityFileDownload } from "../../utils/entityDocuments";
 import {
   approveLeaveRequest,
   decideInventoryAdjustment,
@@ -18,8 +19,10 @@ import {
   decideProductionOrder,
   decidePurchaseOrder,
   decideVendor,
+  getApprovalDetail,
+  getApprovalHistory,
   getApprovalQueue,
-  getLeaveApprovalHistory,
+  getApprovalSummary,
   rejectLeaveRequest,
 } from "../../api/approvalsApi";
 
@@ -90,6 +93,12 @@ export default function PendingApprovals() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [pendingTotal, setPendingTotal] = useState(0);
+  const [summary, setSummary] = useState({
+    total_requests: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
 
   const [activeTab, setActiveTab] = useState("all");
   const [searchInput, setSearchInput] = useState("");
@@ -108,6 +117,9 @@ export default function PendingApprovals() {
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
 
   const [approveTarget, setApproveTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -126,25 +138,36 @@ export default function PendingApprovals() {
           ? undefined
           : activeTab;
 
-      const res = await getApprovalQueue({
-        page,
-        page_size: pageSize,
-        category: activeCategory,
-        status: appliedFilters.status || "pending",
-        search: appliedFilters.search || undefined,
-        from_date: appliedFilters.fromDate || undefined,
-        to_date: appliedFilters.toDate || undefined,
-      });
+      const [res, summaryRes] = await Promise.all([
+        getApprovalQueue({
+          page,
+          page_size: pageSize,
+          category: activeCategory,
+          status: appliedFilters.status || "pending",
+          search: appliedFilters.search || undefined,
+          from_date: appliedFilters.fromDate || undefined,
+          to_date: appliedFilters.toDate || undefined,
+        }),
+        getApprovalSummary(),
+      ]);
       const data = res?.data || {};
+      const summaryData = summaryRes?.data || {};
       setItems(data.items || []);
       setTotal(data.total ?? 0);
       setTotalPages(data.total_pages ?? 0);
-      setPendingTotal(data.pending_total ?? data.total ?? 0);
+      setSummary({
+        total_requests: summaryData.total_requests ?? 0,
+        pending: summaryData.pending ?? 0,
+        approved: summaryData.approved ?? 0,
+        rejected: summaryData.rejected ?? 0,
+      });
+      setPendingTotal(summaryData.pending ?? data.pending_total ?? data.total ?? 0);
     } catch {
       setError("load");
       setItems([]);
       setTotal(0);
       setPendingTotal(0);
+      setSummary({ total_requests: 0, pending: 0, approved: 0, rejected: 0 });
     } finally {
       setLoading(false);
     }
@@ -157,14 +180,19 @@ export default function PendingApprovals() {
   }, [allowed, load]);
 
   useEffect(() => {
-    if (!selectedDetail || selectedDetail.category !== "leave") {
+    if (!selectedDetail) {
       setHistory([]);
+      setHistoryError(false);
       return;
     }
     setHistoryLoading(true);
-    getLeaveApprovalHistory(selectedDetail.resource_id)
+    setHistoryError(false);
+    getApprovalHistory(selectedDetail.resource_type, selectedDetail.resource_id)
       .then((res) => setHistory(res?.data || []))
-      .catch(() => setHistory([]))
+      .catch(() => {
+        setHistory([]);
+        setHistoryError(true);
+      })
       .finally(() => setHistoryLoading(false));
   }, [selectedDetail]);
 
@@ -213,6 +241,22 @@ export default function PendingApprovals() {
 
   const refreshAfterAction = () => {
     load();
+  };
+
+  const openDetail = (item) => {
+    setSelectedDetail(item);
+    setDetailLoading(true);
+    setDetailError(false);
+    getApprovalDetail(item.resource_type, item.resource_id)
+      .then((res) => {
+        if (res?.data) {
+          setSelectedDetail((current) =>
+            current?.id === item.id ? res.data : current
+          );
+        }
+      })
+      .catch(() => setDetailError(true))
+      .finally(() => setDetailLoading(false));
   };
 
   const runDecision = async (item, approved, rejectionReason) => {
@@ -289,7 +333,7 @@ export default function PendingApprovals() {
   const handleConfirmReject = async () => {
     if (!rejectTarget) return;
     const reason = rejectReason.trim();
-    if (rejectTarget.category === "leave" && !reason) {
+    if (!reason) {
       addToast("Rejection reason is required.", "error");
       return;
     }
@@ -442,6 +486,27 @@ export default function PendingApprovals() {
         </div>
       </form>
 
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { label: "Total Requests", value: summary.total_requests },
+          { label: "Pending", value: summary.pending },
+          { label: "Approved", value: summary.approved },
+          { label: "Rejected", value: summary.rejected },
+        ].map((metric) => (
+          <div
+            key={metric.label}
+            className="ui-card min-w-0 p-4"
+          >
+            <p className="text-xs font-medium text-[var(--color-text-muted)]">
+              {metric.label}
+            </p>
+            <p className="mt-1 text-2xl font-bold text-[var(--color-text)]">
+              {loading ? "—" : metric.value.toLocaleString()}
+            </p>
+          </div>
+        ))}
+      </div>
+
       {Boolean(
         appliedFilters.search ||
         appliedFilters.status !== "pending" ||
@@ -584,10 +649,11 @@ export default function PendingApprovals() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] text-xs text-[var(--color-text-muted)]">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Request</th>
-                  <th className="px-4 py-3 font-semibold">Employee</th>
-                  <th className="px-4 py-3 font-semibold">Type</th>
-                  <th className="px-4 py-3 font-semibold">Details</th>
+                  <th className="px-4 py-3 font-semibold">Request ID</th>
+                  <th className="px-4 py-3 font-semibold">Employee / Requested By</th>
+                  <th className="px-4 py-3 font-semibold">Department</th>
+                  <th className="px-4 py-3 font-semibold">Request Type</th>
+                  <th className="px-4 py-3 font-semibold">Description</th>
                   <th className="px-4 py-3 font-semibold">Submitted</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 font-semibold text-right">Action</th>
@@ -600,6 +666,7 @@ export default function PendingApprovals() {
                       {item.request_code}
                     </td>
                     <td className="px-4 py-3">{item.employee_name || "—"}</td>
+                    <td className="px-4 py-3">{item.department || "—"}</td>
                     <td className="px-4 py-3">{CATEGORY_LABELS[item.category] || item.title}</td>
                     <td className="px-4 py-3 text-[var(--color-text-muted)]">
                       {item.category === "leave"
@@ -613,7 +680,7 @@ export default function PendingApprovals() {
                     <td className="px-4 py-3 text-right">
                       <RowActions
                         item={item}
-                        onView={() => setSelectedDetail(item)}
+                        onView={() => openDetail(item)}
                         onApprove={() => setApproveTarget(item)}
                         onReject={() => {
                           setRejectTarget(item);
@@ -632,7 +699,7 @@ export default function PendingApprovals() {
               <ApprovalCard
                 key={item.id}
                 item={item}
-                onView={() => setSelectedDetail(item)}
+                onView={() => openDetail(item)}
                 onApprove={() => setApproveTarget(item)}
                 onReject={() => {
                   setRejectTarget(item);
@@ -664,6 +731,9 @@ export default function PendingApprovals() {
           item={selectedDetail}
           history={history}
           historyLoading={historyLoading}
+          historyError={historyError}
+          detailLoading={detailLoading}
+          detailError={detailError}
           onClose={() => setSelectedDetail(null)}
           onApprove={() => setApproveTarget(selectedDetail)}
           onReject={() => {
@@ -701,7 +771,7 @@ export default function PendingApprovals() {
         onConfirm={handleConfirmReject}
         loading={actionLoading}
         confirmDisabled={
-          rejectTarget?.category === "leave" ? !rejectReason.trim() : false
+          Boolean(rejectTarget) && !rejectReason.trim()
         }
       >
         {rejectTarget ? (
@@ -714,7 +784,7 @@ export default function PendingApprovals() {
 
 function RowActions({ item, onView, onApprove, onReject }) {
   const isDraftPo = item.resource_type === "purchase_order" && item.status === "draft";
-  const canAct = item.status === "pending" || isDraftPo;
+  const canAct = ["pending", "planned"].includes(item.status) || isDraftPo;
   const items = [
     {
       label: "View",
@@ -786,7 +856,7 @@ function ApprovalStatusBadge({ status }) {
 function ApprovalCard({ item, onView, onApprove, onReject }) {
   const isLeave = item.category === "leave";
   const isDraftPo = item.resource_type === "purchase_order" && item.status === "draft";
-  const canAct = item.status === "pending" || isDraftPo;
+  const canAct = ["pending", "planned"].includes(item.status) || isDraftPo;
   return (
     <div className="ui-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
@@ -837,10 +907,25 @@ function ApprovalCard({ item, onView, onApprove, onReject }) {
   );
 }
 
-function DetailModal({ item, history, historyLoading, onClose, onApprove, onReject }) {
+function DetailModal({
+  item,
+  history,
+  historyLoading,
+  historyError,
+  detailLoading,
+  detailError,
+  onClose,
+  onApprove,
+  onReject,
+}) {
   const isLeave = item.category === "leave";
   const isDraftPo = item.resource_type === "purchase_order" && item.status === "draft";
-  const canAct = item.status === "pending" || isDraftPo;
+  const canAct = ["pending", "planned"].includes(item.status) || isDraftPo;
+  const [documentError, setDocumentError] = useState("");
+  const lineItems = Array.isArray(item.extra?.line_items) ? item.extra.line_items : [];
+  const documents = Array.isArray(item.extra?.supporting_documents)
+    ? item.extra.supporting_documents
+    : [];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
@@ -857,8 +942,20 @@ function DetailModal({ item, history, historyLoading, onClose, onApprove, onReje
         </div>
 
         <dl className="grid grid-cols-1 gap-3 text-sm">
+          {detailLoading && (
+            <p className="text-xs text-[var(--color-text-muted)]">Loading complete request details…</p>
+          )}
+          {detailError && (
+            <p role="alert" className="text-xs text-rose-600">
+              Complete request details could not be loaded. The summary shown here may be incomplete.
+            </p>
+          )}
           {isLeave && (
             <>
+              <DetailRow
+                label="Submitted By"
+                value={item.extra?.submitted_by || item.employee_name}
+              />
               <DetailRow label="Employee" value={item.employee_name} />
               <DetailRow label="Department" value={item.department} />
               <DetailRow label="Designation" value={item.designation} />
@@ -874,19 +971,112 @@ function DetailModal({ item, history, historyLoading, onClose, onApprove, onReje
             <>
               <DetailRow label="Summary" value={item.title} />
               <DetailRow label="Details" value={item.detail_summary} />
-              {item.employee_name && <DetailRow label="Requested by" value={item.employee_name} />}
+              <DetailRow
+                label="Submitted By"
+                value={item.employee_name || item.extra?.submitted_by}
+              />
+              <DetailRow label="Department" value={item.department} />
+              {item.extra?.supplier_name && (
+                <DetailRow label="Supplier" value={item.extra.supplier_name} />
+              )}
+              {item.extra?.planned_quantity != null && (
+                <DetailRow label="Requested quantity" value={item.extra.planned_quantity} />
+              )}
+              {item.extra?.total_amount != null && (
+                <DetailRow
+                  label="Requested amount"
+                  value={`${item.extra.currency || ""} ${Number(item.extra.total_amount).toLocaleString()}`}
+                />
+              )}
+              {item.extra?.old_quantity != null && (
+                <DetailRow
+                  label="Quantity change"
+                  value={`${item.extra.old_quantity} → ${item.extra.new_quantity}`}
+                />
+              )}
+              {item.extra?.item_name && (
+                <DetailRow label="Inventory item" value={item.extra.item_name} />
+              )}
+              {item.extra?.warehouse_name && (
+                <DetailRow label="Warehouse" value={item.extra.warehouse_name} />
+              )}
             </>
+          )}
+          {!isLeave && item.extra?.requested_date && (
+            <DetailRow label="Requested date" value={formatDate(item.extra.requested_date)} />
+          )}
+          {!isLeave && item.extra?.required_date && (
+            <DetailRow label="Required date" value={formatDate(item.extra.required_date)} />
           )}
           <DetailRow label="Reason" value={item.reason || "—"} />
           <DetailRow label="Submitted" value={formatDate(item.submitted_at)} />
           <DetailRow label="Status" value={<ApprovalStatusBadge status={item.status} />} />
         </dl>
 
-        {isLeave && (
+        {lineItems.length > 0 && (
           <div className="border-t border-[var(--color-border)] pt-3">
+            <p className="mb-2 text-xs font-bold text-[var(--color-text-muted)]">Requested items</p>
+            <ul className="space-y-2 text-xs">
+              {lineItems.map((line, index) => (
+                <li key={`${line.item_id}-${index}`} className="rounded-lg bg-[var(--color-surface-muted)] p-2">
+                  <p className="font-semibold">{line.name || `Item ${line.item_id}`}</p>
+                  <p className="text-[var(--color-text-muted)]">
+                    Quantity: {line.quantity}{line.unit ? ` ${line.unit}` : ""}
+                    {line.unit_price != null ? ` · Unit price: ${Number(line.unit_price).toLocaleString()}` : ""}
+                    {line.line_total != null ? ` · Total: ${Number(line.line_total).toLocaleString()}` : ""}
+                  </p>
+                  {line.notes && <p>{line.notes}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="border-t border-[var(--color-border)] pt-3">
+          <p className="mb-2 text-xs font-bold text-[var(--color-text-muted)]">Supporting documents</p>
+          {documents.length === 0 ? (
+            <p className="text-xs text-[var(--color-text-muted)]">No supporting documents attached.</p>
+          ) : (
+            <ul className="space-y-1 text-xs">
+              {documents.map((document, index) => (
+                <li key={document.id || index} className="flex items-center justify-between gap-3">
+                  <span>{document.name || document.filename || `Document ${index + 1}`}</span>
+                  {document.file_id && document.downloadable && (
+                    <button
+                      type="button"
+                      className="shrink-0 font-semibold text-[var(--color-primary)] hover:underline"
+                      onClick={async () => {
+                        setDocumentError("");
+                        try {
+                          await openEntityFileDownload(document.file_id);
+                        } catch (error) {
+                          setDocumentError(
+                            apiErrorMessage(error, "This document could not be downloaded.")
+                          );
+                        }
+                      }}
+                    >
+                      Download
+                    </button>
+                  )}
+                  {document.file_id && !document.downloadable && (
+                    <span className="shrink-0 text-[var(--color-text-muted)]">Not ready</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {documentError && <p role="alert" className="mt-2 text-xs text-rose-600">{documentError}</p>}
+        </div>
+
+        <div className="border-t border-[var(--color-border)] pt-3">
             <p className="text-xs font-bold text-[var(--color-text-muted)] mb-2">Approval History</p>
             {historyLoading ? (
               <p className="text-xs text-[var(--color-text-muted)]">Loading…</p>
+            ) : historyError ? (
+              <p role="alert" className="text-xs text-rose-600">
+                Approval history could not be loaded.
+              </p>
             ) : history.length === 0 ? (
               <p className="text-xs text-[var(--color-text-muted)]">No additional history.</p>
             ) : (
@@ -904,8 +1094,7 @@ function DetailModal({ item, history, historyLoading, onClose, onApprove, onReje
                 ))}
               </ul>
             )}
-          </div>
-        )}
+        </div>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
           <button type="button" className="ui-btn ui-btn-secondary text-xs" onClick={onClose}>

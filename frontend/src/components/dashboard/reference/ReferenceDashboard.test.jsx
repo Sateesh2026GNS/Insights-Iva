@@ -284,6 +284,8 @@ describe("ReferenceDashboard", () => {
     expect(await screen.findByText("refDashboard.departments")).toBeInTheDocument();
     expect(screen.getByText("refDashboard.pendingApprovals")).toBeInTheDocument();
     expect(screen.getByText("refDashboard.revenueCostSnapshot")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Check In" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Live Manufacturing Workflow")).not.toBeInTheDocument();
   });
 
   it("renders all four period tabs (Daily, Weekly, Monthly, Yearly) in Production Overview", async () => {

@@ -17,7 +17,9 @@ from app.api.deps import get_db
 from app.core.permissions import require_admin, require_approval_queue_access
 from app.schemas.approval_queue import (
     ApprovalHistoryEntryRead,
+    ApprovalQueueItemRead,
     ApprovalQueuePageRead,
+    ApprovalSummaryRead,
     LeaveDecisionBody,
     ProcurementDecisionBody,
 )
@@ -346,6 +348,46 @@ def approval_my_counts(
     return pending_counts_for_user(db, user)
 
 
+@router.get("/approvals/summary", response_model=ApprovalSummaryRead)
+def approval_summary(
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import approval_summary_for_user
+
+    return approval_summary_for_user(db, user)
+
+
+@router.get(
+    "/approvals/{resource_type}/{resource_id}",
+    response_model=ApprovalQueueItemRead,
+)
+def approval_detail(
+    resource_type: str,
+    resource_id: int,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import get_approval_detail
+
+    return get_approval_detail(db, user, resource_type, resource_id)
+
+
+@router.get(
+    "/approvals/{resource_type}/{resource_id}/history",
+    response_model=list[ApprovalHistoryEntryRead],
+)
+def approval_history(
+    resource_type: str,
+    resource_id: int,
+    user: User = Depends(require_approval_queue_access),
+    db: Session = Depends(get_db),
+):
+    from app.services.approval_queue_service import get_approval_history
+
+    return get_approval_history(db, user, resource_type, resource_id)
+
+
 @router.post("/approvals/leave/{leave_id}/approve", response_model=LeaveRequestRead)
 def approval_leave_approve(
     leave_id: int,
@@ -424,6 +466,7 @@ def approval_vendor_decide(
         vendor_id,
         approved=body.approved,
         expected_status=body.expected_status or "pending",
+        rejection_reason=body.rejection_reason,
     )
 
 
@@ -442,6 +485,7 @@ def approval_po_decide(
         po_id,
         approved=body.approved,
         expected_status=body.expected_status or "draft",
+        rejection_reason=body.rejection_reason,
     )
 
 
@@ -460,6 +504,7 @@ def approval_production_decide(
         order_id,
         approved=body.approved,
         expected_status=body.expected_status or "planned",
+        rejection_reason=body.rejection_reason,
     )
 
 

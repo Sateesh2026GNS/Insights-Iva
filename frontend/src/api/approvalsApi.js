@@ -5,6 +5,14 @@ export const getApprovalQueue = (params = {}) =>
 
 export const getMyApprovalCounts = () => api.get("/admin/approvals/my-counts");
 
+export const getApprovalSummary = () => api.get("/admin/approvals/summary");
+
+export const getApprovalDetail = (resourceType, resourceId) =>
+  api.get(`/admin/approvals/${resourceType}/${resourceId}`);
+
+export const getApprovalHistory = (resourceType, resourceId) =>
+  api.get(`/admin/approvals/${resourceType}/${resourceId}/history`);
+
 export const approveLeaveRequest = (leaveId, body = {}) =>
   api.post(`/admin/approvals/leave/${leaveId}/approve`, body);
 

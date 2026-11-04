@@ -13,6 +13,9 @@ class PurchaseOrder(Base, TimestampMixin):
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
     )
+    submitted_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), nullable=False)
     po_number: Mapped[str] = mapped_column(String(64), nullable=False)
     order_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -78,6 +81,9 @@ class MaterialRequest(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    submitted_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     mr_number: Mapped[str] = mapped_column(String(64), nullable=False)
     request_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -251,4 +257,3 @@ class VendorBill(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
 
     supplier = relationship("Supplier")
-

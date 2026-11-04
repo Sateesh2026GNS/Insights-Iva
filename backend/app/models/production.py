@@ -13,6 +13,9 @@ class ProductionOrder(Base, TimestampMixin):
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
     )
+    submitted_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
     order_number: Mapped[str] = mapped_column(String(64), nullable=False)
     planned_quantity: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)

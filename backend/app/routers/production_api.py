@@ -716,7 +716,7 @@ def create_plan(
 ):
     _, tenant_id = user_tenant
     payload.tenant_id = tenant_id
-    order = create_production_order(db, payload)
+    order = create_production_order(db, payload, submitted_by_user_id=user_tenant[0].id)
     return success_response("Production plan created", _dump(order))
 
 

@@ -1608,9 +1608,11 @@ export default function ReferenceDashboard() {
           </div>
         ) : null}
 
-        <DashboardCheckIn />
+        {!isAdmin(user) ? <DashboardCheckIn /> : null}
 
-        {sectionVisible(sections, "manufacturing_workflow") ? <ManufacturingWorkflowHub /> : null}
+        {!isAdmin(user) && sectionVisible(sections, "manufacturing_workflow") ? (
+          <ManufacturingWorkflowHub />
+        ) : null}
 
         {topRowVisibleCount > 0 && (
           <div className={`grid gap-5 ${topRowGridCls}`}>
