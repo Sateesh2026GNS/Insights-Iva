@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, ShieldCheck, UserCog, KeyRound } from "lucide-rea
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import KpiCard from "../../components/common/KpiCard";
+import { ErrorState, PermissionDeniedState } from "../../components/common/states";
 import { Input } from "../../components/common/FormField";
 import AdminModal from "../../components/admin/AdminModal";
 import InviteUserModal from "../../components/admin/InviteUserModal";
@@ -53,6 +54,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -68,8 +70,12 @@ export default function UserManagement() {
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setLoadError(null);
     try {
-      const [u, r] = await Promise.all([getUsers(), getRoles()]);
+      const [u, r] = await Promise.all([
+        getUsers({ skipGlobalError: true }),
+        getRoles({ skipGlobalError: true }),
+      ]);
       setUsers(u.data || []);
       const rawRoles = r.data || [];
       const seenNames = new Set();
@@ -83,6 +89,7 @@ export default function UserManagement() {
       }
       setRoles(uniqueRoles);
     } catch (err) {
+      setLoadError(err);
       if (!isRefresh) addToast("Failed to load users", "error");
       if (isRefresh) throw err;
     } finally {
@@ -396,6 +403,10 @@ export default function UserManagement() {
       <div className="ui-card p-4 sm:p-6">
         {loading ? (
           <p className="py-10 text-center text-sm text-slate-500">Loading users…</p>
+        ) : loadError?.response?.status === 403 ? (
+          <PermissionDeniedState />
+        ) : loadError ? (
+          <ErrorState onRetry={() => load()} />
         ) : (
           <DataTable
             columns={columns}

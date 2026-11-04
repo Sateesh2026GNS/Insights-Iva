@@ -68,7 +68,7 @@ describe("OperatorJobCardDocumentPanel states", () => {
 
     expect(screen.getByText("Production assignments appear here when work orders are assigned to you.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Production progress" })).not.toBeInTheDocument();
-    await waitFor(() => expect(getCompanySettings).toHaveBeenCalled());
+    expect(getCompanySettings).not.toHaveBeenCalled();
   });
 
   it("shows a loading state instead of an empty job card", async () => {
@@ -76,7 +76,7 @@ describe("OperatorJobCardDocumentPanel states", () => {
     render(<OperatorJobCardDocumentPanel orderId={90} />);
     expect(screen.getByText("Loading operator job card…")).toBeInTheDocument();
     expect(screen.queryByText("No material check has been recorded for this job card.")).not.toBeInTheDocument();
-    await waitFor(() => expect(getCompanySettings).toHaveBeenCalled());
+    expect(getCompanySettings).not.toHaveBeenCalled();
   });
 
   it("shows an error state when the job card cannot be loaded", async () => {

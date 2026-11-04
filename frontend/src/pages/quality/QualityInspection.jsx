@@ -19,7 +19,7 @@ export default function QualityInspection() {
       headerAction={(
         <Link
           to="/my-job-cards?dept=quality"
-          className="inline-flex min-h-7 items-center justify-center rounded-sm border border-[#c5d0dc] bg-white px-3 text-[11px] font-bold text-[#1a1a1a] hover:bg-[#fff7ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#c2410c]"
+          className="inline-flex min-h-11 items-center justify-center rounded-sm border border-[#c5d0dc] bg-white px-3 text-[11px] font-bold text-[#1a1a1a] hover:bg-[#fff7ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#c2410c]"
         >
           Open Quality Check Queue
         </Link>

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
@@ -7,9 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const AUTH_DIR = path.join(__dirname, ".auth");
 const API_BASE = process.env.E2E_API_URL || "http://127.0.0.1:8000";
 const WEB_BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:5173";
-const PASSWORD = "Passw0rd!123";
 
-async function loadE2eEnvFile() {
+async function loadE2eEnvFile({ required = false } = {}) {
   const envPath = path.join(__dirname, ".env.e2e");
   try {
     const text = await readFile(envPath, "utf8");
@@ -22,8 +21,8 @@ async function loadE2eEnvFile() {
       const value = trimmed.slice(eq + 1).trim();
       if (!process.env[key]) process.env[key] = value;
     }
-  } catch {
-    /* optional file */
+  } catch (error) {
+    if (required || error.code !== "ENOENT") throw error;
   }
 }
 
@@ -57,64 +56,76 @@ async function loginUser(email, password, role) {
   };
 }
 
-async function provisionUser(role, label) {
-  const stamp = Date.now().toString(36);
-  const email = `e2e-${label}-${stamp}@company-e2e.test`;
-  const reg = await apiJson(`${API_BASE}/auth/register`, {
-    company_name: `E2E ${label} ${stamp}`,
-    full_name: `E2E ${role}`,
-    email,
-    password: PASSWORD,
-    role,
-  });
-  if (!reg.ok) {
-    throw new Error(
-      `${API_BASE}/auth/register → ${reg.status}: ${reg.text.slice(0, 280)}. ` +
-        "Set E2E_ACCOUNTANT_EMAIL/PASSWORD (and operator) in e2e/.env.e2e, or enable ALLOW_PUBLIC_REGISTRATION=true on the API."
-    );
-  }
-  return loginUser(email, PASSWORD, role);
-}
-
 async function resolveAccount(role, label, envEmail, envPassword) {
-  if (envEmail && envPassword) {
-    try {
-      return await loginUser(envEmail, envPassword, role);
-    } catch {
-      // Stored e2e credentials may target a different database than this run.
-    }
+  if (!envEmail || !envPassword) {
+    throw new Error(`Missing local E2E credentials for ${role}; seed a local test tenant first.`);
   }
-  return provisionUser(role, label);
+  return loginUser(envEmail, envPassword, role);
 }
 
-async function saveStorageState(account, outFile) {
+async function saveStorageState(account, outFile, webBase = WEB_BASE) {
   const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await page.request.get(`${WEB_BASE}/auth/csrf`);
-  const loginRes = await page.request.post(`${WEB_BASE}/auth/login`, {
-    data: {
-      email: account.email,
-      password: account.password,
-      role: account.role,
-    },
-  });
-  if (!loginRes.ok()) {
-    throw new Error(`Playwright login failed: ${loginRes.status()} ${await loginRes.text()}`);
+  try {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.request.get(`${webBase}/auth/csrf`);
+    const loginRes = await page.request.post(`${webBase}/auth/login`, {
+      data: {
+        email: account.email,
+        password: account.password,
+        role: account.role,
+      },
+    });
+    if (!loginRes.ok()) {
+      throw new Error(`Playwright login failed for ${account.role}: HTTP ${loginRes.status()}.`);
+    }
+    const loginBody = await loginRes.json();
+    const user = loginBody.user || account.user;
+    if (!user) throw new Error(`Playwright login for ${account.role} returned no user profile.`);
+    await page.goto(`${webBase}/login`);
+    await page.evaluate((u) => {
+      localStorage.setItem("smrt-session-active", "1");
+      localStorage.setItem("smrt-user", JSON.stringify(u));
+      localStorage.setItem("smrt-login-time", String(Date.now()));
+      localStorage.setItem("smrt-primary-heartbeat", String(Date.now()));
+    }, user);
+    const accessToken = loginBody.access_token || loginBody.token;
+    const refreshToken = loginBody.refresh_token;
+    if (accessToken || refreshToken) {
+      await page.evaluate(
+        ({ access, refresh }) => {
+          if (access) localStorage.setItem("smrt-token", access);
+          if (refresh) localStorage.setItem("smrt-refresh-token", refresh);
+        },
+        { access: accessToken, refresh: refreshToken }
+      );
+    }
+    await context.storageState({ path: outFile });
+    await context.close();
+  } finally {
+    await browser.close();
   }
-  const loginBody = await loginRes.json();
-  const user = loginBody.user || account.user;
-  await page.goto(`${WEB_BASE}/login`);
-  await page.evaluate((u) => {
-    localStorage.setItem("smrt-session-active", "1");
-    localStorage.setItem("smrt-user", JSON.stringify(u));
-    localStorage.setItem("smrt-login-time", String(Date.now()));
-    localStorage.setItem("smrt-primary-heartbeat", String(Date.now()));
-    localStorage.removeItem("smrt-token");
-    localStorage.removeItem("smrt-refresh-token");
-  }, user);
-  await context.storageState({ path: outFile });
-  await browser.close();
+}
+
+const RESPONSIVE_ROLES = [
+  ["Admin", "ADMIN", "admin"],
+  ["HR Manager", "HR", "hr"],
+  ["Sales Manager", "SALES", "sales"],
+  ["Store Manager", "STORE", "store"],
+  ["Production Manager", "PRODUCTION", "production"],
+  ["Operator", "OPERATOR", "operator"],
+  ["Quality Control", "QUALITY", "quality"],
+];
+
+function isResponsiveOnlyRun() {
+  return process.argv.join(" ").includes("responsive-certification.spec.js");
+}
+
+function assertLoopbackUrl(value, label) {
+  const url = new URL(value);
+  if (url.protocol !== "http:" || !["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
+    throw new Error(`${label} must use local HTTP loopback; refusing to authenticate against a remote host.`);
+  }
 }
 
 function isManufacturingOnlyRun() {
@@ -131,7 +142,27 @@ function isStoreManagerStagingOnlyRun() {
 }
 
 export default async function globalSetup() {
-  await loadE2eEnvFile();
+  const responsiveOnly = isResponsiveOnlyRun();
+  await loadE2eEnvFile({ required: responsiveOnly });
+  if (responsiveOnly) {
+    const webBase = process.env.E2E_BASE_URL || WEB_BASE;
+    const apiBase = process.env.E2E_API_URL || API_BASE;
+    assertLoopbackUrl(webBase, "E2E_BASE_URL");
+    assertLoopbackUrl(apiBase, "E2E_API_URL");
+    await mkdir(AUTH_DIR, { recursive: true });
+
+    for (const [role, key, file] of RESPONSIVE_ROLES) {
+      const email = process.env[`E2E_${key}_EMAIL`];
+      const password = process.env[`E2E_${key}_PASSWORD`];
+      if (!email || !password) {
+        throw new Error(`Missing E2E_${key}_EMAIL or E2E_${key}_PASSWORD in frontend/e2e/.env.e2e.`);
+      }
+      await saveStorageState({ email, password, role }, path.join(AUTH_DIR, `${file}.json`), webBase);
+      console.log(`Created local authenticated browser state for ${role}.`);
+    }
+    return;
+  }
+
   // Manufacturing spec authenticates through the login UI and does not use
   // accountant/operator storage state. Skip Chromium provisioning so the spec
   // can skip cleanly when E2E_MANUFACTURING is unset or browsers are missing.
@@ -155,10 +186,4 @@ export default async function globalSetup() {
 
   await saveStorageState(accountant, path.join(AUTH_DIR, "accountant.json"));
   await saveStorageState(operator, path.join(AUTH_DIR, "operator.json"));
-
-  const credentials = {
-    accountant: { email: accountant.email, password: accountant.password, role: accountant.role },
-    operator: { email: operator.email, password: operator.password, role: operator.role },
-  };
-  await writeFile(path.join(AUTH_DIR, "credentials.json"), JSON.stringify(credentials, null, 2), "utf8");
 }

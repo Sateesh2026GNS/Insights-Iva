@@ -7,7 +7,7 @@ import EmptyState from "./EmptyState";
 import { Input, Select, Textarea } from "./FormField";
 import PageHeader from "./PageHeader";
 import SkeletonTable from "./SkeletonTable";
-import { ErrorState, OfflineState } from "./states";
+import { ErrorState, OfflineState, PermissionDeniedState } from "./states";
 import useAuth from "../../hooks/useAuth";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
@@ -51,6 +51,7 @@ export default function ResourcePage({
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [rows, setRows] = useState([]);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -71,6 +72,7 @@ export default function ResourcePage({
   const reload = useCallback(async ({ soft = false } = {}) => {
     if (!soft) setLoading(true);
     setLoadError("");
+    setPermissionDenied(false);
     markRequestStart();
     try {
       const res = await fetcherRef.current();
@@ -87,6 +89,7 @@ export default function ResourcePage({
         throw err;
       }
       setLoadError(classified.message);
+      setPermissionDenied(err?.response?.status === 403);
       setRows([]);
     } finally {
       markRequestEnd();
@@ -213,6 +216,8 @@ export default function ResourcePage({
       <div className="ui-card ui-card--padded">
         {loading ? (
           <SkeletonTable rows={6} cols={Math.min(columns.length || 5, 6)} />
+        ) : permissionDenied ? (
+          <PermissionDeniedState description={loadError} />
         ) : !online && loadError ? (
           <OfflineState onRetry={reload} />
         ) : loadError ? (

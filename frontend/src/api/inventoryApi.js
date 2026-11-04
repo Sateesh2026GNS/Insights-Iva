@@ -2,7 +2,7 @@ import api from "./axiosConfig";
 import { getCachedReference } from "../utils/referenceDataCache";
 
 export const getWarehouses = (options = {}) =>
-  getCachedReference("warehouses", () => api.get("/inventory/warehouses"), {
+  getCachedReference("warehouses", () => api.get("/inventory/warehouses", { skipGlobalError: true }), {
     force: options.force === true,
   });
 export const getWarehouseSummary = () => api.get("/inventory/warehouses/summary");

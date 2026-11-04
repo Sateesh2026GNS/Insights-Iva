@@ -31,8 +31,9 @@ vi.mock("../../../api/productionApi", () => ({
   getWorkOrders: vi.fn().mockResolvedValue({ data: [] }),
 }));
 
+const mockGetMyApprovalCounts = vi.fn().mockResolvedValue({ data: { total: 0 } });
 vi.mock("../../../api/approvalsApi", () => ({
-  getMyApprovalCounts: vi.fn().mockResolvedValue({ data: { total: 0 } }),
+  getMyApprovalCounts: (...args) => mockGetMyApprovalCounts(...args),
 }));
 
 vi.mock("../../../api/operatorExecutionApi", () => ({
@@ -122,6 +123,7 @@ const fullDashboard = {
 
 describe("ReferenceDashboard", () => {
   beforeEach(() => {
+    mockGetMyApprovalCounts.mockClear();
     mockUseAuth.mockReturnValue({
       user: {
         role: "Store Manager",
@@ -160,6 +162,7 @@ describe("ReferenceDashboard", () => {
         permissions: ["production"],
       },
     });
+
     mockGetErpDashboard.mockResolvedValue({ data: fullDashboard });
 
     render(
@@ -179,6 +182,24 @@ describe("ReferenceDashboard", () => {
     expect(document.querySelector(".mtk-theme--teal")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "OPERATOR DASHBOARD" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Check In" })).toBeInTheDocument();
+  });
+
+  it("does not request the restricted approvals endpoint for Operators", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: "Operator", permissions: ["production"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({ data: fullDashboard });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "OPERATOR DASHBOARD" })).toBeInTheDocument();
+    });
+    expect(mockGetMyApprovalCounts).not.toHaveBeenCalled();
   });
 
   it("opens operator KPI cards on allowed pages and keeps quality informational", async () => {

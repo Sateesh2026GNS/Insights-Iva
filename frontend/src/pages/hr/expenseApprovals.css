@@ -689,3 +689,11 @@
 .hr-exp-approvals__hidden-input {
   display: none;
 }
+.hr-exp-approvals__checkbox-target {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}

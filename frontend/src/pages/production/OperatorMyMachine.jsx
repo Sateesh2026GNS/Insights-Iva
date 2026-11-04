@@ -16,8 +16,8 @@ import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
 import "../../styles/manufacturing-toolkit.css";
 import "./operatorMyMachine.css";
 
-const START_STATUSES = new Set(["PRODUCTION_ASSIGNED"]);
-const UPDATE_STATUSES = new Set(["PRODUCTION_IN_PROGRESS"]);
+const START_ACTIONS = new Set(["start_work"]);
+const UPDATE_ACTIONS = new Set(["pause", "resume", "complete_production"]);
 
 function machineTone(status) {
   const key = String(status || "").trim().toLowerCase();
@@ -109,7 +109,7 @@ export default function OperatorMyMachine() {
     setLoadFailure(null);
     setActionError("");
     try {
-      const res = await getMyMachines();
+      const res = await getMyMachines({ skipGlobalError: true });
       const items = Array.isArray(res.data?.items) ? res.data.items : [];
       const nextDetails = {};
       await Promise.all(
@@ -282,6 +282,13 @@ export default function OperatorMyMachine() {
               ? `/manufacturing/workflow/order/${workOrder.sales_order_id}/operator`
               : null;
             const workflow = workOrder?.workflow_status || "";
+            const allowedActions = new Set(stage?.allowed_actions || []);
+            const canStartWork =
+              [...START_ACTIONS].some((action) => allowedActions.has(action)) ||
+              workflow === "PRODUCTION_ASSIGNED";
+            const canUpdateProduction =
+              [...UPDATE_ACTIONS].some((action) => allowedActions.has(action)) ||
+              workflow === "PRODUCTION_IN_PROGRESS";
             const history = Array.isArray(machine.status_history) ? machine.status_history : [];
             const statusText = statusLabel(machine.status);
             const canReportDowntime = Boolean(statusText) && statusText.toLowerCase() !== "stopped";
@@ -396,12 +403,12 @@ export default function OperatorMyMachine() {
                       View Work Order
                     </Button>
                   ) : null}
-                  {stageUrl && START_STATUSES.has(workflow) ? (
+                  {stageUrl && canStartWork ? (
                     <Button variant="primary" size="sm" to={stageUrl}>
                       Start Work
                     </Button>
                   ) : null}
-                  {stageUrl && UPDATE_STATUSES.has(workflow) ? (
+                  {stageUrl && canUpdateProduction ? (
                     <Button variant="primary" size="sm" to={stageUrl}>
                       Update Production
                     </Button>

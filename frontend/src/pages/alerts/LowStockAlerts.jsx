@@ -28,7 +28,7 @@ export default function LowStockAlerts() {
         </div>
         <Link
           to="/inventory/raw-materials"
-          className="shrink-0 pl-7 font-semibold text-[var(--color-primary)] hover:underline sm:pl-0"
+          className="inline-flex min-h-11 shrink-0 items-center pl-7 font-semibold text-[var(--color-primary)] hover:underline sm:pl-0"
         >
           {t("alerts.viewInventory", { defaultValue: "View inventory" })}
         </Link>

@@ -4,7 +4,7 @@
  */
 export default function AppPageTitle({ title }) {
   return (
-    <h1 className="app-page-title truncate">
+    <h1 className="app-page-title">
       {title}
     </h1>
   );

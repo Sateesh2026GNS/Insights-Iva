@@ -1,5 +1,7 @@
-﻿{
+{
   "projects": {
-    "default": "insights-734ee"
-  }
+    "default": "insights-iva-erp"
+  },
+  "targets": {},
+  "etags": {}
 }

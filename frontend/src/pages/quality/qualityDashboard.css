@@ -22,7 +22,7 @@
 .qc-dash__primary {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 44px;
   padding: 0 10px;
   border-radius: 2px;
   background: #fff;
@@ -71,7 +71,7 @@
 .qc-dash__nav a {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
+  min-height: 44px;
   padding: 0 8px;
   border: 1px solid #c5d0dc;
   border-radius: 2px;
@@ -123,6 +123,11 @@
   text-decoration: none;
 }
 
+.qc-dash__legend a {
+  min-height: 44px;
+  padding-block: 0.5rem;
+}
+
 .qc-dash__legend a:hover {
   color: #9a3412;
 }
@@ -151,6 +156,9 @@
 }
 
 .qc-dash__footer a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   color: #9a3412;
 }
 

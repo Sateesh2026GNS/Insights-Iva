@@ -1,4 +1,26 @@
 {
+  "responsiveTable": {
+    "showLowPriority": "அனைத்து நெடுவரிசைகளையும் காட்டு",
+    "hideLowPriority": "குறைந்த நெடுவரிசைகளைக் காட்டு"
+  },
+  "languageNames": {
+    "english": "ஆங்கிலம்",
+    "telugu": "தெலுங்கு",
+    "hindi": "இந்தி",
+    "tamil": "தமிழ்"
+  },
+  "mobileNav": {
+    "navigation": "முதன்மை வழிசெலுத்தல்",
+    "more": "மேலும்",
+    "openMore": "கூடுதல் வழிசெலுத்தலைத் திற",
+    "closeMore": "கூடுதல் வழிசெலுத்தலை மூடு",
+    "darkMode": "இருண்ட பயன்முறை",
+    "lightMode": "ஒளி பயன்முறை",
+    "settings": "அமைப்புகள்",
+    "add": "சேர்",
+    "logout": "வெளியேறு",
+    "quickActions": "விரைவு செயல்கள்"
+  },
   "erpNav": {
     "roleWorkflow": "பாத்திரம் அடிப்படையிலான பணிப்பாய்வு"
   },

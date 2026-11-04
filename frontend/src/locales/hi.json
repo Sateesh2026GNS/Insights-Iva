@@ -1,4 +1,26 @@
 {
+  "responsiveTable": {
+    "showLowPriority": "सभी कॉलम दिखाएँ",
+    "hideLowPriority": "कम कॉलम दिखाएँ"
+  },
+  "languageNames": {
+    "english": "अंग्रेज़ी",
+    "telugu": "तेलुगु",
+    "hindi": "हिंदी",
+    "tamil": "तमिल"
+  },
+  "mobileNav": {
+    "navigation": "मुख्य नेविगेशन",
+    "more": "और",
+    "openMore": "अधिक नेविगेशन खोलें",
+    "closeMore": "अधिक नेविगेशन बंद करें",
+    "darkMode": "डार्क मोड",
+    "lightMode": "लाइट मोड",
+    "settings": "सेटिंग",
+    "add": "जोड़ें",
+    "logout": "लॉग आउट",
+    "quickActions": "त्वरित कार्रवाइयाँ"
+  },
   "erpNav": {
     "roleWorkflow": "भूमिका-आधारित वर्कफ़्लो"
   },

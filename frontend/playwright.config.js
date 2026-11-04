@@ -1,6 +1,24 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = process.env.E2E_BASE_URL || "http://127.0.0.1:5173";
+const responsiveRoleProjects = [
+  ["operator", "operator.json"],
+  ["quality", "quality.json"],
+  ["store", "store.json"],
+  ["production", "production.json"],
+  ["sales", "sales.json"],
+  ["hr", "hr.json"],
+  ["admin", "admin.json"],
+].map(([role, storageState]) => ({
+  name: `responsive-${role}`,
+  timeout: 900_000,
+  use: {
+    ...devices["Desktop Chrome"],
+    baseURL: "http://127.0.0.1:5173",
+    storageState: `e2e/.auth/${storageState}`,
+  },
+  testMatch: /responsive-certification\.spec\.js/,
+}));
 
 export default defineConfig({
   testDir: "./e2e",
@@ -9,6 +27,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   timeout: 60_000,
+  actionTimeout: 15_000,
   expect: { timeout: 15_000 },
   reporter: [["list"]],
   globalSetup: "./e2e/global-setup.js",
@@ -76,6 +95,7 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: /manufacturing-workflow\.spec\.js/,
     },
+    ...responsiveRoleProjects,
   ],
   webServer: process.env.E2E_SKIP_WEB_SERVER
     ? undefined

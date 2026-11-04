@@ -156,6 +156,52 @@
 
 .operator-my-machine .ui-btn {
   min-height: 28px;
+}
+
+@media (max-width: 639px) {
+  .operator-my-machine__empty h2 {
+    font-size: 18px;
+  }
+
+  .operator-my-machine__empty p,
+  .operator-my-machine__muted,
+  .operator-my-machine__history li,
+  .operator-my-machine__instructions li {
+    font-size: 14px;
+  }
+
+  .operator-my-machine__code,
+  .operator-my-machine__job-number {
+    font-size: 16px;
+  }
+
+  .operator-my-machine__facts dt {
+    font-size: 12px;
+  }
+
+  .operator-my-machine__facts dd {
+    font-size: 15px;
+  }
+
+  .operator-my-machine__form label {
+    font-size: 14px;
+  }
+
+  .operator-my-machine__form input,
+  .operator-my-machine__form textarea {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .operator-my-machine__actions .ui-btn {
+    min-width: 48px !important;
+    min-height: 48px !important;
+    font-size: 14px;
+  }
+
+  .operator-my-machine__form-actions .ui-btn {
+    min-height: 48px !important;
+  }
   border-radius: 2px;
   font-size: 10px;
 }

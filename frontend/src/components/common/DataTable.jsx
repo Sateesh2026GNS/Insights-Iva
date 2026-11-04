@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import Table from "./Table";
+import Table from "./ResponsiveTable";
 import Pagination from "./Pagination";
 import { FilterSelect, LIST_PAGE_SEARCH_BAR_CLASS, SearchBar } from "./SearchFilter";
 import EmptyState from "./EmptyState";

@@ -396,6 +396,7 @@ export default function OperatorJobCardBody({ card, form, onChange, submitting, 
             label="Produced quantity"
             error={fieldErrors.produced_qty}
             type="number"
+            inputMode="decimal"
             min={0}
             step="any"
             value={form.produced_qty}
@@ -406,6 +407,7 @@ export default function OperatorJobCardBody({ card, form, onChange, submitting, 
             label="Rejected quantity"
             error={fieldErrors.rejected_qty}
             type="number"
+            inputMode="decimal"
             min={0}
             step="any"
             value={form.rejected_qty}
@@ -416,6 +418,7 @@ export default function OperatorJobCardBody({ card, form, onChange, submitting, 
             label="Rework quantity"
             error={fieldErrors.rework_qty}
             type="number"
+            inputMode="decimal"
             min={0}
             step="any"
             value={form.rework_qty}

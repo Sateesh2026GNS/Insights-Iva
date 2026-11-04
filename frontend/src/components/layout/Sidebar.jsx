@@ -384,7 +384,7 @@ function buildInitialExpanded(location, nav) {
   return state;
 }
 
-export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, isMobile = false }) {
+export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, onNavChange, isMobile = false }) {
   const { t } = useTranslation();
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
@@ -525,6 +525,10 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     });
     return roleNav;
   }, [apiNav, user, storeMode, salesMode, productionMode, qualityMode]);
+
+  useEffect(() => {
+    onNavChange?.(visibleNav);
+  }, [onNavChange, visibleNav]);
 
   const createActions = useMemo(
     () => getGlobalCreateActionsForUser(user, visibleNav),

@@ -327,6 +327,10 @@ export default function MyJobCardsPage() {
   useEffect(() => registerRetry(() => load(true, serverSearchActive ? appliedFilters : null)), [registerRetry, load, serverSearchActive, appliedFilters]);
 
   useEffect(() => {
+    if (!isSalesListMode) {
+      setCustomerSelectOptions([]);
+      return undefined;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -347,7 +351,7 @@ export default function MyJobCardsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isSalesListMode]);
 
   const salesOrderSelectOptions = useMemo(() => {
     const numbers = [

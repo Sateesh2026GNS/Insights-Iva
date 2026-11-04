@@ -1,4 +1,26 @@
 {
+  "responsiveTable": {
+    "showLowPriority": "Show all columns",
+    "hideLowPriority": "Show fewer columns"
+  },
+  "languageNames": {
+    "english": "English",
+    "telugu": "Telugu",
+    "hindi": "Hindi",
+    "tamil": "Tamil"
+  },
+  "mobileNav": {
+    "navigation": "Primary navigation",
+    "more": "More",
+    "openMore": "Open more navigation",
+    "closeMore": "Close more navigation",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "settings": "Settings",
+    "add": "Add",
+    "logout": "Log out",
+    "quickActions": "Quick actions"
+  },
   "erpNav": {
     "dashboard": "Dashboard",
     "roleWorkflow": "Role Workflow",

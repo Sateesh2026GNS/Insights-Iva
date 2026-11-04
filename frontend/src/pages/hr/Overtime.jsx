@@ -810,14 +810,16 @@ export default function Overtime() {
                 <thead>
                   <tr>
                     <th className="w-10">
-                      <input
-                        type="checkbox"
-                        className="hr-overtime__checkbox"
-                        checked={allSelected}
-                        onChange={toggleAll}
-                        disabled={!filteredRecords.length}
-                        aria-label="Select all"
-                      />
+                      <label className="hr-overtime__checkbox-target">
+                        <input
+                          type="checkbox"
+                          className="hr-overtime__checkbox"
+                          checked={allSelected}
+                          onChange={toggleAll}
+                          disabled={!filteredRecords.length}
+                          aria-label="Select all"
+                        />
+                      </label>
                     </th>
                     <th>Employee</th>
                     <th>Date</th>
@@ -838,13 +840,15 @@ export default function Overtime() {
                         onClick={() => setSelectedRowId(row.id)}
                       >
                         <td onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            className="hr-overtime__checkbox"
-                            checked={selectedIds.includes(row.id)}
-                            onChange={() => toggleRow(row.id)}
-                            aria-label={`Select ${row.employee_name}`}
-                          />
+                          <label className="hr-overtime__checkbox-target">
+                            <input
+                              type="checkbox"
+                              className="hr-overtime__checkbox"
+                              checked={selectedIds.includes(row.id)}
+                              onChange={() => toggleRow(row.id)}
+                              aria-label={`Select ${row.employee_name}`}
+                            />
+                          </label>
                         </td>
                         <td>{row.employee_name || row.name}</td>
                         <td>{row.date || row.record_date}</td>

@@ -717,7 +717,7 @@ function PendingTasks({ overview, inventoryBlocks = [], alerts = [], profile }) 
             <li key={task.id}>
               <Link
                 to={task.to}
-                className="flex items-center justify-between gap-3 rounded-lg border border-[#ececf0] bg-[#fafafa] px-3 py-2.5 transition hover:bg-[#f3f3f6] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
+                className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-[#ececf0] bg-[#fafafa] px-3 py-2.5 transition hover:bg-[#f3f3f6] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
               >
                 <span className="text-[13px] font-medium text-[#1a1a1f] dark:text-white">{task.label}</span>
                 <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${toneClass[task.tone]}`}>
@@ -1318,7 +1318,7 @@ export default function ReferenceDashboard() {
     if (!isRefresh) setLoading(true);
     setError(null);
 
-    const approvalsFetch = userCanAccessApprovalQueue(user)
+    const approvalsFetch = !isOp && userCanAccessApprovalQueue(user)
       ? getMyApprovalCounts()
       : Promise.resolve({ data: null });
 

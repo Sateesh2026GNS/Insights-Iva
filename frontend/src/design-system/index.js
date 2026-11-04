@@ -63,7 +63,9 @@ export { default as TableActionButtons } from "../components/common/TableActionB
 export { FormField, Input, Select, Textarea } from "../components/common/FormField";
 export { default as Modal } from "../components/common/Modal";
 export { default as DataTable } from "../components/common/DataTable";
-export { default as Table, StatusBadge as TableStatusBadge } from "../components/common/Table";
+export { default as Table } from "../components/common/ResponsiveTable";
+export { default as ResponsiveTable } from "../components/common/ResponsiveTable";
+export { StatusBadge as TableStatusBadge } from "../components/common/Table";
 export { default as StatusBadge } from "../components/common/StatusBadge";
 export { default as Pagination } from "../components/common/Pagination";
 export { default as EmptyState } from "../components/common/EmptyState";
