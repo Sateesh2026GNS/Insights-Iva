@@ -95,6 +95,23 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: /manufacturing-workflow\.spec\.js/,
     },
+    {
+      name: "approvals-verification",
+      timeout: 180_000,
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL,
+        screenshot: "off",
+        trace: "off",
+      },
+      testMatch: /approvals-page-verification\.spec\.js/,
+    },
+    {
+      name: "auth-live-login",
+      timeout: 90_000,
+      use: { ...devices["Desktop Chrome"], baseURL },
+      testMatch: /auth-live-login-logout\.spec\.js/,
+    },
     ...responsiveRoleProjects,
   ],
   webServer: process.env.E2E_SKIP_WEB_SERVER

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -318,5 +318,43 @@ describe("ReferenceDashboard", () => {
     expect(screen.getByText("refDashboard.weekly")).toBeInTheDocument();
     expect(screen.getByText("refDashboard.monthly")).toBeInTheDocument();
     expect(screen.getByText("refDashboard.yearly")).toBeInTheDocument();
+  });
+
+  it("opens admin export controls from the More button and closes them again", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: "Admin", email: "admin@example.com", permissions: ["*"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({ data: fullDashboard });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("button", { name: "More" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Admin Dashboard/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Email (PDF)" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("button", { name: "Report export format" })).toHaveTextContent("PDF");
+    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email (PDF)" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.queryByRole("button", { name: "Download" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the export toolbar on non-admin dashboards", async () => {
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("refDashboard.inventoryValue")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
   });
 });

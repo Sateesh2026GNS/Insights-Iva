@@ -61,6 +61,33 @@ def test_classify_upload_rejects_unknown_extension():
         classify_upload("virus.exe", None)
 
 
+def test_operator_document_get_idor(register_admin, client, make_restricted_user):
+    admin = register_admin()
+    other_admin = register_admin()
+    dept_id = _ensure_department(client, admin["headers"], admin["user"]["tenant_id"])
+    other_dept = _ensure_department(client, other_admin["headers"], other_admin["user"]["tenant_id"])
+    hr = _upload(client, admin["headers"], dept_id, name="HR Policy", category="hr")
+    allowed = _upload(client, admin["headers"], dept_id, name="SOP", category="production")
+    foreign = _upload(client, other_admin["headers"], other_dept, name="Other Tenant SOP", category="production")
+    assert hr.status_code == 200, hr.text
+    assert allowed.status_code == 200, allowed.text
+    assert foreign.status_code == 200, foreign.text
+
+    op = make_restricted_user(admin["user"]["tenant_id"], ["documents"])
+    hr_id = hr.json()["id"]
+    allowed_id = allowed.json()["id"]
+    foreign_id = foreign.json()["id"]
+
+    hr_resp = client.get(f"/api/document-library/{hr_id}", headers=op["headers"])
+    assert hr_resp.status_code == 403, hr_resp.text
+    foreign_resp = client.get(f"/api/document-library/{foreign_id}", headers=op["headers"])
+    assert foreign_resp.status_code == 404, foreign_resp.text
+    allowed_resp = client.get(f"/api/document-library/{allowed_id}", headers=op["headers"])
+    assert allowed_resp.status_code == 200, allowed_resp.text
+    assert allowed_resp.json()["id"] == allowed_id
+    assert allowed_resp.json()["category"] == "production"
+
+
 def test_operator_list_excludes_hr_documents(register_admin, client, make_restricted_user):
     admin = register_admin()
     dept_id = _ensure_department(client, admin["headers"], admin["user"]["tenant_id"])

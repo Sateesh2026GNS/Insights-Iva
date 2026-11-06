@@ -40,6 +40,7 @@ def serialize_user(u: User) -> dict:
         "department": getattr(u, "department", None),
         "assigned_machine_id": getattr(u, "assigned_machine_id", None),
         "created_at": u.created_at.isoformat() if u.created_at else None,
+        "last_login_at": u.last_login_at.isoformat() if getattr(u, "last_login_at", None) else None,
     }
 
 

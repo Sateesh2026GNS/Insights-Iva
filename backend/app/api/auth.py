@@ -728,15 +728,17 @@ def logout(
 
             revoke_all_refresh_tokens_for_user(db, user.id)
         elif refresh_raw:
-            revoke_refresh_token(db, refresh_raw)
+            revoke_refresh_token(db, refresh_raw, commit=False)
 
         if access_token:
-            revoke_access_token(db, access_token, user_id=user.id if user else None)
+            revoke_access_token(db, access_token, user_id=user.id if user else None, commit=False)
+
+        if user and req.all_devices:
+            user.tokens_revoked_at = datetime.now(timezone.utc)
+
+        db.commit()
 
         if user:
-            if req.all_devices:
-                user.tokens_revoked_at = datetime.now(timezone.utc)
-                db.commit()
             mark_logout(
                 db,
                 user_id=user.id,

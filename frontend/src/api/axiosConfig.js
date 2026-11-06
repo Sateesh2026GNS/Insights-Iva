@@ -5,6 +5,7 @@ import {
   getStoredAccessToken,
   getStoredRefreshToken,
   isFastOfflineSessionToken,
+  isSessionTerminated,
   markBrowserSessionActive,
   setStoredTokens,
 } from "../utils/authSession";
@@ -16,7 +17,6 @@ import {
 import { httpStatusMessage } from "../utils/apiError";
 import {
   checkSessionStatus,
-  isPrimaryTabAlive,
   recordSessionActivity,
 } from "../utils/sessionManager";
 import { triggerServerWakeup } from "../utils/serverWakeup";
@@ -29,7 +29,23 @@ function notifyAuthSessionUpdated() {
   } catch {}
 }
 
+export function isFatalAuthRefreshFailure(error) {
+  return error?.response?.status === 401;
+}
+
+function isAuthRequestUrl(url = "") {
+  return (
+    url.includes("/auth/login") ||
+    url.includes("/platform/auth/login") ||
+    url.includes("/auth/verify-otp") ||
+    url.includes("/platform/auth/verify-otp") ||
+    url.includes("/auth/refresh") ||
+    url.includes("/auth/logout")
+  );
+}
+
 function applyLoginAuthPayload(data) {
+  if (isSessionTerminated()) return;
   if (!data || typeof data !== "object") return;
   const access = data.access_token ?? data.token;
   const refresh = data.refresh_token;
@@ -169,6 +185,7 @@ rawAxios.interceptors.request.use((config) => {
 });
 
 export async function ensureCsrfCookie() {
+  if (getCsrfTokenFromCookie()) return;
   try {
     const { data } = await rawAxios.get("/auth/csrf", { skipGlobalError: true });
     if (data?.csrf_token) {
@@ -182,13 +199,18 @@ export async function ensureCsrfCookie() {
 api.interceptors.request.use((config) => {
   try {
     if (!isPlatformRequest(config)) {
+      if (isSessionTerminated() && !isAuthRequestUrl(String(config.url || ""))) {
+        const err = new Error("Session ended");
+        err.response = { status: 401, data: { message: "Session ended" } };
+        return Promise.reject(err);
+      }
       const sessionStatus = checkSessionStatus();
       if (sessionStatus.expired && isDefinitiveSessionExpiry(sessionStatus.reason)) {
-        if (sessionStatus.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
+        if (sessionStatus.reason === "primary_9hr_timeout") {
           clearAuthStorage();
-        }
-        if (typeof onUnauthorized === "function") {
-          onUnauthorized();
+          if (typeof onUnauthorized === "function") {
+            onUnauthorized();
+          }
         }
         const err = new Error("Session expired");
         err.response = { status: 401, data: { message: "Session expired", reason: sessionStatus.reason } };
@@ -260,13 +282,22 @@ export function setApiErrorHandler(handler) {
 let refreshPromise = null;
 
 async function refreshAccessToken() {
+  if (isSessionTerminated()) {
+    const err = new Error("Session ended");
+    err.response = { status: 401, data: { message: "Session ended" } };
+    throw err;
+  }
   const baseURL = getApiBaseURL();
   const headers = { "X-Requested-With": "InsightsIva" };
   const csrf = getCsrfTokenFromCookie();
   if (csrf) headers["X-CSRF-Token"] = csrf;
   const storedRefresh = getStoredRefreshToken();
   const payload = storedRefresh ? { refresh_token: storedRefresh } : {};
-  const { data } = await rawAxios.post(`${baseURL}/auth/refresh`, payload, { headers });
+  const { data } = await rawAxios.post(`${baseURL}/auth/refresh`, payload, {
+    headers,
+    timeout: 15_000,
+    skipGlobalError: true,
+  });
   applyLoginAuthPayload(data);
   return data;
 }
@@ -374,18 +405,18 @@ api.interceptors.response.use(
       }
     }
 
+    const isAuthUrl = isAuthRequestUrl(original?.url || "");
+
     if (
       status === 401 &&
       original &&
       !original._retry &&
-      !original.url?.includes("/auth/login") &&
-      !original.url?.includes("/auth/refresh")
+      !isAuthUrl &&
+      !isSessionTerminated()
     ) {
       const sessionStatus = checkSessionStatus();
-      if (sessionStatus.expired && isDefinitiveSessionExpiry(sessionStatus.reason)) {
-        if (sessionStatus.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
-          clearAuthStorage();
-        }
+      if (sessionStatus.expired && sessionStatus.reason === "primary_9hr_timeout") {
+        clearAuthStorage();
         if (typeof onUnauthorized === "function") {
           onUnauthorized();
         }
@@ -400,6 +431,9 @@ api.interceptors.response.use(
           });
         }
         await refreshPromise;
+        if (isSessionTerminated()) {
+          return Promise.reject(error);
+        }
         const newToken = getStoredAccessToken();
         if (newToken) {
           original.headers = original.headers || {};
@@ -408,32 +442,17 @@ api.interceptors.response.use(
         attachCsrfHeader(original);
         return api(original);
       } catch (refreshErr) {
-        const refreshStatus = refreshErr?.response?.status;
-        if (refreshStatus === 401 || refreshStatus === 403) {
+        if (isFatalAuthRefreshFailure(refreshErr)) {
           clearAuthStorage();
+          if (typeof onUnauthorized === "function") {
+            onUnauthorized();
+          }
         }
+        return Promise.reject(error);
       }
     }
 
-    const isAuthUrl =
-      original?.url?.includes("/auth/login") ||
-      original?.url?.includes("/platform/auth/login") ||
-      original?.url?.includes("/auth/verify-otp") ||
-      original?.url?.includes("/platform/auth/verify-otp") ||
-      original?.url?.includes("/auth/refresh");
-
-    if (status === 401 && !isAuthUrl) {
-      clearAuthStorage();
-      if (typeof onUnauthorized === "function") {
-        onUnauthorized();
-      } else if (
-        typeof window !== "undefined" &&
-        !window.location.pathname.startsWith("/login") &&
-        !window.location.pathname.startsWith("/gns-admin")
-      ) {
-        window.location.assign("/login");
-      }
-    } else if (typeof onApiError === "function" && !error.config?.skipGlobalError && !isAuthUrl) {
+    if (typeof onApiError === "function" && !error.config?.skipGlobalError && !isAuthUrl) {
       if (error.code === "ERR_NETWORK" || error.code === "ECONNABORTED" || (status && status >= 500)) {
         onApiError(httpStatusMessage(error));
       } else if (status === 403) {

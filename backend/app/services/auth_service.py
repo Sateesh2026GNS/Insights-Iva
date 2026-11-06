@@ -324,7 +324,7 @@ def issue_auth_response_data(
     access = build_access_token_for_user(
         user, role_name=role_name, session_id=row.session_uuid if row else None
     )
-    bind_access_jti(db, refresh, access)
+    bind_access_jti(db, refresh, access, commit=commit)
     user_data = get_user_with_role(db, user, preferred_role=role_name)
     return {
         "access_token": access,

@@ -65,6 +65,7 @@ export default function Login() {
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const redirectTimerRef = useRef(null);
   const lockoutTimerRef = useRef(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = "light";
@@ -135,12 +136,13 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || submittingRef.current || lockoutSeconds > 0) return;
     setError("");
-    if (lockoutSeconds > 0) return; // Block submission during cooldown
     if (!email.trim() || !password || !role) {
       setError("Company email, password, and role are required.");
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
 
     try {
@@ -160,6 +162,7 @@ export default function Login() {
         setError(getLoginErrorMessage(err, "Login failed. Please verify your credentials and network connection."));
       }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
