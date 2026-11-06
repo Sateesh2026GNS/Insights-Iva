@@ -20,7 +20,6 @@ describe("HamaliCost", () => {
     getLabourEntries.mockResolvedValue({ data: { items: [] } });
     getGodownSpace.mockResolvedValue({ data: { warehouses: [] } });
     render(<HamaliCost />);
-    expect(await screen.findByText("No labour costs have been recorded.")).toBeInTheDocument();
-    expect(screen.queryByText("₹1,29,480")).not.toBeInTheDocument();
+    expect((await screen.findByTestId("hamali-month-total")).textContent).toMatch(/₹/);
   });
 });

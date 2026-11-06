@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import AdminModal from "./AdminModal";
 import Button from "../common/Button";
@@ -10,6 +10,8 @@ import {
   getUsers,
 } from "../../api/adminApi";
 import { useToast } from "../../context/ToastContext";
+import SuccessCelebration from "../common/SuccessCelebration";
+import { resolveCreatedName } from "../../utils/successCelebration";
 
 function makeTempPassword() {
   const base = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
@@ -43,6 +45,8 @@ export default function InviteUserModal({
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [celebration, setCelebration] = useState(null);
+  const celebratedRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -135,6 +139,10 @@ export default function InviteUserModal({
       addToast("User created successfully. A password setup link was sent.", "success");
       onSuccess?.(created || payload);
       onClose?.();
+      if (!celebratedRef.current) {
+        celebratedRef.current = true;
+        setCelebration({ name: resolveCreatedName(created, payload.full_name) });
+      }
     } catch (err) {
       const detail = err.response?.data?.detail;
       addToast(typeof detail === "string" ? detail : "Could not create user", "error");
@@ -144,6 +152,7 @@ export default function InviteUserModal({
   };
 
   return (
+    <>
     <AdminModal title={title} open={open} onClose={onClose} maxWidth="max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Full Name" required value={form.full_name} error={errors.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} placeholder="Jane Doe" autoFocus />
@@ -182,5 +191,15 @@ export default function InviteUserModal({
         </div>
       </form>
     </AdminModal>
+    <SuccessCelebration
+      open={Boolean(celebration)}
+      name={celebration?.name}
+      entityType="user"
+      onClose={() => {
+        celebratedRef.current = false;
+        setCelebration(null);
+      }}
+    />
+    </>
   );
 }

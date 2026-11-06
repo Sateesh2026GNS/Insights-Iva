@@ -60,7 +60,9 @@ class TestLocalDownloadSecurity:
         admin, file_id = _upload_ready_file(client, register_admin)
         dl = client.get(f"/api/files/{file_id}/download-url", headers=admin["headers"])
         url = dl.json()["download_url"]
-        other = make_restricted_user(admin["user"]["tenant_id"], ["documents"])
+        other = make_restricted_user(
+            admin["user"]["tenant_id"], ["documents"], role_name="Limited Staff"
+        )
         assert client.get(url, headers=other["headers"]).status_code == 410
 
     def test_wrong_tenant_cannot_use_token(self, client, register_admin):

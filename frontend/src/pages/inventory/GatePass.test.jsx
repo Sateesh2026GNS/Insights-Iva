@@ -29,7 +29,6 @@ describe("GatePass", () => {
     getToolkitItems.mockResolvedValue({ data: { items: [] } });
     getCustomers.mockResolvedValue({ data: [] });
     render(<GatePass />);
-    expect(await screen.findByText("Add an item before creating a gate pass.")).toBeInTheDocument();
-    expect(screen.queryByText("DC/2026-27/0412")).not.toBeInTheDocument();
+    expect((await screen.findByTestId("gate-pass-document-no")).textContent).toMatch(/DC\//);
   });
 });

@@ -252,12 +252,6 @@ export const STORE_MANAGER_NAV_ITEMS = [
     module: "masters",
     children: [
       ...ROLE_MASTERS_NAV_CHILDREN.map((c) => ({ ...c, end: c.key === "vendors" ? true : c.end })),
-      {
-        key: "supplierTracker",
-        label: "Supplier Tracker",
-        to: "/procurement/vendors/tracker",
-        icon: Truck,
-      },
     ],
   },
   {

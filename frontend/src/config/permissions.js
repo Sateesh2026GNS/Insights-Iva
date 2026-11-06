@@ -579,7 +579,8 @@ export const MY_SUBSCRIPTION_SETTINGS_SECTION_ID = "subscription";
 /** My Subscription settings — tenant Admin role only (not other ERP roles). */
 export function userCanAccessMySubscription(user) {
   if (!user) return false;
-  return hasRole(user, "Admin");
+  if (hasRole(user, "SuperAdmin") || hasRole(user, "superadmin")) return false;
+  return hasRole(user, "Admin") || hasRole(user, "admin");
 }
 
 export function isMySubscriptionSettingsPath(pathname) {
@@ -659,15 +660,15 @@ export function userCanAccessAnalyticsPath(user, pathname) {
 
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
-  if (isAdmin(user)) return true;
   const pathEarly = (pathname || "").replace(/\/$/, "") || "/";
+  if (isMySubscriptionSettingsPath(pathname)) {
+    return userCanAccessMySubscription(user);
+  }
+  if (isAdmin(user)) return true;
   if (isOperator(user) && !operatorPathAllowed(pathEarly)) return false;
   // Store Manager: inventory register & raw material tracker only (same Production Planning shell).
   if (pathEarly.startsWith("/production/planning") && storeManagerMayAccessProductionPlanning(user)) {
     return true;
-  }
-  if (isMySubscriptionSettingsPath(pathname)) {
-    return userCanAccessMySubscription(user);
   }
   const path = pathEarly;
   if (path === "/admin/approvals") {

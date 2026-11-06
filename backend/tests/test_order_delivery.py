@@ -1,6 +1,6 @@
 """Order and delivery tracker metrics."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from app.core.database import SessionLocal
@@ -120,7 +120,9 @@ def test_missing_delivery_date_is_excluded_from_the_average():
 
 def test_tracker_api_is_tenant_scoped(client, register_admin, make_restricted_user):
     admin = register_admin()
-    empty = client.get("/sales/order-delivery-tracker", headers=admin["headers"], params={"date_from": "2026-10-23", "date_to": "2026-10-23"})
+    today = date.today()
+    today_iso = today.isoformat()
+    empty = client.get("/sales/order-delivery-tracker", headers=admin["headers"], params={"date_from": today_iso, "date_to": today_iso})
     assert empty.status_code == 200, empty.text
     assert empty.json()["kpis"][0]["value"] == 0
     assert empty.json()["live_tracking"] is False
@@ -139,7 +141,7 @@ def test_tracker_api_is_tenant_scoped(client, register_admin, make_restricted_us
             tenant_id=tenant_id,
             customer_id=customer_id,
             order_number=f"SO-{tenant_id}-D",
-            order_date=date(2026, 10, 23),
+            order_date=today,
             status="shipped",
             total_amount=80,
             shipped=True,
@@ -155,8 +157,8 @@ def test_tracker_api_is_tenant_scoped(client, register_admin, make_restricted_us
                 customer_id=customer_id,
                 courier="DHL",
                 lr_number="LR-9",
-                dispatch_date=date(2026, 10, 23),
-                eta=date(2026, 10, 28),
+                dispatch_date=today,
+                eta=today + timedelta(days=5),
                 status="shipped",
             )
         )
@@ -164,7 +166,7 @@ def test_tracker_api_is_tenant_scoped(client, register_admin, make_restricted_us
     finally:
         db.close()
 
-    body = client.get("/sales/order-delivery-tracker", headers=admin["headers"], params={"date_from": "2026-10-23", "date_to": "2026-10-23"})
+    body = client.get("/sales/order-delivery-tracker", headers=admin["headers"], params={"date_from": today_iso, "date_to": today_iso})
     assert body.status_code == 200, body.text
     payload = body.json()
     assert payload["orders"][0]["delivery_status"] == "In Transit"

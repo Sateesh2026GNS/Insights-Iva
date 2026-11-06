@@ -110,7 +110,7 @@ export default function DamageLoss() {
           <IndianRupee aria-hidden />
           <div>
             <span>Loss Value</span>
-            <strong>{formatInr(plan.lossValue)}</strong>
+            <strong data-testid="damage-loss-total-value">{formatInr(plan.lossValue)}</strong>
             <small>shortage + damage</small>
           </div>
         </article>

@@ -128,6 +128,19 @@ function assertLoopbackUrl(value, label) {
   }
 }
 
+function isApprovalsVerificationOnlyRun() {
+  const args = process.argv.join(" ");
+  return (
+    /--project[= ]approvals-verification\b/.test(args) ||
+    /approvals-page-verification\.spec\.js/.test(args)
+  );
+}
+
+function isLiveLoginOnlyRun() {
+  const args = process.argv.join(" ");
+  return /--project[= ]auth-live-login\b/.test(args) || /auth-live-login-logout\.spec\.js/.test(args);
+}
+
 function isManufacturingOnlyRun() {
   const args = process.argv.join(" ");
   return /--project[= ]manufacturing\b/.test(args) || /manufacturing-workflow\.spec\.js/.test(args);
@@ -166,7 +179,12 @@ export default async function globalSetup() {
   // Manufacturing spec authenticates through the login UI and does not use
   // accountant/operator storage state. Skip Chromium provisioning so the spec
   // can skip cleanly when E2E_MANUFACTURING is unset or browsers are missing.
-  if (isManufacturingOnlyRun() || isStoreManagerStagingOnlyRun()) {
+  if (
+    isManufacturingOnlyRun() ||
+    isStoreManagerStagingOnlyRun() ||
+    isApprovalsVerificationOnlyRun() ||
+    isLiveLoginOnlyRun()
+  ) {
     return;
   }
   await mkdir(AUTH_DIR, { recursive: true });

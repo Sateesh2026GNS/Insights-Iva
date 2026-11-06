@@ -36,6 +36,7 @@ import {
 import DashboardReportExport from "../../common/DashboardReportExport";
 import EmptyChart from "../../common/EmptyChart";
 import { metricExportRows } from "../../../utils/dashboardExportRows";
+import AdminDashboardMoreMenu from "./AdminDashboardMoreMenu";
 import SkeletonCard, { SkeletonChart } from "../../common/SkeletonCard";
 import AdminProductionWidgets from "./AdminProductionWidgets";
 import AdminQuickActions from "./AdminQuickActions";
@@ -62,6 +63,7 @@ import {
   ADMIN_DASHBOARD_TOOLKIT_SUBTITLE,
   adminDashboardKpiIcon,
   adminDashboardKpiTone,
+  buildAdminDashboardExportRows,
   formatAdminDashboardHeroDate,
 } from "../../../utils/adminDashboardToolkit";
 import "../../../styles/manufacturing-toolkit.css";
@@ -473,13 +475,14 @@ function KpiStrip({ cards = [], dense = false }) {
   );
 }
 
-function AdminDashboardToolkitHero({ title, subtitle }) {
+function AdminDashboardToolkitHero({ title, subtitle, actions = null }) {
   return (
     <header className="mtk-hero">
       <div className="mtk-hero__row">
         <span>{ADMIN_DASHBOARD_TOOLKIT_SUBTITLE}</span>
         <div className="mtk-hero__meta">
           <div>As of {formatAdminDashboardHeroDate()}</div>
+          {actions}
         </div>
       </div>
       <div className="mtk-hero__title">
@@ -1520,6 +1523,40 @@ export default function ReferenceDashboard() {
     () => metricExportRows(kpiCardsLive.map((card) => ({ label: card.title, value: card.value }))),
     [kpiCardsLive]
   );
+  const adminExportRows = useMemo(
+    () =>
+      buildAdminDashboardExportRows({
+        kpis: kpiCardsLive,
+        orders: showOrdersOverview ? ordersOverview : null,
+        summary: showTodaysSummary ? apiData?.todays_summary || [] : [],
+        inventory: showInventory ? apiData?.inventory_blocks || [] : [],
+        warehouses: showInventory ? apiData?.warehouse_locations || [] : [],
+        alerts: showAlerts ? alertsLive : [],
+        pipeline: showProductionPipeline ? apiData?.production_pipeline : null,
+        shopFloor: showShopFloor ? apiData?.shop_floor_status || [] : [],
+        machines: showTopMachines ? apiData?.top_machines || [] : [],
+        workOrders: showRecentWo ? workOrdersLive : [],
+        productionOverview: showProduction ? apiData?.production_overview || [] : [],
+        productionWidgets: showAdminProductionWidgets ? apiData?.admin_production_widgets : null,
+      }),
+    [
+      kpiCardsLive,
+      showOrdersOverview,
+      ordersOverview,
+      showTodaysSummary,
+      apiData,
+      showInventory,
+      showAlerts,
+      alertsLive,
+      showProductionPipeline,
+      showShopFloor,
+      showTopMachines,
+      showRecentWo,
+      workOrdersLive,
+      showProduction,
+      showAdminProductionWidgets,
+    ]
+  );
   const operatorKpiCards = useMemo(() => operatorDashboardKpiCards(kpiCardsLive), [kpiCardsLive]);
   const operatorExportRows = useMemo(
     () => metricExportRows(operatorKpiCards.map((card) => ({ label: card.title, value: card.value }))),
@@ -1597,7 +1634,7 @@ export default function ReferenceDashboard() {
     <>
         {sectionVisible(sections, "kpi") && !adminToolkitLayout ? <KpiStrip cards={kpiCardsLive} /> : null}
 
-        {sectionVisible(sections, "kpi") ? (
+        {sectionVisible(sections, "kpi") && !adminToolkitLayout ? (
           <div className="flex justify-end">
             <DashboardReportExport
               title={isOp ? "Operator Dashboard" : "ERP Dashboard"}
@@ -1747,6 +1784,16 @@ export default function ReferenceDashboard() {
           <AdminDashboardToolkitHero
             title={t("refDashboard.manufacturingDashboardTitle", "Admin Dashboard")}
             subtitle={t("refDashboard.executiveOverview", "Executive Overview")}
+            actions={
+              sectionVisible(sections, "kpi") ? (
+                <AdminDashboardMoreMenu
+                  title="Admin Dashboard"
+                  filename="admin-dashboard"
+                  rows={adminExportRows}
+                  defaultRecipient={user?.email || ""}
+                />
+              ) : null
+            }
           />
           {sectionVisible(sections, "kpi") ? (
             <AdminDashboardToolkitKpiRow cards={kpiCardsLive} t={t} />

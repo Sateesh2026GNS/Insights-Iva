@@ -78,7 +78,7 @@ export default function GatePass() {
           <div>
             <span>Document</span>
             <strong>{plan.documentType}</strong>
-            <small>{plan.documentNo}</small>
+            <small data-testid="gate-pass-document-no">{plan.documentNo}</small>
           </div>
         </article>
         <article>

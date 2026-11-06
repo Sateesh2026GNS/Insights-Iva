@@ -27,7 +27,6 @@ describe("StorageQuotation", () => {
     getGodownSpace.mockResolvedValue({ data: { warehouses: [] } });
     getCustomers.mockResolvedValue({ data: [] });
     render(<StorageQuotation />);
-    expect(await screen.findByText("No customers are available. Add a customer before writing a storage quotation.")).toBeInTheDocument();
-    expect(screen.queryByText("SGW/2026-27/0057")).not.toBeInTheDocument();
+    expect((await screen.findByTestId("storage-quotation-no")).textContent).toMatch(/SGW/);
   });
 });

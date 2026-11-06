@@ -130,6 +130,7 @@ def test_training_program_crud_and_dashboard(client, register_admin):
         headers=auth["headers"],
     )
     assert enrollment.status_code == 201, enrollment.text
+    enrollment_id = enrollment.json()["id"]
 
     dashboard = client.get("/hr/training/dashboard", headers=auth["headers"])
     assert dashboard.status_code == 200
@@ -145,6 +146,11 @@ def test_training_program_crud_and_dashboard(client, register_admin):
     )
     assert updated.status_code == 200
     assert updated.json()["status"] == "completed"
+
+    del_enrollment = client.delete(
+        f"/hr/training/enrollments/{enrollment_id}", headers=auth["headers"]
+    )
+    assert del_enrollment.status_code == 204, del_enrollment.text
 
     deleted = client.delete(f"/hr/training/programs/{program_id}", headers=auth["headers"])
     assert deleted.status_code == 204

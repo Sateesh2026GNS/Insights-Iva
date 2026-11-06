@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Building2, Download, FileText, Plus, Printer, Star, Upload, UserCheck, UserX, Wallet } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 
@@ -34,6 +34,8 @@ import {
   starRating,
 } from "../../data/vendorsMasterData";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
+import SuccessCelebration from "../../components/common/SuccessCelebration";
+import { resolveCreatedName } from "../../utils/successCelebration";
 
 function SummaryCard({ label, value, icon: Icon, color, format, onClick }) {
   const display = format === "currency" ? `₹${Number(value || 0).toLocaleString("en-IN")}` : value;
@@ -98,6 +100,8 @@ export default function VendorManagement() {
   const [formVendor, setFormVendor] = useState(null);
   const [filters, setFilters] = useState(defaultFilters);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [celebration, setCelebration] = useState(null);
+  const celebratingRef = useRef(false);
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -233,10 +237,14 @@ export default function VendorManagement() {
         setFormVendor(null);
         return;
       }
-      await createVendor(payload);
+      const created = await createVendor(payload);
       addToast("Vendor created");
       loadVendors();
       setFormVendor(null);
+      if (!celebratingRef.current) {
+        celebratingRef.current = true;
+        setCelebration({ name: resolveCreatedName(created?.data, payload.name) });
+      }
       return;
     } catch (err) {
       addToast(err?.response?.data?.detail || "Could not save vendor.", "error");
@@ -598,6 +606,15 @@ export default function VendorManagement() {
           onSave={handleSave}
         />
       )}
+      <SuccessCelebration
+        open={Boolean(celebration)}
+        name={celebration?.name}
+        entityType="vendor"
+        onClose={() => {
+          celebratingRef.current = false;
+          setCelebration(null);
+        }}
+      />
     </div>
   );
 }
