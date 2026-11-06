@@ -74,7 +74,7 @@ export default function TruckLoadPlanner() {
           <div>
             <span>Trucks Needed</span>
             <strong>{formatNumber(selected?.trucks || 0)}</strong>
-            <small>{selected?.name || "—"}</small>
+            <small data-testid="truck-load-selected-type">{selected?.name || "—"}</small>
           </div>
         </article>
         <article className="gsp-kpi--green">

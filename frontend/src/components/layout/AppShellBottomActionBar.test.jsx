@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
+import i18n from "../../i18n";
 import AppShellBottomActionBar from "./AppShellBottomActionBar";
 
 vi.mock("../../hooks/useAuth", () => ({
@@ -24,12 +25,17 @@ vi.mock("../../config/globalCreateActions", async (importOriginal) => {
 });
 
 describe("AppShellBottomActionBar", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
   it("exposes Add control with aria-label and title Add", () => {
     render(
       <MemoryRouter>
         <AppShellBottomActionBar />
       </MemoryRouter>
     );
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     const add = screen.getByRole("button", { name: "Add" });
     expect(add.getAttribute("title")).toBe("Add");
   });

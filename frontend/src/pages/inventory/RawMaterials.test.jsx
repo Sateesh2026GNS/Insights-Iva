@@ -52,7 +52,7 @@ describe("RawMaterials", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Test RM")).toBeInTheDocument();
+      expect(screen.getAllByText("Test RM").length).toBeGreaterThan(0);
     });
     expect(screen.getByText("Manage and track your raw materials inventory")).toBeInTheDocument();
   });

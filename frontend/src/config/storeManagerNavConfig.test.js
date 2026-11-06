@@ -29,13 +29,11 @@ describe("storeManagerNavConfig masters", () => {
       "Customers",
       "Vendors",
       "Products",
-      "Supplier Tracker",
     ]);
     expect(masters?.children?.map((c) => c.to)).toEqual([
       "/sales/customers",
       "/procurement/vendors",
       "/masters/products",
-      "/procurement/vendors/tracker",
     ]);
   });
 });

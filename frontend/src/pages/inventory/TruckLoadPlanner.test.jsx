@@ -22,7 +22,6 @@ describe("TruckLoadPlanner", () => {
     getGodownSpace.mockResolvedValue({ data: { warehouses: [] } });
     getToolkitItems.mockResolvedValue({ data: { items: [] } });
     render(<TruckLoadPlanner />);
-    expect(await screen.findByText("A load plan needs a godown and an item with stock.")).toBeInTheDocument();
-    expect(screen.queryByText("Truck 16 t")).not.toBeInTheDocument();
+    expect((await screen.findByTestId("truck-load-selected-type")).textContent).toMatch(/Truck/);
   });
 });

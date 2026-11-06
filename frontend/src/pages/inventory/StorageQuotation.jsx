@@ -56,7 +56,7 @@ export default function StorageQuotation() {
           <CalendarDays aria-hidden />
           <div>
             <span>Quotation</span>
-            <strong>{plan.quoteNo || "—"}</strong>
+            <strong data-testid="storage-quotation-no">{plan.quoteNo || "—"}</strong>
             <small>{plan.date}</small>
           </div>
         </article>

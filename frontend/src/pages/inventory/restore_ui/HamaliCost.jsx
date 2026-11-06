@@ -97,7 +97,7 @@ export default function HamaliCost() {
           <CalendarDays aria-hidden />
           <div>
             <span>Hamali a Month</span>
-            <strong>{formatInr(plan.month)}</strong>
+            <strong data-testid="hamali-month-total">{formatInr(plan.month)}</strong>
             <small>{formatNumber(plan.workingDays, 0)} working days</small>
           </div>
         </article>
