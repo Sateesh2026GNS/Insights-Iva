@@ -6,6 +6,30 @@ export function listReports(config = {}) {
   return api.get(BASE, config);
 }
 
+export function getReportsCatalog(params = {}, config = {}) {
+  return api.get(`${BASE}/catalog`, { params, ...config });
+}
+
+export function getReportMeta(slug, config = {}) {
+  return api.get(`${BASE}/${encodeURIComponent(slug)}/meta`, config);
+}
+
+export function runSystemReport(slug, filters = {}, config = {}) {
+  return api.post(`${BASE}/${encodeURIComponent(slug)}/run`, { filters }, config);
+}
+
+export function favoriteReport(slug) {
+  return api.post(`${BASE}/${encodeURIComponent(slug)}/favorite`);
+}
+
+export function unfavoriteReport(slug) {
+  return api.delete(`${BASE}/${encodeURIComponent(slug)}/favorite`);
+}
+
+export function visitReport(slug) {
+  return api.post(`${BASE}/${encodeURIComponent(slug)}/visit`);
+}
+
 export function runReport(reportKey, params, config = {}) {
   return api.get(`${BASE}/${reportKey}`, { params, ...config });
 }

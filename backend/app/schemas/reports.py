@@ -113,3 +113,49 @@ class ReportScheduleRead(BaseModel):
     last_run_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+class SystemCatalogItem(BaseModel):
+    slug: str
+    title: str
+    category: str
+    description: str = ""
+    created_by: str = "System Generated"
+    is_favorite: bool = False
+    last_visited_at: str | None = None
+    data_status: str = "gap"
+    handler_key: str | None = None
+    allowed_roles: list[str] = Field(default_factory=list)
+    custom_report_id: int | None = None
+    schedule_id: int | None = None
+    frequency: str | None = None
+
+
+class SystemCatalogResponse(BaseModel):
+    items: list[SystemCatalogItem]
+    pagination: ReportPagination
+    category_counts: dict[str, int]
+    section: str = "all"
+
+
+class SystemReportMetaResponse(BaseModel):
+    slug: str
+    title: str
+    category: str
+    description: str
+    data_status: str
+    handler_key: str | None = None
+    allowed_roles: list[str] = Field(default_factory=list)
+    filters_supported: list[str] = Field(default_factory=list)
+    columns: list[ReportColumnSchema] = Field(default_factory=list)
+    created_by: str = "System Generated"
+
+
+class ReportFavoriteResponse(BaseModel):
+    slug: str
+    is_favorite: bool
+
+
+class ReportVisitResponse(BaseModel):
+    slug: str
+    last_visited_at: str

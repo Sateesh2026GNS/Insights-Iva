@@ -170,6 +170,20 @@ class StoreDashboardActivityRow(BaseModel):
     movement_type: str
 
 
+class StoreStockValueCategoryRow(BaseModel):
+    category: str
+    value: float = 0
+    item_count: int = 0
+
+
+class StoreStockValueByCategoryRead(BaseModel):
+    total_value: float = 0
+    categories: list[StoreStockValueCategoryRow] = Field(default_factory=list)
+    has_unvalued: bool = False
+    partial: bool = False
+    partial_message: str | None = None
+
+
 class StoreDashboardRead(BaseModel):
     total_products: int = 0
     """Product catalog (All Items / Inventory V2) counts — align KPI clicks with /inventory."""

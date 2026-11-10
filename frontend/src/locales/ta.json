@@ -343,6 +343,52 @@
     "next": "அடுத்து",
     "unassigned": "நியமிக்கப்படவில்லை"
   },
+  "storeReports": {
+    "title": "அறிக்கை மையம்",
+    "searchPlaceholder": "அறிக்கைகளைத் தேடுங்கள்",
+    "categoryLabel": "அறிக்கை வகை",
+    "allReports": "அனைத்து அறிக்கைகள்",
+    "colReportName": "அறிக்கை பெயர்",
+    "colCategory": "அறிக்கை வகை",
+    "colCreatedBy": "உருவாக்கியது",
+    "colLastVisited": "கடைசியாக பார்த்தது",
+    "systemGenerated": "கணினி உருவாக்கம்",
+    "noLastVisit": "—",
+    "favoriteAria": "பிடித்த அறிக்கை",
+    "openReport": "அறிக்கை திற {{title}}",
+    "noReportsMatch": "பொருந்தும் அறிக்கைகள் இல்லை.",
+    "noReportsInSection": "இந்த பிரிவில் இன்னும் அறிக்கைகள் இல்லை.",
+    "backToList": "அனைத்து அறிக்கைகள்",
+    "createNewReport": "புதிய அறிக்கை உருவாக்கு",
+    "createNewReportSoon": "தனிப்பயன் அறிக்கைகள் விரைவில் வரும்.",
+    "moreMenuAria": "மேலும் செயல்கள்",
+    "refreshCatalog": "பட்டியலை புதுப்பி",
+    "nav": {
+      "label": "அறிக்கை வழிசெலுத்தல்",
+      "home": "முகப்பு",
+      "favorites": "பிடித்தவை",
+      "sharedReports": "பகிரப்பட்ட அறிக்கைகள்",
+      "myReports": "என் அறிக்கைகள்",
+      "scheduledReports": "திட்டமிடப்பட்ட அறிக்கைகள்"
+    }
+  },
+  "storeDashboard": {
+    "stockValueByCategory": {
+      "title": "வகையின்படி பங்கு மதிப்பு",
+      "centerLabel": "மொத்த பங்கு மதிப்பு",
+      "loading": "வகையின்படி பங்கு மதிப்பு ஏற்றப்படுகிறது…",
+      "errorTitle": "வரைபடத்தை ஏற்ற முடியவில்லை",
+      "errorDefault": "வகையின்படி பங்கு மதிப்பு இப்போது கிடைக்கவில்லை.",
+      "emptyTitle": "இன்னும் பங்கு இல்லை",
+      "emptyDesc": "வகையின்படி மதிப்பைக் காண பங்கைச் சேர்க்கவும்.",
+      "emptyCta": "பங்கைச் சேர்க்க",
+      "unvaluedNote": "சில பொருட்களுக்கு மதிப்பீட்டு விகிதம் இல்லை; அவை மதிப்பிடப்படாதவை என்று குழுவிடப்பட்டுள்ளன.",
+      "partialTitle": "சில கிடங்கு தரவு கிடைக்கவில்லை",
+      "partialDesc": "வெற்றிகரமான கிடங்குகளின் மதிப்புகள் மட்டும் காட்டப்படுகின்றன.",
+      "legendAria": "வகையின்படி பங்கு மதிப்பு விளக்கம்",
+      "tooltip": "{{category}}: {{value}} ({{pct}}%) · {{count}} பொருட்கள்"
+    }
+  },
   "validation": {
     "fixHighlightedFields": "ஹைலைட் செய்யப்பட்ட புலங்களை சரிசெய்யவும்.",
     "mobile": {

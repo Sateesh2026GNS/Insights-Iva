@@ -143,7 +143,7 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/stock-ledger")).toBe(
       true
     );
-    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/reports")).toBe(false);
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/reports")).toBe(true);
   });
 
   it("allows Store Manager expense and ledger without full accounts module", () => {

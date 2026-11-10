@@ -66,8 +66,9 @@ PERMISSION_MATRIX = {
             "documents",
             "meetings",
             "settings",
+            "reports",
         ],
-        "actions": ["leads:create"],
+        "actions": ["leads:create", "reports:view"],
         "description": (
             "Leads, quotations, sales orders, customers, dispatch follow-up, and sales reporting."
         ),
@@ -88,7 +89,9 @@ PERMISSION_MATRIX = {
             "procurement",
             "settings",
             "iot",
+            "reports",
         ],
+        "actions": ["reports:view"],
         "description": (
             "Dashboard, Production, Planning, Work Orders, Quality, "
             "Inventory, Maintenance, Procurement, Analytics, and Smart Factory IoT."
@@ -106,7 +109,9 @@ PERMISSION_MATRIX = {
             "meetings",
             "settings",
             "analytics",
+            "reports",
         ],
+        "actions": ["reports:view"],
         "description": (
             "Store operations: inventory, warehouses, GRN, finished goods, and dispatch."
         ),
@@ -121,7 +126,9 @@ PERMISSION_MATRIX = {
             "alerts",
             "documents",
             "analytics",
+            "reports",
         ],
+        "actions": ["reports:view"],
         "description": "Full Vendor Master and purchase lifecycle access.",
     },
     "Quality Control": {
@@ -162,7 +169,9 @@ PERMISSION_MATRIX = {
             "alerts",
             "masters",
             "meetings",
+            "reports",
         ],
+        "actions": ["reports:view"],
         "description": "Tax invoice, payments, AR/AP, and financial transactions.",
     },
     "Operator": {

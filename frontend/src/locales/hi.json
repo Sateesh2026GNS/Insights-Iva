@@ -343,6 +343,52 @@
     "next": "अगला",
     "unassigned": "अनियत"
   },
+  "storeReports": {
+    "title": "रिपोर्ट केंद्र",
+    "searchPlaceholder": "रिपोर्ट खोजें",
+    "categoryLabel": "रिपोर्ट श्रेणी",
+    "allReports": "सभी रिपोर्ट",
+    "colReportName": "रिपोर्ट नाम",
+    "colCategory": "रिपोर्ट श्रेणी",
+    "colCreatedBy": "द्वारा बनाई गई",
+    "colLastVisited": "अंतिम बार देखा",
+    "systemGenerated": "सिस्टम द्वारा",
+    "noLastVisit": "—",
+    "favoriteAria": "पसंदीदा रिपोर्ट",
+    "openReport": "रिपोर्ट खोलें {{title}}",
+    "noReportsMatch": "कोई रिपोर्ट नहीं मिली।",
+    "noReportsInSection": "इस अनुभाग में अभी कोई रिपोर्ट नहीं।",
+    "backToList": "सभी रिपोर्ट",
+    "createNewReport": "नई रिपोर्ट बनाएँ",
+    "createNewReportSoon": "कस्टम रिपोर्ट जल्द उपलब्ध होंगी।",
+    "moreMenuAria": "अधिक क्रियाएँ",
+    "refreshCatalog": "सूची रीफ़्रेश करें",
+    "nav": {
+      "label": "रिपोर्ट नेविगेशन",
+      "home": "होम",
+      "favorites": "पसंदीदा",
+      "sharedReports": "साझा रिपोर्ट",
+      "myReports": "मेरी रिपोर्ट",
+      "scheduledReports": "अनुसूचित रिपोर्ट"
+    }
+  },
+  "storeDashboard": {
+    "stockValueByCategory": {
+      "title": "श्रेणी के अनुसार स्टॉक मूल्य",
+      "centerLabel": "कुल स्टॉक मूल्य",
+      "loading": "श्रेणी के अनुसार स्टॉक मूल्य लोड हो रहा है…",
+      "errorTitle": "चार्ट लोड नहीं हो सका",
+      "errorDefault": "श्रेणी के अनुसार स्टॉक मूल्य अभी उपलब्ध नहीं है।",
+      "emptyTitle": "अभी स्टॉक नहीं",
+      "emptyDesc": "श्रेणी के अनुसार मूल्य देखने के लिए स्टॉक जोड़ें।",
+      "emptyCta": "स्टॉक जोड़ें",
+      "unvaluedNote": "कुछ वस्तुओं की मूल्यांकन दर नहीं है; उन्हें अमूल्यांकित में दिखाया गया है।",
+      "partialTitle": "कुछ गोदाम डेटा अनुपलब्ध",
+      "partialDesc": "केवल सफल गोदामों का मूल्य दिखाया जा रहा है।",
+      "legendAria": "श्रेणी के अनुसार स्टॉक मूल्य की व्याख्या",
+      "tooltip": "{{category}}: {{value}} ({{pct}}%) · {{count}} वस्तुएँ"
+    }
+  },
   "validation": {
     "fixHighlightedFields": "कृपया हाइलाइट किए गए फ़ील्ड ठीक करें।",
     "mobile": {

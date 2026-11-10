@@ -766,6 +766,7 @@ from app.schemas.store_workflow import (
     StoreConsumeCreate,
     PendingInventoryChecksListRead,
     StoreDashboardRead,
+    StoreStockValueByCategoryRead,
     StoreIssueRequestAction,
     StoreIssueRequestCreate,
     StoreIssueRequestRead,
@@ -792,6 +793,14 @@ def store_dashboard(
     db: Session = Depends(get_db),
 ):
     return store_wf.get_store_dashboard(db, user.tenant_id, user)
+
+
+@router.get("/store/stock-value-by-category", response_model=StoreStockValueByCategoryRead)
+def store_stock_value_by_category(
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    return store_wf.get_store_stock_value_by_category(db, user.tenant_id, user)
 
 
 @router.get("/store/pending-inventory-checks", response_model=PendingInventoryChecksListRead)

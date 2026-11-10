@@ -1,9 +1,8 @@
-import api from "../api/axiosConfig";
 import {
   attachFile,
+  downloadFileAsBlob,
   getDownloadUrl,
   getFileStatus,
-  resolveUploadUrl,
 } from "../api/filesApi";
 import { uploadFileThroughPipeline } from "./fileUploadPipeline";
 
@@ -54,13 +53,6 @@ export async function uploadAndAttachItemPhoto(file, itemId) {
 export async function fetchItemPhotoObjectUrl(photoFileId) {
   if (!photoFileId) return null;
   const { download_url: downloadUrl } = await getDownloadUrl(photoFileId);
-  const url = resolveUploadUrl(downloadUrl);
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Could not download image.");
-    const blob = await res.blob();
-    return URL.createObjectURL(blob);
-  }
-  const res = await api.get(url, { responseType: "blob" });
-  return URL.createObjectURL(res.data);
+  const blob = await downloadFileAsBlob(downloadUrl);
+  return URL.createObjectURL(blob);
 }

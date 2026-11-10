@@ -1,14 +1,16 @@
+from datetime import date as date_cls
+
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import get_current_user
 from app.api.deps import get_db
-from app.core.permissions import require_any_permission
+from app.core.permissions import require_any_permission, require_permission
 from app.models.user import User
 from app.schemas.reports import (
     ReportExportRequest,
     ReportExportResponse,
+    ReportFavoriteResponse,
     ReportListItem,
     ReportRunResponse,
     ReportSavedViewCreate,
@@ -18,6 +20,18 @@ from app.schemas.reports import (
     ReportScheduleRead,
     ReportScheduleUpdate,
     ReportSummaryResponse,
+    ReportVisitResponse,
+    SystemCatalogResponse,
+    SystemReportMetaResponse,
+)
+from app.services.reports.catalog_service import (
+    add_favorite,
+    export_system_report,
+    get_system_report_meta,
+    list_system_catalog,
+    record_visit,
+    remove_favorite,
+    run_system_report,
 )
 from app.services.reports.engine import ensure_reports_loaded, list_reports_for_user, run_report
 from app.services.reports.export import export_report, resolve_export_token
@@ -35,6 +49,7 @@ from app.services.reports.schedules_service import (
     update_schedule,
 )
 from app.services.reports.summary import get_report_summary
+from app.services.reports.system_catalog import SYSTEM_REPORTS_BY_SLUG
 
 ensure_reports_loaded()
 
@@ -55,8 +70,6 @@ def _filters_from_query(
     page: int = 1,
     page_size: int = 50,
 ) -> ReportFilters:
-    from datetime import date as date_cls
-
     def _parse_d(v: str | None):
         if not v:
             return None
@@ -78,11 +91,44 @@ def _filters_from_query(
     )
 
 
+def _filters_from_body(raw: dict) -> ReportFilters:
+    cleaned = {k: v for k, v in (raw or {}).items() if v is not None}
+    for key in ("date_from", "date_to"):
+        if key in cleaned and isinstance(cleaned[key], str):
+            cleaned[key] = date_cls.fromisoformat(cleaned[key][:10])
+    return ReportFilters(**cleaned)
+
+
 @router.get("", response_model=list[ReportListItem])
 def list_reports(
-    user: User = Depends(require_any_permission("inventory", "procurement", "analytics")),
+    user: User = Depends(require_any_permission("inventory", "procurement", "analytics", "reports", "reports:view")),
 ) -> list[ReportListItem]:
     return list_reports_for_user(user)
+
+
+@router.get("/catalog", response_model=SystemCatalogResponse)
+def get_system_catalog(
+    q: str | None = None,
+    category: str | None = None,
+    section: str = Query("all", pattern="^(all|favorites|shared|mine|scheduled)$"),
+    sort_by: str = "title",
+    sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "inventory", "sales", "procurement", "accounts", "admin")),
+):
+    return list_system_catalog(
+        db,
+        user,
+        q=q,
+        category=category,
+        section=section,  # type: ignore[arg-type]
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/exports/{token}")
@@ -113,7 +159,7 @@ def get_saved_views(
 def post_saved_view(
     payload: ReportSavedViewCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_permission("reports:create")),
 ):
     return create_saved_view(db, user, payload)
 
@@ -147,7 +193,7 @@ def get_schedules(db: Session = Depends(get_db), user: User = Depends(get_curren
 def post_schedule(
     payload: ReportScheduleCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_permission("reports:schedule")),
 ):
     return create_schedule(db, user, payload)
 
@@ -157,7 +203,7 @@ def patch_schedule(
     schedule_id: int,
     payload: ReportScheduleUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_permission("reports:schedule")),
 ):
     return update_schedule(db, user, schedule_id, payload)
 
@@ -166,7 +212,7 @@ def patch_schedule(
 def remove_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_permission("reports:schedule")),
 ):
     delete_schedule(db, user, schedule_id)
     return {"ok": True}
@@ -177,9 +223,55 @@ def report_summary(
     report_key: str,
     filters: ReportFilters = Depends(_filters_from_query),
     db: Session = Depends(get_db),
-    user: User = Depends(require_any_permission("inventory", "procurement", "analytics")),
+    user: User = Depends(require_any_permission("inventory", "procurement", "analytics", "reports", "reports:view")),
 ):
     return get_report_summary(db, user, filters)
+
+
+@router.get("/{slug}/meta", response_model=SystemReportMetaResponse)
+def system_report_meta(
+    slug: str,
+    user: User = Depends(require_any_permission("reports", "reports:view", "inventory", "sales", "procurement", "accounts", "admin")),
+):
+    return get_system_report_meta(user, slug)
+
+
+@router.post("/{slug}/run")
+def system_report_run(
+    slug: str,
+    body: dict | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "inventory", "sales", "procurement", "accounts", "admin")),
+):
+    filters = _filters_from_body((body or {}).get("filters") or body or {})
+    return run_system_report(db, user, slug, filters)
+
+
+@router.post("/{slug}/favorite", response_model=ReportFavoriteResponse)
+def favorite_report(
+    slug: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "inventory", "sales", "procurement", "accounts", "admin")),
+):
+    return add_favorite(db, user, slug)
+
+
+@router.delete("/{slug}/favorite", response_model=ReportFavoriteResponse)
+def unfavorite_report(
+    slug: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "inventory", "sales", "procurement", "accounts", "admin")),
+):
+    return remove_favorite(db, user, slug)
+
+
+@router.post("/{slug}/visit", response_model=ReportVisitResponse)
+def visit_report(
+    slug: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "inventory", "sales", "procurement", "accounts", "admin")),
+):
+    return record_visit(db, user, slug)
 
 
 @router.get("/{report_key}", response_model=ReportRunResponse)
@@ -187,8 +279,11 @@ def run_report_endpoint(
     report_key: str,
     filters: ReportFilters = Depends(_filters_from_query),
     db: Session = Depends(get_db),
-    user: User = Depends(require_any_permission("inventory", "procurement", "analytics")),
+    user: User = Depends(require_any_permission("inventory", "procurement", "analytics", "reports", "reports:view", "sales", "accounts", "admin")),
 ):
+    # Prefer system catalog slug when present (hyphenated).
+    if report_key in SYSTEM_REPORTS_BY_SLUG:
+        return run_system_report(db, user, report_key, filters)
     return run_report(db, user, report_key, filters)
 
 
@@ -197,7 +292,9 @@ def export_report_endpoint(
     report_key: str,
     body: ReportExportRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_any_permission("inventory", "procurement", "analytics")),
+    user: User = Depends(require_any_permission("inventory", "procurement", "analytics", "reports", "reports:view", "sales", "accounts", "admin")),
 ):
-    filters = ReportFilters(**{k: v for k, v in body.filters.items() if v is not None})
+    filters = _filters_from_body(body.filters)
+    if report_key in SYSTEM_REPORTS_BY_SLUG:
+        return export_system_report(db, user, report_key, body.format, filters)
     return export_report(db, user, report_key, body.format, filters)

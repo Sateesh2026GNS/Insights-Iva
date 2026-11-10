@@ -12,7 +12,10 @@ ADMIN_ROLE = "Admin"
 RESTRICTED_ACTION_ROLES = frozenset({"Operator"})
 
 
-EXTRA_PERMISSION_MODULES = frozenset({"leads"})
+EXTRA_PERMISSION_MODULES = frozenset({"leads", "reports"})
+
+
+REPORTS_ACTIONS = frozenset({"view", "create", "share", "schedule"})
 
 
 def is_valid_permission(code: str) -> bool:
@@ -21,6 +24,8 @@ def is_valid_permission(code: str) -> bool:
     if ":" not in code:
         return False
     module, action = code.split(":", 1)
+    if module == "reports" and action in REPORTS_ACTIONS:
+        return True
     if module in EXTRA_PERMISSION_MODULES and action in VALID_ACTIONS:
         return True
     return module in VALID_MODULES and action in VALID_ACTIONS
@@ -266,7 +271,17 @@ def user_has_permission(user: User, module: str) -> bool:
     perms = get_user_permissions(user)
     if "admin" in perms or "*" in perms:
         return True
-    return module in perms
+    if module in perms:
+        return True
+    # Action-style codes e.g. reports:view — allow module root or exact action.
+    if ":" in module:
+        root, _action = module.split(":", 1)
+        if root in perms or module in perms:
+            return True
+        if root == "reports" and any(str(p).startswith("reports:") for p in perms):
+            if module == "reports:view":
+                return True
+    return False
 
 
 def user_has_any_permission(user: User, *modules: str) -> bool:
