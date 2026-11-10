@@ -6,6 +6,7 @@ import InventoryDashboard from "./InventoryDashboard";
 
 vi.mock("../../api/inventoryApi", () => ({
   getStoreDashboard: vi.fn(),
+  getStoreStockValueByCategory: vi.fn(),
 }));
 
 vi.mock("../../hooks/useManufacturingRefresh", () => ({
@@ -16,11 +17,18 @@ vi.mock("../../hooks/useAuth", () => ({
   default: () => ({ user: { role: "Store Manager" } }),
 }));
 
-import { getStoreDashboard } from "../../api/inventoryApi";
+import { getStoreDashboard, getStoreStockValueByCategory } from "../../api/inventoryApi";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key) => key }),
+}));
 
 describe("InventoryDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getStoreStockValueByCategory.mockResolvedValue({
+      data: { total_value: 0, categories: [], has_unvalued: false, partial: false },
+    });
   });
 
   it("renders work-center sections from store dashboard API", async () => {
@@ -68,6 +76,7 @@ describe("InventoryDashboard", () => {
     );
     expect(screen.getByText("Today's Stock Movement")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Low Stock Items" })).toBeInTheDocument();
+    expect(screen.getByText("storeDashboard.stockValueByCategory.title")).toBeInTheDocument();
     expect(screen.getByText("No pending material checks")).toBeInTheDocument();
   });
 

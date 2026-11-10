@@ -20,7 +20,9 @@ import {
   storeDashboardKpiTone,
 } from "../../utils/storeDashboardToolkit";
 import "../../styles/manufacturing-toolkit.css";
+import StockValueByCategoryCard from "../../components/inventory/stockValue/StockValueByCategoryCard";
 import "../../styles/store-dashboard-toolkit.css";
+import "./stockValuation.css";
 
 function pendingMaterialCheckHref(row) {
   const jcId = row?.job_card_id;
@@ -480,42 +482,45 @@ export default function InventoryDashboard() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Low Stock Items" viewAllTo="/inventory/low-stock">
-        {lowStockRows.length === 0 ? (
-          <EmptyState className="py-6" title="No low stock items" description="Items at or below reorder level will be listed here." />
-        ) : (
-          <table className={compactTableClass}>
-            <thead className="ui-table-head">
-              <tr>
-                <th className={`${thClass} w-[50%]`}>Item</th>
-                <th className={`${thClass} w-[25%] whitespace-nowrap`}>Current Stock</th>
-                <th className={`${thClass} w-[25%] whitespace-nowrap`}>Reorder Level</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lowStockRows.map((row) => (
-                <tr key={row.item_id} className="border-t border-[var(--color-border-soft)]">
-                  <td className={tdClass}>
-                    <Link
-                      to={`/inventory/items/${row.item_id}`}
-                      className="block truncate font-medium text-[var(--color-text)] hover:text-[var(--color-action-teal)]"
-                      title={row.item_name}
-                    >
-                      {row.item_name}
-                    </Link>
-                  </td>
-                  <td className={`${tdClass} tabular-nums text-[var(--color-text)]`}>
-                    {formatQty(row.current_stock, row.unit)}
-                  </td>
-                  <td className={`${tdClass} tabular-nums text-[var(--color-text-muted)]`}>
-                    {row.reorder_level != null ? formatQty(row.reorder_level, row.unit) : "—"}
-                  </td>
+      <div className="store-dash-split store-dash-stock-row">
+        <StockValueByCategoryCard />
+        <SectionCard title="Low Stock Items" viewAllTo="/inventory/low-stock">
+          {lowStockRows.length === 0 ? (
+            <EmptyState className="py-6" title="No low stock items" description="Items at or below reorder level will be listed here." />
+          ) : (
+            <table className={compactTableClass}>
+              <thead className="ui-table-head">
+                <tr>
+                  <th className={`${thClass} w-[50%]`}>Item</th>
+                  <th className={`${thClass} w-[25%] whitespace-nowrap`}>Current Stock</th>
+                  <th className={`${thClass} w-[25%] whitespace-nowrap`}>Reorder Level</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </SectionCard>
+              </thead>
+              <tbody>
+                {lowStockRows.map((row) => (
+                  <tr key={row.item_id} className="border-t border-[var(--color-border-soft)]">
+                    <td className={tdClass}>
+                      <Link
+                        to={`/inventory/items/${row.item_id}`}
+                        className="block truncate font-medium text-[var(--color-text)] hover:text-[var(--color-action-teal)]"
+                        title={row.item_name}
+                      >
+                        {row.item_name}
+                      </Link>
+                    </td>
+                    <td className={`${tdClass} tabular-nums text-[var(--color-text)]`}>
+                      {formatQty(row.current_stock, row.unit)}
+                    </td>
+                    <td className={`${tdClass} tabular-nums text-[var(--color-text-muted)]`}>
+                      {row.reorder_level != null ? formatQty(row.reorder_level, row.unit) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </SectionCard>
+      </div>
 
       <SectionCard title="Recent Stock Activity" viewAllTo="/inventory/stock-ledger">
         {recentActivity.length === 0 ? (

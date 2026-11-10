@@ -365,6 +365,22 @@ export default function AppRoutes() {
       />
       </Route>
       <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <P.ReportsCenterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/:slug"
+        element={
+          <ProtectedRoute>
+            <P.ReportViewerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/inventory/reports"
         element={
           <ProtectedRoute>

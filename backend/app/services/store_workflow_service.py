@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from fastapi import HTTPException
-from sqlalchemy import func, select, or_
+from collections import defaultdict
+
+from sqlalchemy import and_, func, select, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -33,6 +35,8 @@ from app.schemas.store_workflow import (
     StoreDashboardRead,
     StoreDashboardTodayMovement,
     StoreDashboardTransferRow,
+    StoreStockValueByCategoryRead,
+    StoreStockValueCategoryRow,
     StoreIssueRequestCreate,
     StoreIssueRequestRead,
     StoreReturnCreate,
@@ -697,6 +701,84 @@ def create_stock_return(
             db.rollback()
             if attempt == 4:
                 raise
+
+
+_UNVALUED_CATEGORY_KEY = "Unvalued"
+
+
+def get_store_stock_value_by_category(
+    db: Session, tenant_id: int, user: User
+) -> StoreStockValueByCategoryRead:
+    from app.services.reports.scope import resolve_accessible_warehouse_ids
+
+    warehouse_ids = resolve_accessible_warehouse_ids(db, tenant_id, user, None)
+    if not warehouse_ids:
+        return StoreStockValueByCategoryRead(
+            total_value=0,
+            categories=[],
+            has_unvalued=False,
+        )
+
+    stmt = (
+        select(
+            InventoryItem.id,
+            InventoryItem.category,
+            InventoryItem.unit_cost,
+            func.coalesce(func.sum(StockLevel.quantity), 0).label("qty"),
+        )
+        .join(
+            StockLevel,
+            and_(
+                StockLevel.item_id == InventoryItem.id,
+                StockLevel.warehouse_id.in_(warehouse_ids),
+            ),
+        )
+        .where(
+            InventoryItem.tenant_id == tenant_id,
+            InventoryItem.is_active.is_(True),
+        )
+        .group_by(InventoryItem.id, InventoryItem.category, InventoryItem.unit_cost)
+        .having(func.coalesce(func.sum(StockLevel.quantity), 0) > 0)
+    )
+
+    buckets: dict[str, dict[str, float | int]] = defaultdict(lambda: {"value": 0.0, "item_count": 0})
+    has_unvalued = False
+
+    for row in db.execute(stmt).all():
+        qty = float(row.qty or 0)
+        rate = float(row.unit_cost) if row.unit_cost is not None else 0.0
+        if rate <= 0:
+            has_unvalued = True
+            bucket = _UNVALUED_CATEGORY_KEY
+            val = 0.0
+        else:
+            cat = (row.category or "").strip() or "No Category"
+            bucket = cat
+            val = round(qty * rate, 2)
+
+        buckets[bucket]["value"] = float(buckets[bucket]["value"]) + val
+        buckets[bucket]["item_count"] = int(buckets[bucket]["item_count"]) + 1
+
+    categories = [
+        StoreStockValueCategoryRow(
+            category=name,
+            value=round(float(data["value"]), 2),
+            item_count=int(data["item_count"]),
+        )
+        for name, data in buckets.items()
+        if float(data["value"]) > 0
+        or (name == _UNVALUED_CATEGORY_KEY and int(data["item_count"]) > 0)
+    ]
+    categories.sort(key=lambda row: row.value, reverse=True)
+    total_value = round(sum(c.value for c in categories if c.category != _UNVALUED_CATEGORY_KEY), 2)
+
+    return StoreStockValueByCategoryRead(
+        total_value=total_value,
+        categories=categories,
+        has_unvalued=has_unvalued,
+        partial=False,
+        partial_message=None,
+    )
 
 
 def get_store_dashboard(db: Session, tenant_id: int, user: User | None = None) -> StoreDashboardRead:
