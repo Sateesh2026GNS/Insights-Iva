@@ -124,16 +124,21 @@ def _permissions_for_role_name(name: str) -> list[str]:
 
 
 def _with_role_baseline(role_name: str | None, perms: set[str]) -> set[str]:
-    """Keep stored role JSON, and include Settings for Quality Control.
+    """Union stored role JSON with the canonical PERMISSION_MATRIX for known roles.
 
-    Older Quality Control rows were saved before Settings was part of the role.
-    Admin always expands to full catalog access (stored JSON may be stale).
+    Matches ``seed_roles`` merge policy: newly introduced / required matrix modules are
+    always restored. Stale production JSON that dropped ``dashboard`` (or other matrix
+    modules) after Reports Center seeds must not permanently 403 authorized roles.
+    Custom role names outside the matrix keep stored permissions only.
+    Admin always expands to full catalog access.
     """
     if is_admin_role_name(role_name):
         return set(_permissions_for_role_name("Admin"))
+    baseline = set(_permissions_for_role_name(role_name)) if role_name else set()
+    merged = set(perms) | baseline
     if normalize_role_name(role_name) == "quality control":
-        perms.add("settings")
-    return perms
+        merged.add("settings")
+    return merged
 
 
 def get_user_permissions(user: User) -> set[str]:
@@ -149,11 +154,11 @@ def get_user_permissions(user: User) -> set[str]:
             if is_admin_role_name(role_name):
                 perms.update(_permissions_for_role_name("Admin"))
                 continue
-            normalized = _normalize_permissions(getattr(role, "permissions", None))
-            if normalized:
-                perms.update(_with_role_baseline(role_name, set(normalized)))
-            elif role_name:
-                perms.update(_permissions_for_role_name(role_name))
+            normalized = set(_normalize_permissions(getattr(role, "permissions", None)))
+            if role_name:
+                perms.update(_with_role_baseline(role_name, normalized))
+            elif normalized:
+                perms.update(normalized)
         if not roles:
             for name in get_role_names(user):
                 perms.update(_permissions_for_role_name(name))
