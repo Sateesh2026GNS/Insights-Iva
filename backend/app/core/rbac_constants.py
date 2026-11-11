@@ -54,7 +54,15 @@ REGISTERABLE_ROLES = [
 
 PERMISSION_MATRIX = {
     "Admin": {
-        "modules": list(VALID_MODULES),
+        "modules": list(VALID_MODULES) + ["reports"],
+        "actions": [
+            "reports:view",
+            "reports:run",
+            "reports:export",
+            "reports:create",
+            "reports:share",
+            "reports:schedule",
+        ],
         "description": "Full system access — Management view of entire manufacturing workflow.",
     },
     "Sales Manager": {
@@ -68,7 +76,7 @@ PERMISSION_MATRIX = {
             "settings",
             "reports",
         ],
-        "actions": ["leads:create", "reports:view"],
+        "actions": ["leads:create", "reports:view", "reports:run", "reports:export"],
         "description": (
             "Leads, quotations, sales orders, customers, dispatch follow-up, and sales reporting."
         ),
@@ -111,7 +119,7 @@ PERMISSION_MATRIX = {
             "analytics",
             "reports",
         ],
-        "actions": ["reports:view"],
+        "actions": ["reports:view", "reports:run", "reports:export"],
         "description": (
             "Store operations: inventory, warehouses, GRN, finished goods, and dispatch."
         ),

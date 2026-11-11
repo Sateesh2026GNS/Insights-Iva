@@ -373,6 +373,38 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/reports/builder"
+        element={
+          <ProtectedRoute>
+            <P.ReportBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/builder/:id"
+        element={
+          <ProtectedRoute>
+            <P.ReportBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/custom/:id"
+        element={
+          <ProtectedRoute>
+            <P.CustomReportViewerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/schedules/:id"
+        element={
+          <ProtectedRoute>
+            <P.ScheduleDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/reports/:slug"
         element={
           <ProtectedRoute>

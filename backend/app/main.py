@@ -459,6 +459,14 @@ def on_startup():
     log_smtp_startup_status()
     start_automation_scheduler()
 
+
+@app.on_event("shutdown")
+def on_shutdown():
+    """Stop the in-process automation scheduler and release advisory locks cleanly."""
+    from app.services.automation.scheduler import stop_automation_scheduler
+
+    stop_automation_scheduler(join_timeout=5.0)
+
     # Production schema is managed exclusively by Alembic — never create_all / runtime DDL.
     if not settings.is_production:
         try:

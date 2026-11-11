@@ -255,8 +255,16 @@ export const STORE_MANAGER_NAV_ITEMS = [
     ],
   },
   {
+    key: "reportsCenter",
+    label: "Reports Center",
+    to: "/reports",
+    icon: FileBarChart2,
+    module: "reports",
+    end: true,
+  },
+  {
     key: "reports",
-    label: "Reports",
+    label: "Inventory Reports",
     to: "/inventory/reports",
     icon: FileBarChart2,
     end: true,

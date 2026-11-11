@@ -318,8 +318,13 @@ def emit_alert(
     fanout: bool = True,
     commit: bool = True,
 ) -> Alert:
-    """Persist an Alert and fan out role-targeted bell notifications."""
-    try:
+    """Persist an Alert and fan out role-targeted bell notifications.
+
+    When ``commit=False``, alert work runs inside a SAVEPOINT so failures do not
+    ``rollback()`` the caller's outer transaction (automation / multi-step flows).
+    """
+
+    def _persist() -> Alert:
         roles = target_roles if target_roles is not None else ALERT_AUDIENCE.get(alert_type, ["Admin"])
         target_role_str = ",".join(roles) if roles else None
         mod = module or _MODULE_DEFAULTS.get(alert_type, "system")
@@ -353,20 +358,30 @@ def emit_alert(
             db.refresh(alert)
         else:
             db.flush()
+        return alert
 
+    try:
+        if commit:
+            alert = _persist()
+        else:
+            with db.begin_nested():
+                alert = _persist()
         _notify_listeners(alert)
         return alert
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
+        # Only abort the whole session when we own the transaction.
+        if commit:
+            db.rollback()
         logger.exception("Database error during emit_alert: %s", exc)
         raise HTTPException(
             status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection unavailable",
         ) from exc
     except Exception as exc:
-        db.rollback()
+        if commit:
+            db.rollback()
         logger.exception("Failed to emit alert: %s", exc)
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,

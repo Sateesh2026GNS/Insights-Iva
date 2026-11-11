@@ -225,6 +225,17 @@ export function hasPermission(user, module) {
   return userCanAccess(user, module);
 }
 
+/** Reports Center action keys from RBAC matrix (e.g. share, schedule, create). */
+export function userHasReportsAction(user, action) {
+  if (!user || !action) return false;
+  if (isAdmin(user)) return true;
+  const key = `reports:${action}`;
+  if (Array.isArray(user.permissions) && (user.permissions.includes("*") || user.permissions.includes(key))) {
+    return true;
+  }
+  return getEffectivePermissions(user).includes(key);
+}
+
 export function isAdmin(user) {
   if (!user) return false;
   if (Array.isArray(user.permissions) && (user.permissions.includes("*") || user.permissions.includes("admin"))) return true;

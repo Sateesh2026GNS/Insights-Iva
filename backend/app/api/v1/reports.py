@@ -42,14 +42,29 @@ from app.services.reports.saved_views_service import (
     list_saved_views,
     update_saved_view,
 )
+from app.services.reports.custom_reports_service import (
+    create_custom_report,
+    delete_custom_report,
+    duplicate_custom_report,
+    get_custom_report,
+    list_available_datasets,
+    list_custom_reports,
+    run_custom_report,
+    update_custom_report,
+)
 from app.services.reports.schedules_service import (
     create_schedule,
     delete_schedule,
+    get_schedule,
+    list_executions,
     list_schedules,
+    run_schedule_now,
     update_schedule,
 )
+from app.services.reports.share_service import create_share, list_shares, revoke_share
 from app.services.reports.summary import get_report_summary
 from app.services.reports.system_catalog import SYSTEM_REPORTS_BY_SLUG
+from app.services.reports.custom_reports_service import _serialize as serialize_custom_report
 
 ensure_reports_loaded()
 
@@ -215,6 +230,168 @@ def remove_schedule(
     user: User = Depends(require_permission("reports:schedule")),
 ):
     delete_schedule(db, user, schedule_id)
+    return {"ok": True}
+
+
+@router.get("/schedules/{schedule_id}")
+def get_schedule_detail(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from app.services.reports.schedules_service import _serialize
+
+    return _serialize(get_schedule(db, user, schedule_id))
+
+
+@router.put("/schedules/{schedule_id}", response_model=ReportScheduleRead)
+def put_schedule(
+    schedule_id: int,
+    payload: ReportScheduleUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:schedule")),
+):
+    return update_schedule(db, user, schedule_id, payload)
+
+
+@router.post("/schedules/{schedule_id}/run")
+def post_run_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:schedule")),
+):
+    return run_schedule_now(db, user, schedule_id)
+
+
+@router.get("/schedules/{schedule_id}/executions")
+def get_schedule_executions(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return list_executions(db, user, schedule_id)
+
+
+@router.get("/datasets")
+def get_datasets(user: User = Depends(require_any_permission("reports", "reports:view", "reports:create", "admin"))):
+    return list_available_datasets(user)
+
+
+@router.get("/custom")
+def get_custom_reports(
+    section: str = Query("mine", pattern="^(mine|shared)$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "admin")),
+):
+    return list_custom_reports(db, user, section=section)
+
+
+@router.post("/custom")
+def post_custom_report(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:create")),
+):
+    return create_custom_report(db, user, payload)
+
+
+@router.post("/custom/preview")
+def preview_custom_report(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:create")),
+):
+    return run_custom_report(db, user, definition=payload, preview=True, page=1, page_size=25)
+
+
+@router.get("/custom/{report_id}")
+def get_one_custom_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "admin")),
+):
+    return serialize_custom_report(get_custom_report(db, user, report_id))
+
+
+@router.put("/custom/{report_id}")
+def put_custom_report(
+    report_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:create")),
+):
+    return update_custom_report(db, user, report_id, payload)
+
+
+@router.delete("/custom/{report_id}")
+def remove_custom_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:create")),
+):
+    delete_custom_report(db, user, report_id)
+    return {"ok": True}
+
+
+@router.post("/custom/{report_id}/duplicate")
+def post_duplicate_custom(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:create")),
+):
+    return duplicate_custom_report(db, user, report_id)
+
+
+@router.post("/custom/{report_id}/run")
+def post_run_custom(
+    report_id: int,
+    body: dict | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:view", "reports:run", "admin")),
+):
+    body = body or {}
+    return run_custom_report(
+        db,
+        user,
+        report_id,
+        page=int(body.get("page") or 1),
+        page_size=int(body.get("page_size") or 50),
+    )
+
+
+@router.get("/custom/{report_id}/shares")
+def get_custom_shares(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("reports", "reports:share", "admin")),
+):
+    return list_shares(db, user, report_id)
+
+
+@router.post("/custom/{report_id}/shares")
+def post_custom_share(
+    report_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:share")),
+):
+    return create_share(
+        db,
+        user,
+        report_id,
+        shared_with_user_id=payload.get("shared_with_user_id"),
+        shared_with_role=payload.get("shared_with_role"),
+    )
+
+
+@router.delete("/custom/{report_id}/shares/{share_id}")
+def delete_custom_share(
+    report_id: int,
+    share_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("reports:share")),
+):
+    revoke_share(db, user, report_id, share_id)
     return {"ok": True}
 
 

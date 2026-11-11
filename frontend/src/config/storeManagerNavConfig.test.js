@@ -39,11 +39,12 @@ describe("storeManagerNavConfig masters", () => {
 });
 
 describe("storeManagerNavConfig reports", () => {
-  it("points Reports to the reports catalog, not stock ledger", () => {
-    const reports = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "reports");
-    expect(reports?.to).toBe("/inventory/reports");
-    expect(reports?.to).not.toBe("/inventory/stock-ledger");
-    expect(reports?.to).not.toBe("/reports");
+  it("keeps Inventory Reports on /inventory/reports and adds Reports Center", () => {
+    const inventoryReports = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "reports");
+    const center = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "reportsCenter");
+    expect(inventoryReports?.to).toBe("/inventory/reports");
+    expect(inventoryReports?.to).not.toBe("/inventory/stock-ledger");
+    expect(center?.to).toBe("/reports");
   });
 });
 

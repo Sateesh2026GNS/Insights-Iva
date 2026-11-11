@@ -63,6 +63,9 @@ export const StoreInventoryReports = lazy(() => import("../pages/inventory/Store
 export const StoreReportsPage = lazy(() => import("../pages/store/StoreReportsPage"));
 export const ReportsCenterPage = lazy(() => import("../pages/reports/ReportsCenterPage"));
 export const ReportViewerPage = lazy(() => import("../pages/reports/ReportViewerPage"));
+export const ReportBuilderPage = lazy(() => import("../pages/reports/ReportBuilderPage"));
+export const CustomReportViewerPage = lazy(() => import("../pages/reports/CustomReportViewerPage"));
+export const ScheduleDetailPage = lazy(() => import("../pages/reports/ScheduleDetailPage"));
 export const Warehouses = lazy(() => import("../pages/inventory/Warehouses"));
 export const Suppliers = lazy(() => import("../pages/inventory/Suppliers"));
 export const CreateItem = lazy(() => import("../pages/inventory/CreateItem"));

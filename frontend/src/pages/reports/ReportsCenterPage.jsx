@@ -18,11 +18,16 @@ import EmptyState from "../../components/common/EmptyState";
 import Pagination from "../../components/common/Pagination";
 import AsyncPageBody from "../../components/common/states/AsyncPageBody";
 import NoResultsState from "../../components/common/states/NoResultsState";
+import ReportScheduleFormModal from "../../components/reports/ReportScheduleFormModal";
+import { userHasReportsAction } from "../../config/permissions";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { useToast } from "../../context/ToastContext";
+import useAuth from "../../hooks/useAuth";
 import {
   favoriteReport,
   getReportsCatalog,
+  listCustomReports,
+  listReportSchedules,
   unfavoriteReport,
 } from "../../api/reportsApi";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
@@ -51,8 +56,11 @@ function useDebounced(value, ms = 300) {
 
 export default function ReportsCenterPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { addToast } = useToast();
   const { online } = useNetworkStatus();
+  const canCreate = userHasReportsAction(user, "create");
+  const canSchedule = userHasReportsAction(user, "schedule");
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const debouncedQ = useDebounced(query, 300);
@@ -72,6 +80,7 @@ export default function ReportsCenterPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const moreRef = useRef(null);
   const tableWrapRef = useRef(null);
 
@@ -93,6 +102,54 @@ export default function ReportsCenterPage() {
     setErrorObj(null);
     setPermissionDenied(false);
     try {
+      if (section === "mine" || section === "shared") {
+        const res = await listCustomReports(section === "shared" ? "shared" : "mine");
+        let rows = res?.data ?? res;
+        rows = Array.isArray(rows) ? rows : [];
+        const q = (debouncedQ || "").trim().toLowerCase();
+        if (q) {
+          rows = rows.filter(
+            (r) =>
+              String(r.name || "").toLowerCase().includes(q) ||
+              String(r.category || "").toLowerCase().includes(q)
+          );
+        }
+        setItems(
+          rows.map((r) => ({
+            slug: `custom-${r.id}`,
+            title: r.name,
+            category: r.category || "Custom",
+            created_by: r.shared_with_me ? t("reportsCenter.sharedWithMe") : t("reportsCenter.createdByMe"),
+            is_favorite: false,
+            last_visited_at: null,
+            href: `/reports/custom/${r.id}`,
+          }))
+        );
+        setPagination({ page: 1, page_size: rows.length || 50, total_rows: rows.length, total_pages: 1 });
+        return;
+      }
+      if (section === "scheduled") {
+        const res = await listReportSchedules();
+        let rows = res?.data ?? res;
+        rows = Array.isArray(rows) ? rows : [];
+        const q = (debouncedQ || "").trim().toLowerCase();
+        if (q) rows = rows.filter((r) => String(r.name || "").toLowerCase().includes(q));
+        setItems(
+          rows.map((r) => ({
+            slug: `schedule-${r.id}`,
+            title: r.name,
+            category: r.frequency,
+            created_by: r.worker_enabled
+              ? t("reportsCenter.scheduleActiveWorker")
+              : t("reportsCenter.scheduleNeedsWorker"),
+            is_favorite: false,
+            last_visited_at: r.last_run_at || r.next_run_at || null,
+            href: `/reports/schedules/${r.id}`,
+          }))
+        );
+        setPagination({ page: 1, page_size: rows.length || 50, total_rows: rows.length, total_pages: 1 });
+        return;
+      }
       const res = await getReportsCatalog({
         q: debouncedQ || undefined,
         category: category || undefined,
@@ -236,14 +293,16 @@ export default function ReportsCenterPage() {
             />
           </div>
           <div className="store-reports-center__hero-actions">
-            <Button
-              variant="primary"
-              size="sm"
-              type="button"
-              onClick={() => addToast(t("reportsCenter.createSoon"), "info")}
-            >
-              {t("reportsCenter.createNew")}
-            </Button>
+            {canCreate ? (
+              <Button variant="primary" size="sm" type="button" to="/reports/builder">
+                {t("reportsCenter.createNew")}
+              </Button>
+            ) : null}
+            {canSchedule ? (
+              <Button variant="outline" size="sm" type="button" onClick={() => setScheduleOpen(true)}>
+                {t("reportsCenter.schedule.create")}
+              </Button>
+            ) : null}
             <div className="store-reports-center__more-wrap" ref={moreRef}>
               <button
                 type="button"
@@ -392,7 +451,7 @@ export default function ReportsCenterPage() {
                                   <Star className={`h-4 w-4 ${row.is_favorite ? "fill-current" : ""}`} aria-hidden />
                                 </button>
                                 <Link
-                                  to={`/reports/${encodeURIComponent(row.slug)}`}
+                                  to={row.href || `/reports/${encodeURIComponent(row.slug)}`}
                                   className="store-reports-center__report-link"
                                 >
                                   {row.title}
@@ -432,6 +491,15 @@ export default function ReportsCenterPage() {
           <ArrowUp className="h-5 w-5" aria-hidden />
         </button>
       ) : null}
+
+      <ReportScheduleFormModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        onSaved={() => {
+          if (section === "scheduled") load();
+          else patchParams({ section: "scheduled", page: 1 });
+        }}
+      />
     </div>
   );
 }

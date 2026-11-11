@@ -15,7 +15,7 @@ RESTRICTED_ACTION_ROLES = frozenset({"Operator"})
 EXTRA_PERMISSION_MODULES = frozenset({"leads", "reports"})
 
 
-REPORTS_ACTIONS = frozenset({"view", "create", "share", "schedule"})
+REPORTS_ACTIONS = frozenset({"view", "run", "export", "create", "share", "schedule"})
 
 
 def is_valid_permission(code: str) -> bool:

@@ -71,6 +71,70 @@ export function updateReportSchedule(id, body) {
   return api.patch(`${BASE}/schedules/${id}`, body);
 }
 
+export function putReportSchedule(id, body) {
+  return api.put(`${BASE}/schedules/${id}`, body);
+}
+
 export function deleteReportSchedule(id) {
   return api.delete(`${BASE}/schedules/${id}`);
+}
+
+export function getReportSchedule(id) {
+  return api.get(`${BASE}/schedules/${id}`);
+}
+
+export function runReportSchedule(id) {
+  return api.post(`${BASE}/schedules/${id}/run`);
+}
+
+export function listScheduleExecutions(id) {
+  return api.get(`${BASE}/schedules/${id}/executions`);
+}
+
+export function listReportDatasets() {
+  return api.get(`${BASE}/datasets`);
+}
+
+export function listCustomReports(section = "mine") {
+  return api.get(`${BASE}/custom`, { params: { section } });
+}
+
+export function getCustomReport(id) {
+  return api.get(`${BASE}/custom/${id}`);
+}
+
+export function createCustomReport(body) {
+  return api.post(`${BASE}/custom`, body);
+}
+
+export function updateCustomReport(id, body) {
+  return api.put(`${BASE}/custom/${id}`, body);
+}
+
+export function deleteCustomReport(id) {
+  return api.delete(`${BASE}/custom/${id}`);
+}
+
+export function duplicateCustomReport(id) {
+  return api.post(`${BASE}/custom/${id}/duplicate`);
+}
+
+export function previewCustomReport(body) {
+  return api.post(`${BASE}/custom/preview`, body);
+}
+
+export function runCustomReport(id, body = {}) {
+  return api.post(`${BASE}/custom/${id}/run`, body);
+}
+
+export function listCustomReportShares(id) {
+  return api.get(`${BASE}/custom/${id}/shares`);
+}
+
+export function createCustomReportShare(id, body) {
+  return api.post(`${BASE}/custom/${id}/shares`, body);
+}
+
+export function deleteCustomReportShare(id, shareId) {
+  return api.delete(`${BASE}/custom/${id}/shares/${shareId}`);
 }

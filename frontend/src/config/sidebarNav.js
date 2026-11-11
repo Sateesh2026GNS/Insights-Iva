@@ -35,6 +35,15 @@ export const SIDEBAR_NAV = [
     end: true,
   },
   {
+    key: "reportsCenter",
+    labelKey: "erpNav.reportsCenter",
+    label: "Reports Center",
+    to: "/reports",
+    icon: BarChart3,
+    module: "reports",
+    end: true,
+  },
+  {
     key: "myJobCards",
     label: "My Job Cards",
     to: "/my-job-cards",

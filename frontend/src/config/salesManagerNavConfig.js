@@ -154,6 +154,7 @@ export const SALES_MANAGER_NAV_ITEMS = [
     icon: BarChart3,
     module: "sales",
     children: [
+      { key: "reportsCenter", label: "Reports Center", to: "/reports", icon: BarChart3, module: "reports" },
       { key: "salesReport", label: "Sales Report", to: "/sales/reports/sales", icon: BarChart3, module: "sales" },
       {
         key: "salesOrderReport",

@@ -29,6 +29,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 - [Project structure](#project-structure)
 - [Manufacturing workflow](#manufacturing-workflow)
 - [Manufacturing Production Toolkit](#manufacturing-production-toolkit)
+- [Reports Center](#reports-center)
 - [Role-based access control](#role-based-access-control)
 - [Auth and sessions](#auth-and-sessions)
 - [API overview](#api-overview)
@@ -98,6 +99,7 @@ Insights Iva is a full-stack **manufacturing ERP** and business intelligence pla
 - **Work Chat** (`/chat`) — tenant conversations with polling; URL `?conversation=` is written only when the active id actually changes
 - **Settings** — company, users, permissions, My Account (profile, password, 2FA); subscription admin-only where enforced
 - **Document library** (`/api/document-library`) — tenant-scoped; HR documents are restricted; other-tenant ids return 404
+- **Reports Center** (`/reports`) — system + custom reports, share, schedule, CSV/XLSX/PDF export with authenticated download tokens (see [Reports Center](#reports-center))
 
 ---
 
@@ -325,6 +327,8 @@ Never commit `.env` or `.env.e2e`. Never put secrets in `VITE_*` variables.
 | Dashboard drawers show “API endpoint not available” | Hosted frontend without matching API routes | Run latest backend locally or deploy API with new `/api/erp/dashboard/*` routes |
 | Migration errors | DB not on latest heads | `alembic upgrade heads` |
 | Email PDF / forgot password fails with “contact your administrator” | SMTP not set in `backend/.env` | Fill `SMTP_*`, restart backend |
+| Report schedules never fire | Scheduler disabled or interval too high | Set `AUTOMATION_SCHEDULER_ENABLED=true`; interval minutes ≥ 15; restart API |
+| Export download 404 after API restart (pre–Phase 3.3) | In-memory tokens | Upgrade to `rc4b5c6d7e8f9` and redeploy (DB-backed tokens) |
 | Pipeline / Quick Actions show `0` during load | Treating loading as zero | Components show skeletons until `GET /api/erp/dashboard` completes |
 | Portaled modal **Save** triggers parent page submit | React submit bubbling to ancestor `<form>` | `stopPropagation` on modal submit; `type="button"` on section saves — see [Sales documents](#sales-documents-quotations-invoices-challans) |
 | Login feels slow (~0.5–2 s) | bcrypt `$2b$` cost **12** on `/auth/login` | Expected; do not lower cost without a security review |
@@ -417,13 +421,101 @@ Confirm revision with `alembic current` / `alembic heads`. Do not migrate produc
 
 ---
 
+## Reports Center
+
+Tenant-scoped reporting hub at **`/reports`**. Inventory’s dedicated reports page stays at **`/inventory/reports`** (Store Manager nav keeps both).
+
+| Area | Route / API | Notes |
+|------|-------------|--------|
+| Center | `/reports` | Catalog (~56 system reports), favorites, recent, custom reports |
+| Builder | `/reports/builder` | Allowlisted datasets only (no user SQL) |
+| Custom viewer | `/reports/custom/:id` | Run, export, share, schedule |
+| System viewer | `/reports/view/:slug` | Filters + CSV / XLSX / PDF export |
+| Schedule detail | `/reports/schedules/:id` | History, next run, deactivate |
+| Export download | `GET /api/reports/exports/{token}` | Auth required; tenant-checked; not a public object URL |
+
+**RBAC:** `reports:read`, `reports:create`, `reports:share`, `reports:schedule` (plus dataset allowlists by role). Config: `frontend/src/config/permissions.js`, `backend/app/core/rbac_constants.py`.
+
+### Custom reports & filters
+
+- Datasets are registered in `backend/app/services/reports/dataset_registry.py`.
+- Column filter `contains` treats `%`, `_`, and `\` as **literals** (SQL `ESCAPE`), not wildcards.
+
+### Export tokens (Phase 3.3)
+
+Download links use cryptographically random tokens stored in PostgreSQL (`report_export_tokens`), not process memory — safe across multiple API workers and after restart. Tokens expire (~1 hour), support revocation, and enforce tenant isolation on resolve.
+
+### Schedules & automation scheduler
+
+Scheduled report delivery runs inside the in-process automation scheduler (no Celery/Redis).
+
+| Env | Purpose |
+|-----|---------|
+| `AUTOMATION_SCHEDULER_ENABLED=true` | Start the background loop on API startup |
+| `AUTOMATION_SCHEDULER_INTERVAL_MINUTES` | Tick interval (**minimum 15** minutes) |
+| `AUTOMATION_MORNING_SUMMARY_ENABLED` | Optional morning summary tick |
+
+- Only one worker runs a tick via PostgreSQL **session** advisory lock (`pg_try_advisory_lock`).
+- FastAPI **shutdown** stops the loop, releases the lock, and closes the DB session.
+- Schedule emails attach CSV/XLSX when configured and include authenticated `/api/reports/exports/...` links. Configure SMTP (`SMTP_*`) before relying on delivery.
+
+**Do not** run production schedules or send live mail from tests without an approved recipient.
+
+### Alembic (reports chain)
+
+| Revision | Purpose |
+|----------|---------|
+| `rc3a4b5c6d7e8` | Report schedule executions history |
+| `rc4b5c6d7e8f9` | **Head** — persistent report export tokens |
+
+```bash
+cd backend
+alembic upgrade heads
+alembic current   # expect rc4b5c6d7e8f9
+```
+
+### Key code
+
+| Layer | Location |
+|-------|----------|
+| API | `backend/app/api/v1/reports.py` |
+| Export / tokens | `backend/app/services/reports/export.py` |
+| Custom reports | `backend/app/services/reports/custom_reports_service.py` |
+| Schedules | `backend/app/services/reports/schedules_service.py` |
+| Scheduler | `backend/app/services/automation/scheduler.py`, `scheduler_lock.py` |
+| Models | `backend/app/models/reporting.py` |
+| UI | `frontend/src/pages/reports/`, `frontend/src/components/reports/` |
+
+### Tests
+
+```bash
+cd backend
+pytest tests/test_reports_phase3.py tests/test_reports_phase31_share_email.py tests/test_reports_phase33_hardening.py -q
+pytest tests/test_automation_idempotency_schedules.py tests/test_automation_phase2.py -q
+
+# Multi-connection advisory lock (PostgreSQL only; does not run schedules)
+# Uses POSTGRES_LOCK_TEST_URL or DATABASE_URL_POSTGRES when the suite DB is SQLite
+pytest tests/test_reports_phase33_hardening.py::test_pg_advisory_lock_multi_connection_exclusive -v
+
+# Live SMTP (opt-in only — never runs in CI)
+# REPORTS_SMTP_LIVE_TEST=1 REPORTS_SMTP_TEST_RECIPIENT=you@example.com \
+#   pytest tests/test_reports_phase33_hardening.py::test_reports_smtp_live_attachment_procedure -v
+```
+
+```bash
+cd frontend
+npm test -- --run src/components/reports src/config/permissions.reportsActions.test.js
+```
+
+---
+
 ## Role-based access control
 
 | Role | Typical access |
 |------|----------------|
 | Admin | Full access; ERP dashboard, approvals, settings |
-| Sales Manager | Sales module, reports, customers, orders, quotations |
-| Store Manager | Inventory, purchases, GRN, store job card queue |
+| Sales Manager | Sales module, Reports Center (`/reports`), customers, orders, quotations |
+| Store Manager | Inventory, Inventory Reports (`/inventory/reports`), Reports Center (`/reports`), purchases, GRN |
 | Production Manager | Production dashboard `/production/dashboard`, MRP, workflow |
 | Quality Control | QC dashboard `/dashboard`, inspections, defects/NCR, limited production & materials |
 | HR Manager | HR module, approval center (where permitted) |
@@ -497,7 +589,8 @@ Tests: `backend/tests/test_documents_v1.py::test_operator_document_get_idor`. Do
 | `/api/admin/approvals/*` | Approval queue, counts, decide |
 | `/api/document-library` | Versioned documents; GET by id is tenant- and HR-scoped |
 | `/api/agent` | Store/ERP AI assistant |
-| `/api/*` | Notifications, production, masters, reports |
+| `/api/reports` | Reports Center — catalog, custom reports, share, schedules, authenticated exports |
+| `/api/*` | Notifications, production, masters, legacy report helpers |
 | `/sales` | Customers, leads, orders, invoices, quotations, hub, reports |
 | `/manufacturing` | Workflow, job cards, material checks |
 | `/inventory` | Items, warehouses, stock movements |
@@ -577,6 +670,8 @@ pytest tests/test_tenant_isolation_security.py -v
 pytest tests/test_documents_v1.py::test_operator_document_get_idor -v
 pytest tests/test_sales_job_card_document.py -v
 pytest tests/test_order_delivery.py::test_tracker_api_is_tenant_scoped -v
+pytest tests/test_reports_phase33_hardening.py -q
+pytest tests/test_automation_idempotency_schedules.py -q
 
 # Frontend
 cd frontend

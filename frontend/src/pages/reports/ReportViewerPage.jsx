@@ -8,8 +8,11 @@ import EmptyState from "../../components/common/EmptyState";
 import Pagination from "../../components/common/Pagination";
 import StatusBadge from "../../components/common/StatusBadge";
 import AsyncPageBody from "../../components/common/states/AsyncPageBody";
+import ReportScheduleFormModal from "../../components/reports/ReportScheduleFormModal";
+import { userHasReportsAction } from "../../config/permissions";
 import { useNetworkStatus } from "../../context/NetworkStatusContext";
 import { useToast } from "../../context/ToastContext";
+import useAuth from "../../hooks/useAuth";
 import {
   exportReport,
   favoriteReport,
@@ -63,8 +66,11 @@ function formatCell(col, value) {
 export default function ReportViewerPage() {
   const { slug } = useParams();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { addToast } = useToast();
   const { online } = useNetworkStatus();
+  const canSchedule = userHasReportsAction(user, "schedule");
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const [meta, setMeta] = useState(null);
   const [metaLoading, setMetaLoading] = useState(true);
@@ -271,24 +277,28 @@ export default function ReportViewerPage() {
                 <Button variant="outline" size="sm" type="button" onClick={() => onExport("pdf")} disabled={isGap}>
                   {t("reportsCenter.viewer.exportPdf")}
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  type="button"
-                  onClick={() => addToast(t("reportsCenter.viewer.scheduleSoon"), "info")}
-                >
-                  {t("reportsCenter.viewer.schedule")}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  type="button"
-                  onClick={() => addToast(t("reportsCenter.viewer.shareSoon"), "info")}
-                >
-                  {t("reportsCenter.viewer.share")}
-                </Button>
+                {canSchedule ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    disabled={isGap}
+                    onClick={() => setScheduleOpen(true)}
+                  >
+                    {t("reportsCenter.viewer.schedule")}
+                  </Button>
+                ) : null}
               </div>
             </div>
+            <ReportScheduleFormModal
+              open={scheduleOpen}
+              onClose={() => setScheduleOpen(false)}
+              preset={{
+                name: meta?.title || slug,
+                report_key: slug,
+                lockSource: true,
+              }}
+            />
 
             {!isGap ? (
               <div className="mb-4 rounded-xl border border-[var(--color-border-soft)] bg-white p-4">

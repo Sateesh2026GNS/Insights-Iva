@@ -60,6 +60,7 @@ describe("salesManagerNavConfig", () => {
       (c) => c.to
     );
     expect(reportPaths).toEqual([
+      "/reports",
       "/sales/reports/sales",
       "/sales/reports/sales-orders",
       "/sales/reports/quotations",
