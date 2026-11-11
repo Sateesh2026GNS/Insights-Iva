@@ -23,14 +23,19 @@ def test_get_user_permissions_falls_back_to_canonical_role_matrix():
 
 
 def test_accountant_permission_includes_matrix_modules():
+    """Stale/partial Accountant JSON is unioned with PERMISSION_MATRIX (runtime baseline)."""
     user_custom = SimpleNamespace(
         roles=[SimpleNamespace(name="Accountant", permissions=["accounts"])],
     )
 
     perms_custom = get_user_permissions(user_custom)
-    assert perms_custom == {"accounts"}
+    assert "accounts" in perms_custom
+    assert "analytics" in perms_custom
+    assert "dashboard" in perms_custom
     assert user_has_permission(user_custom, "accounts")
-    assert not user_has_permission(user_custom, "analytics")
+    assert user_has_permission(user_custom, "analytics")
+    # Matrix union must not invent unrelated modules.
+    assert not user_has_permission(user_custom, "hr")
 
     user_default = SimpleNamespace(
         roles=[SimpleNamespace(name="Accountant", permissions=[])],

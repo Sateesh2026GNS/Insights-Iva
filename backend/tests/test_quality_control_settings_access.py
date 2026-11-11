@@ -23,7 +23,8 @@ def test_quality_control_settings_is_included_when_stored_role_json_omits_it():
 
 
 def test_other_roles_do_not_gain_settings_from_the_quality_control_rule():
-    role = SimpleNamespace(name="Operator", permissions=["dashboard", "production"])
+    # Accountant matrix has no settings; QC-only settings injection must not apply.
+    role = SimpleNamespace(name="Accountant", permissions=["dashboard", "accounts"])
     user = SimpleNamespace(roles=[role])
 
     assert "settings" not in get_user_permissions(user)

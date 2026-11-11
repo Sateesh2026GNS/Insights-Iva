@@ -303,9 +303,14 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         )
     if isinstance(detail, dict):
         raw_message = detail.get("message") or detail.get("detail") or "Request failed"
-        safe_detail = sanitize_client_message(str(raw_message), status_code=exc.status_code)
+        safe_message = sanitize_client_message(str(raw_message), status_code=exc.status_code)
+        # Preserve structured payloads (validation errors, RBAC codes) for non-/api/ routes.
+        structured = dict(detail)
+        structured["message"] = safe_message
+        if isinstance(structured.get("detail"), str):
+            structured["detail"] = safe_message
         body = {
-            "detail": safe_detail,
+            "detail": structured,
             "request_id": getattr(request.state, "request_id", None),
         }
         if error_code:

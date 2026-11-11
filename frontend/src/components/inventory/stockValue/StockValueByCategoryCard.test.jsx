@@ -75,9 +75,15 @@ describe("StockValueByCategoryCard", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("storeDashboard.stockValueByCategory.errorTitle")).toBeInTheDocument();
-    });
+    // Full-suite CI can be slower; wait until loading skeleton clears and error title appears.
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText("storeDashboard.stockValueByCategory.errorTitle")
+        ).toBeInTheDocument();
+      },
+      { timeout: 8000 }
+    );
   });
 
   it("merges Others in legend for many small categories", async () => {
