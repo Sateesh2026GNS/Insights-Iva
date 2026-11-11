@@ -1,4 +1,4 @@
-"""Parameterized RBAC: every registerable role keeps matrix modules despite stale JSON."""
+"""RBAC: empty role JSON falls back to matrix; deliberate removals stick."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from app.core.permissions import (
     user_has_permission,
     user_is_admin,
 )
-from app.core.rbac_constants import PERMISSION_MATRIX, REGISTERABLE_ROLES
+from app.core.rbac_constants import REGISTERABLE_ROLES
 from app.routers.operator_deps import _check_operator_restrictions
 
 
@@ -44,17 +44,45 @@ ROLE_DASHBOARD_MODULE = {
 
 
 @pytest.mark.parametrize("role_name", REGISTERABLE_ROLES)
-def test_stale_partial_json_restores_matrix_dashboard_modules(role_name):
-    """Non-empty stale JSON missing matrix modules must not permanently 403 authorized roles."""
-    # Simulate production JSON that only retained reports actions after a bad seed/UI save.
-    stale = ["reports:view"]
-    user = _User(roles=[_Role(role_name, stale)])
+def test_empty_role_json_falls_back_to_matrix_dashboard_modules(role_name):
+    """Empty/missing stored JSON uses PERMISSION_MATRIX (legitimate restore path)."""
+    user = _User(roles=[_Role(role_name, [])])
     expected_module = ROLE_DASHBOARD_MODULE[role_name]
     assert user_has_permission(user, expected_module) is True, (
         f"{role_name} missing {expected_module}; perms={sorted(get_user_permissions(user))}"
     )
-    # Shared ERP dashboard module is on every registerable matrix role.
     assert user_has_permission(user, "dashboard") is True
+
+
+@pytest.mark.parametrize(
+    "role_name,kept,must_not_restore",
+    [
+        ("Operator", ["dashboard", "production"], ["settings", "documents"]),
+        ("Accountant", ["accounts"], ["analytics", "documents", "sales"]),
+        ("Sales Manager", ["dashboard", "sales"], ["documents", "settings"]),
+        ("Store Manager", ["dashboard", "inventory"], ["documents", "settings", "hr"]),
+        ("HR Manager", ["dashboard", "hr"], ["documents", "settings", "analytics"]),
+        ("Quality Control", ["dashboard", "quality"], ["documents", "analytics"]),
+    ],
+)
+def test_deliberate_permission_removals_are_not_silently_restored(
+    role_name, kept, must_not_restore
+):
+    """Non-empty stored JSON wins — admins can narrow a matrix role without union clawback."""
+    user = _User(roles=[_Role(role_name, kept)])
+    for code in kept:
+        assert user_has_permission(user, code) is True
+    for code in must_not_restore:
+        assert user_has_permission(user, code) is False, (
+            f"{role_name} unexpectedly regained {code}; "
+            f"perms={sorted(get_user_permissions(user))}"
+        )
+
+
+def test_quality_control_still_gains_settings_when_omitted_from_stored_json():
+    user = _User(roles=[_Role("Quality Control", ["dashboard", "quality"])])
+    assert user_has_permission(user, "settings") is True
+    assert user_has_permission(user, "documents") is False
 
 
 @pytest.mark.parametrize("role_name", ["Admin", "admin", " Admin "])
@@ -81,35 +109,35 @@ def test_custom_role_outside_matrix_keeps_only_stored_permissions():
         assert detail == MODULE_FORBIDDEN_MESSAGE
 
 
-def test_sales_manager_does_not_gain_accounts_from_matrix_merge():
+def test_sales_manager_does_not_gain_accounts_from_partial_json():
     user = _User(roles=[_Role("Sales Manager", ["dashboard", "sales", "reports:view"])])
     assert user_has_permission(user, "sales") is True
     assert user_has_permission(user, "accounts") is False
 
 
-def test_store_manager_does_not_gain_hr_from_matrix_merge():
+def test_store_manager_does_not_gain_hr_from_partial_json():
     user = _User(roles=[_Role("Store Manager", ["dashboard", "inventory"])])
     assert user_has_permission(user, "inventory") is True
     assert user_has_permission(user, "hr") is False
 
 
 @pytest.mark.parametrize(
-    "role_name,headers_module",
+    "role_name",
     [
-        ("Admin", "dashboard"),
-        ("Sales Manager", "dashboard"),
-        ("Store Manager", "dashboard"),
-        ("Production Manager", "dashboard"),
-        ("Operator", "dashboard"),
-        ("Quality Control", "dashboard"),
-        ("HR Manager", "dashboard"),
-        ("Accountant", "dashboard"),
+        "Admin",
+        "Sales Manager",
+        "Store Manager",
+        "Production Manager",
+        "Operator",
+        "Quality Control",
+        "HR Manager",
+        "Accountant",
     ],
 )
-def test_erp_dashboard_allows_matrix_roles_with_stale_json(
-    role_name, headers_module, register_admin, client, make_restricted_user
+def test_erp_dashboard_allows_matrix_roles_with_empty_json(
+    role_name, register_admin, client, make_restricted_user
 ):
-    """Integration: GET /api/erp/dashboard must 200 for matrix roles even if DB JSON is stale."""
+    """Integration: empty role JSON falls back to matrix so ERP dashboard authorizes."""
     admin = register_admin()
     tenant_id = admin["user"]["tenant_id"]
     if role_name == "Admin":
@@ -117,11 +145,22 @@ def test_erp_dashboard_allows_matrix_roles_with_stale_json(
         assert resp.status_code == 200, resp.text
         return
 
-    # Grant only a subset; runtime matrix merge must restore dashboard.
-    limited = make_restricted_user(tenant_id, ["reports:view", "alerts"], role_name=role_name)
+    limited = make_restricted_user(tenant_id, [], role_name=role_name)
     resp = client.get("/api/erp/dashboard", headers=limited["headers"])
     assert resp.status_code == 200, f"{role_name}: {resp.status_code} {resp.text}"
-    assert headers_module  # silence unused in parametrize clarity
+
+
+def test_erp_dashboard_403_when_dashboard_deliberately_removed(
+    register_admin, client, make_restricted_user
+):
+    admin = register_admin()
+    limited = make_restricted_user(
+        admin["user"]["tenant_id"],
+        ["production"],
+        role_name="Operator",
+    )
+    resp = client.get("/api/erp/dashboard", headers=limited["headers"])
+    assert resp.status_code == 403, resp.text
 
 
 def test_erp_dashboard_401_without_auth(client):
@@ -135,6 +174,5 @@ def test_tenant_isolation_dashboard(register_admin, client):
     ra = client.get("/api/erp/dashboard", headers=a["headers"])
     rb = client.get("/api/erp/dashboard", headers=b["headers"])
     assert ra.status_code == 200 and rb.status_code == 200
-    # Both succeed for their own tenant; payloads are tenant-scoped service data.
     assert ra.json().get("success") is True
     assert rb.json().get("success") is True

@@ -61,17 +61,11 @@ def seed_roles(db, tenant_id: int = 1, *, commit: bool = True):
             continue
 
         # Existing role: never overwrite custom Module Permissions.
+        # Deliberate removals must stick — do not silently re-union the matrix.
         if not (role.description or "").strip() and spec.get("description"):
             role.description = spec["description"]
         if _is_admin_role_name(role.name):
             role.permissions = _permissions_for_role("Admin")
-        elif role.name in PERMISSION_MATRIX:
-            # Merge newly introduced matrix modules without wiping admin edits.
-            required = set(_permissions_for_role(role.name))
-            current = set(role.permissions or [])
-            merged = sorted(current | required)
-            if merged != sorted(current):
-                role.permissions = merged
 
     db.flush()
     sync_role_permissions(db, tenant_id)

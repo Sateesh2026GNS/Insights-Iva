@@ -41,12 +41,7 @@ def test_weekly_report_tool_registered_for_sales_manager(register_admin):
 
 def test_document_search_denied_without_documents_permission(register_admin, make_restricted_user):
     admin = register_admin()
-    # Custom role name stays outside PERMISSION_MATRIX so stored JSON is not re-unioned.
-    headers_user = make_restricted_user(
-        admin["user"]["tenant_id"],
-        ["production"],
-        role_name="Shop Floor Limited",
-    )
+    headers_user = make_restricted_user(admin["user"]["tenant_id"], ["production"])
     db = SessionLocal()
     try:
         from app.models.user import User
@@ -56,8 +51,7 @@ def test_document_search_denied_without_documents_permission(register_admin, mak
         user = db.scalar(select(User).where(User.email == headers_user["email"]))
         ctx = build_agent_context(db, user)
         result = search_erp_knowledge_documents(db, ctx, SearchDocumentsInput(query="GRN"))
-        payload = result.model_dump() if hasattr(result, "model_dump") else result
-        assert payload.get("error")
-        assert "permission" in str(payload["error"]).lower()
+        assert result.get("error")
+        assert "permission" in result["error"].lower()
     finally:
         db.close()
