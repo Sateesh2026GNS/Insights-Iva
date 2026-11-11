@@ -276,6 +276,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     from app.utils.error_sanitizer import sanitize_client_message
 
     detail = jsonable_encoder(exc.detail)
+    error_code = detail.get("code") if isinstance(detail, dict) else None
     if request.url.path.startswith("/api/"):
         from app.utils.api_response import error_response
 
@@ -290,7 +291,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             errors = blockers if isinstance(blockers, list) and blockers else [message]
             return JSONResponse(
                 status_code=exc.status_code,
-                content=error_response(message, errors=errors, data=detail),
+                content=error_response(message, errors=errors, data=detail, code=error_code),
             )
         message = sanitize_client_message(
             str(detail) if detail is not None else "Request failed",
@@ -300,6 +301,18 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             status_code=exc.status_code,
             content=error_response(message, errors=[message]),
         )
+    if isinstance(detail, dict):
+        raw_message = detail.get("message") or detail.get("detail") or "Request failed"
+        safe_detail = sanitize_client_message(str(raw_message), status_code=exc.status_code)
+        body = {
+            "detail": safe_detail,
+            "request_id": getattr(request.state, "request_id", None),
+        }
+        if error_code:
+            body["code"] = error_code
+        if detail.get("module"):
+            body["module"] = detail.get("module")
+        return JSONResponse(status_code=exc.status_code, content=body)
     safe_detail = sanitize_client_message(
         str(detail) if detail is not None else "Request failed",
         status_code=exc.status_code,
@@ -574,6 +587,24 @@ def on_shutdown():
         logger.exception("Seed warning during startup")
     finally:
         db.close()
+
+    # Production safety: empty / incomplete CORS allowlist breaks cookie auth from Firebase Hosting.
+    if settings.is_production:
+        origins = settings.cors_origin_list
+        frontend = (settings.frontend_base_url or "").rstrip("/")
+        if not origins:
+            logger.error(
+                "Production CORS allowlist is empty — browser sessions from the SPA will fail. "
+                "Set CORS_ORIGINS to include the Firebase / custom domain origins."
+            )
+        elif frontend and frontend not in origins and not settings.cors_origin_allowed_by_regex(frontend):
+            logger.warning(
+                "FRONTEND_BASE_URL=%s is not in CORS_ORIGINS (and does not match the trusted-host regex). "
+                "Cross-site cookie auth from that origin will fail.",
+                frontend,
+            )
+        else:
+            logger.info("Production CORS allowlist entries=%s frontend=%s", len(origins), frontend or "(unset)")
 
     if not settings.is_production:
         key = (settings.openai_api_key or "").strip()

@@ -42,6 +42,7 @@ import AdminProductionWidgets from "./AdminProductionWidgets";
 import AdminQuickActions from "./AdminQuickActions";
 import ProductionPipeline from "./ProductionPipeline";
 import { getErpDashboard } from "../../../api/dashboardApi";
+import { classifyApiError } from "../../../utils/apiError";
 import { getMyProductionEntries } from "../../../api/operatorExecutionApi";
 import { getProductionOrders, getWorkOrders } from "../../../api/productionApi";
 import { getMyApprovalCounts } from "../../../api/approvalsApi";
@@ -1338,21 +1339,22 @@ export default function ReferenceDashboard() {
       })
       .catch((err) => {
         setApiData(EMPTY_ERP_DASHBOARD);
-        const status = err?.response?.status;
-        let msg = "Unable to load dashboard.";
-        if (status === 401) {
+        const classified = classifyApiError(err, "Unable to load dashboard.");
+        let msg = classified.message;
+        if (classified.type === "session") {
           msg = "Your session has expired. Please log in again to continue.";
-        } else if (status === 403) {
+        } else if (classified.type === "csrf") {
+          msg = classified.message;
+        } else if (classified.type === "permission") {
           msg =
             err?.response?.data?.message ||
-            err?.response?.data?.detail ||
+            (typeof err?.response?.data?.detail === "string"
+              ? err.response.data.detail
+              : null) ||
+            classified.message ||
             "You do not have permission to access this module.";
-        } else {
-          msg =
-            err?.response?.data?.message ||
-            err?.response?.data?.detail ||
-            err?.message ||
-            "Unable to load dashboard.";
+        } else if (classified.type === "network" || classified.type === "server") {
+          msg = classified.message || "Unable to load dashboard.";
         }
         setError(typeof msg === "string" ? msg : "Unable to load dashboard.");
         setLoading(false);

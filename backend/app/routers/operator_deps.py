@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.api.auth_deps import get_current_user
 from app.core.permissions import (
-    MODULE_FORBIDDEN_MESSAGE,
+    raise_permission_denied,
     user_has_any_permission,
     user_has_permission,
 )
@@ -46,10 +46,7 @@ def _check_operator_restrictions(user: User, module_key: str) -> None:
             return
     rbac_module = MODULE_MAP.get(module_key, module_key)
     if not user_has_permission(user, rbac_module):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=MODULE_FORBIDDEN_MESSAGE,
-        )
+        raise_permission_denied(rbac_module)
 
 
 def require_api_access(module_key: str):

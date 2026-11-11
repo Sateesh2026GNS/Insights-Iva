@@ -73,7 +73,12 @@ def test_custom_role_outside_matrix_keeps_only_stored_permissions():
     with pytest.raises(Exception) as exc:
         _check_operator_restrictions(user, "dashboard")
     assert exc.value.status_code == 403
-    assert exc.value.detail == MODULE_FORBIDDEN_MESSAGE
+    detail = exc.value.detail
+    if isinstance(detail, dict):
+        assert detail.get("code") == "PERMISSION_DENIED"
+        assert detail.get("message") == MODULE_FORBIDDEN_MESSAGE or detail.get("detail") == MODULE_FORBIDDEN_MESSAGE
+    else:
+        assert detail == MODULE_FORBIDDEN_MESSAGE
 
 
 def test_sales_manager_does_not_gain_accounts_from_matrix_merge():

@@ -330,16 +330,57 @@ export function mapValidationErrorsToFields(err) {
   return fields;
 }
 
+/** Machine-readable backend error code from envelope or FastAPI detail. */
+export function extractApiErrorCode(err) {
+  const data = err?.response?.data;
+  if (!data || typeof data !== "object") return null;
+  if (typeof data.code === "string" && data.code) return data.code;
+  if (data.data && typeof data.data === "object" && typeof data.data.code === "string") {
+    return data.data.code;
+  }
+  if (data.detail && typeof data.detail === "object" && typeof data.detail.code === "string") {
+    return data.detail.code;
+  }
+  return null;
+}
+
+const CSRF_ERROR_CODES = new Set([
+  "CSRF_ORIGIN_MISMATCH",
+  "CSRF_CLIENT_HEADER_MISSING",
+  "CSRF_TOKEN_MISMATCH",
+  "CSRF_TOKEN_MISSING",
+]);
+
 /**
  * Classify an API error for UI state routing.
- * Types: session | permission | conflict | validation | network | server | not_found | unknown
+ * Types: session | permission | csrf | conflict | validation | network | server | not_found | unknown
  */
 export function classifyApiError(err, fallback = "Something went wrong.") {
   const message = httpStatusMessage(err, fallback);
   const status = err?.response?.status;
+  const code = extractApiErrorCode(err);
 
-  if (status === 401) return { type: "session", message, fields: {} };
-  if (status === 403) return { type: "permission", message, fields: {} };
+  if (status === 401) return { type: "session", message, fields: {}, code };
+  if (status === 403) {
+    if (code && CSRF_ERROR_CODES.has(code)) {
+      return {
+        type: "csrf",
+        message:
+          "Security check failed. Please refresh the page and sign in again.",
+        fields: {},
+        code,
+      };
+    }
+    return {
+      type: "permission",
+      message:
+        typeof message === "string" && message
+          ? message
+          : "You do not have permission to access this module.",
+      fields: {},
+      code: code || "PERMISSION_DENIED",
+    };
+  }
   if (status === 409) return { type: "conflict", message, fields: {} };
   if (status === 400 || status === 422) {
     return {

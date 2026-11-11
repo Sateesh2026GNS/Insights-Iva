@@ -24,8 +24,10 @@ services:
         sync: false
       - key: S3_SECRET_ACCESS_KEY
         sync: false
+      # Comma-separated SPA origins (no trailing slash). Required for cross-site cookies.
       - key: CORS_ORIGINS
         value: "https://insights-734ee.web.app,https://insights-734ee.firebaseapp.com,https://www.insightsiva.com,https://insightsiva.com,https://insights-iva-api.onrender.com"
+      # Cross-site Firebase → Render: SameSite=None + Secure are mandatory.
       - key: AUTH_COOKIE_MODE
         value: cookie
       - key: AUTH_COOKIE_SAMESITE
@@ -34,8 +36,9 @@ services:
         value: "true"
       - key: ALLOWED_HOSTS
         value: "insights-iva-api.onrender.com,*.onrender.com,insights-734ee.web.app,insights-734ee.firebaseapp.com,www.insightsiva.com,insightsiva.com"
+      # Primary SPA URL (must appear in CORS_ORIGINS or match trusted HTTPS regex).
       - key: FRONTEND_BASE_URL
-        value: "https://insights-734ee.web.app"
+        value: "https://insightsiva.com"
       - key: SMTP_HOST
         value: "smtp.gmail.com"
       - key: SMTP_PORT

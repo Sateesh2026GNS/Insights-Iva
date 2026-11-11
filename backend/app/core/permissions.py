@@ -222,10 +222,7 @@ def user_can_write_material_pricing(user: User) -> bool:
 def require_material_pricing_read():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_read_material_pricing(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("material_pricing:read")
         return current_user
 
     return dependency
@@ -234,10 +231,7 @@ def require_material_pricing_read():
 def require_material_pricing_write():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_write_material_pricing(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("material_pricing:write")
         return current_user
 
     return dependency
@@ -267,10 +261,7 @@ def user_can_write_product_master(user: User) -> bool:
 def require_product_master_write():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_write_product_master(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("masters:product_write")
         return current_user
 
     return dependency
@@ -360,15 +351,9 @@ def user_can_create_lead(user: User) -> bool:
 def require_lead_create():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_permission(current_user, "sales"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("sales")
         if not user_can_create_lead(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("leads:create")
         return current_user
 
     return dependency
@@ -412,15 +397,37 @@ def require_admin_role(current_user: User = Depends(get_current_user)) -> User:
 
 
 MODULE_FORBIDDEN_MESSAGE = "You do not have permission to access this module."
+PERMISSION_DENIED_CODE = "PERMISSION_DENIED"
+
+
+def permission_denied_detail(module: str | None = None) -> dict:
+    """Machine-readable 403 payload for RBAC denials (frontend branches on ``code``)."""
+    payload = {
+        "message": MODULE_FORBIDDEN_MESSAGE,
+        "detail": MODULE_FORBIDDEN_MESSAGE,
+        "code": PERMISSION_DENIED_CODE,
+    }
+    if module:
+        payload["module"] = module
+    return payload
+
+
+def raise_permission_denied(module: str | None = None) -> None:
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "missing_permission module=%s", module or "(unspecified)"
+    )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=permission_denied_detail(module),
+    )
 
 
 def require_permission(module: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_permission(current_user, module):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(module)
         return current_user
 
     return dependency
@@ -429,10 +436,7 @@ def require_permission(module: str):
 def require_any_permission(*modules: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_any_permission(current_user, *modules):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("|".join(modules) if modules else None)
         return current_user
 
     return dependency
@@ -449,24 +453,15 @@ def require_approval_queue_access(current_user: User = Depends(get_current_user)
     reject_shop_floor_operator(current_user)
     if user_can_access_approval_queue(current_user):
         return current_user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=MODULE_FORBIDDEN_MESSAGE,
-    )
+    raise_permission_denied("approval_queue")
 
 
 def require_action(module: str, action: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_permission(current_user, module):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(module)
         if not user_can_action(current_user, module, action):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(f"{module}:{action}")
         return current_user
 
     return dependency
@@ -528,10 +523,7 @@ def user_can_access_analytics_child(user: User, child_key: str) -> bool:
 def require_analytics_child(child_key: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_access_analytics_child(current_user, child_key):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(f"analytics:{child_key}")
         return current_user
 
     return dependency
@@ -563,10 +555,7 @@ def tenant_scope_action(module: str, action: str):
 def require_accounts_expense_access():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_accounts_expense_access(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("accounts:expense")
         return current_user
 
     return dependency
@@ -587,10 +576,7 @@ def require_accounts_expense_action(action: str):
             return current_user
         if _is_store_manager(current_user):
             return current_user
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=MODULE_FORBIDDEN_MESSAGE,
-        )
+        raise_permission_denied(f"accounts:{action}")
 
     return dependency
 

@@ -75,7 +75,15 @@ def test_user_without_dashboard_module_is_forbidden():
     with pytest.raises(Exception) as exc:
         _check_operator_restrictions(user, "dashboard")
     assert exc.value.status_code == 403
-    assert exc.value.detail == MODULE_FORBIDDEN_MESSAGE
+    detail = exc.value.detail
+    if isinstance(detail, dict):
+        assert detail.get("code") == "PERMISSION_DENIED"
+        assert MODULE_FORBIDDEN_MESSAGE in (
+            detail.get("message"),
+            detail.get("detail"),
+        )
+    else:
+        assert detail == MODULE_FORBIDDEN_MESSAGE
 
 
 def test_erp_dashboard_ok_for_admin(register_admin, client):
@@ -95,6 +103,9 @@ def test_erp_dashboard_forbidden_without_dashboard_module(register_admin, client
     resp = client.get("/api/erp/dashboard", headers=limited["headers"])
     assert resp.status_code == 403
     payload = resp.json()
+    assert payload.get("code") == "PERMISSION_DENIED" or (
+        isinstance(payload.get("data"), dict) and payload["data"].get("code") == "PERMISSION_DENIED"
+    )
     assert (
         payload.get("message") == MODULE_FORBIDDEN_MESSAGE
         or payload.get("detail") == MODULE_FORBIDDEN_MESSAGE
