@@ -18,8 +18,24 @@ EXTRA_PERMISSION_MODULES = frozenset({"leads", "reports"})
 REPORTS_ACTIONS = frozenset({"view", "run", "export", "create", "share", "schedule"})
 
 
+def normalize_role_name(value: str | None) -> str:
+    """Match frontend ``normalizeRoleName`` — trim, lower, collapse separators."""
+    return " ".join(
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("_", " ")
+        .replace("-", " ")
+        .split()
+    )
+
+
+def is_admin_role_name(value: str | None) -> bool:
+    return normalize_role_name(value) == "admin"
+
+
 def is_valid_permission(code: str) -> bool:
-    if code in VALID_MODULES or code in ("admin", "*"):
+    if code in VALID_MODULES or code in ("admin", "*") or code in EXTRA_PERMISSION_MODULES:
         return True
     if ":" not in code:
         return False
@@ -46,6 +62,10 @@ def get_role_names(user: User) -> list[str]:
             names.append(str(getattr(user, "role")))
         if hasattr(user, "role_name") and getattr(user, "role_name"):
             names.append(str(getattr(user, "role_name")))
+        # JWT preferred role (set by get_current_user) — only keep if already assigned.
+        active = getattr(user, "active_role", None)
+        if active and any(normalize_role_name(n) == normalize_role_name(active) for n in names):
+            names.append(str(active))
         if isinstance(user, dict):
             if "role" in user and user["role"]:
                 names.append(str(user["role"]))
@@ -53,7 +73,16 @@ def get_role_names(user: User) -> list[str]:
                 names.append(str(user["role_name"]))
             if "roles" in user and isinstance(user["roles"], list):
                 names.extend([str(r) for r in user["roles"]])
-        return names
+        # Preserve order, drop empties/duplicates.
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for name in names:
+            key = str(name)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            ordered.append(key)
+        return ordered
     except Exception as exc:
         import logging
         logging.getLogger(__name__).exception("get_role_names failed for user %s: %s", getattr(user, "id", None), exc)
@@ -75,11 +104,22 @@ def _normalize_permissions(raw_permissions) -> list[str]:
 
 
 def _permissions_for_role_name(name: str) -> list[str]:
+    if is_admin_role_name(name):
+        admin_spec = PERMISSION_MATRIX.get("Admin", {})
+        perms = set(VALID_MODULES)
+        perms.update(admin_spec.get("modules") or [])
+        perms.update(admin_spec.get("actions") or [])
+        return sorted(perms)
     spec = PERMISSION_MATRIX.get(name, {})
+    if not spec:
+        # Case-insensitive matrix lookup (e.g. "sales manager").
+        target = normalize_role_name(name)
+        for key, value in PERMISSION_MATRIX.items():
+            if normalize_role_name(key) == target:
+                spec = value
+                break
     perms = list(spec.get("modules", []))
     perms.extend(spec.get("actions", []))
-    if name == "Admin":
-        return sorted(VALID_MODULES)
     return sorted(set(perms))
 
 
@@ -87,9 +127,11 @@ def _with_role_baseline(role_name: str | None, perms: set[str]) -> set[str]:
     """Keep stored role JSON, and include Settings for Quality Control.
 
     Older Quality Control rows were saved before Settings was part of the role.
-    Admin-only modules are not added here.
+    Admin always expands to full catalog access (stored JSON may be stale).
     """
-    if role_name == "Quality Control":
+    if is_admin_role_name(role_name):
+        return set(_permissions_for_role_name("Admin"))
+    if normalize_role_name(role_name) == "quality control":
         perms.add("settings")
     return perms
 
@@ -101,18 +143,20 @@ def get_user_permissions(user: User) -> set[str]:
     try:
         roles = getattr(user, "roles", []) or []
         for role in roles:
-            normalized = _normalize_permissions(getattr(role, "permissions", None))
             role_name = getattr(role, "name", None) if hasattr(role, "name") else (
                 role if isinstance(role, str) else None
             )
+            if is_admin_role_name(role_name):
+                perms.update(_permissions_for_role_name("Admin"))
+                continue
+            normalized = _normalize_permissions(getattr(role, "permissions", None))
             if normalized:
                 perms.update(_with_role_baseline(role_name, set(normalized)))
-            elif role_name and role_name in PERMISSION_MATRIX:
+            elif role_name:
                 perms.update(_permissions_for_role_name(role_name))
         if not roles:
             for name in get_role_names(user):
-                if name in PERMISSION_MATRIX:
-                    perms.update(_permissions_for_role_name(name))
+                perms.update(_permissions_for_role_name(name))
     except Exception as exc:
         import logging
         logging.getLogger(__name__).exception("get_user_permissions failed for user %s: %s", getattr(user, "id", None), exc)
@@ -251,7 +295,7 @@ def user_can_write_accounts_tenant_pref(user: User, key: str) -> bool:
 
 def user_is_admin(user: User) -> bool:
     try:
-        if ADMIN_ROLE in get_role_names(user):
+        if any(is_admin_role_name(n) for n in get_role_names(user)):
             return True
         perms = get_user_permissions(user)
         return "admin" in perms or "*" in perms
@@ -354,7 +398,7 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 def require_admin_role(current_user: User = Depends(get_current_user)) -> User:
     """Require the tenant Admin role name (not wildcard permission grants alone)."""
-    if ADMIN_ROLE not in get_role_names(current_user):
+    if not any(is_admin_role_name(n) for n in get_role_names(current_user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Administrator privileges are required to perform this action.",

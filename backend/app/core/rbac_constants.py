@@ -20,6 +20,7 @@ MODULE_CATALOG = [
     {"code": "hr", "label": "Human Resources"},
     {"code": "settings", "label": "Settings"},
     {"code": "admin", "label": "Security & Administration"},
+    {"code": "reports", "label": "Reports Center"},
 ]
 
 VALID_MODULES = {m["code"] for m in MODULE_CATALOG}
@@ -54,7 +55,7 @@ REGISTERABLE_ROLES = [
 
 PERMISSION_MATRIX = {
     "Admin": {
-        "modules": list(VALID_MODULES) + ["reports"],
+        "modules": list(VALID_MODULES),
         "actions": [
             "reports:view",
             "reports:run",

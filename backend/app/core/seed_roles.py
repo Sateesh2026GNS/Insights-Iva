@@ -10,12 +10,18 @@ from app.core.rbac_constants import MODULE_CATALOG, PERMISSION_MATRIX, REGISTERA
 MODULES = [m["code"] for m in MODULE_CATALOG]
 
 
+def _is_admin_role_name(name: str | None) -> bool:
+    """Local helper — avoid importing permissions (circular with auth_service)."""
+    return " ".join(str(name or "").strip().lower().replace("_", " ").replace("-", " ").split()) == "admin"
+
+
 def _permissions_for_role(name: str) -> list[str]:
     spec = PERMISSION_MATRIX.get(name, {})
     perms = list(spec.get("modules", []))
     perms.extend(spec.get("actions", []))
-    if name == "Admin":
-        return list(MODULES)
+    if _is_admin_role_name(name):
+        # Admin keeps full module catalog + matrix actions (reports:* etc.).
+        return sorted(set(MODULES) | set(perms))
     return sorted(set(perms))
 
 
@@ -57,8 +63,8 @@ def seed_roles(db, tenant_id: int = 1, *, commit: bool = True):
         # Existing role: never overwrite custom Module Permissions.
         if not (role.description or "").strip() and spec.get("description"):
             role.description = spec["description"]
-        if role.name == "Admin":
-            role.permissions = list(MODULES)
+        if _is_admin_role_name(role.name):
+            role.permissions = _permissions_for_role("Admin")
         elif role.name in PERMISSION_MATRIX:
             # Merge newly introduced matrix modules without wiping admin edits.
             required = set(_permissions_for_role(role.name))

@@ -1339,10 +1339,22 @@ export default function ReferenceDashboard() {
       .catch((err) => {
         setApiData(EMPTY_ERP_DASHBOARD);
         const status = err?.response?.status;
-        const msg = status === 401
-          ? "Your session has expired. Please log in again to continue."
-          : err?.response?.data?.message || err?.message || "Unable to load dashboard.";
-        setError(msg);
+        let msg = "Unable to load dashboard.";
+        if (status === 401) {
+          msg = "Your session has expired. Please log in again to continue.";
+        } else if (status === 403) {
+          msg =
+            err?.response?.data?.message ||
+            err?.response?.data?.detail ||
+            "You do not have permission to access this module.";
+        } else {
+          msg =
+            err?.response?.data?.message ||
+            err?.response?.data?.detail ||
+            err?.message ||
+            "Unable to load dashboard.";
+        }
+        setError(typeof msg === "string" ? msg : "Unable to load dashboard.");
         setLoading(false);
       });
 
