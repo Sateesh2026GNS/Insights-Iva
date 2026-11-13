@@ -1,19 +1,40 @@
+# Insights IVA API — Render Blueprint aligned with the existing Docker production service.
+#
+# Service name and public hostname must stay:
+#   insights-iva-api  →  https://insights-iva-api.onrender.com
+#
+# Production today is managed primarily via the Render Dashboard (Docker runtime).
+# This file documents / can sync the same shape. Do NOT set generateValue on JWT_SECRET_KEY
+# (that would rotate the secret and invalidate sessions).
+#
+# Secrets (DATABASE_URL, JWT, S3, SMTP password, Resend, OpenAI, Google OAuth) stay
+# dashboard-managed: sync: false means "use existing / set in Dashboard", never commit values.
+#
+# Alembic: Dockerfile CMD runs `alembic upgrade heads` before Gunicorn.
+# Do not also run Alembic in a Python buildCommand (this service is not native Python).
+
 services:
   - type: web
     name: insights-iva-api
-    runtime: python
+    runtime: docker
     rootDir: backend
-    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade heads"
-    startCommand: "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:$PORT"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Omit dockerCommand → use Dockerfile CMD:
+    #   alembic upgrade heads && gunicorn ... -b 0.0.0.0:$PORT
+    healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.0
       - key: ENVIRONMENT
         value: production
+
+      # Existing Postgres — preserve; never recreate from Blueprint.
       - key: DATABASE_URL
         sync: false
+
+      # Preserve existing secret — do not use generateValue.
       - key: JWT_SECRET_KEY
-        generateValue: true
+        sync: false
+
       - key: STORAGE_PROVIDER
         value: s3
       - key: S3_BUCKET
@@ -24,35 +45,39 @@ services:
         sync: false
       - key: S3_SECRET_ACCESS_KEY
         sync: false
-      # Comma-separated SPA origins (no trailing slash). Required for cross-site cookies.
+
+      # SPA origins (no trailing slash). Keep legacy Firebase *.web.app hosts until cutover confirmed.
       - key: CORS_ORIGINS
-        value: "https://insights-734ee.web.app,https://insights-734ee.firebaseapp.com,https://www.insightsiva.com,https://insightsiva.com,https://insights-iva-api.onrender.com"
-      # Cross-site Firebase → Render: SameSite=None + Secure are mandatory.
+        value: "https://www.insightsiva.com,https://insightsiva.com,https://insights-734ee.web.app,https://insights-734ee.firebaseapp.com,https://insights-iva-api.onrender.com"
+
+      # Cross-site Firebase / custom domain → Render API cookies.
       - key: AUTH_COOKIE_MODE
         value: cookie
       - key: AUTH_COOKIE_SAMESITE
         value: none
       - key: AUTH_COOKIE_SECURE
         value: "true"
+
       - key: ALLOWED_HOSTS
-        value: "insights-iva-api.onrender.com,*.onrender.com,insights-734ee.web.app,insights-734ee.firebaseapp.com,www.insightsiva.com,insightsiva.com"
-      # Primary SPA URL (must appear in CORS_ORIGINS or match trusted HTTPS regex).
+        value: "insights-iva-api.onrender.com,*.onrender.com,www.insightsiva.com,insightsiva.com,insights-734ee.web.app,insights-734ee.firebaseapp.com"
+
       - key: FRONTEND_BASE_URL
         value: "https://insightsiva.com"
+
       - key: SMTP_HOST
         value: "smtp.gmail.com"
       - key: SMTP_PORT
         value: "465"
       - key: SMTP_USERNAME
-        value: "admin@codeviasoftware.com"
+        sync: false
       - key: SMTP_PASSWORD
         sync: false
       - key: SMTP_FROM_EMAIL
-        value: "admin@codeviasoftware.com"
-      # Set this secret in Render to enable reliable HTTPS email delivery.
+        sync: false
+
       - key: RESEND_API_KEY
         sync: false
-      # OpenAI / AI Assistant — set OPENAI_API_KEY in Render dashboard (Environment tab)
+
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
@@ -63,7 +88,7 @@ services:
         value: "true"
       - key: AGENT_WRITE_TOOLS_ENABLED
         value: "false"
-      # Google Calendar OAuth — set in the Render dashboard. Do not commit real values.
+
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
