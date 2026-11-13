@@ -42,11 +42,39 @@ def test_normalize_role_name_matches_frontend():
 
 def test_admin_with_stale_reports_only_json_still_has_dashboard():
     """Stored Admin JSON may lag the catalog; Admin name must still grant dashboard."""
-    user = _User(roles=[_Role("Admin", ["reports:view", "reports:run"])])
+    from app.services.auth_service import _permissions_for_role_record
+
+    role = _Role("Admin", ["reports:view", "reports:run"])
+    user = _User(roles=[role])
     assert user_is_admin(user) is True
     assert user_has_permission(user, "dashboard") is True
     assert "dashboard" in get_user_permissions(user)
     assert "reports" in get_user_permissions(user)
+    # Login /auth/me must expose the same Admin catalog (not stale JSON only).
+    login_perms = _permissions_for_role_record(role)
+    assert "dashboard" in login_perms
+    assert "admin" in login_perms or "inventory" in login_perms
+
+
+def test_admin_alias_casing_expands_for_api_and_login_payload():
+    from app.services.auth_service import _permissions_for_role_record
+
+    role = _Role("admin", ["sales"])
+    user = _User(roles=[role])
+    assert user_is_admin(user) is True
+    assert user_has_permission(user, "dashboard") is True
+    assert "dashboard" in _permissions_for_role_record(role)
+
+
+def test_non_admin_stale_json_is_not_expanded_to_full_catalog():
+    """Preserve explicit Module Permissions revocations for non-Admin roles."""
+    from app.services.auth_service import _permissions_for_role_record
+
+    role = _Role("Sales Manager", ["dashboard", "sales"])
+    user = _User(roles=[role])
+    assert user_has_permission(user, "sales") is True
+    assert user_has_permission(user, "accounts") is False
+    assert set(_permissions_for_role_record(role)) == {"dashboard", "sales"}
 
 
 def test_lowercase_admin_role_has_dashboard_even_with_partial_json():
