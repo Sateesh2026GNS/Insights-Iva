@@ -335,8 +335,17 @@ def issue_auth_response_data(
 
 
 def _permissions_for_role_record(role) -> list[str]:
-    """Resolve module/action permissions for a single role (JSON or matrix fallback)."""
+    """Resolve module/action permissions for a single role (JSON or matrix fallback).
+
+    Aligned with get_user_permissions Admin expand: Admin (any casing) always
+    gets the full catalog. Non-Admin non-empty JSON is honored as-is.
+    """
+    from app.core.permissions import is_admin_role_name, normalize_role_name
     from app.core.rbac_constants import PERMISSION_MATRIX, VALID_MODULES
+
+    role_name = getattr(role, "name", None)
+    if is_admin_role_name(role_name):
+        return sorted(VALID_MODULES)
 
     raw = getattr(role, "permissions", None) or []
     if isinstance(raw, str):
@@ -349,15 +358,21 @@ def _permissions_for_role_record(role) -> list[str]:
     normalized = list(raw) if isinstance(raw, (list, tuple, set)) else []
     if normalized:
         return sorted(set(normalized))
-    spec = PERMISSION_MATRIX.get(getattr(role, "name", ""), {})
-    perms = list(spec.get("modules", []))
-    perms.extend(spec.get("actions", []))
-    if getattr(role, "name", None) == "Admin":
-        return sorted(VALID_MODULES)
+
+    spec = PERMISSION_MATRIX.get(role_name or "", {})
+    if not spec:
+        target = normalize_role_name(role_name)
+        for key, value in PERMISSION_MATRIX.items():
+            if normalize_role_name(key) == target:
+                spec = value
+                break
+    perms = list(spec.get("modules", []) or [])
+    perms.extend(spec.get("actions", []) or [])
     return sorted(set(perms))
 
 
 def get_user_with_role(db: Session, user: User, *, preferred_role: str | None = None) -> dict:
+    from app.core.permissions import normalize_role_name
     from app.models.platform import CompanyLicense
 
     roles = getattr(user, "roles", None)
@@ -367,7 +382,11 @@ def get_user_with_role(db: Session, user: User, *, preferred_role: str | None = 
     role_names = [r.name for r in roles]
     primary = None
     if preferred_role:
-        primary = next((r for r in roles if r.name == preferred_role), None)
+        want = normalize_role_name(preferred_role)
+        primary = next(
+            (r for r in roles if normalize_role_name(r.name) == want),
+            None,
+        )
     if primary is None:
         primary = roles[0] if roles else None
     role_name = primary.name if primary else "Operator"

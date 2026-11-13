@@ -12,6 +12,23 @@ ADMIN_ROLE = "Admin"
 RESTRICTED_ACTION_ROLES = frozenset({"Operator"})
 
 
+
+def normalize_role_name(value: str | None) -> str:
+    """Match frontend normalizeRoleName — trim, lower, collapse separators."""
+    return " ".join(
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("_", " ")
+        .replace("-", " ")
+        .split()
+    )
+
+
+def is_admin_role_name(value: str | None) -> bool:
+    return normalize_role_name(value) == "admin"
+
+
 EXTRA_PERMISSION_MODULES = frozenset({"leads"})
 
 
@@ -70,33 +87,50 @@ def _normalize_permissions(raw_permissions) -> list[str]:
 
 
 def _permissions_for_role_name(name: str) -> list[str]:
+    if is_admin_role_name(name):
+        return sorted(VALID_MODULES)
     spec = PERMISSION_MATRIX.get(name, {})
+    if not spec:
+        target = normalize_role_name(name)
+        for key, value in PERMISSION_MATRIX.items():
+            if normalize_role_name(key) == target:
+                spec = value
+                break
     perms = list(spec.get("modules", []))
     perms.extend(spec.get("actions", []))
-    if name == "Admin":
-        return sorted(VALID_MODULES)
     return sorted(set(perms))
 
 
 def get_user_permissions(user: User) -> set[str]:
+    """Resolve permissions from assigned roles only.
+
+    Admin (any casing) always expands to the full module catalog so stale
+    Module Permissions JSON cannot 403 the Admin dashboard.
+    Non-Admin non-empty stored JSON is honored as-is (explicit revocations stick).
+    Empty JSON on a known matrix role falls back to PERMISSION_MATRIX.
+    Does not union matrix modules onto partial non-Admin roles.
+    """
     perms: set[str] = set()
     if not user:
         return perms
     try:
         roles = getattr(user, "roles", []) or []
         for role in roles:
-            normalized = _normalize_permissions(getattr(role, "permissions", None))
             role_name = getattr(role, "name", None) if hasattr(role, "name") else (
                 role if isinstance(role, str) else None
             )
+            if is_admin_role_name(role_name):
+                perms.update(_permissions_for_role_name("Admin"))
+                continue
+            normalized = _normalize_permissions(getattr(role, "permissions", None))
             if normalized:
                 perms.update(normalized)
-            elif role_name and role_name in PERMISSION_MATRIX:
+            elif role_name:
+                # Case-insensitive matrix fallback for empty JSON only.
                 perms.update(_permissions_for_role_name(role_name))
         if not roles:
             for name in get_role_names(user):
-                if name in PERMISSION_MATRIX:
-                    perms.update(_permissions_for_role_name(name))
+                perms.update(_permissions_for_role_name(name))
     except Exception as exc:
         import logging
         logging.getLogger(__name__).exception("get_user_permissions failed for user %s: %s", getattr(user, "id", None), exc)
@@ -235,7 +269,7 @@ def user_can_write_accounts_tenant_pref(user: User, key: str) -> bool:
 
 def user_is_admin(user: User) -> bool:
     try:
-        if ADMIN_ROLE in get_role_names(user):
+        if any(is_admin_role_name(n) for n in get_role_names(user)):
             return True
         perms = get_user_permissions(user)
         return "admin" in perms or "*" in perms
