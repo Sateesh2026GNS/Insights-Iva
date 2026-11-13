@@ -766,7 +766,6 @@ from app.schemas.store_workflow import (
     StoreConsumeCreate,
     PendingInventoryChecksListRead,
     StoreDashboardRead,
-    StoreStockValueByCategoryRead,
     StoreIssueRequestAction,
     StoreIssueRequestCreate,
     StoreIssueRequestRead,
@@ -774,6 +773,7 @@ from app.schemas.store_workflow import (
     StoreReturnRead,
     StoreStockInCreate,
     StoreStockInRead,
+    StoreStockValueByCategoryRead,
 )
 from app.services import store_workflow_service as store_wf
 

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date, datetime
 
 from fastapi import HTTPException
-from collections import defaultdict
-
-from sqlalchemy import and_, func, select, or_
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -35,14 +34,14 @@ from app.schemas.store_workflow import (
     StoreDashboardRead,
     StoreDashboardTodayMovement,
     StoreDashboardTransferRow,
-    StoreStockValueByCategoryRead,
-    StoreStockValueCategoryRow,
     StoreIssueRequestCreate,
     StoreIssueRequestRead,
     StoreReturnCreate,
     StoreReturnRead,
     StoreStockInCreate,
     StoreStockInRead,
+    StoreStockValueByCategoryRead,
+    StoreStockValueCategoryRow,
 )
 from app.services.inventory_service import get_total_stock, record_stock_movement
 from app.services.procurement_service import (
@@ -709,6 +708,11 @@ _UNVALUED_CATEGORY_KEY = "Unvalued"
 def get_store_stock_value_by_category(
     db: Session, tenant_id: int, user: User
 ) -> StoreStockValueByCategoryRead:
+    """Aggregate on-hand stock value by item category for accessible warehouses.
+
+    Tenant isolation: InventoryItem.tenant_id == tenant_id.
+    Warehouse isolation: only warehouses from resolve_accessible_warehouse_ids.
+    """
     from app.services.reports.scope import resolve_accessible_warehouse_ids
 
     warehouse_ids = resolve_accessible_warehouse_ids(db, tenant_id, user, None)
@@ -741,7 +745,9 @@ def get_store_stock_value_by_category(
         .having(func.coalesce(func.sum(StockLevel.quantity), 0) > 0)
     )
 
-    buckets: dict[str, dict[str, float | int]] = defaultdict(lambda: {"value": 0.0, "item_count": 0})
+    buckets: dict[str, dict[str, float | int]] = defaultdict(
+        lambda: {"value": 0.0, "item_count": 0}
+    )
     has_unvalued = False
 
     for row in db.execute(stmt).all():
@@ -770,7 +776,10 @@ def get_store_stock_value_by_category(
         or (name == _UNVALUED_CATEGORY_KEY and int(data["item_count"]) > 0)
     ]
     categories.sort(key=lambda row: row.value, reverse=True)
-    total_value = round(sum(c.value for c in categories if c.category != _UNVALUED_CATEGORY_KEY), 2)
+    total_value = round(
+        sum(c.value for c in categories if c.category != _UNVALUED_CATEGORY_KEY),
+        2,
+    )
 
     return StoreStockValueByCategoryRead(
         total_value=total_value,
