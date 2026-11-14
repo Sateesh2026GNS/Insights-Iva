@@ -57,9 +57,9 @@ describe("qualityControlNavConfig", () => {
       "materials",
       "alerts",
       "documents",
-      "meetings",
-      "chat",
       "analytics",
+      "chat",
+      "meetings",
     ]);
   });
 });

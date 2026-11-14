@@ -46,7 +46,9 @@ export default function StockValueByCategoryCard() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+    // Intentionally omit `t`: translator identity must not retrigger fetch/loading loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount/retry fetch only
+  }, []);
 
   useEffect(() => {
     load();
