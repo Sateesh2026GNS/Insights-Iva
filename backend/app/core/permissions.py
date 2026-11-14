@@ -138,6 +138,14 @@ def _with_role_baseline(role_name: str | None, perms: set[str]) -> set[str]:
 
 
 def get_user_permissions(user: User) -> set[str]:
+    """Resolve permissions from assigned roles only.
+
+    Admin (any casing) always expands to the full module catalog so stale
+    Module Permissions JSON cannot 403 the Admin dashboard.
+    Non-Admin non-empty stored JSON is honored as-is (explicit revocations stick).
+    Empty JSON on a known matrix role falls back to PERMISSION_MATRIX.
+    Does not union matrix modules onto partial non-Admin roles.
+    """
     perms: set[str] = set()
     if not user:
         return perms
