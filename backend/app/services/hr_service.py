@@ -571,6 +571,7 @@ def update_leave_request(
     approver_name: str | None = None,
     rejection_reason: str | None = None,
     approver_user_id: int | None = None,
+    commit: bool = True,
 ) -> LeaveRequest | None:
     leave = db.scalars(
         select(LeaveRequest).where(
@@ -637,9 +638,15 @@ def update_leave_request(
         )
 
     try:
-        db.commit()
-        db.refresh(leave)
-        if audit_details or (new_status in ("approved", "rejected") and old_status != new_status):
+        if commit:
+            db.commit()
+            db.refresh(leave)
+        else:
+            db.flush()
+        if commit and (
+            audit_details
+            or (new_status in ("approved", "rejected") and old_status != new_status)
+        ):
             try:
                 from app.services.audit_service import log_audit
 
@@ -789,4 +796,3 @@ def delete_safety_incident(db: Session, tenant_id: int, incident_id: int) -> boo
 def get_employee_summary(db: Session, tenant_id: int):
     from app.services.hr_extended_service import get_employee_summary as _get_employee_summary
     return _get_employee_summary(db, tenant_id)
-

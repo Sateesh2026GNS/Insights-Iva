@@ -294,10 +294,16 @@ export default defineConfig({
     pool: "forks",
     maxWorkers: 1,
     fileParallelism: false,
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
+    teardownTimeout: 10_000,
+    // Fail fast on hung waitFor/assertions instead of stalling the worker forever.
+    expect: { poll: { timeout: 5_000 } },
     poolOptions: {
       forks: {
         // Child workers default to ~2GB heap; pass the same limit as the npm test script.
         execArgv: ["--max-old-space-size=8192"],
+        isolate: true,
       },
     },
   },

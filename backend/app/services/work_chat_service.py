@@ -63,9 +63,13 @@ def _require_member(db: Session, user: User, conversation_id: int) -> WorkChatMe
     return member
 
 
-def _user_brief(u: User | None) -> dict | None:
+def _user_brief(u: User | None, viewer: User | None = None) -> dict | None:
     if not u or not u.is_active:
         return None
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if viewer is not None and is_shop_floor_operator(viewer):
+        return {"id": u.id, "full_name": u.full_name}
     role_names = [role.name for role in (u.roles or []) if role.name]
     return {
         "id": u.id,
@@ -130,7 +134,7 @@ def serialize_conversation(db: Session, conv: WorkChatConversation, member: Work
     member_users = []
     for m in members:
         u = db.get(User, m.user_id)
-        brief = _user_brief(u)
+        brief = _user_brief(u, viewer)
         if brief:
             member_users.append({**brief, "role": m.member_role})
     return {
@@ -155,7 +159,7 @@ def serialize_message(db: Session, msg: WorkChatMessage, viewer: User) -> dict:
             reply = {
                 "id": parent.id,
                 "body": parent.body[:200],
-                "sender": _user_brief(db.get(User, parent.sender_id)),
+                "sender": _user_brief(db.get(User, parent.sender_id), viewer),
             }
     attachments = []
     for att in msg.attachments:
@@ -219,7 +223,7 @@ def serialize_message(db: Session, msg: WorkChatMessage, viewer: User) -> dict:
         "id": msg.id,
         "conversation_id": msg.conversation_id,
         "body": body,
-        "sender": _user_brief(sender),
+        "sender": _user_brief(sender, viewer),
         "reply_to": reply,
         "mentions": mentions,
         "attachments": attachments,
@@ -265,6 +269,8 @@ def list_conversations(db: Session, user: User, search: str | None = None) -> di
 
 
 def search_users(db: Session, user: User, query: str, limit: int = 50) -> dict:
+    from app.services.operator_scope import is_shop_floor_operator
+
     stmt = select(User).where(
         User.tenant_id == user.tenant_id,
         User.is_active.is_(True),
@@ -272,12 +278,15 @@ def search_users(db: Session, user: User, query: str, limit: int = 50) -> dict:
     )
     if query and query.strip():
         term = f"%{query.strip().lower()}%"
-        stmt = stmt.where(or_(func.lower(User.full_name).like(term), func.lower(User.email).like(term)))
+        if is_shop_floor_operator(user):
+            stmt = stmt.where(func.lower(User.full_name).like(term))
+        else:
+            stmt = stmt.where(or_(func.lower(User.full_name).like(term), func.lower(User.email).like(term)))
 
     users = db.scalars(
         stmt.order_by(User.full_name.asc()).limit(min(limit, 100))
     ).all()
-    return {"items": [_user_brief(u) for u in users if _user_brief(u)]}
+    return {"items": [_user_brief(u, user) for u in users if _user_brief(u, user)]}
 
 
 def get_or_create_direct(db: Session, user: User, other_user_id: int) -> dict:

@@ -47,10 +47,12 @@ def sync_role_permissions(db: Session, tenant_id: int) -> None:
     """Rebuild role_permissions for a tenant from Role.permissions JSON."""
     seed_permission_catalog(db)
     roles = list(db.scalars(select(Role).where(Role.tenant_id == tenant_id)).all())
+    from app.core.seed_roles import _is_admin_role_name, _permissions_for_role
+
     for role in roles:
         codes = list(role.permissions or [])
-        if role.name == "Admin":
-            codes = [m["code"] for m in MODULE_CATALOG]
+        if _is_admin_role_name(role.name):
+            codes = _permissions_for_role("Admin")
         wanted = {p.id for p in _permission_rows_for_codes(db, codes)}
         existing_links = list(
             db.scalars(select(RolePermission).where(RolePermission.role_id == role.id)).all()

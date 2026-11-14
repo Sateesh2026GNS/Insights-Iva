@@ -25,6 +25,8 @@ export default function ReportExportToolbar({
   pdfOptions,
   formats = REPORT_EXPORT_FORMATS,
   onEmail,
+  /** Called after a download file is generated successfully. */
+  onDownloadComplete,
   /** When "modal", Email button only opens UI (no success toast). */
   emailMode = "modal",
   emptyMessage = "No data available for the selected period.",
@@ -45,13 +47,16 @@ export default function ReportExportToolbar({
     setDownloading(true);
     try {
       const ok = await runReportExport(format, { rows, columns: exportColumns, title, filename, pdfOptions });
-      if (ok) addToast("Download complete", "success");
+      if (ok) {
+        addToast("Download complete", "success");
+        onDownloadComplete?.();
+      }
     } catch {
       addToast("Unable to generate the report. Please try again.", "error");
     } finally {
       setDownloading(false);
     }
-  }, [rows, exportColumns, title, filename, format, pdfOptions, emptyMessage, addToast]);
+  }, [rows, exportColumns, title, filename, format, pdfOptions, emptyMessage, addToast, onDownloadComplete]);
 
   const onEmailClick = useCallback(async () => {
     if (!onEmail) return;

@@ -7,12 +7,14 @@ import {
   Boxes,
   CalendarDays,
   CheckCircle2,
+  ClipboardList,
   Factory,
   FolderOpen,
   GraduationCap,
   Landmark,
   Layers,
   LayoutDashboard,
+  MessageSquare,
   Palmtree,
   Settings,
   ShoppingCart,
@@ -59,6 +61,7 @@ import {
   OPERATOR_ALLOWED_CHILDREN,
   OPERATOR_BLOCKED_CHILDREN,
   OPERATOR_BLOCKED_SECTIONS,
+  operatorPathAllowed,
 } from "../../config/rbacNavFilters";
 import {
   SIDEBAR_NAV,
@@ -67,16 +70,9 @@ import {
   buildNestedExpanded,
   navNodeIsActive,
   isSidebarLinkActive,
+  normalizeSidebarBottomOrder,
 } from "../../config/sidebarNav";
 
-const ACCOUNTS_DASHBOARD_PATH_ONLY = "/accounts/dashboard";
-
-function stripFinanceDashboardDuplicate(children) {
-  return (children || []).filter((c) => {
-    const pathOnly = (c.to || c.path || "").split("?")[0];
-    return pathOnly !== ACCOUNTS_DASHBOARD_PATH_ONLY;
-  });
-}
 import { ACCOUNTS_DASHBOARD_PATH, SALES_DASHBOARD_PATH } from "../../utils/roleRedirect";
 import { STORE_MANAGER_NAV_ITEMS } from "../../config/storeManagerNavConfig";
 import { SALES_MANAGER_NAV_ITEMS } from "../../config/salesManagerNavConfig";
@@ -120,6 +116,9 @@ const ICON_BY_KEY = {
   analytics: BarChart3,
   settings: Settings,
   admin: Settings,
+  chat: MessageSquare,
+  meetings: CalendarDays,
+  myJobCards: ClipboardList,
 };
 
 function dedupeNavSections(sections) {
@@ -273,14 +272,25 @@ function FactorySkyline() {
 function mapApiMenusToNav(menus) {
   return (menus || []).map((section) => {
     const Icon = ICON_BY_KEY[section.key] || LayoutDashboard;
-    if (section.path && !(section.children && section.children.length)) {
+    const children = (section.children || [])
+      .filter((c) => c?.path)
+      .map((c) => ({
+        key: c.key,
+        label: c.label,
+        to: c.path,
+        module: c.module,
+      }));
+    // Keep dashboard (and any path+children section) as a leaf link; children are
+    // promoted to top-level by normalizeSidebarBottomOrder.
+    if (section.path) {
       return {
         key: section.key,
         label: section.label,
         to: section.path,
         icon: Icon,
         module: section.module,
-        end: section.path === "/",
+        end: section.path === "/" || section.path === "/dashboard",
+        ...(children.length ? { children } : {}),
       };
     }
     return {
@@ -288,13 +298,7 @@ function mapApiMenusToNav(menus) {
       label: section.label,
       icon: Icon,
       module: section.module,
-      children: (section.children || [])
-        .filter((c) => c?.path)
-        .map((c) => ({
-          label: c.label,
-          to: c.path,
-          module: c.module,
-        })),
+      children,
     };
   });
 }
@@ -333,6 +337,7 @@ export function filterStaticNav(user) {
       }
       if (isOp) {
         if (node.managerOnly) return false;
+        if (node.to && !operatorPathAllowed(pathOnly || node.to)) return false;
         if (node.to && (OPERATOR_BLOCKED_CHILDREN.has(node.to) || OPERATOR_BLOCKED_CHILDREN.has(pathOnly))) return false;
         if (section.key === "production" && node.to && !node.operatorOnly) {
           if (!OPERATOR_ALLOWED_CHILDREN.has(node.to) && !OPERATOR_ALLOWED_CHILDREN.has(pathOnly)) return false;
@@ -353,10 +358,6 @@ export function filterStaticNav(user) {
       return true;
     });
     if (children.length === 0) return null;
-    if (isAcct && section.key === "finance") {
-      children = stripFinanceDashboardDuplicate(children);
-      if (children.length === 0) return null;
-    }
     return { ...section, children };
   }).filter(Boolean);
 
@@ -378,7 +379,7 @@ export function filterStaticNav(user) {
     }
   }
 
-  return filtered;
+  return normalizeSidebarBottomOrder(filtered);
 }
 
 function buildInitialExpanded(location, nav) {
@@ -394,7 +395,7 @@ function buildInitialExpanded(location, nav) {
   return state;
 }
 
-export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, isMobile = false }) {
+export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, onNavChange, isMobile = false }) {
   const { t } = useTranslation();
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
@@ -496,9 +497,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
               }
               return true;
             });
-            if (section.key === "finance") {
-              children = stripFinanceDashboardDuplicate(children);
-            }
             if (children.length === 0) return null;
             return { ...section, children };
           })
@@ -517,7 +515,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     }
 
     const roleJobCardUrl = getRoleJobCardUrl(user);
-    const roleNav = dedupeNavSections(result).map((section) => {
+    const roleNav = dedupeNavSections(normalizeSidebarBottomOrder(result)).map((section) => {
       if (section.key === "myJobCards") {
         return {
           ...section,
@@ -538,6 +536,10 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     });
     return roleNav;
   }, [apiNav, user, storeMode, salesMode, productionMode, qualityMode]);
+
+  useEffect(() => {
+    onNavChange?.(visibleNav);
+  }, [onNavChange, visibleNav]);
 
   const createActions = useMemo(
     () => getGlobalCreateActionsForUser(user, visibleNav),
@@ -717,7 +719,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
-          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
@@ -764,7 +765,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
           key={itemKey}
           to={node.to}
           end={node.end}
-          isActive={linkIsActive(node)}
           onMouseEnter={() => prefetchRouteChunk(node.to)}
           onFocus={() => prefetchRouteChunk(node.to)}
           onClick={() => onClose?.()}
@@ -922,7 +922,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                 <NavLink
                   to={section.to}
                   end={section.end}
-                  isActive={linkIsActive(section)}
                   onMouseEnter={() => prefetchRouteChunk(section.to)}
                   onFocus={() => prefetchRouteChunk(section.to)}
                   onClick={() => onClose?.()}
@@ -943,7 +942,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                       <NavLink
                         to={section.to}
                         end={section.end}
-                        isActive={linkIsActive(section)}
                         onMouseEnter={() => prefetchRouteChunk(section.to)}
                         onFocus={() => prefetchRouteChunk(section.to)}
                         onClick={() => onClose?.()}
@@ -998,7 +996,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                           key={`${section.key}-${child.to}-${child.label || child.key}`}
                           to={child.to}
                           end={child.end}
-                          isActive={linkIsActive(child)}
                           onMouseEnter={() => prefetchRouteChunk(child.to)}
                           onFocus={() => prefetchRouteChunk(child.to)}
                           onClick={() => onClose?.()}
@@ -1034,7 +1031,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
                                 key={`flyout-${section.key}-${child.to}-${child.label || child.key}`}
                                 to={child.to}
                                 end={child.end}
-                                isActive={linkIsActive(child)}
                                 onMouseEnter={() => prefetchRouteChunk(child.to)}
                                 onFocus={() => prefetchRouteChunk(child.to)}
                                 onClick={() => onClose?.()}

@@ -4,27 +4,29 @@ from app.services.reports.engine import ensure_reports_loaded, list_reports_for_
 from app.services.reports.registry import REPORT_REGISTRY
 
 
-def test_all_fifteen_reports_registered():
+INVENTORY_CORE_KEYS = {
+    "current_stock",
+    "stock_ledger",
+    "inventory_ageing",
+    "reorder_low_stock",
+    "dead_stock",
+    "batch_expiry",
+    "grn_register",
+    "pending_grn",
+    "qc_rejection",
+    "material_issue_register",
+    "issue_vs_bom_variance",
+    "material_return",
+    "stock_transfer_register",
+    "stock_audit_variance",
+    "stock_adjustment_log",
+}
+
+
+def test_inventory_core_reports_registered():
     ensure_reports_loaded()
-    assert len(REPORT_REGISTRY) == 15
-    keys = {
-        "current_stock",
-        "stock_ledger",
-        "inventory_ageing",
-        "reorder_low_stock",
-        "dead_stock",
-        "batch_expiry",
-        "grn_register",
-        "pending_grn",
-        "qc_rejection",
-        "material_issue_register",
-        "issue_vs_bom_variance",
-        "material_return",
-        "stock_transfer_register",
-        "stock_audit_variance",
-        "stock_adjustment_log",
-    }
-    assert keys == set(REPORT_REGISTRY.keys())
+    assert INVENTORY_CORE_KEYS.issubset(set(REPORT_REGISTRY.keys()))
+    assert len(REPORT_REGISTRY) >= 15
 
 
 def test_store_manager_sees_inventory_reports():

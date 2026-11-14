@@ -186,7 +186,8 @@ def build_sales_job_card_document(
                     specs.append(row)
 
     jc_date = _fmt_date(jc.created_at.date() if jc and jc.created_at else so.order_date)
-    approval = (resolved_details or {}).get("approval") or {}
+    details = resolved_details or {}
+    approval = details.get("approval") or {}
 
     return {
         "header": {

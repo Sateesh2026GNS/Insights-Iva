@@ -179,6 +179,16 @@ const PAGE_TITLE_OVERRIDES = {
   "/inventory": "Inventory",
   "/inventory/dashboard": "Dashboard",
   "/inventory/settings": "Inventory Settings",
+  "/inventory/godown-planner": "Godown Space & Capacity Planner",
+  "/inventory/unit-converter": "Unit Converter & Item Master",
+  "/inventory/eoq-helper": "Order Quantity (EOQ) Helper",
+  "/inventory/stock-valuation": "Stock Valuation (Weighted Average)",
+  "/inventory/hamali-cost": "Hamali / Loading Labour Cost",
+  "/inventory/truck-load": "Truck Load Planner",
+  "/inventory/damage-loss": "Damage, Shrinkage & Loss",
+  "/inventory/storage-quotation": "Storage Quotation",
+  "/inventory/gate-pass": "Gate Pass / Delivery Challan",
+  "/inventory/godown-dashboard": "Godown Dashboard",
   "/inventory/list": "Inventory List",
   "/inventory/raw-materials": "Raw Materials",
   "/inventory/finished-goods": "Finished Goods",
@@ -215,6 +225,9 @@ const PAGE_TITLE_OVERRIDES = {
   "/production/dashboard": "Dashboard",
   "/production/planning": "Production Planning",
   "/sales": "Dashboard",
+  "/accounts/dashboard": "Dashboard",
+  "/hr": "Dashboard",
+  "/procurement": "Dashboard",
   "/analytics": "Executive Dashboard",
   "/analytics/executive": "Executive Dashboard",
   "/analytics/live": "Live Dashboard",
@@ -345,10 +358,73 @@ function getLabel(segment, segments, index) {
   return pathLabels[segment] || segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Role dashboard homes (Admin, Store, Sales, Production, Operator/QC, HR, Accounts, Purchase).
+ * Navbar shows the page title only — no breadcrumb row.
+ */
+export const ROLE_DASHBOARD_HOME_PATHS = new Set([
+  "/",
+  "/dashboard",
+  "/inventory/dashboard",
+  "/sales",
+  "/production/dashboard",
+  "/hr",
+  "/accounts/dashboard",
+  "/procurement",
+]);
+
+/** @deprecated Prefer isRoleDashboardHome — kept for existing imports. */
+export function isErpDashboardRoot(pathname) {
+  return isRoleDashboardHome(pathname);
+}
+
+export function isRoleDashboardHome(pathname) {
+  const path = (pathname || "/").replace(/\/$/, "") || "/";
+  return ROLE_DASHBOARD_HOME_PATHS.has(path);
+}
+
+function normalizeBreadcrumbLabel(label) {
+  return String(label || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Breadcrumb items for the shared Navbar: empty on role dashboard homes, and
+ * drops a trailing crumb that duplicates the page title text.
+ */
+export function getVisibleBreadcrumbItems(pathname, pageTitle = null) {
+  const path = (pathname || "/").replace(/\/$/, "") || "/";
+  if (isRoleDashboardHome(path)) return [];
+
+  const title = pageTitle ?? getPageTitle(path);
+  let trail = getBreadcrumbTrail(path);
+  if (!trail.length) return [];
+
+  const last = trail[trail.length - 1];
+  if (normalizeBreadcrumbLabel(last?.label) === normalizeBreadcrumbLabel(title)) {
+    trail = trail.slice(0, -1);
+  }
+
+  // Lone "Home/Dashboard" crumb is noise under the title — hide the row.
+  if (trail.length <= 1) return [];
+  return trail;
+}
+
+export function shouldShowNavbarBreadcrumb(pathname, pageTitle = null) {
+  return getVisibleBreadcrumbItems(pathname, pageTitle).length > 0;
+}
+
 /** Build breadcrumb trail for a pathname. */
 export function getBreadcrumbTrail(pathname) {
   const normalizedPath = (pathname || "/").replace(/\/$/, "") || "/";
   const segments = (pathname || "/").split("/").filter(Boolean);
+
+  if (isRoleDashboardHome(normalizedPath)) {
+    const label = PAGE_TITLE_OVERRIDES[normalizedPath] || "Dashboard";
+    return [{ label, path: normalizedPath === "/" ? "/" : normalizedPath }];
+  }
 
   // Workflow job card paths contain routing details (workflow/order/id) that
   // make poor breadcrumbs. Show the section, list, and active stage instead.
@@ -386,13 +462,6 @@ export function getBreadcrumbTrail(pathname) {
     return [{ label: "Dashboard", path: "/" }];
   }
 
-  if (normalizedPath === "/inventory/dashboard") {
-    return [
-      { label: "Dashboard", path: "/" },
-      { label: "Dashboard", path: "/inventory/dashboard" },
-    ];
-  }
-
   if (normalizedPath === "/inventory/stock-in") {
     return [
       { label: "Dashboard", path: "/" },
@@ -411,17 +480,6 @@ export function getBreadcrumbTrail(pathname) {
       },
     ];
   }
-  if (normalizedPath === "/production/dashboard") {
-    return [{ label: "Dashboard", path: "/production/dashboard" }];
-  }
-
-  if (normalizedPath === "/sales") {
-    return [
-      { label: "Dashboard", path: "/" },
-      { label: "Dashboard", path: "/sales" },
-    ];
-  }
-
   if (normalizedPath === "/production/planning") {
     return [
       { label: "Dashboard", path: "/production/dashboard" },
@@ -460,8 +518,9 @@ export function getBreadcrumbTrail(pathname) {
 /** Current page title from the last breadcrumb segment. */
 export function getPageTitle(pathname, user = null) {
   const path = (pathname || "/").replace(/\/$/, "") || "/";
-  if (path === "/settings" || path.startsWith("/settings/")) return "Settings";
   if (PAGE_TITLE_OVERRIDES[path]) return PAGE_TITLE_OVERRIDES[path];
+  if (isRoleDashboardHome(path)) return "Dashboard";
+  if (path === "/settings" || path.startsWith("/settings/")) return "Settings";
 
   // Specific dynamic pattern matches
   if (/^\/job-cards\/\d+$/i.test(path) || /^\/my-job-cards\/\d+$/i.test(path)) {
@@ -492,9 +551,12 @@ export function getPageTitle(pathname, user = null) {
 
 export default function Breadcrumbs({ items: customItems, compact = false, className = "" }) {
   const { pathname } = useLocation();
-  const items = customItems ?? getBreadcrumbTrail(pathname);
+  const pageTitle = getPageTitle(pathname);
+  const items =
+    customItems ??
+    getVisibleBreadcrumbItems(pathname, pageTitle);
 
-  if (items.length <= 1) return null;
+  if (!items.length || items.length <= 1) return null;
 
   return (
     <nav

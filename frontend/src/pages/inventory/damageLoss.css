@@ -1,0 +1,266 @@
+.gsp-damage .gsp-kpis strong,
+.gsp-quote .gsp-kpis strong {
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.gsp-damage .gsp-bars--loss li {
+  grid-template-columns: 132px 1fr;
+  margin-bottom: 4px;
+  font-size: 10px;
+}
+
+.gsp-damage .gsp-axis {
+  margin-left: 138px;
+}
+
+.gsp-damage-table,
+.gsp-extra-table {
+  min-width: 1080px;
+}
+
+.gsp-extra-table {
+  min-width: 420px;
+}
+
+.gsp-damage-table input,
+.gsp-damage-table select,
+.gsp-extra-table input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 2px;
+  padding: 2px 4px;
+  font: inherit;
+  color: inherit;
+}
+
+.gsp-damage-table .is-input,
+.gsp-extra-table .is-input {
+  background: #fff7cc;
+}
+
+.gsp-damage-table .is-blue input {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+  text-align: right;
+}
+
+.gsp-damage-table .is-calc {
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.gsp-damage-table th:nth-child(-n + 5),
+.gsp-damage-table td:nth-child(-n + 5),
+.gsp-damage-table th:last-child,
+.gsp-damage-table td:last-child {
+  text-align: left;
+}
+
+.gsp-pill--over {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.loss-cell {
+  position: relative;
+  min-width: 88px;
+}
+
+.loss-cell .gsp-val-bar {
+  top: 4px;
+  bottom: 4px;
+}
+
+.loss-cell strong {
+  position: relative;
+  z-index: 1;
+}
+
+.loss-cell.is-on-bar strong {
+  color: #fff;
+}
+
+.gsp-quote select,
+.gsp-quote textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #f5d76e;
+  background: #fff7cc;
+  border-radius: 2px;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+.gsp-quote .is-linked input {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.quote-sheet {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  padding: 14px 16px 18px;
+  color: #0f172a;
+}
+
+.quote-letterhead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.quote-logo {
+  width: 72px;
+  height: 48px;
+  border: 1px dashed #94a3b8;
+  color: #64748b;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.quote-letterhead h3 {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  color: #0b3a66;
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.quote-letterhead p {
+  margin: 2px 0 0;
+  color: #475569;
+  font-size: 11px;
+}
+
+.quote-banner {
+  display: flex;
+  align-items: stretch;
+  margin: 8px 0;
+}
+
+.quote-banner strong {
+  flex: 1;
+  background: #0b3a66;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.08em;
+  padding: 6px;
+}
+
+.quote-banner span {
+  background: #f97316;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 6px 8px;
+}
+
+.quote-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 16px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.quote-meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 2px 0;
+}
+
+.quote-charges {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.quote-charges-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.quote-charges th {
+  background: #0b3a66;
+  color: #fff;
+  text-align: left;
+}
+
+.quote-charges th,
+.quote-charges td {
+  border: 1px solid #d7e0ea;
+  padding: 4px 6px;
+}
+
+.quote-charges td:nth-child(n + 3),
+.quote-charges th:nth-child(n + 3) {
+  text-align: right;
+}
+
+.quote-total {
+  margin-left: auto;
+  width: min(280px, 100%);
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.quote-total div {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.quote-total .is-grand {
+  background: #0b3a66;
+  color: #fff;
+  padding: 6px 8px;
+  font-weight: 800;
+}
+
+.quote-words {
+  margin: 8px 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.quote-terms {
+  font-size: 11px;
+  color: #334155;
+}
+
+.quote-terms h4 {
+  margin: 8px 0 4px;
+  color: #0b3a66;
+}
+
+.quote-sign {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+  font-size: 11px;
+}
+
+.quote-sign div {
+  min-width: 140px;
+  border-top: 1px solid #94a3b8;
+  padding-top: 4px;
+}

@@ -1,13 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronDown, FileBarChart2, Lock, RefreshCw, WifiOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import {
+  ChevronDown,
+  Clock,
+  FileBarChart2,
+  Folder,
+  Home,
+  Lock,
+  MoreVertical,
+  RefreshCw,
+  Search,
+  Share2,
+  Star,
+  User,
+  WifiOff,
+} from "lucide-react";
 
 import Button from "../../components/common/Button";
-import PageHeader from "../../components/common/PageHeader";
 import Pagination from "../../components/common/Pagination";
 import StatusBadge from "../../components/common/StatusBadge";
 import { ListPageCard, ListPageShell } from "../../components/common/ListPageShell";
-import EmptyState from "../../components/common/EmptyState";
 import { PartialDataState, PermissionDeniedState } from "../../components/common/states";
 import StoreManagerNav from "../../components/inventory/StoreManagerNav";
 import { useToast } from "../../context/ToastContext";
@@ -20,8 +33,49 @@ import {
 } from "../../api/reportsApi";
 import { apiErrorMessage, extractApiErrorDetail } from "../../utils/apiError";
 import { getApiBaseURL } from "../../api/axiosConfig";
+import {
+  reportMatchesZohoCategory,
+  ZOHO_REPORT_CATEGORIES,
+  zohoCategoryForReport,
+} from "../../utils/storeReportsCenter";
+import "../../styles/store-reports-center.css";
+
+const SIDEBAR_VIEWS = [
+  { id: "home", icon: Home, labelKey: "storeReports.nav.home" },
+  { id: "favorites", icon: Star, labelKey: "storeReports.nav.favorites" },
+  { id: "shared", icon: Share2, labelKey: "storeReports.nav.sharedReports" },
+  { id: "my", icon: User, labelKey: "storeReports.nav.myReports" },
+  { id: "scheduled", icon: Clock, labelKey: "storeReports.nav.scheduledReports" },
+];
+
+const EMPTY_SECTION_VIEWS = new Set(["shared", "my", "scheduled"]);
 
 const MAX_RANGE_DAYS = 366;
+const REPORT_FAVORITES_KEY = "iva-report-favorites";
+const REPORT_LAST_VISITED_KEY = "iva-report-last-visited";
+
+function readJsonStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function formatLastVisited(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -107,9 +161,16 @@ function ReportTableSkeleton({ cols = 6, rows = 8 }) {
 }
 
 export default function StoreReportsPage() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
   const { addToast } = useToast();
+  const [reportSearch, setReportSearch] = useState("");
+  const [sidebarView, setSidebarView] = useState("home");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [favorites, setFavorites] = useState(() => new Set(readJsonStorage(REPORT_FAVORITES_KEY, [])));
+  const [lastVisited, setLastVisited] = useState(() => readJsonStorage(REPORT_LAST_VISITED_KEY, {}));
 
   const [catalog, setCatalog] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -132,16 +193,9 @@ export default function StoreReportsPage() {
 
   const abortRef = useRef(null);
   const warehouseDropdownRef = useRef(null);
+  const moreMenuRef = useRef(null);
   const selectedReport = filters.report;
   const activeMeta = catalog.find((c) => c.key === selectedReport);
-
-  const warehouseLabel = useMemo(() => {
-    if (!filters.warehouse_ids?.length) return "All accessible warehouses";
-    const names = filters.warehouse_ids
-      .map((id) => warehouses.find((w) => w.id === id)?.name)
-      .filter(Boolean);
-    return names.length ? names.join(", ") : `${filters.warehouse_ids.length} warehouse(s)`;
-  }, [filters.warehouse_ids, warehouses]);
 
   const setFilters = useCallback(
     (patch) => {
@@ -164,6 +218,15 @@ export default function StoreReportsPage() {
   useEffect(() => {
     setDraft(filters);
   }, [filters]);
+
+  useEffect(() => {
+    if (!moreMenuOpen) return undefined;
+    const close = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) setMoreMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [moreMenuOpen]);
 
   useEffect(() => {
     const on = () => setOffline(false);
@@ -335,14 +398,75 @@ export default function StoreReportsPage() {
     }
   };
 
-  const categories = useMemo(() => {
-    const map = new Map();
-    catalog.forEach((r) => {
-      if (!map.has(r.category)) map.set(r.category, []);
-      map.get(r.category).push(r);
+  const filteredCatalog = useMemo(() => {
+    let rows = catalog;
+    if (sidebarView === "favorites") {
+      rows = rows.filter((r) => favorites.has(r.key));
+    } else if (EMPTY_SECTION_VIEWS.has(sidebarView)) {
+      rows = [];
+    }
+    if (categoryFilter) {
+      rows = rows.filter((r) => reportMatchesZohoCategory(r, categoryFilter));
+    }
+    const q = reportSearch.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(
+        (r) =>
+          String(r.title || "").toLowerCase().includes(q) ||
+          String(zohoCategoryForReport(r) || "").toLowerCase().includes(q) ||
+          String(r.description || "").toLowerCase().includes(q)
+      );
+    }
+    return rows;
+  }, [catalog, categoryFilter, reportSearch, sidebarView, favorites]);
+
+  const listTitle = useMemo(() => {
+    if (sidebarView === "favorites") return t("storeReports.nav.favorites");
+    if (sidebarView === "shared") return t("storeReports.nav.sharedReports");
+    if (sidebarView === "my") return t("storeReports.nav.myReports");
+    if (sidebarView === "scheduled") return t("storeReports.nav.scheduledReports");
+    if (categoryFilter) return categoryFilter;
+    return t("storeReports.allReports");
+  }, [sidebarView, categoryFilter, t]);
+
+  const catalogEmptyMessage = useMemo(() => {
+    if (EMPTY_SECTION_VIEWS.has(sidebarView)) return t("storeReports.noReportsInSection");
+    if (sidebarView === "favorites" && !reportSearch.trim()) return t("storeReports.noReportsInSection");
+    return t("storeReports.noReportsMatch");
+  }, [sidebarView, reportSearch, t]);
+
+  const toggleFavorite = useCallback((key, e) => {
+    e?.stopPropagation?.();
+    e?.preventDefault?.();
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try {
+        localStorage.setItem(REPORT_FAVORITES_KEY, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
     });
-    return [...map.entries()];
-  }, [catalog]);
+  }, []);
+
+  const openReport = useCallback(
+    (key) => {
+      const stamp = new Date().toISOString();
+      setLastVisited((prev) => {
+        const next = { ...prev, [key]: stamp };
+        try {
+          localStorage.setItem(REPORT_LAST_VISITED_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+      setFilters({ report: key, page: 1 });
+    },
+    [setFilters]
+  );
 
   const kpiCards = [
     { key: "closing_stock_value", label: "Closing stock value", format: "currency" },
@@ -352,23 +476,68 @@ export default function StoreReportsPage() {
   ];
 
   return (
-    <ListPageShell className="min-w-0 w-full bg-[#F5F7FA]">
+    <ListPageShell className="store-reports-center min-w-0 w-full">
       <StoreManagerNav />
-      <PageHeader
-        variant="inventory"
-        title="Reports"
-        subtitle={warehouseLabel}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" type="button" disabled>
-              Saved views
+      <div className="store-reports-center__top-band">
+      <div className="store-reports-center__hero px-1">
+        <h1 className="store-reports-center__title">{t("storeReports.title")}</h1>
+        <div className="store-reports-center__search-wrap">
+          <Search className="store-reports-center__search-icon" aria-hidden />
+          <input
+            type="search"
+            className="store-reports-center__search"
+            placeholder={t("storeReports.searchPlaceholder")}
+            value={reportSearch}
+            onChange={(e) => setReportSearch(e.target.value)}
+            aria-label={t("storeReports.searchPlaceholder")}
+          />
+        </div>
+        <div className="store-reports-center__hero-actions">
+          {selectedReport ? (
+            <Button variant="outline" size="sm" type="button" onClick={() => setFilters({ report: "", page: 1 })}>
+              {t("storeReports.backToList")}
             </Button>
-            <Button variant="outline" size="sm" type="button" disabled>
-              Schedule
-            </Button>
-          </div>
-        }
-      />
+          ) : (
+            <>
+              <Button
+                variant="primary"
+                size="sm"
+                type="button"
+                onClick={() => addToast(t("storeReports.createNewReportSoon"), "info")}
+              >
+                {t("storeReports.createNewReport")}
+              </Button>
+              <div className="store-reports-center__more-wrap" ref={moreMenuRef}>
+                <button
+                  type="button"
+                  className="store-reports-center__more-btn"
+                  aria-label={t("storeReports.moreMenuAria")}
+                  aria-expanded={moreMenuOpen}
+                  onClick={() => setMoreMenuOpen((v) => !v)}
+                >
+                  <MoreVertical className="h-5 w-5" aria-hidden />
+                </button>
+                {moreMenuOpen ? (
+                  <div className="store-reports-center__more-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="store-reports-center__more-item"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        window.location.reload();
+                      }}
+                    >
+                      {t("storeReports.refreshCatalog")}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      </div>
 
       {sessionExpired && (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
@@ -397,7 +566,8 @@ export default function StoreReportsPage() {
         />
       )}
 
-      <ListPageCard className="mb-4 !overflow-visible">
+      {selectedReport ? (
+      <ListPageCard className="store-reports-center__filters-compact mb-4 !overflow-visible">
         <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-end">
           <label className="text-sm">
             <span className="mb-1 block text-[var(--color-text-muted)]">From</span>
@@ -482,7 +652,9 @@ export default function StoreReportsPage() {
           </div>
         </div>
       </ListPageCard>
+      ) : null}
 
+      {selectedReport ? (
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((k) => (
           <ListPageCard key={k.key} className="p-4">
@@ -499,6 +671,7 @@ export default function StoreReportsPage() {
           </ListPageCard>
         ))}
       </div>
+      ) : null}
 
       {catalogError && (
         <ListPageCard className="mb-4 border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -514,61 +687,124 @@ export default function StoreReportsPage() {
         </ListPageCard>
       )}
 
-      {catalogLoading ? (
-        <ReportTableSkeleton cols={4} rows={4} />
-      ) : (
-        <div className="mb-4 space-y-4">
-          {categories.map(([cat, items]) => (
-            <ListPageCard key={cat}>
-              <div className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/40 px-4 py-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{cat}</h2>
-              </div>
-              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                {items.map((r) => {
-                  const active = selectedReport === r.key;
-                  const locked = r.allowed === false;
-                  return (
-                    <button
-                      key={r.key}
-                      type="button"
-                      disabled={locked}
-                      title={locked ? "You do not have permission to run this report" : r.description}
-                      onClick={() => !locked && setFilters({ report: r.key, page: 1 })}
-                      className={`rounded-xl border p-4 text-left transition ${
-                        active
-                          ? "border-[var(--color-primary)] bg-white shadow-sm ring-1 ring-[var(--color-primary)]"
-                          : "border-[var(--color-border-soft)] bg-white hover:border-[var(--color-primary)]/40"
-                      } ${locked ? "cursor-not-allowed opacity-60" : ""} ${stale ? "opacity-80" : ""}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {locked ? (
-                          <Lock className="h-5 w-5 text-[var(--color-text-muted)]" />
-                        ) : (
-                          <FileBarChart2 className="h-5 w-5 text-[var(--color-primary)]" />
-                        )}
-                        <div>
-                          <p className="font-semibold text-[var(--color-text)]">{r.title}</p>
-                          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{r.description}</p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </ListPageCard>
-          ))}
-        </div>
-      )}
+      {!selectedReport && catalogLoading ? (
+        <ReportTableSkeleton cols={4} rows={8} />
+      ) : null}
 
-      {!selectedReport && (
-        <ListPageCard>
-          <EmptyState
-            title="Choose a report"
-            description="Select a report card above to preview data with your current filters."
-            icon={<FileBarChart2 className="h-12 w-12" aria-hidden />}
-          />
-        </ListPageCard>
-      )}
+      {!selectedReport && !catalogLoading ? (
+        <div className="store-reports-center__shell mb-4">
+          <aside className="store-reports-center__sidebar">
+            <nav className="store-reports-center__nav" aria-label={t("storeReports.nav.label")}>
+              {SIDEBAR_VIEWS.map(({ id, icon: Icon, labelKey }) => {
+                const active =
+                  id === "home"
+                    ? sidebarView === "home" && !categoryFilter
+                    : sidebarView === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`store-reports-center__nav-btn ${active ? "store-reports-center__nav-btn--active" : ""}`}
+                    onClick={() => {
+                      if (id === "home") {
+                        setSidebarView("home");
+                        setCategoryFilter("");
+                      } else {
+                        setSidebarView(id);
+                        setCategoryFilter("");
+                      }
+                    }}
+                  >
+                    <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                    <span className="truncate">{t(labelKey)}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="store-reports-center__sidebar-divider" role="presentation" />
+            <p className="store-reports-center__sidebar-label">{t("storeReports.categoryLabel")}</p>
+            {ZOHO_REPORT_CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                type="button"
+                className={`store-reports-center__cat-btn ${categoryFilter === cat.key ? "store-reports-center__cat-btn--active" : ""}`}
+                onClick={() => {
+                  setSidebarView("home");
+                  setCategoryFilter(cat.key);
+                }}
+              >
+                <Folder className="store-reports-center__folder-icon h-4 w-4 shrink-0" aria-hidden />
+                <span className="truncate">{cat.key}</span>
+              </button>
+            ))}
+          </aside>
+          <div className="store-reports-center__main">
+            <div className="store-reports-center__main-head">
+              {listTitle}
+              <span className="store-reports-center__count">{filteredCatalog.length}</span>
+            </div>
+            <div className="store-reports-center__table-wrap">
+              {filteredCatalog.length === 0 ? (
+                <p className="p-8 text-center text-sm text-[var(--color-text-muted)]">{catalogEmptyMessage}</p>
+              ) : (
+                <table className="store-reports-center__table">
+                  <thead>
+                    <tr>
+                      <th>{t("storeReports.colReportName")}</th>
+                      <th>{t("storeReports.colCategory")}</th>
+                      <th>{t("storeReports.colCreatedBy")}</th>
+                      <th>{t("storeReports.colLastVisited")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCatalog.map((r) => {
+                      const locked = r.allowed === false;
+                      const active = selectedReport === r.key;
+                      const visited = formatLastVisited(lastVisited[r.key]);
+                      return (
+                        <tr key={r.key} className={active ? "is-active" : undefined}>
+                          <td>
+                            <div className="store-reports-center__name-cell">
+                              <button
+                                type="button"
+                                className={`store-reports-center__star ${favorites.has(r.key) ? "store-reports-center__star--on" : ""}`}
+                                aria-label={t("storeReports.favoriteAria")}
+                                aria-pressed={favorites.has(r.key)}
+                                onClick={(e) => toggleFavorite(r.key, e)}
+                              >
+                                <Star className={`h-4 w-4 ${favorites.has(r.key) ? "fill-current" : ""}`} aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className="store-reports-center__report-link"
+                                disabled={locked}
+                                title={locked ? "You do not have permission to run this report" : r.description}
+                                aria-label={t("storeReports.openReport", { title: r.title })}
+                                onClick={() => !locked && openReport(r.key)}
+                              >
+                                {locked ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Lock className="h-3.5 w-3.5" aria-hidden /> {r.title}
+                                  </span>
+                                ) : (
+                                  r.title
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                          <td>{zohoCategoryForReport(r)}</td>
+                          <td>{t("storeReports.systemGenerated")}</td>
+                          <td>{visited || t("storeReports.noLastVisit")}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {selectedReport && permissionDenied && (
         <ListPageCard className="p-6">

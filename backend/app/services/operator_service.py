@@ -120,6 +120,25 @@ class OperatorService:
     # ── Dashboard ──────────────────────────────────────────────────────────
 
     def get_dashboard(self, user: User) -> dict:
+        from app.services.operator_scope import is_shop_floor_operator, resolve_operator_machine_ids
+
+        if is_shop_floor_operator(user):
+            assigned = self.work_orders.list_assigned(user)
+            mine = set(resolve_operator_machine_ids(self.db, user))
+            running = 0
+            if mine:
+                running = sum(
+                    1
+                    for machine in self.machines.list_all()
+                    if machine.id in mine and str(machine.status or "").lower() in {"running", "active"}
+                )
+            return {
+                "shop_floor": {},
+                "work_orders_count": len(assigned),
+                "running_machines": running,
+                "role": get_role_names(user),
+                "scope": "operator",
+            }
         wo_summary = list_work_orders_enriched(self.db, self.tenant_id, user=user)
         return {
             "shop_floor": {},
@@ -139,6 +158,15 @@ class OperatorService:
         }
 
     def get_dashboard_summary(self, user: User) -> dict:
+        from app.services.operator_scope import is_shop_floor_operator
+
+        if is_shop_floor_operator(user):
+            assigned = self.work_orders.list_assigned(user)
+            return {
+                "scope": "operator",
+                "assigned_work_orders": len(assigned),
+                "notifications": get_user_notifications(self.db, user).get("count", 0),
+            }
         schedule = get_schedule_dashboard(self.db, self.tenant_id)
         batch_sum = get_batch_summary(self.db, self.tenant_id)
         return {

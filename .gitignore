@@ -42,10 +42,12 @@ backend/.env
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
+!frontend/e2e/.env.e2e.example
 secrets/
 credentials/
 frontend/e2e/.auth/
 frontend/e2e/.env.e2e
+backend/e2e-responsive-qa*.db*
 frontend/test-results/
 frontend/playwright-report/
 

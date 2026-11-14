@@ -9,7 +9,8 @@ import {
   getEffectivePermissions,
   userCanAccess,
 } from "./permissions";
-import { operatorPathAllowed } from "./rbacNavFilters";
+import allowlist from "./operatorPageAllowlist.json";
+import { operatorPathAllowed, OPERATOR_ALLOWED_PATHS } from "./rbacNavFilters";
 
 describe("canAccess", () => {
   it("grants admins access to any module", () => {
@@ -136,13 +137,14 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/settings")).toBe(true);
   });
 
-  it("allows Store Manager to open inventory reports and stock ledger", () => {
+  it("allows Store Manager inventory reports but blocks inventory history and stock ledger", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/reports")).toBe(true);
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/store/reports")).toBe(true);
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/history")).toBe(false);
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/stock-ledger")).toBe(
-      true
+      false
     );
-    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/reports")).toBe(false);
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/reports")).toBe(true);
   });
 
   it("allows Store Manager expense and ledger without full accounts module", () => {
@@ -161,6 +163,32 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath(storeManager, "/sales/job-cards/create")).toBe(false);
     expect(userCanAccessPath(storeManager, "/sales/job-cards/42/edit")).toBe(false);
     expect(userCanAccessPath(storeManager, "/my-job-cards")).toBe(true);
+  });
+
+  it("blocks removed Store Manager pages while keeping allowed inventory/procurement routes", () => {
+    const storeManager = {
+      role: "Store Manager",
+      permissions: ["dashboard", "inventory", "procurement"],
+    };
+    expect(userCanAccessPath(storeManager, "/procurement/material-requests")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/procurement/goods-receipt")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/procurement/supplier-payments")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-in")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/issue-materials")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-return")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-adjustment")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/todays-stock-out")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-ledger")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/history")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/material-requests")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-transfer")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/procurement/purchase-orders")).toBe(true);
+    expect(
+      userCanAccessPath({ role: "Admin", permissions: ["*"] }, "/procurement/goods-receipt")
+    ).toBe(true);
+    expect(
+      userCanAccessPath({ role: "Admin", permissions: ["*"] }, "/inventory/stock-ledger")
+    ).toBe(true);
   });
 
 });
@@ -205,11 +233,27 @@ describe("Operator production nav", () => {
     expect(operatorPathAllowed("/production/my-machine")).toBe(true);
     expect(operatorPathAllowed("/production/my-entry")).toBe(false);
     expect(operatorPathAllowed("/chat")).toBe(true);
+    expect(operatorPathAllowed("/production/work-orders")).toBe(false);
+    expect(operatorPathAllowed("/factory-monitor/machine-status")).toBe(false);
+    expect(operatorPathAllowed("/admin/approvals")).toBe(false);
+    expect(operatorPathAllowed("/hr/attendance")).toBe(false);
+    expect(operatorPathAllowed("/alerts")).toBe(true);
+    expect(operatorPathAllowed("/alerts/low-stock")).toBe(false);
+    expect(operatorPathAllowed("/manufacturing/workflow/order/12/operator")).toBe(true);
+    expect(operatorPathAllowed("/manufacturing/workflow")).toBe(false);
+  });
+
+  it("uses the shared page allowlist file", () => {
+    expect([...OPERATOR_ALLOWED_PATHS].sort()).toEqual([...allowlist.exact].sort());
+    for (const path of allowlist.exact) {
+      expect(operatorPathAllowed(path)).toBe(true);
+    }
   });
 
   it("userCanAccessPath denies manager production URLs", () => {
     expect(userCanAccessPath(operator, "/production/planning")).toBe(false);
-    expect(userCanAccessPath(operator, "/production/work-orders")).toBe(true);
+    expect(userCanAccessPath(operator, "/production/work-orders")).toBe(false);
+    expect(userCanAccessPath(operator, "/production/my-machine")).toBe(true);
   });
 });
 
@@ -218,9 +262,9 @@ describe("Operator settings access", () => {
 
   it("allows /settings home and personal sections", () => {
     expect(userCanAccessPath(operator, "/settings")).toBe(true);
-    expect(userCanAccessPath(operator, "/settings/my-account")).toBe(true);
-    expect(userCanAccessPath(operator, "/settings/appearance")).toBe(true);
-    expect(userCanAccessPath(operator, "/settings/notifications")).toBe(true);
+    expect(userCanAccessPath(operator, "/settings/my-account")).toBe(false);
+    expect(userCanAccessPath(operator, "/settings/appearance")).toBe(false);
+    expect(userCanAccessPath(operator, "/settings/notifications")).toBe(false);
   });
 
   it("denies admin-only settings sections", () => {
@@ -245,8 +289,26 @@ describe("Quality Control path access", () => {
     expect(userCanAccessPath(qc, "/quality/defects")).toBe(true);
     expect(userCanAccessPath(qc, "/inventory/raw-materials")).toBe(true);
     expect(userCanAccessPath(qc, "/production/planning")).toBe(true);
-    expect(userCanAccessPath(qc, "/settings")).toBe(true);
+    expect(userCanAccessPath(qc, "/settings")).toBe(false);
+    expect(userCanAccessPath(qc, "/inventory/settings")).toBe(true);
     expect(userCanAccessPath(qc, "/chat")).toBe(true);
+  });
+
+  it("keeps personal settings and blocks the general settings page", () => {
+    const live = {
+      role: "Quality Control",
+      permissions: ["dashboard", "quality", "production", "inventory", "documents", "alerts", "analytics", "meetings"],
+    };
+    expect(userCanAccessPath(live, "/settings")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/my-account")).toBe(true);
+    expect(userCanAccessPath(live, "/settings/notifications")).toBe(true);
+    expect(userCanAccessPath(live, "/settings/appearance")).toBe(true);
+    expect(userCanAccessPath(live, "/inventory/settings")).toBe(true);
+    expect(userCanAccessPath(live, "/inventory/warehouses")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/users")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/company")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/production")).toBe(false);
+    expect(userCanAccessPath(live, "/settings/security")).toBe(false);
   });
 
   it("blocks masters, procurement, and inventory admin URLs", () => {

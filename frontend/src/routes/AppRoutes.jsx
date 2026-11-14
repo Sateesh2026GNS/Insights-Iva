@@ -242,6 +242,46 @@ export default function AppRoutes() {
         element={<P.InventorySettingsV2 />}
       />
       <Route
+        path="/inventory/godown-planner"
+        element={<P.GodownCapacityPlanner />}
+      />
+      <Route
+        path="/inventory/unit-converter"
+        element={<P.UnitConverter />}
+      />
+      <Route
+        path="/inventory/eoq-helper"
+        element={<P.EoqHelper />}
+      />
+      <Route
+        path="/inventory/stock-valuation"
+        element={<P.StockValuation />}
+      />
+      <Route
+        path="/inventory/hamali-cost"
+        element={<P.HamaliCost />}
+      />
+      <Route
+        path="/inventory/truck-load"
+        element={<P.TruckLoadPlanner />}
+      />
+      <Route
+        path="/inventory/damage-loss"
+        element={<P.DamageLoss />}
+      />
+      <Route
+        path="/inventory/storage-quotation"
+        element={<P.StorageQuotation />}
+      />
+      <Route
+        path="/inventory/gate-pass"
+        element={<P.GatePass />}
+      />
+      <Route
+        path="/inventory/godown-dashboard"
+        element={<P.GodownDashboard />}
+      />
+      <Route
         path="/inventory/list"
         element={<P.InventoryList />}
       />
@@ -324,6 +364,54 @@ export default function AppRoutes() {
         element={<P.CreateSupplier />}
       />
       </Route>
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <P.ReportsCenterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/builder"
+        element={
+          <ProtectedRoute>
+            <P.ReportBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/builder/:id"
+        element={
+          <ProtectedRoute>
+            <P.ReportBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/custom/:id"
+        element={
+          <ProtectedRoute>
+            <P.CustomReportViewerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/schedules/:id"
+        element={
+          <ProtectedRoute>
+            <P.ScheduleDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/:slug"
+        element={
+          <ProtectedRoute>
+            <P.ReportViewerPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/inventory/reports"
         element={
@@ -934,7 +1022,7 @@ export default function AppRoutes() {
       <Route path="/master/products/:id/edit" element={<ProtectedRoute><P.CreateProduct /></ProtectedRoute>} />
       <Route path="/inventory/products/bulk-import" element={<ProtectedRoute><P.BulkImportProduct /></ProtectedRoute>} />
       <Route path="/masters/bom" element={<Navigate to="/production/bom" replace />} />
-      <Route path="/masters/departments" element={<ProtectedRoute><P.DepartmentManagement /></ProtectedRoute>} />
+      <Route path="/masters/departments" element={<Navigate to="/" replace />} />
       <Route path="/production/schedule" element={<ProtectedRoute><P.ProductionSchedule /></ProtectedRoute>} />
       <Route path="/production/my-machine" element={<ProtectedRoute><P.OperatorMyMachine /></ProtectedRoute>} />
       <Route path="/procurement/rfq" element={<ProtectedRoute><P.RFQ /></ProtectedRoute>} />

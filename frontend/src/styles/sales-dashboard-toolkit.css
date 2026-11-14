@@ -241,6 +241,7 @@
 }
 
 .sales-dash-page--toolkit .sales-dash-pipeline__stage {
+  min-height: 44px;
   padding: 6px 8px 6px 16px;
   border-radius: 0;
 }
@@ -466,6 +467,10 @@
 }
 
 .sales-dash-page--toolkit .sales-dash-mywork__view {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
   font-size: 9px;
   font-weight: 700;
   color: #0f766e;

@@ -31,6 +31,13 @@ class ApprovalQueuePageRead(BaseModel):
     pending_total: int
 
 
+class ApprovalSummaryRead(BaseModel):
+    total_requests: int
+    pending: int
+    approved: int
+    rejected: int
+
+
 class ApprovalHistoryEntryRead(BaseModel):
     label: str
     at: datetime | None = None

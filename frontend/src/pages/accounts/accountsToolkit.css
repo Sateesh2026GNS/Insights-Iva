@@ -1,0 +1,205 @@
+/* Accountant dashboards — same navy toolkit as Production Planning → Downtime & Service.
+   Scoped to .acct-toolkit so other modules keep their own themes. */
+
+.acct-toolkit {
+  background: #f4f7fa;
+  color: #1a1a1a;
+  font-size: 11px;
+}
+
+.acct-toolkit .mtk-hero {
+  margin: 0 0 10px;
+  border-radius: 4px;
+}
+
+.acct-toolkit .mtk-hero__title h1 {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.acct-toolkit .mtk-hero__title p,
+.acct-toolkit .mtk-hero__row {
+  color: #fff;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.acct-toolkit .afd-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.acct-toolkit.accounts-financial-dashboard .ui-btn--primary {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.acct-toolkit.accounts-financial-dashboard .ui-btn--primary:hover:not(:disabled):not(.is-loading) {
+  background: #1e3a8a;
+  border-color: #1e3a8a;
+}
+
+.acct-toolkit .afd-text-link,
+.acct-toolkit .afd-invoice-stat,
+.acct-toolkit .afd-invoice-stat strong,
+.acct-toolkit .afd-odo-card__title,
+.acct-toolkit .afd-odo-textlink,
+.acct-toolkit .afd-odo-menu__foot button,
+.acct-toolkit .afd-dialog__cancel {
+  color: #1e40af;
+}
+
+.acct-toolkit .afd-kpi-grid {
+  gap: 6px;
+}
+
+.acct-toolkit .afd-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 8px 6px;
+  border: 1px solid #c5d0dc;
+  border-radius: 4px;
+  box-shadow: none;
+  text-align: center;
+  background: #fff;
+}
+
+.acct-toolkit .afd-kpi:hover {
+  border-color: #1d4ed8;
+  background: #fff;
+}
+
+.acct-toolkit .afd-kpi__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 4px;
+  border-radius: 50%;
+  background: #1e40af;
+  color: #fff;
+}
+
+.acct-toolkit .afd-kpi__label {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.acct-toolkit .afd-kpi__value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.acct-toolkit .afd-kpi__meta {
+  font-size: 8px;
+  color: #64748b;
+}
+
+.acct-toolkit .afd-panel,
+.acct-toolkit .afd-odo-card {
+  border: 1px solid #c5d0dc;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.acct-toolkit .afd-odo-card {
+  border-left: 3px solid #1e40af;
+}
+
+.acct-toolkit .ui-section-title,
+.acct-toolkit .afd-section-head,
+.acct-toolkit .afd-panel__head .ui-section-title {
+  background: #1d4ed8;
+  color: #fff !important;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.acct-toolkit .ui-table-head th,
+.acct-toolkit .ui-table th {
+  background: #e8eef4;
+  color: #1a1a1a;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.acct-toolkit .ui-table td {
+  font-size: 9px;
+  border-color: #c5d0dc;
+}
+
+.acct-toolkit .afd-setup {
+  background: #fff;
+  border: 1px solid #c5d0dc;
+  color: #1a1a1a;
+}
+
+.acct-toolkit .afd-setup__step h2,
+.acct-toolkit .afd-setup__done {
+  color: #1e3a5f;
+}
+
+.acct-toolkit .afd-setup__step > p {
+  color: #475569;
+}
+
+.acct-toolkit .afd-setup__step a,
+.acct-toolkit .afd-setup__step > button {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.acct-toolkit .afd-duebars__track span {
+  background: #1e40af;
+}
+
+.acct-toolkit .ui-kpi {
+  border: 1px solid #c5d0dc;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.acct-toolkit .ui-kpi__label {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.acct-toolkit .ui-kpi__value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.acct-toolkit .ui-kpi__icon {
+  background: #1e40af;
+  color: #fff;
+  border-radius: 50%;
+}
+
+.acct-toolkit .analytics-page {
+  background: transparent;
+}
+
+.acct-toolkit .mtk-panel__title {
+  background: #1d4ed8;
+}

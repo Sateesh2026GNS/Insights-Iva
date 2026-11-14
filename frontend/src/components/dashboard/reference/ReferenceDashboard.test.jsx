@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,8 +31,13 @@ vi.mock("../../../api/productionApi", () => ({
   getWorkOrders: vi.fn().mockResolvedValue({ data: [] }),
 }));
 
+const mockGetMyApprovalCounts = vi.fn().mockResolvedValue({ data: { total: 0 } });
 vi.mock("../../../api/approvalsApi", () => ({
-  getMyApprovalCounts: vi.fn().mockResolvedValue({ data: { total: 0 } }),
+  getMyApprovalCounts: (...args) => mockGetMyApprovalCounts(...args),
+}));
+
+vi.mock("../../../api/operatorExecutionApi", () => ({
+  getMyProductionEntries: vi.fn().mockResolvedValue({ data: { items: [] } }),
 }));
 
 vi.mock("recharts", () => {
@@ -118,6 +123,7 @@ const fullDashboard = {
 
 describe("ReferenceDashboard", () => {
   beforeEach(() => {
+    mockGetMyApprovalCounts.mockClear();
     mockUseAuth.mockReturnValue({
       user: {
         role: "Store Manager",
@@ -145,6 +151,8 @@ describe("ReferenceDashboard", () => {
     expect(screen.queryByText("refDashboard.shopFloorStatus")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.todaysProduction")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.machinesRunning")).not.toBeInTheDocument();
+    expect(document.querySelector(".mtk-theme--teal")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "OPERATOR DASHBOARD" })).not.toBeInTheDocument();
   });
 
   it("hides Quick Actions, Shop Floor, Top Machines, and Inventory Summary for Operator role", async () => {
@@ -154,6 +162,7 @@ describe("ReferenceDashboard", () => {
         permissions: ["production"],
       },
     });
+
     mockGetErpDashboard.mockResolvedValue({ data: fullDashboard });
 
     render(
@@ -170,6 +179,113 @@ describe("ReferenceDashboard", () => {
     expect(screen.queryByText("refDashboard.topMachines")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.inventorySummary")).not.toBeInTheDocument();
     expect(screen.queryByText("refDashboard.quickActions")).not.toBeInTheDocument();
+    expect(document.querySelector(".mtk-theme--teal")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "OPERATOR DASHBOARD" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check In" })).toBeInTheDocument();
+  });
+
+  it("does not request the restricted approvals endpoint for Operators", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: "Operator", permissions: ["production"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({ data: fullDashboard });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "OPERATOR DASHBOARD" })).toBeInTheDocument();
+    });
+    expect(mockGetMyApprovalCounts).not.toHaveBeenCalled();
+  });
+
+  it("opens operator KPI cards on allowed pages and keeps quality informational", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: "Operator", permissions: ["production"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({
+      data: {
+        ...fullDashboard,
+        dashboard_profile: "operator",
+        visible_sections: ["kpi", "todays_summary", "recent_work_orders", "production_overview"],
+        kpi_cards: [
+          { id: "my-work-orders", title: "My Work Orders", value: "0", trendLabel: "assigned to me", link: "/production/work-orders" },
+          { id: "assigned-machine", title: "Assigned Machine", value: "Unassigned", trendLabel: "no machine assigned", link: "/production/machines" },
+          { id: "quality-checks-pending", title: "Quality Checks Pending", value: "0", trendLabel: "not assigned", link: "/quality/in-process" },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("link", { name: /myWorkOrders/ })).toHaveAttribute("href", "/my-job-cards");
+    expect(screen.getByRole("link", { name: /assignedMachine/ })).toHaveAttribute("href", "/production/my-machine");
+    expect(screen.getByText("refDashboard.qualityChecksPending")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /qualityChecksPending/ })).not.toBeInTheDocument();
+    expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+  });
+
+  it("hides Departments for all roles; Pending Approvals and Revenue/Cost for operators only", async () => {
+    const sharedCards = [
+      { id: "departments", title: "Departments", value: "4", trendLabel: "active departments", link: "/masters/departments" },
+      { id: "pending-approvals", title: "Pending Approvals", value: "2", trendLabel: "awaiting action", link: "/admin/approvals" },
+      { id: "revenue-cost-snapshot", title: "Revenue/Cost Snapshot", value: "—", trendLabel: "no data this month", link: "/accounts/profit-loss" },
+      { id: "my-work-orders", title: "My Work Orders", value: "3", trendLabel: "assigned to me", link: "/my-job-cards" },
+    ];
+
+    mockUseAuth.mockReturnValue({
+      user: { role: "Operator", permissions: ["production"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({
+      data: {
+        ...fullDashboard,
+        dashboard_profile: "operator",
+        visible_sections: ["kpi", "todays_summary", "recent_work_orders", "production_overview"],
+        kpi_cards: sharedCards,
+      },
+    });
+
+    const operatorView = render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("link", { name: /myWorkOrders/ })).toBeInTheDocument();
+    expect(screen.queryByText("refDashboard.departments")).not.toBeInTheDocument();
+    expect(screen.queryByText("refDashboard.pendingApprovals")).not.toBeInTheDocument();
+    expect(screen.queryByText("refDashboard.revenueCostSnapshot")).not.toBeInTheDocument();
+    operatorView.unmount();
+
+    mockUseAuth.mockReturnValue({
+      user: { role: "Admin", permissions: ["*"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({
+      data: {
+        ...fullDashboard,
+        dashboard_profile: "admin",
+        kpi_cards: sharedCards,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText("refDashboard.departments")).not.toBeInTheDocument();
+    expect(await screen.findByText("refDashboard.pendingApprovals")).toBeInTheDocument();
+    expect(screen.getByText("refDashboard.revenueCostSnapshot")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Check In" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Live Manufacturing Workflow")).not.toBeInTheDocument();
   });
 
   it("renders all four period tabs (Daily, Weekly, Monthly, Yearly) in Production Overview", async () => {
@@ -202,5 +318,43 @@ describe("ReferenceDashboard", () => {
     expect(screen.getByText("refDashboard.weekly")).toBeInTheDocument();
     expect(screen.getByText("refDashboard.monthly")).toBeInTheDocument();
     expect(screen.getByText("refDashboard.yearly")).toBeInTheDocument();
+  });
+
+  it("opens admin export controls from the More button and closes them again", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: "Admin", email: "admin@example.com", permissions: ["*"] },
+    });
+    mockGetErpDashboard.mockResolvedValue({ data: fullDashboard });
+
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("button", { name: "More" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Admin Dashboard/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Email (PDF)" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("button", { name: "Report export format" })).toHaveTextContent("PDF");
+    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email (PDF)" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.queryByRole("button", { name: "Download" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the export toolbar on non-admin dashboards", async () => {
+    render(
+      <MemoryRouter>
+        <ReferenceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("refDashboard.inventoryValue")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
   });
 });

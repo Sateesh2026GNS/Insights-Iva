@@ -631,15 +631,27 @@ def list_adjustments(db: Session, tenant_id: int) -> list[StockAdjustmentRead]:
     return result
 
 
-def create_adjustment(db: Session, tenant_id: int, payload: StockAdjustmentCreate) -> StockAdjustment:
+def create_adjustment(
+    db: Session,
+    tenant_id: int,
+    payload: StockAdjustmentCreate,
+    *,
+    submitted_by_user_id: int | None = None,
+) -> StockAdjustment:
     sl = db.scalars(
         select(StockLevel).where(
             StockLevel.warehouse_id == payload.warehouse_id,
             StockLevel.item_id == payload.item_id,
         )
     ).first()
-    old_qty = sl.quantity if sl else 0
-    diff = payload.new_qty - old_qty
+    old_raw = float(sl.quantity) if sl and sl.quantity is not None else 0.0
+    if not old_raw.is_integer():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Stock adjustments store whole quantities, and the on-hand quantity is fractional.",
+        )
+    old_qty = int(old_raw)
+    diff = int(payload.new_qty) - old_qty
     a_date = date.today()
     if payload.adjustment_date and payload.adjustment_date.strip():
         try:
@@ -652,6 +664,7 @@ def create_adjustment(db: Session, tenant_id: int, payload: StockAdjustmentCreat
 
     adj = StockAdjustment(
         tenant_id=tenant_id,
+        submitted_by_user_id=submitted_by_user_id,
         warehouse_id=payload.warehouse_id,
         item_id=payload.item_id,
         old_qty=old_qty,
@@ -668,7 +681,13 @@ def create_adjustment(db: Session, tenant_id: int, payload: StockAdjustmentCreat
 
 
 def update_adjustment_status(
-    db: Session, tenant_id: int, adjustment_id: int, new_status: str, approved_by: str | None = None
+    db: Session,
+    tenant_id: int,
+    adjustment_id: int,
+    new_status: str,
+    approved_by: str | None = None,
+    *,
+    commit: bool = True,
 ) -> StockAdjustment | None:
     adj = db.scalars(
         select(StockAdjustment).where(StockAdjustment.id == adjustment_id, StockAdjustment.tenant_id == tenant_id)
@@ -718,8 +737,11 @@ def update_adjustment_status(
         if inventory_item and inventory_item.tenant_id == tenant_id:
             _sync_cached_item_quantity(db, inventory_item)
 
-    db.commit()
-    db.refresh(adj)
+    if commit:
+        db.commit()
+        db.refresh(adj)
+    else:
+        db.flush()
     return adj
 
 

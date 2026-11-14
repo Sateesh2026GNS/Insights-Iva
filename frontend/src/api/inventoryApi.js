@@ -2,7 +2,7 @@ import api from "./axiosConfig";
 import { getCachedReference } from "../utils/referenceDataCache";
 
 export const getWarehouses = (options = {}) =>
-  getCachedReference("warehouses", () => api.get("/inventory/warehouses"), {
+  getCachedReference("warehouses", () => api.get("/inventory/warehouses", { skipGlobalError: true }), {
     force: options.force === true,
   });
 export const getWarehouseSummary = () => api.get("/inventory/warehouses/summary");
@@ -53,6 +53,7 @@ export const getInventoryHub = () => api.get("/inventory/hub");
 
 /* Manufacturing store workflow */
 export const getStoreDashboard = () => api.get("/inventory/store/dashboard");
+export const getStoreStockValueByCategory = () => api.get("/inventory/store/stock-value-by-category");
 export const getPendingInventoryChecks = (params = {}) =>
   api.get("/inventory/store/pending-inventory-checks", { params });
 export const createStoreStockIn = (payload) => api.post("/inventory/store/stock-in", payload);

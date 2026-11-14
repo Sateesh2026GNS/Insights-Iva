@@ -716,7 +716,7 @@ def create_plan(
 ):
     _, tenant_id = user_tenant
     payload.tenant_id = tenant_id
-    order = create_production_order(db, payload)
+    order = create_production_order(db, payload, submitted_by_user_id=user_tenant[0].id)
     return success_response("Production plan created", _dump(order))
 
 
@@ -938,6 +938,9 @@ def work_orders(
     db: Session = Depends(get_db),
 ):
     user, tenant_id = user_tenant
+    from app.routers.operator_deps import reject_shop_floor_operator
+
+    reject_shop_floor_operator(user)
     return success_response(
         "Work orders retrieved",
         _dump(list_work_orders_enriched(db, tenant_id, production_order_id, user=user)),
@@ -951,6 +954,9 @@ def work_orders_summary(
     db: Session = Depends(get_db),
 ):
     user, tenant_id = user_tenant
+    from app.routers.operator_deps import reject_shop_floor_operator
+
+    reject_shop_floor_operator(user)
     return success_response(
         "Work order summary retrieved",
         _dump(get_work_order_summary(db, tenant_id, production_order_id, user=user)),

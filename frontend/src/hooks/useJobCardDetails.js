@@ -43,7 +43,7 @@ function mapSoLine(line) {
   };
 }
 
-export function useJobCardDetails(orderId, tenantId) {
+export function useJobCardDetails(orderId, tenantId, enabled = true) {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,6 +63,10 @@ export function useJobCardDetails(orderId, tenantId) {
   const [errors, setErrors] = useState({});
 
   const load = useCallback(async () => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const catalogTasks = [
@@ -130,7 +134,7 @@ export function useJobCardDetails(orderId, tenantId) {
     } finally {
       setLoading(false);
     }
-  }, [orderId, tenantId, addToast]);
+  }, [orderId, tenantId, addToast, enabled]);
 
   const patchField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));

@@ -34,7 +34,8 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import NavyMastersShell from "../../components/common/NavyMastersShell";
 import Loader from "../../components/common/Loader";
 import PageHeader from "../../components/common/PageHeader";
 import MaintenanceErrorState from "../../components/maintenance/MaintenanceErrorState";
@@ -167,10 +168,16 @@ export default function MaintenanceDashboard() {
   const overviewBars = hub.maintenance_overview || [];
   const costTrend = hub.cost_trend || [];
 
-  if (loading) return <Loader label="Loading maintenance dashboard..." />;
+  if (loading) {
+    return (
+      <NavyMastersShell theme="orange" kicker="Plan · Repair · Restore" title="MAINTENANCE" accent="DASHBOARD">
+        <Loader label="Loading maintenance dashboard..." />
+      </NavyMastersShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <NavyMastersShell theme="orange" kicker="Plan · Repair · Restore" title="MAINTENANCE" accent="DASHBOARD">
     <div className="min-w-0 space-y-5 pb-5">
       <PageHeader
         subtitle="Overview of maintenance requests, equipment status, and costs"
@@ -404,7 +411,7 @@ export default function MaintenanceDashboard() {
         <QuickLink to="/maintenance/machine-history" label="Machine History" />
       </div>
     </div>
-    </ListPageShell>
+    </NavyMastersShell>
   );
 }
 

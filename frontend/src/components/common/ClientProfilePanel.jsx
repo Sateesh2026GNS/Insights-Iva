@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Camera, LogOut, Palette, Settings, UserRound } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
+import { userCanAccessPath } from "../../config/permissions";
 import { useToast } from "../../context/ToastContext";
 import AdjustProfilePhotoModal from "../settings/AdjustProfilePhotoModal";
 
@@ -20,6 +21,7 @@ const MENU_ITEMS = [
 export default function ClientProfilePanel({ onClose, onRequestLogout }) {
   const navigate = useNavigate();
   const { user, refreshUser, updateUserAvatar } = useAuth();
+  const menuItems = MENU_ITEMS.filter((item) => userCanAccessPath(user, item.path));
   const { addToast } = useToast();
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
   const [selectedImageForAdjust, setSelectedImageForAdjust] = useState(null);
@@ -190,7 +192,7 @@ export default function ClientProfilePanel({ onClose, onRequestLogout }) {
         </div>
 
         <div className="profile-dropdown__menu">
-          {MENU_ITEMS.map((item) => {
+          {menuItems.map((item) => {
             const Icon = item.icon;
             const refIndex = menuIndex;
             menuIndex += 1;

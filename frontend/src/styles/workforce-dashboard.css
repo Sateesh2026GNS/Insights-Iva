@@ -5,6 +5,7 @@
 .wfd-header p { margin: 0; font-size: 13px; }
 .wfd-links, .wfd-footer { display: flex; flex-wrap: wrap; gap: 10px; }
 .wfd-links a, .wfd-footer a { color: #fff; font-weight: 700; text-decoration: none; }
+.wfd-links a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 8px; }
 .wfd-kpis, .wfd-charts, .wfd-tables { display: grid; gap: 10px; }
 .wfd-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .wfd-charts { grid-template-columns: 1.3fr 0.9fr 0.8fr; }

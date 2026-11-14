@@ -658,6 +658,7 @@ def send_email(
     body: str,
     *,
     html: str | None = None,
+    attachments: list[tuple[str, bytes, str]] | None = None,
     require_smtp: bool = False,
 ) -> None:
     """
@@ -665,14 +666,21 @@ def send_email(
 
     When require_smtp=True (password reset), missing SMTP or delivery failure
     raises EmailDeliveryError — never silently succeeds.
+    ``attachments`` is a list of (filename, content_bytes, mime_type).
     """
     if not smtp_is_configured():
         if require_smtp:
             _require_smtp()
-        logger.info("[DEV EMAIL] To: %s | Subject: %s | Body: %s", to, subject, body)
+        logger.info(
+            "[DEV EMAIL] To: %s | Subject: %s | Attachments: %s | Body: %s",
+            to,
+            subject,
+            [a[0] for a in attachments or []],
+            body,
+        )
         return
 
-    _send_via_smtplib(to, subject, body, html=html)
+    _send_via_smtplib(to, subject, body, html=html, attachments=attachments)
 
 
 def _password_reset_content(token: str) -> tuple[str, str, str]:

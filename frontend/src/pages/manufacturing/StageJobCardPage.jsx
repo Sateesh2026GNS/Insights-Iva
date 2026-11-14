@@ -28,6 +28,7 @@ import useAuth from "../../hooks/useAuth";
 import usePermissions from "../../hooks/usePermissions";
 import useTenantId from "../../hooks/useTenantId";
 import useJobCardDetails from "../../hooks/useJobCardDetails";
+import { isOperator } from "../../config/permissions";
 import { PermissionDeniedState } from "../../components/common/states";
 import CompletedJobCardAllStagesReport from "../../components/manufacturing/CompletedJobCardAllStagesReport";
 import { getMachines, getOperators } from "../../api/productionApi";
@@ -84,6 +85,7 @@ export default function StageJobCardPage() {
   const tenantId = useTenantId();
 
   const stage = ROUTE_SEGMENT_TO_STAGE[routeStage] || routeStage;
+  const operatorStage = stage === "operator" && isOperator(user);
   const [loading, setLoading] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -128,7 +130,7 @@ export default function StageJobCardPage() {
     handleSaveDetailsOnly,
     hasUnsavedDetailChanges,
     saving: savingDetails,
-  } = useJobCardDetails(orderId, tenantId);
+  } = useJobCardDetails(orderId, tenantId, !operatorStage);
 
   const load = useCallback(async () => {
     if (!orderId || !stage) return;
@@ -305,7 +307,7 @@ export default function StageJobCardPage() {
   const inspectionId = card?.inspection_id;
 
   const saveOperatorProgress = async () => {
-    if (!woId) return;
+    if (!woId || submitting) return;
     setSubmitting(true);
     try {
       await updateProductionProgress(woId, {
@@ -326,6 +328,8 @@ export default function StageJobCardPage() {
   };
 
   const runAction = async (action) => {
+    if (submitting) return;
+    if (stage === "operator" && !(card?.allowed_actions || []).includes(action)) return;
     setSubmitting(true);
     try {
       if (stage === "inventory_check") {

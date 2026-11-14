@@ -12,9 +12,14 @@ ADMIN_ROLE = "Admin"
 RESTRICTED_ACTION_ROLES = frozenset({"Operator"})
 
 
+EXTRA_PERMISSION_MODULES = frozenset({"leads", "reports"})
+
+
+REPORTS_ACTIONS = frozenset({"view", "run", "export", "create", "share", "schedule"})
+
 
 def normalize_role_name(value: str | None) -> str:
-    """Match frontend normalizeRoleName — trim, lower, collapse separators."""
+    """Match frontend ``normalizeRoleName`` — trim, lower, collapse separators."""
     return " ".join(
         str(value or "")
         .strip()
@@ -29,15 +34,14 @@ def is_admin_role_name(value: str | None) -> bool:
     return normalize_role_name(value) == "admin"
 
 
-EXTRA_PERMISSION_MODULES = frozenset({"leads"})
-
-
 def is_valid_permission(code: str) -> bool:
-    if code in VALID_MODULES or code in ("admin", "*"):
+    if code in VALID_MODULES or code in ("admin", "*") or code in EXTRA_PERMISSION_MODULES:
         return True
     if ":" not in code:
         return False
     module, action = code.split(":", 1)
+    if module == "reports" and action in REPORTS_ACTIONS:
+        return True
     if module in EXTRA_PERMISSION_MODULES and action in VALID_ACTIONS:
         return True
     return module in VALID_MODULES and action in VALID_ACTIONS
@@ -58,6 +62,10 @@ def get_role_names(user: User) -> list[str]:
             names.append(str(getattr(user, "role")))
         if hasattr(user, "role_name") and getattr(user, "role_name"):
             names.append(str(getattr(user, "role_name")))
+        # JWT preferred role (set by get_current_user) — only keep if already assigned.
+        active = getattr(user, "active_role", None)
+        if active and any(normalize_role_name(n) == normalize_role_name(active) for n in names):
+            names.append(str(active))
         if isinstance(user, dict):
             if "role" in user and user["role"]:
                 names.append(str(user["role"]))
@@ -65,7 +73,16 @@ def get_role_names(user: User) -> list[str]:
                 names.append(str(user["role_name"]))
             if "roles" in user and isinstance(user["roles"], list):
                 names.extend([str(r) for r in user["roles"]])
-        return names
+        # Preserve order, drop empties/duplicates.
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for name in names:
+            key = str(name)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            ordered.append(key)
+        return ordered
     except Exception as exc:
         import logging
         logging.getLogger(__name__).exception("get_role_names failed for user %s: %s", getattr(user, "id", None), exc)
@@ -88,9 +105,14 @@ def _normalize_permissions(raw_permissions) -> list[str]:
 
 def _permissions_for_role_name(name: str) -> list[str]:
     if is_admin_role_name(name):
-        return sorted(VALID_MODULES)
+        admin_spec = PERMISSION_MATRIX.get("Admin", {})
+        perms = set(VALID_MODULES)
+        perms.update(admin_spec.get("modules") or [])
+        perms.update(admin_spec.get("actions") or [])
+        return sorted(perms)
     spec = PERMISSION_MATRIX.get(name, {})
     if not spec:
+        # Case-insensitive matrix lookup (e.g. "sales manager").
         target = normalize_role_name(name)
         for key, value in PERMISSION_MATRIX.items():
             if normalize_role_name(key) == target:
@@ -99,6 +121,20 @@ def _permissions_for_role_name(name: str) -> list[str]:
     perms = list(spec.get("modules", []))
     perms.extend(spec.get("actions", []))
     return sorted(set(perms))
+
+
+def _with_role_baseline(role_name: str | None, perms: set[str]) -> set[str]:
+    """Keep stored role JSON, and include Settings for Quality Control.
+
+    Older Quality Control rows were saved before Settings was part of the role.
+    Admin always expands to full catalog access (stored JSON may be stale).
+    Deliberate Module Permissions removals must stick — do not re-union the matrix.
+    """
+    if is_admin_role_name(role_name):
+        return set(_permissions_for_role_name("Admin"))
+    if normalize_role_name(role_name) == "quality control":
+        perms.add("settings")
+    return perms
 
 
 def get_user_permissions(user: User) -> set[str]:
@@ -124,9 +160,10 @@ def get_user_permissions(user: User) -> set[str]:
                 continue
             normalized = _normalize_permissions(getattr(role, "permissions", None))
             if normalized:
-                perms.update(normalized)
+                # Non-empty stored JSON wins (admin edits / deliberate removals stick).
+                perms.update(_with_role_baseline(role_name, set(normalized)))
             elif role_name:
-                # Case-insensitive matrix fallback for empty JSON only.
+                # Empty/missing JSON → canonical matrix for known roles only.
                 perms.update(_permissions_for_role_name(role_name))
         if not roles:
             for name in get_role_names(user):
@@ -191,10 +228,7 @@ def user_can_write_material_pricing(user: User) -> bool:
 def require_material_pricing_read():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_read_material_pricing(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("material_pricing:read")
         return current_user
 
     return dependency
@@ -203,10 +237,7 @@ def require_material_pricing_read():
 def require_material_pricing_write():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_write_material_pricing(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("material_pricing:write")
         return current_user
 
     return dependency
@@ -236,10 +267,7 @@ def user_can_write_product_master(user: User) -> bool:
 def require_product_master_write():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_write_product_master(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("masters:product_write")
         return current_user
 
     return dependency
@@ -289,7 +317,17 @@ def user_has_permission(user: User, module: str) -> bool:
     perms = get_user_permissions(user)
     if "admin" in perms or "*" in perms:
         return True
-    return module in perms
+    if module in perms:
+        return True
+    # Action-style codes e.g. reports:view — allow module root or exact action.
+    if ":" in module:
+        root, _action = module.split(":", 1)
+        if root in perms or module in perms:
+            return True
+        if root == "reports" and any(str(p).startswith("reports:") for p in perms):
+            if module == "reports:view":
+                return True
+    return False
 
 
 def user_has_any_permission(user: User, *modules: str) -> bool:
@@ -319,15 +357,9 @@ def user_can_create_lead(user: User) -> bool:
 def require_lead_create():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_permission(current_user, "sales"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("sales")
         if not user_can_create_lead(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("leads:create")
         return current_user
 
     return dependency
@@ -362,7 +394,7 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 def require_admin_role(current_user: User = Depends(get_current_user)) -> User:
     """Require the tenant Admin role name (not wildcard permission grants alone)."""
-    if ADMIN_ROLE not in get_role_names(current_user):
+    if not any(is_admin_role_name(n) for n in get_role_names(current_user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Administrator privileges are required to perform this action.",
@@ -371,15 +403,37 @@ def require_admin_role(current_user: User = Depends(get_current_user)) -> User:
 
 
 MODULE_FORBIDDEN_MESSAGE = "You do not have permission to access this module."
+PERMISSION_DENIED_CODE = "PERMISSION_DENIED"
+
+
+def permission_denied_detail(module: str | None = None) -> dict:
+    """Machine-readable 403 payload for RBAC denials (frontend branches on ``code``)."""
+    payload = {
+        "message": MODULE_FORBIDDEN_MESSAGE,
+        "detail": MODULE_FORBIDDEN_MESSAGE,
+        "code": PERMISSION_DENIED_CODE,
+    }
+    if module:
+        payload["module"] = module
+    return payload
+
+
+def raise_permission_denied(module: str | None = None) -> None:
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "missing_permission module=%s", module or "(unspecified)"
+    )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=permission_denied_detail(module),
+    )
 
 
 def require_permission(module: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_permission(current_user, module):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(module)
         return current_user
 
     return dependency
@@ -388,10 +442,7 @@ def require_permission(module: str):
 def require_any_permission(*modules: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_any_permission(current_user, *modules):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("|".join(modules) if modules else None)
         return current_user
 
     return dependency
@@ -402,28 +453,21 @@ APPROVAL_QUEUE_MODULES = ("admin", "hr", "procurement", "production", "inventory
 
 def require_approval_queue_access(current_user: User = Depends(get_current_user)) -> User:
     """Users who can see at least one approval category in the unified queue."""
+    from app.routers.operator_deps import reject_shop_floor_operator
     from app.services.approval_queue_service import user_can_access_approval_queue
 
+    reject_shop_floor_operator(current_user)
     if user_can_access_approval_queue(current_user):
         return current_user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=MODULE_FORBIDDEN_MESSAGE,
-    )
+    raise_permission_denied("approval_queue")
 
 
 def require_action(module: str, action: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_permission(current_user, module):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(module)
         if not user_can_action(current_user, module, action):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(f"{module}:{action}")
         return current_user
 
     return dependency
@@ -485,10 +529,7 @@ def user_can_access_analytics_child(user: User, child_key: str) -> bool:
 def require_analytics_child(child_key: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_can_access_analytics_child(current_user, child_key):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied(f"analytics:{child_key}")
         return current_user
 
     return dependency
@@ -520,10 +561,7 @@ def tenant_scope_action(module: str, action: str):
 def require_accounts_expense_access():
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if not user_has_accounts_expense_access(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=MODULE_FORBIDDEN_MESSAGE,
-            )
+            raise_permission_denied("accounts:expense")
         return current_user
 
     return dependency
@@ -544,10 +582,7 @@ def require_accounts_expense_action(action: str):
             return current_user
         if _is_store_manager(current_user):
             return current_user
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=MODULE_FORBIDDEN_MESSAGE,
-        )
+        raise_permission_denied(f"accounts:{action}")
 
     return dependency
 

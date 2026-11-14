@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import secrets
 import uuid
@@ -17,6 +18,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.meeting import GoogleCalendarCredential, Meeting
+
+logger = logging.getLogger(__name__)
 
 try:
     from google.auth.transport.requests import Request as GoogleAuthRequest
@@ -59,20 +62,53 @@ def _settings():
     return get_settings()
 
 
-def is_google_configured() -> bool:
-    return _settings().google_calendar_configured and GOOGLE_LIBS_AVAILABLE
+def _is_http_url(value: str, *, allow_http: bool) -> bool:
+    candidate = (value or "").strip()
+    if not candidate or " " in candidate:
+        return False
+    lowered = candidate.lower()
+    if lowered.startswith("https://"):
+        return True
+    return allow_http and lowered.startswith("http://")
 
 
-def _require_configured() -> None:
+def oauth_configuration_problems() -> list[str]:
+    """Names of missing or invalid server settings. Values are never included."""
+    settings = _settings()
+    problems: list[str] = []
     if not GOOGLE_LIBS_AVAILABLE:
+        problems.append("Google API libraries")
+    if not settings.google_client_id.strip():
+        problems.append("GOOGLE_CLIENT_ID")
+    if not settings.google_client_secret.strip():
+        problems.append("GOOGLE_CLIENT_SECRET")
+    allow_http = not settings.is_production
+    explicit = (getattr(settings, "google_oauth_redirect_uri", "") or "").strip()
+    if explicit and not _is_http_url(explicit, allow_http=allow_http):
+        problems.append("GOOGLE_OAUTH_REDIRECT_URI")
+    else:
+        redirect = str(getattr(settings, "google_oauth_redirect", "") or "").strip()
+        if not _is_http_url(redirect, allow_http=allow_http):
+            problems.append("GOOGLE_OAUTH_REDIRECT_URI")
+    return problems
+
+
+def is_google_configured() -> bool:
+    return not oauth_configuration_problems()
+
+
+def _require_configured() -> str:
+    problems = oauth_configuration_problems()
+    if problems:
         raise GoogleCalendarNotConfiguredError(
-            "Google API libraries are not installed on the server."
+            "Google Calendar integration is not configured. Missing or invalid: "
+            + ", ".join(problems)
         )
-    if not _settings().google_calendar_configured:
-        raise GoogleCalendarNotConfiguredError(
-            "Google Calendar integration is not configured. "
-            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the backend environment."
-        )
+    settings = _settings()
+    explicit = (settings.google_oauth_redirect_uri or "").strip()
+    if explicit:
+        return explicit
+    return settings.google_oauth_redirect.strip()
 
 
 def create_oauth_state(*, user_id: int, tenant_id: int, code_verifier: str | None = None) -> str:
@@ -114,14 +150,14 @@ def decode_oauth_state(state: str) -> tuple[int, int, str | None]:
 
 def build_authorization_url(*, user_id: int, tenant_id: int) -> str:
     _ensure_oauth_transport()
+    redirect_uri = _require_configured()
     settings = _settings()
     client_id = settings.google_client_id.strip()
     client_secret = settings.google_client_secret.strip()
-    redirect_uri = settings.google_oauth_redirect.strip()
     code_verifier = secrets.token_urlsafe(64)
     state = create_oauth_state(user_id=user_id, tenant_id=tenant_id, code_verifier=code_verifier)
 
-    if GOOGLE_LIBS_AVAILABLE and client_id and client_secret:
+    if GOOGLE_LIBS_AVAILABLE:
         try:
             flow = Flow.from_client_config(
                 {
@@ -142,11 +178,11 @@ def build_authorization_url(*, user_id: int, tenant_id: int) -> str:
                 prompt="consent",
                 state=state,
             )
-            return auth_url
+            if "client_id=" in auth_url and client_secret not in auth_url:
+                return auth_url
         except Exception:
-            pass
+            logger.exception("Google OAuth library could not build the authorization URL")
 
-    # Direct fallback URL construction (guaranteed to always work)
     params = {
         "response_type": "code",
         "client_id": client_id,
@@ -219,7 +255,7 @@ def exchange_authorization_code(
     code_verifier: str | None = None,
 ) -> GoogleCalendarCredential:
     _ensure_oauth_transport()
-    _require_configured()
+    redirect_uri = _require_configured()
     settings = _settings()
     flow = Flow.from_client_config(
         {
@@ -231,7 +267,7 @@ def exchange_authorization_code(
             }
         },
         scopes=SCOPES,
-        redirect_uri=settings.google_oauth_redirect,
+        redirect_uri=redirect_uri,
     )
     if code_verifier:
         flow.code_verifier = code_verifier
@@ -241,9 +277,10 @@ def exchange_authorization_code(
         else:
             flow.fetch_token(code=code)
     except Exception as exc:
+        logger.exception("Google OAuth token exchange failed")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Google OAuth token exchange failed: {exc}",
+            detail="Google authorization failed. Please try again.",
         ) from exc
     creds = flow.credentials
     existing_row = get_credential_row(db, tenant_id=tenant_id, user_id=user_id)
@@ -257,6 +294,7 @@ def exchange_authorization_code(
             ),
         )
     account_email = _fetch_account_email(creds) or (existing_row.google_account_email if existing_row else None)
+    _verify_calendar_access(creds)
     expiry = creds.expiry
     if expiry and expiry.tzinfo is None:
         expiry = expiry.replace(tzinfo=timezone.utc)
@@ -276,6 +314,19 @@ def disconnect_google_calendar(db: Session, *, tenant_id: int, user_id: int) -> 
     if row:
         db.delete(row)
         db.commit()
+
+
+def _verify_calendar_access(creds: Credentials) -> None:
+    """Confirm the granted token can read the user's calendar list before it is stored."""
+    try:
+        service = _calendar_service(creds)
+        service.calendarList().list(maxResults=1).execute()
+    except Exception as exc:
+        logger.exception("Google Calendar access check failed")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google Calendar could not be reached. Please try connecting again.",
+        ) from exc
 
 
 def _fetch_account_email(creds: Credentials) -> str | None:

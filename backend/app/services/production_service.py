@@ -41,7 +41,12 @@ def list_products(db: Session, tenant_id: int) -> list[Product]:
     return list(db.scalars(stmt).all())
 
 
-def create_production_order(db: Session, payload: ProductionOrderCreate) -> ProductionOrder:
+def create_production_order(
+    db: Session,
+    payload: ProductionOrderCreate,
+    *,
+    submitted_by_user_id: int | None = None,
+) -> ProductionOrder:
     if payload.product_id:
         product = db.scalars(
             select(Product).where(
@@ -121,6 +126,7 @@ def create_production_order(db: Session, payload: ProductionOrderCreate) -> Prod
         payload.order_number = order_num
 
     data = payload.model_dump(exclude={"product_name", "produced_quantity"})
+    data["submitted_by_user_id"] = submitted_by_user_id
     actual_qty = data.get("actual_quantity") if data.get("actual_quantity") is not None else payload.produced_quantity
     if "produced_quantity" in data:
         data.pop("produced_quantity", None)
@@ -726,6 +732,42 @@ def list_machines(db: Session, tenant_id: int, user: User | None = None) -> list
             (Machine.plant_code == user.plant_code) | (Machine.plant_code.is_(None))
         )
     return list(db.scalars(stmt).all())
+
+
+OPERATOR_MACHINE_TRANSITIONS = {
+    "idle": frozenset({"running", "stopped", "breakdown", "maintenance"}),
+    "running": frozenset({"idle", "stopped", "breakdown", "maintenance"}),
+    "stopped": frozenset({"idle", "running", "breakdown", "maintenance"}),
+    "active": frozenset({"idle", "running", "stopped", "breakdown", "maintenance"}),
+    "breakdown": frozenset({"idle", "stopped", "maintenance"}),
+    "maintenance": frozenset({"idle", "stopped"}),
+    "offline": frozenset({"idle", "stopped"}),
+}
+
+
+def assert_operator_machine_transition(db: Session, machine_id: int, tenant_id: int, next_status: str | None) -> None:
+    """Reject an Operator status change that skips the allowed shop-floor steps."""
+    requested = (next_status or "").strip().lower()
+    if not requested:
+        raise HTTPException(status_code=400, detail="Machine status is required.")
+    current_status = db.scalar(
+        select(Machine.status).where(Machine.id == machine_id, Machine.tenant_id == tenant_id)
+    )
+    current = (current_status or "idle").strip().lower()
+    if requested == current:
+        raise HTTPException(status_code=400, detail=f"Machine is already {current}.")
+    allowed = OPERATOR_MACHINE_TRANSITIONS.get(current)
+    if allowed is None:
+        allowed = frozenset({"idle", "stopped"})
+    if requested not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot change machine status from '{current}' to '{requested}'. "
+                f"Allowed next statuses: {choices}."
+            ),
+        )
 
 
 def update_machine_status(

@@ -1,3 +1,5 @@
+import allowlist from "./operatorPageAllowlist.json";
+
 /** Production Manager sidebar sections (used when filtering generic nav; dedicated nav uses productionManagerNavConfig). */
 export const PRODUCTION_MANAGER_ALLOWED_SECTIONS = new Set([
   "dashboard",
@@ -79,53 +81,7 @@ export const OPERATOR_BLOCKED_CHILDREN = new Set([
   "/production/reports",
 ]);
 
-export const OPERATOR_ALLOWED_PATHS = new Set([
-  "/",
-  "/dashboard",
-  "/manufacturing/workflow",
-  "/my-job-cards",
-  "/production",
-  "/production/dashboard",
-  // The Work Orders page switches operators to their server-scoped assignments.
-  "/production/work-orders",
-  "/production/my-machine",
-  "/factory-monitor/machine-status",
-  "/factory-monitor/production-lines",
-  "/factory-monitor/live-production",
-  "/documents",
-  "/documents/production",
-  "/alerts",
-  "/alerts/low-stock",
-  "/alerts/machine-failure",
-  "/alerts/production-delay",
-  "/alerts/maintenance",
-  "/alerts/quality",
-  "/alerts/safety",
-  "/alerts/general",
-  "/hr/attendance",
-  "/hr/attendance/approval",
-  "/hr/attendance/overtime",
-  "/hr/attendance/adjusted-leave",
-  "/hr/attendance/settings",
-  "/attendance",
-  "/hr/leave",
-  "/hr/leave/approvals",
-  "/admin/approvals",
-  "/hr/leave/holiday",
-  "/hr/leave/adjustment",
-  "/hr/leave/plans",
-  "/hr/leave/plans/create",
-  "/hr/leave/create",
-  "/leave",
-  "/settings",
-  "/settings/my-account",
-  "/settings/my-account/devices",
-  "/settings/notifications",
-  "/settings/appearance",
-  "/settings/help",
-  "/settings/about",
-  "/settings/alerts",
-]);
+export const OPERATOR_ALLOWED_PATHS = new Set(allowlist.exact || []);
 
 /** HR Manager sidebar — HR module plus shared collaboration sections. */
 export const HR_MANAGER_ALLOWED_SECTIONS = new Set([
@@ -259,6 +215,7 @@ export const QUALITY_CONTROL_ALLOWED_CHILDREN = new Set([
   "/production/planning",
   "/inventory/raw-materials",
   "/inventory/finished-goods",
+  "/inventory/settings",
   "/alerts",
   "/alerts/quality",
   "/alerts/production-delay",
@@ -267,7 +224,6 @@ export const QUALITY_CONTROL_ALLOWED_CHILDREN = new Set([
   "/meetings",
   "/chat",
   "/analytics/production",
-  "/settings",
   "/my-job-cards",
 ]);
 
@@ -291,6 +247,7 @@ export function qualityControlPathAllowed(pathname) {
   if (path.startsWith("/production/planning")) return true;
   if (path.startsWith("/inventory/raw-materials")) return true;
   if (path.startsWith("/inventory/finished-goods")) return true;
+  if (path === "/inventory/settings" || path.startsWith("/inventory/settings/")) return true;
   if (path.startsWith("/alerts/")) {
     return (
       path === "/alerts" ||
@@ -304,32 +261,17 @@ export function qualityControlPathAllowed(pathname) {
   if (path.startsWith("/chat")) return true;
   if (path === "/analytics/production" || path.startsWith("/analytics/production/")) return true;
   if (path.startsWith("/manufacturing/workflow")) return true;
-  if (path === "/settings" || path.startsWith("/settings/")) return true;
+  if (path.startsWith("/settings/")) return true;
   return false;
 }
 
+const OPERATOR_STAGE_PATTERNS = (allowlist.patterns || []).map((pattern) => new RegExp(pattern));
+
+/** Strict Operator page allowlist. The path list is operatorPageAllowlist.json. */
 export function operatorPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
-  if (path === "/") return true;
-  if (
-    path === "/my-job-cards" ||
-    path.startsWith("/my-job-cards/") ||
-    path.startsWith("/job-cards/") ||
-    path === "/sales/job-cards/create"
-  ) {
-    return true;
-  }
-  if (OPERATOR_BLOCKED_CHILDREN.has(path)) return false;
-  if (OPERATOR_ALLOWED_PATHS.has(path)) return true;
-  if (path.startsWith("/production/")) {
-    return OPERATOR_ALLOWED_CHILDREN.has(path);
-  }
-  if (path.startsWith("/manufacturing/")) return true;
-  if (path.startsWith("/factory-monitor/")) return true;
-  if (path.startsWith("/documents")) return true;
-  if (path.startsWith("/alerts")) return true;
-  if (path === "/settings" || path.startsWith("/settings/")) return true;
-  if (path.startsWith("/chat")) return true;
-  return false;
+  if ((allowlist.exact || []).includes(path)) return true;
+  if ((allowlist.prefixes || []).some((prefix) => path.startsWith(prefix))) return true;
+  return OPERATOR_STAGE_PATTERNS.some((pattern) => pattern.test(path));
 }

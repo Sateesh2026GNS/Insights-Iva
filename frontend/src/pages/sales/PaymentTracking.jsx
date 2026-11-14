@@ -5,7 +5,7 @@ import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
 import StandardPageLayout from "../../components/common/StandardPageLayout";
-import Table from "../../components/common/Table";
+import Table from "../../components/common/ResponsiveTable";
 import { getPayments, getInvoices } from "../../api/salesApi";
 import useTenantId from "../../hooks/useTenantId";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";

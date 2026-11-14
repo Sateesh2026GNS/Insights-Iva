@@ -88,6 +88,7 @@
 
   .dashboard-welcome-banner__art-wrap {
     width: 100%;
+    height: auto;
     justify-content: center;
   }
 

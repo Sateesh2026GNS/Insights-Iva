@@ -8,11 +8,9 @@ describe("Breadcrumbs sales manager dashboard", () => {
     expect(getPageTitle("/sales/")).toBe("Dashboard");
   });
 
-  it("shows Home > Dashboard trail for /sales", () => {
+  it("treats /sales as a role dashboard home (single Dashboard crumb)", () => {
     const trail = getBreadcrumbTrail("/sales");
-    expect(trail).toHaveLength(2);
-    expect(trail[0]).toEqual({ label: "Dashboard", path: "/" });
-    expect(trail[1]).toEqual({ label: "Dashboard", path: "/sales" });
+    expect(trail).toEqual([{ label: "Dashboard", path: "/sales" }]);
   });
 
   it("keeps child sales routes unchanged", () => {

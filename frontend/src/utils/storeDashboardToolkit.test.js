@@ -15,7 +15,8 @@ describe("storeDashboardToolkit", () => {
 
   it("uses compact Capacity Planning style KPI icons", () => {
     expect(storeDashboardKpiIcon("pendingJobCards")).toBe("JC");
-    expect(storeDashboardKpiIcon("stockIn")).toBe("IN");
+    expect(storeDashboardKpiIcon("pendingMaterialRequests")).toBe("MR");
+    expect(storeDashboardKpiIcon("pendingTransfers")).toBe("ST");
     expect(storeDashboardKpiIcon("unknown")).toBe("•");
   });
 });

@@ -14,12 +14,12 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
-import PageHeader from "../../components/common/PageHeader";
 import InventoryHeaderControls from "../../components/inventory/InventoryHeaderControls";
 import StatusBadge from "../../components/common/StatusBadge";
 import ShorthandQuantityInput from "../../components/common/ShorthandQuantityInput";
@@ -545,7 +545,13 @@ export default function StockTransfer() {
     },
   ];
 
-  if (loading) return <Loader label="Loading stock transfers…" />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="maroon" kicker="Move · Track · Confirm" title="STOCK" accent="TRANSFER" subtitle="Move stock between warehouses">
+        <Loader label="Loading stock transfers…" />
+      </InventoryPlanningShell>
+    );
+  }
 
   const exportRows = filteredTransfers.map((r) => {
     const st = String(r.status || "").toLowerCase();
@@ -572,20 +578,23 @@ export default function StockTransfer() {
   };
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell
+      theme="maroon"
+      kicker="Move · Track · Confirm"
+      title="STOCK"
+      accent="TRANSFER"
+      subtitle="Move stock between warehouses"
+      actions={
+        <InventoryHeaderControls
+          dateValue={headerDate}
+          onDateChange={setHeaderDate}
+          warehouseValue={headerWarehouse}
+          onWarehouseChange={setHeaderWarehouse}
+          warehouses={warehouses}
+        />
+      }
+    >
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader variant="inventory"
-        subtitle="Transfer stock between warehouses."
-        action={
-          <InventoryHeaderControls
-            dateValue={headerDate}
-            onDateChange={setHeaderDate}
-            warehouseValue={headerWarehouse}
-            onWarehouseChange={setHeaderWarehouse}
-            warehouses={warehouses}
-          />
-        }
-      />
 
       {showForm ? (
         <section ref={formRef} className="ui-card scroll-mt-24 p-4 sm:p-5">
@@ -964,6 +973,7 @@ export default function StockTransfer() {
       />
 
       <ConfirmDialog
+        className="inv-plan-dialog mtk-root mtk-theme--maroon"
         open={Boolean(deleteTarget)}
         title="Delete record"
         message="Are you sure you want to delete this record?"
@@ -976,6 +986,6 @@ export default function StockTransfer() {
         }}
       />
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

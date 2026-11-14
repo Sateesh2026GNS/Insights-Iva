@@ -15,7 +15,8 @@ export default function AllAlerts() {
           : "Every alert across the system. Acknowledge, resolve, or export."
       }
       salesManager={salesManager}
-      shellClassName="alerts-page"
+      shellClassName={salesManager ? "alerts-page" : ""}
+      planningTheme={salesManager ? "" : "amber"}
     />
   );
 }

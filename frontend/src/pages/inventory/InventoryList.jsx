@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Plus } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
-import Table from "../../components/common/Table";
+import Table from "../../components/common/ResponsiveTable";
 import {
   getInventoryDashboard,
   getItemByBarcode,

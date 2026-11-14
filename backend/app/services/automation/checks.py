@@ -74,18 +74,8 @@ def _emit_with_idempotency(
     emit_fn,
 ) -> bool:
     if idempotency_guard(db, tenant_id, idempotency_key):
-        record_execution(
-            db,
-            tenant_id=tenant_id,
-            rule=rule,
-            event_type=rule.event_type,
-            idempotency_key=idempotency_key,
-            status="skipped",
-            action_summary="Already notified",
-            entity_type=entity_type,
-            entity_id=entity_id,
-            correlation_id=correlation_id,
-        )
+        # Key already recorded as success/skipped — do not insert another row
+        # (uq_automation_exec_tenant_idempotency forbids duplicates).
         return False
     last_exc: Exception | None = None
     for attempt in range(1, MAX_ACTION_RETRIES + 1):

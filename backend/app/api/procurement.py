@@ -174,7 +174,7 @@ def create_purchase_order_endpoint(
     payload.tenant_id = user.tenant_id
     from app.services.purchase_order_document_service import purchase_order_to_read
 
-    po = create_purchase_order(db, payload)
+    po = create_purchase_order(db, payload, submitted_by_user_id=user.id)
     po = get_purchase_order(db, user.tenant_id, po.id)
     return purchase_order_to_read(db, user.tenant_id, po)
 
@@ -500,7 +500,7 @@ def create_material_request_endpoint(
     db: Session = Depends(get_db),
 ) -> MaterialRequestRead:
     payload.tenant_id = user.tenant_id
-    return create_material_request(db, payload)
+    return create_material_request(db, payload, submitted_by_user_id=user.id)
 
 
 @router.get("/material-requests", response_model=list[MaterialRequestRead])

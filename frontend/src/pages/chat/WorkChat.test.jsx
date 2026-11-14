@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { act, cleanup, render, screen } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import WorkChat from "./WorkChat";
@@ -8,8 +8,9 @@ vi.mock("../../hooks/useAuth", () => ({
   default: () => ({ user: { id: 1, full_name: "Test User" } }),
 }));
 
+const { addToast } = vi.hoisted(() => ({ addToast: vi.fn() }));
 vi.mock("../../context/ToastContext", () => ({
-  useToast: () => ({ addToast: vi.fn() }),
+  useToast: () => ({ addToast }),
 }));
 
 vi.mock("../../api/filesApi", () => ({
@@ -44,7 +45,7 @@ vi.mock("../../api/workChatApi", () => ({
       {
         id: 10,
         conversation_id: 1,
-        body: "",
+        body: "Please review the invoice",
         sender: { id: 2, full_name: "store" },
         attachments: [
           {
@@ -90,6 +91,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("WorkChat", () => {
@@ -100,7 +102,7 @@ describe("WorkChat", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("store")).toBeInTheDocument();
+    expect((await screen.findAllByText("store")).length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText("Invoice_2026.pdf")).toBeInTheDocument();
     expect(screen.getByText("200.0 KB")).toBeInTheDocument();
   });
@@ -179,11 +181,36 @@ describe("WorkChat", () => {
     fireEvent.click(optionsBtn);
 
     expect(screen.getByText("Reply")).toBeInTheDocument();
-    expect(screen.getByText("Copy")).toBeInTheDocument();
+    expect(screen.getByText("Copy text")).toBeInTheDocument();
     expect(screen.getByText("React")).toBeInTheDocument();
     expect(screen.getByText("Forward")).toBeInTheDocument();
     expect(screen.getByText("Pin")).toBeInTheDocument();
     expect(screen.getByText("Star")).toBeInTheDocument();
     expect(screen.queryByText(/meta ai/i)).not.toBeInTheDocument();
+  });
+
+  it("does not rewrite conversation in the URL when it already matches, and stops polling on unmount", async () => {
+    const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+    const router = createMemoryRouter(
+      [{ path: "/chat", element: <WorkChat /> }],
+      { initialEntries: ["/chat?conversation=1"] }
+    );
+    let replaceCount = 0;
+    const unsub = router.subscribe((state) => {
+      if (state.historyAction === "REPLACE") replaceCount += 1;
+    });
+
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByText("Invoice_2026.pdf")).toBeInTheDocument();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 40));
+    });
+    expect(router.state.location.search).toBe("?conversation=1");
+    expect(replaceCount).toBe(0);
+
+    cleanup();
+    expect(clearIntervalSpy).toHaveBeenCalled();
+    clearIntervalSpy.mockRestore();
+    unsub();
   });
 });

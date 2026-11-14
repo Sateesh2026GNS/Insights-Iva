@@ -84,8 +84,8 @@ export const updatePayment = (paymentId, payload) =>
 export const deletePayment = (paymentId) => api.delete(`/sales/payments/${paymentId}`);
 
 export const getLeads = (status = null) => api.get("/sales/leads", { params: { status } });
-export const getLeadSummary = () => api.get("/sales/leads/summary");
-export const getLeadsEnriched = (params = {}) =>
+export const getLeadSummary = (options = {}) => api.get("/sales/leads/summary", options);
+export const getLeadsEnriched = (params = {}, options = {}) =>
   api.get("/sales/leads/enriched", {
     params: {
       ...(params.from_date ? { from_date: params.from_date } : {}),
@@ -95,6 +95,7 @@ export const getLeadsEnriched = (params = {}) =>
       ...(params.open_only ? { open_only: true } : {}),
       ...(params.followup_due ? { followup_due: true } : {}),
     },
+    ...options,
   });
 export const createLead = (payload) => api.post("/sales/leads", payload);
 export const getLeadNextId = () => api.get("/sales/leads/next-id");

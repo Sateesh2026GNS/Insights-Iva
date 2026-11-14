@@ -130,7 +130,7 @@
 
 .hr-org-setup__form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -152,9 +152,9 @@
   margin-bottom: 2px;
 }
 
-@media (max-width: 720px) {
+@media (min-width: 640px) {
   .hr-org-setup__form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -444,7 +444,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .hr-org-setup__form-row,
   .hr-org-setup__form-row--4 {
     grid-template-columns: 1fr;

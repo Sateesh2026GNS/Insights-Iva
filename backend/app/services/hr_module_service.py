@@ -724,14 +724,32 @@ def list_expense_approvals(db: Session, tenant_id: int) -> list[dict]:
     return [_expense_row_dict(r) for r in rows]
 
 
+def _approver_created_claim(row: ExpenseClaim, user: User) -> bool:
+    """True when the approver is the same person stored as the claim creator."""
+    raw = (row.created_by_name or "").strip().lower()
+    if not raw or raw in {"—", "-", "none"}:
+        return False
+    identities = (
+        getattr(user, "full_name", None),
+        getattr(user, "email", None),
+        getattr(user, "name", None),
+    )
+    return any(raw == str(value).strip().lower() for value in identities if value)
+
+
 def approve_expenses(db: Session, tenant_id: int, payload: dict, user: User) -> list[dict]:
     ids = payload.get("claim_ids") or payload.get("ids") or []
     status = payload.get("status", "approved")
-    updated = []
+    rows = []
     for cid in ids:
         row = db.scalar(select(ExpenseClaim).where(ExpenseClaim.id == cid, ExpenseClaim.tenant_id == tenant_id))
         if not row:
             continue
+        if _approver_created_claim(row, user):
+            raise HTTPException(403, "You cannot approve an expense claim you created.")
+        rows.append(row)
+    updated = []
+    for row in rows:
         row.status = status
         row.updated_by_name = getattr(user, "full_name", None) or getattr(user, "email", "Admin")
         if status == "approved":
@@ -740,6 +758,30 @@ def approve_expenses(db: Session, tenant_id: int, payload: dict, user: User) -> 
     db.commit()
     audit_hr(db, user=user, action="approve", entity_type="expense_claim", details={"ids": ids, "status": status})
     return [_expense_row_dict(r) for r in updated]
+
+
+def list_pending_expense_claims_for_dashboard(db: Session, tenant_id: int, limit: int = 8) -> list[dict]:
+    """Read-only claim rows for the accounts dashboard. Does not grant approve permission."""
+    pending = {"submitted", "pending", "pending_approval"}
+    rows = db.scalars(
+        select(ExpenseClaim).where(ExpenseClaim.tenant_id == tenant_id).order_by(ExpenseClaim.id.desc())
+    ).all()
+    items = []
+    for row in rows:
+        if (row.status or "").lower() not in pending:
+            continue
+        items.append(
+            {
+                "id": row.id,
+                "name": row.expense_name or "Expense",
+                "amount": float(row.amount or 0),
+                "created_by": row.created_by_name or "",
+                "status": row.status,
+            }
+        )
+        if len(items) >= limit:
+            break
+    return items
 
 
 

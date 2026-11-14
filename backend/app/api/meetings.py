@@ -1,4 +1,5 @@
 from urllib.parse import quote
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
@@ -34,6 +35,28 @@ router = APIRouter(prefix="/meetings", tags=["Meetings"])
 google_router = APIRouter(prefix="/integrations/google/calendar", tags=["Google Calendar"])
 
 MODULE = "meetings"
+logger = logging.getLogger(__name__)
+_ADMIN_ROLES = {"admin", "administrator", "super admin", "superadmin", "gns super admin"}
+_SAFE_GOOGLE_ERRORS = {"access_denied", "invalid_request", "invalid_scope", "server_error", "temporarily_unavailable"}
+
+
+def _viewer_is_admin(user: User) -> bool:
+    try:
+        names = {str(role.name or "").strip().lower() for role in (user.roles or [])}
+    except Exception:
+        names = set()
+    return bool(names & _ADMIN_ROLES)
+
+
+def _safe_oauth_detail(detail: str) -> str:
+    text = (detail or "").strip()
+    if text in {
+        "Invalid or expired OAuth state.",
+        "Invalid OAuth state.",
+        "Google authorization failed. Please try again.",
+    } or text.startswith("Google did not return a refresh token."):
+        return text
+    return "Google authorization failed. Please try again."
 
 
 @router.get("", response_model=MeetingListResponse)
@@ -171,6 +194,9 @@ def google_calendar_status_endpoint(
     status_data = gcal.get_connection_status(
         db, tenant_id=tenant_id, user_id=current_user.id
     )
+    status_data["missing_settings"] = (
+        gcal.oauth_configuration_problems() if _viewer_is_admin(current_user) else []
+    )
     return status_data
 
 
@@ -184,13 +210,13 @@ def google_calendar_connect_endpoint(
     except gcal.GoogleCalendarNotConfiguredError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Google Calendar is not connected for this workspace. "
-            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server.",
+            detail="Google Calendar integration is not configured. Please contact your workspace administrator.",
         )
     except Exception as exc:
+        logger.exception("Google Calendar authorization could not be started")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Unable to start Google Calendar authorization.",
         ) from exc
     return {"authorization_url": url}
 
@@ -205,7 +231,8 @@ def google_calendar_callback_endpoint(
     settings = get_settings()
     frontend = settings.frontend_base_url.rstrip("/")
     if error:
-        return RedirectResponse(f"{frontend}/meetings?google_error={quote(str(error))}")
+        safe_error = error if error in _SAFE_GOOGLE_ERRORS else "access_denied"
+        return RedirectResponse(f"{frontend}/meetings?google_error={quote(safe_error)}")
     if not code or not state:
         return RedirectResponse(f"{frontend}/meetings?google_error={quote('missing_code')}")
     try:
@@ -214,10 +241,13 @@ def google_calendar_callback_endpoint(
             db, tenant_id=tenant_id, user_id=user_id, code=code, code_verifier=code_verifier
         )
     except HTTPException as exc:
-        detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
-        return RedirectResponse(f"{frontend}/meetings?google_error={quote(detail)}")
-    except Exception as exc:
-        return RedirectResponse(f"{frontend}/meetings?google_error={quote(str(exc))}")
+        detail = exc.detail if isinstance(exc.detail, str) else "Google authorization failed. Please try again."
+        return RedirectResponse(f"{frontend}/meetings?google_error={quote(_safe_oauth_detail(detail))}")
+    except Exception:
+        logger.exception("Google Calendar callback failed")
+        return RedirectResponse(
+            f"{frontend}/meetings?google_error={quote('Google authorization failed. Please try again.')}"
+        )
     return RedirectResponse(f"{frontend}/meetings?google_connected=1")
 
 

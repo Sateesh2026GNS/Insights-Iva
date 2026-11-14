@@ -65,6 +65,13 @@ function isDuplicateOrConflictMessage(text) {
 function inferOperationErrorTitle(message, status) {
   const lower = String(message || "").toLowerCase();
   if (
+    lower.includes("email") ||
+    lower.includes("smtp") ||
+    (lower.includes("send") && (lower.includes("report") || lower.includes("mail")))
+  ) {
+    return "Unable to send email";
+  }
+  if (
     lower.includes("delete") ||
     lower.includes("remove") ||
     lower.includes("deactivate") ||

@@ -31,6 +31,7 @@ export const MODULES = [
   "dashboard", "masters", "production", "inventory", "procurement",
   "sales", "accounts", "quality", "maintenance", "analytics", "alerts", "admin",
   "documents", "documents_ops", "factoryMonitor", "iot", "settings", "meetings", "chat", "hr",
+  "reports",
 ];
 
 /** Static fallback matrix — API permissions take precedence when present. */
@@ -39,25 +40,25 @@ export const ROLE_PERMISSIONS = {
   admin: MODULES,
   "Production Manager": [
     "dashboard", "production", "quality", "analytics", "factoryMonitor", "alerts", "documents",
-    "masters", "inventory", "maintenance", "procurement", "settings", "iot", "sales", "accounts", "meetings",
+    "masters", "inventory", "maintenance", "procurement", "settings", "iot", "sales", "accounts", "meetings", "reports",
   ],
   production_manager: [
     "dashboard", "production", "quality", "analytics", "factoryMonitor", "alerts", "documents",
-    "masters", "inventory", "maintenance", "procurement", "settings", "iot", "sales", "accounts", "meetings",
+    "masters", "inventory", "maintenance", "procurement", "settings", "iot", "sales", "accounts", "meetings", "reports",
   ],
-  "Sales Manager": ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings"],
-  sales_manager: ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings"],
+  "Sales Manager": ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings", "reports"],
+  sales_manager: ["dashboard", "sales", "masters", "alerts", "documents", "meetings", "settings", "reports"],
   "Store Manager": [
-    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "meetings", "settings", "analytics",
+    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "meetings", "settings", "analytics", "reports",
   ],
   store_manager: [
-    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "meetings", "settings", "analytics",
+    "dashboard", "inventory", "procurement", "sales", "masters", "alerts", "documents", "meetings", "settings", "analytics", "reports",
   ],
   "Purchase Manager": [
-    "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
+    "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics", "reports",
   ],
   purchase_manager: [
-    "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics",
+    "dashboard", "procurement", "inventory", "masters", "accounts", "alerts", "documents", "analytics", "reports",
   ],
   "Quality Control": [
     "dashboard", "quality", "production", "inventory", "documents", "alerts", "analytics", "meetings", "settings",
@@ -67,8 +68,8 @@ export const ROLE_PERMISSIONS = {
   ],
   "HR Manager": ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
   hr_manager: ["dashboard", "hr", "analytics", "alerts", "documents", "meetings", "settings"],
-  Accountant: ["dashboard", "accounts", "sales", "documents", "analytics", "alerts", "masters", "meetings", "settings"],
-  accountant: ["dashboard", "accounts", "sales", "documents", "analytics", "alerts", "masters", "meetings", "settings"],
+  Accountant: ["dashboard", "accounts", "sales", "documents", "analytics", "alerts", "masters", "meetings", "settings", "reports"],
+  accountant: ["dashboard", "accounts", "sales", "documents", "analytics", "alerts", "masters", "meetings", "settings", "reports"],
   Operator: [
     "dashboard", "production", "factoryMonitor", "documents", "alerts", "settings",
   ],
@@ -110,7 +111,6 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/settings/change-template": "admin",
   "/settings/alerts": "dashboard",
   "/settings/subscription": "settings",
-  "/masters/departments": "masters",
   "/masters/products": "masters",
   "/masters/categories": "masters",
   "/inventory/categories": "masters",
@@ -131,6 +131,7 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/maintenance/machine-history": "maintenance",
   "/analytics/sales": "analytics",
   "/analytics/finance": "analytics",
+  "/reports": "reports",
   "/inventory/reports": "inventory",
   "/store/reports": "inventory",
   "/manufacturing/workflow": "dashboard",
@@ -174,6 +175,7 @@ export const ROUTE_MODULES = {
   "/factory-monitor": "factoryMonitor",
   "/iot": "iot",
   "/hr": "hr",
+  "/reports": "reports",
 };
 
 export function getModuleForPath(pathname) {
@@ -222,6 +224,17 @@ export function hasPermission(user, module) {
   return userCanAccess(user, module);
 }
 
+/** Reports Center action keys from RBAC matrix (e.g. share, schedule, create). */
+export function userHasReportsAction(user, action) {
+  if (!user || !action) return false;
+  if (isAdmin(user)) return true;
+  const key = `reports:${action}`;
+  if (Array.isArray(user.permissions) && (user.permissions.includes("*") || user.permissions.includes(key))) {
+    return true;
+  }
+  return getEffectivePermissions(user).includes(key);
+}
+
 export function isAdmin(user) {
   if (!user) return false;
   if (Array.isArray(user.permissions) && (user.permissions.includes("*") || user.permissions.includes("admin"))) return true;
@@ -258,6 +271,7 @@ export function userHasModule(user, module) {
   if (isAdmin(user)) return true;
   const perms = getEffectivePermissions(user);
   if (perms.includes("*") || perms.includes(module)) return true;
+  if (module === "settings" && hasRole(user, "Quality Control")) return true;
   return perms.some((p) => typeof p === "string" && p.startsWith(`${module}:`));
 }
 
@@ -288,31 +302,32 @@ export function userCanAccess(user, module) {
 /** Paths Store Manager may open (inventory & warehouse operations only). */
 export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/",
+  "/reports",
   "/inventory",
   "/inventory/reports",
   "/store/reports",
   "/inventory/dashboard",
   "/inventory/settings",
+  "/inventory/godown-planner",
+  "/inventory/unit-converter",
+  "/inventory/eoq-helper",
+  "/inventory/stock-valuation",
+  "/inventory/hamali-cost",
+  "/inventory/truck-load",
+  "/inventory/damage-loss",
+  "/inventory/storage-quotation",
+  "/inventory/gate-pass",
+  "/inventory/godown-dashboard",
   "/inventory/raw-materials",
   "/inventory/finished-goods",
   "/inventory/stock-transfer",
-  "/inventory/stock-adjustment",
-  "/inventory/stock-ledger",
   "/inventory/stock-movement",
-  "/inventory/stock-in",
-  "/inventory/material-requests",
-  "/inventory/issue-materials",
-  "/inventory/stock-return",
-  "/inventory/history",
   "/inventory/warehouses",
   "/inventory/items",
   "/accounts/ledger",
   "/accounts/expenses",
   "/ledger",
-  "/procurement/goods-receipt",
-  "/procurement/material-requests",
   "/procurement/purchase-orders",
-  "/procurement/supplier-payments",
   "/procurement/vendors",
   "/purchases",
   "/purchases/payments-made",
@@ -471,6 +486,7 @@ export function salesManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
   if (path === "/" || path === "/sales" || path === "/sales/dashboard") return true;
+  if (path === "/reports" || path.startsWith("/reports/")) return true;
   if (path.startsWith("/sales")) return true;
   if (path.startsWith("/my-job-cards")) return true;
   if (path.startsWith("/job-cards/")) return true;
@@ -531,13 +547,36 @@ export function userCanAccessHrAttendanceLeavePath(user, pathname) {
   return false;
 }
 
+/** Paths removed from Store Manager nav — block direct URL access too. */
+const STORE_MANAGER_BLOCKED_PATH_PREFIXES = [
+  "/procurement/material-requests",
+  "/procurement/goods-receipt",
+  "/procurement/supplier-payments",
+  "/inventory/material-requests",
+  "/inventory/stock-in",
+  "/inventory/issue-materials",
+  "/inventory/stock-return",
+  "/inventory/stock-adjustment",
+  "/inventory/todays-stock-out",
+  "/inventory/stock-ledger",
+  "/inventory/history",
+];
+
 export function storeManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
   if (path === "/") return true;
   if (path.startsWith("/job-cards/")) return true;
   if (path.startsWith("/my-job-cards/")) return true;
+  if (
+    STORE_MANAGER_BLOCKED_PATH_PREFIXES.some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+    )
+  ) {
+    return false;
+  }
   if (STORE_MANAGER_ALLOWED_PATHS.has(path)) return true;
+  if (path === "/reports" || path.startsWith("/reports/")) return true;
   if (path.startsWith("/inventory")) return true;
   if (path.startsWith("/store")) return true;
   if (path.startsWith("/purchases")) return true;
@@ -547,8 +586,6 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/masters/products")) return true;
   if (path.startsWith("/masters/categories")) return true;
   if (path.startsWith("/inventory/categories")) return true;
-  if (path.startsWith("/procurement/goods-receipt")) return true;
-  if (path.startsWith("/procurement/material-requests")) return true;
   if (path.startsWith("/procurement/vendors")) return true;
   if (path.startsWith("/masters/vendors")) return true;
   if (path.startsWith("/settings")) return true;
@@ -568,7 +605,8 @@ export const MY_SUBSCRIPTION_SETTINGS_SECTION_ID = "subscription";
 /** My Subscription settings — tenant Admin role only (not other ERP roles). */
 export function userCanAccessMySubscription(user) {
   if (!user) return false;
-  return hasRole(user, "Admin");
+  if (hasRole(user, "SuperAdmin") || hasRole(user, "superadmin")) return false;
+  return hasRole(user, "Admin") || hasRole(user, "admin");
 }
 
 export function isMySubscriptionSettingsPath(pathname) {
@@ -581,6 +619,8 @@ export function userCanAccessSettingsSection(user, sectionId) {
   if (sectionId === MY_SUBSCRIPTION_SETTINGS_SECTION_ID) {
     return userCanAccessMySubscription(user);
   }
+  const routeModule = getModuleForPath(`/settings/${sectionId}`);
+  if (routeModule === "admin" && !userCanAccess(user, "admin")) return false;
   return userCanAccess(user, getSettingsSectionModule(sectionId));
 }
 
@@ -647,15 +687,16 @@ export function userCanAccessAnalyticsPath(user, pathname) {
 export function userCanAccessPath(user, pathname) {
   if (!user) return false;
   const pathEarly = (pathname || "").replace(/\/$/, "") || "/";
-  // Store Manager: inventory register & raw material tracker only (same Production Planning shell).
-  if (pathEarly.startsWith("/production/planning") && storeManagerMayAccessProductionPlanning(user)) {
-    return true;
-  }
   if (isMySubscriptionSettingsPath(pathname)) {
     return userCanAccessMySubscription(user);
   }
   if (isAdmin(user)) return true;
-  const path = (pathname || "").replace(/\/$/, "") || "/";
+  if (isOperator(user) && !operatorPathAllowed(pathEarly)) return false;
+  // Store Manager: inventory register & raw material tracker only (same Production Planning shell).
+  if (pathEarly.startsWith("/production/planning") && storeManagerMayAccessProductionPlanning(user)) {
+    return true;
+  }
+  const path = pathEarly;
   if (path === "/admin/approvals") {
     if (isQualityTeam(user)) return false;
     return userCanAccessApprovalQueue(user);

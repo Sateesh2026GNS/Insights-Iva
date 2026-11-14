@@ -324,7 +324,7 @@ def issue_auth_response_data(
     access = build_access_token_for_user(
         user, role_name=role_name, session_id=row.session_uuid if row else None
     )
-    bind_access_jti(db, refresh, access)
+    bind_access_jti(db, refresh, access, commit=commit)
     user_data = get_user_with_role(db, user, preferred_role=role_name)
     return {
         "access_token": access,
@@ -337,15 +337,22 @@ def issue_auth_response_data(
 def _permissions_for_role_record(role) -> list[str]:
     """Resolve module/action permissions for a single role (JSON or matrix fallback).
 
-    Aligned with get_user_permissions Admin expand: Admin (any casing) always
-    gets the full catalog. Non-Admin non-empty JSON is honored as-is.
+    Must stay aligned with ``get_user_permissions``:
+    - Admin (any casing) always expands to the full catalog (stale JSON cannot hide dashboard).
+    - Non-Admin non-empty stored JSON is honored as-is (explicit revocations stick).
+    - Quality Control always includes Settings when stored JSON is present.
+    - Empty JSON falls back to PERMISSION_MATRIX for known roles.
     """
     from app.core.permissions import is_admin_role_name, normalize_role_name
     from app.core.rbac_constants import PERMISSION_MATRIX, VALID_MODULES
 
     role_name = getattr(role, "name", None)
     if is_admin_role_name(role_name):
-        return sorted(VALID_MODULES)
+        admin_spec = PERMISSION_MATRIX.get("Admin", {})
+        perms = set(VALID_MODULES)
+        perms.update(admin_spec.get("modules") or [])
+        perms.update(admin_spec.get("actions") or [])
+        return sorted(perms)
 
     raw = getattr(role, "permissions", None) or []
     if isinstance(raw, str):
@@ -357,7 +364,10 @@ def _permissions_for_role_record(role) -> list[str]:
             raw = [raw]
     normalized = list(raw) if isinstance(raw, (list, tuple, set)) else []
     if normalized:
-        return sorted(set(normalized))
+        perms = set(normalized)
+        if normalize_role_name(role_name) == "quality control":
+            perms.add("settings")
+        return sorted(perms)
 
     spec = PERMISSION_MATRIX.get(role_name or "", {})
     if not spec:

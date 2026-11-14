@@ -28,7 +28,7 @@ export default function LowStockAlerts() {
         </div>
         <Link
           to="/inventory/raw-materials"
-          className="shrink-0 pl-7 font-semibold text-[var(--color-primary)] hover:underline sm:pl-0"
+          className="inline-flex min-h-11 shrink-0 items-center pl-7 font-semibold text-[var(--color-primary)] hover:underline sm:pl-0"
         >
           {t("alerts.viewInventory", { defaultValue: "View inventory" })}
         </Link>
@@ -41,6 +41,7 @@ export default function LowStockAlerts() {
       title="Low Stock Alerts"
       subtitle="Items at or below their reorder level."
       initialAlertType="low_stock"
+      planningTheme="gold"
       topContent={banner}
     />
   );

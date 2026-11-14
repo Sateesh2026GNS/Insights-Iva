@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 
 import AccessDenied from "../admin/AccessDenied";
-import { userCanAccessPath } from "../../config/permissions";
+import { isOperator, userCanAccessPath } from "../../config/permissions";
 import useAuth from "../../hooks/useAuth";
 
 /**
@@ -19,6 +19,9 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (!userCanAccessPath(user, location.pathname)) {
+    if (isOperator(user) && location.pathname !== "/dashboard") {
+      return <Navigate to="/dashboard" replace />;
+    }
     const path = location.pathname || "";
     const message = path.startsWith("/settings/")
       ? "This settings area is only available to administrators. Open Settings from the menu for your account options, or return to the dashboard."

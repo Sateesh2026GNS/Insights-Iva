@@ -44,7 +44,13 @@ from app.services.workflow_team_service import (
 )
 from app.services.workflow_team_service import _serialize_material_check
 
-router = APIRouter(prefix="/manufacturing/workflow", tags=["Manufacturing Workflow"])
+from app.routers.operator_deps import guard_operator_manufacturing
+
+router = APIRouter(
+    prefix="/manufacturing/workflow",
+    tags=["Manufacturing Workflow"],
+    dependencies=[Depends(guard_operator_manufacturing)],
+)
 
 WORKFLOW_MODULES = (
     "sales",
@@ -836,6 +842,13 @@ def get_stage_job_card_endpoint(
 
     if stage not in STAGE_PREFIX:
         raise HTTPException(status_code=400, detail=f"Invalid stage: {stage}")
+    from app.services.operator_scope import is_shop_floor_operator, operator_owns_sales_order
+
+    if is_shop_floor_operator(user):
+        if stage != "operator":
+            raise HTTPException(status_code=403, detail="Operators cannot access this resource")
+        if not operator_owns_sales_order(db, user, order_id):
+            raise HTTPException(status_code=404, detail="Job card not found")
     perms = STAGE_PERMISSIONS.get(stage, WORKFLOW_MODULES)
     allowed_to_view = user_is_admin(user)
     if not user_is_admin(user):

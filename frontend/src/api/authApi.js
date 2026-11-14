@@ -187,10 +187,24 @@ export async function refreshTokens() {
   return handleAuthLoginResponse(data);
 }
 
-export async function logout({ allDevices = false } = {}) {
-  const { data } = await api.post("/auth/logout", {
-    all_devices: allDevices,
-  });
+export async function logout({ allDevices = false, refreshToken, accessToken } = {}) {
+  const headers = {};
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  const { data } = await api.post(
+    "/auth/logout",
+    {
+      all_devices: allDevices,
+      refresh_token: refreshToken || undefined,
+    },
+    {
+      timeout: 4000,
+      skipGlobalError: true,
+      skipGetRetries: true,
+      headers,
+    }
+  );
   return data;
 }
 

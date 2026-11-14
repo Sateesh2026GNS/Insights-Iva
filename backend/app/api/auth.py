@@ -388,11 +388,12 @@ def get_me(
 @router.get("/profile", response_model=UserResponse)
 def get_auth_profile(
     request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserResponse:
     """Alias for /auth/me — JWT profile with company and role claims."""
-    return get_me(request=request, current_user=current_user, db=db)
+    return get_me(request=request, creds=creds, current_user=current_user, db=db)
 
 
 class AvatarUpdateRequest(BaseModel):
@@ -727,15 +728,17 @@ def logout(
 
             revoke_all_refresh_tokens_for_user(db, user.id)
         elif refresh_raw:
-            revoke_refresh_token(db, refresh_raw)
+            revoke_refresh_token(db, refresh_raw, commit=False)
 
         if access_token:
-            revoke_access_token(db, access_token, user_id=user.id if user else None)
+            revoke_access_token(db, access_token, user_id=user.id if user else None, commit=False)
+
+        if user and req.all_devices:
+            user.tokens_revoked_at = datetime.now(timezone.utc)
+
+        db.commit()
 
         if user:
-            if req.all_devices:
-                user.tokens_revoked_at = datetime.now(timezone.utc)
-                db.commit()
             mark_logout(
                 db,
                 user_id=user.id,

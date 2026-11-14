@@ -61,7 +61,3 @@ def test_store_manager_expense_access_without_accounts_module():
     assert user_has_accounts_expense_access(accountant)
     assert user_can_read_accounts_tenant_pref(store, "expense_categories_v1")
     assert not user_can_read_accounts_tenant_pref(store, "bank_reconciliation_v1")
-
-
-
-

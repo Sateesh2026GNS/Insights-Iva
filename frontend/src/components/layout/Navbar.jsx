@@ -12,11 +12,17 @@ import {
 
 import useAuth from "../../hooks/useAuth";
 import GlobalSearch from "../common/GlobalSearch";
+import BrandLogo from "../common/BrandLogo";
 import AppPageTitle from "../common/AppPageTitle";
-import Breadcrumbs, { getPageTitle } from "../common/Breadcrumbs";
+import Breadcrumbs, {
+  getPageTitle,
+  getVisibleBreadcrumbItems,
+  shouldShowNavbarBreadcrumb,
+} from "../common/Breadcrumbs";
 import ClientProfilePanel from "../common/ClientProfilePanel";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import NotificationBell from "../notifications/NotificationBell";
+import useBreakpoint from "../../hooks/useBreakpoint";
 
 function formatRoleLabel(role) {
   if (!role || typeof role !== "string") return "";
@@ -24,10 +30,11 @@ function formatRoleLabel(role) {
 }
 
 export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapsed = false }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { isMobile } = useBreakpoint();
   const [showProfile, setShowProfile] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -36,24 +43,10 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
   const profileRef = useRef(null);
 
   const pageTitle = getPageTitle(location.pathname, user);
+  const breadcrumbItems = getVisibleBreadcrumbItems(location.pathname, pageTitle);
+  const showBreadcrumbRow = shouldShowNavbarBreadcrumb(location.pathname, pageTitle);
   const displayName = user?.full_name || user?.name || "User";
   const displayRole = formatRoleLabel(user?.role_name || user?.role || "");
-
-  //
-  const [isMobile, setIsMobile] = useState(() => {
-  if (typeof window === "undefined") return false;
-  return window.innerWidth < 768;
-  });
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -128,11 +121,14 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
       <div className="app-navbar__row">
         {/* Left: page title */}
         <div className="app-navbar__left">
+          <div className="app-navbar__mobile-logo" aria-hidden="true">
+            <BrandLogo size="sm" />
+          </div>
           {typeof onOpenSidebar === "function" || typeof onToggleSidebar === "function" ? (
             <button
               type="button"
               onClick={handleMenuClick}
-              className="app-navbar__icon-btn -ml-1 mr-0.5"
+              className="app-navbar__icon-btn app-navbar__menu-btn"
               aria-label={menuLabel}
               title={menuLabel}
               aria-expanded={!sidebarCollapsed}
@@ -140,11 +136,17 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
               <Menu className="h-5 w-5" />
             </button>
           ) : null}
-          <div className="app-navbar__title-block min-w-0 flex-1">
+          <div
+            className={`app-navbar__title-block min-w-0 flex-1${
+              showBreadcrumbRow ? "" : " app-navbar__title-block--title-only"
+            }`}
+          >
             <AppPageTitle title={pageTitle} />
-            <div className="mt-2 hidden lg:block">
-              <Breadcrumbs compact />
-            </div>
+            {showBreadcrumbRow ? (
+              <div className="mt-2 hidden lg:block">
+                <Breadcrumbs compact items={breadcrumbItems} />
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -174,10 +176,22 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
 
           <NotificationBell />
 
+          <select
+            className="app-navbar__language"
+            aria-label={t("common.language")}
+            value={(i18n.resolvedLanguage || i18n.language || "en").split("-")[0]}
+            onChange={(event) => i18n.changeLanguage(event.target.value)}
+          >
+            <option value="en">{t("languageNames.english")}</option>
+            <option value="te">{t("languageNames.telugu")}</option>
+            <option value="hi">{t("languageNames.hindi")}</option>
+            <option value="ta">{t("languageNames.tamil")}</option>
+          </select>
+
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="app-navbar__icon-btn hidden sm:inline-flex"
+            className="app-navbar__icon-btn app-navbar__fullscreen"
             title={fullscreenLabel}
             aria-label={fullscreenLabel}
             aria-pressed={isFullscreen}
@@ -205,12 +219,12 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
                   String(displayName)[0].toUpperCase()
                 )}
               </div>
-              <div className="hidden min-w-0 text-left md:block">
-                <p className="truncate text-sm font-semibold leading-tight text-[var(--color-text)]">
+              <div className="app-navbar__profile-text hidden min-w-0 text-left lg:block">
+                <p className="app-navbar__profile-name text-sm font-semibold leading-tight text-[var(--color-text)]">
                   {displayName}
                 </p>
                 {displayRole ? (
-                  <p className="truncate text-[11px] leading-tight text-white/95">
+                  <p className="app-navbar__profile-role text-[11px] leading-tight text-white/95">
                     {displayRole}
                   </p>
                 ) : null}
@@ -241,10 +255,12 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
           />
         </div>
       ) : null}
-      {/* Mobile single-line breadcrumb strip */}
-      <div className="overflow-x-auto whitespace-nowrap scrollbar-none px-3.5 py-1 bg-black/10 border-t border-white/10 lg:hidden text-xs">
-        <Breadcrumbs compact />
-      </div>
+      {/* Mobile single-line breadcrumb strip — hidden on role dashboard homes */}
+      {showBreadcrumbRow ? (
+        <div className="overflow-x-auto whitespace-nowrap scrollbar-none px-3.5 py-1 bg-black/10 border-t border-white/10 lg:hidden text-xs">
+          <Breadcrumbs compact items={breadcrumbItems} />
+        </div>
+      ) : null}
 
       <LogoutConfirmModal
         open={logoutOpen}

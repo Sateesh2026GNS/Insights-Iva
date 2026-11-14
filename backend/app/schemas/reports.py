@@ -88,6 +88,10 @@ class ReportScheduleCreate(BaseModel):
     recipients: list[str]
     format: Literal["xlsx", "pdf", "csv"] = "xlsx"
     is_active: bool = True
+    timezone: str = "Asia/Kolkata"
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    custom_report_id: int | None = None
 
 
 class ReportScheduleUpdate(BaseModel):
@@ -98,6 +102,10 @@ class ReportScheduleUpdate(BaseModel):
     recipients: list[str] | None = None
     format: Literal["xlsx", "pdf", "csv"] | None = None
     is_active: bool | None = None
+    timezone: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    custom_report_id: int | None = None
 
 
 class ReportScheduleRead(BaseModel):
@@ -113,3 +121,58 @@ class ReportScheduleRead(BaseModel):
     last_run_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    timezone: str = "Asia/Kolkata"
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    next_run_at: datetime | None = None
+    last_status: str | None = None
+    last_error: str | None = None
+    retry_count: int = 0
+    custom_report_id: int | None = None
+    worker_enabled: bool = False
+
+
+class SystemCatalogItem(BaseModel):
+    slug: str
+    title: str
+    category: str
+    description: str = ""
+    created_by: str = "System Generated"
+    is_favorite: bool = False
+    last_visited_at: str | None = None
+    data_status: str = "gap"
+    handler_key: str | None = None
+    allowed_roles: list[str] = Field(default_factory=list)
+    custom_report_id: int | None = None
+    schedule_id: int | None = None
+    frequency: str | None = None
+
+
+class SystemCatalogResponse(BaseModel):
+    items: list[SystemCatalogItem]
+    pagination: ReportPagination
+    category_counts: dict[str, int]
+    section: str = "all"
+
+
+class SystemReportMetaResponse(BaseModel):
+    slug: str
+    title: str
+    category: str
+    description: str
+    data_status: str
+    handler_key: str | None = None
+    allowed_roles: list[str] = Field(default_factory=list)
+    filters_supported: list[str] = Field(default_factory=list)
+    columns: list[ReportColumnSchema] = Field(default_factory=list)
+    created_by: str = "System Generated"
+
+
+class ReportFavoriteResponse(BaseModel):
+    slug: str
+    is_favorite: bool
+
+
+class ReportVisitResponse(BaseModel):
+    slug: str
+    last_visited_at: str

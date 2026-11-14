@@ -160,8 +160,8 @@ def _unwrap_list(data):
         ),
         (
             "Operator",
-            ["/api/production/work-orders", "/api/masters/machines", "/api/masters/products"],
-            [],
+            ["/api/work-orders/my"],
+            ["/api/production/work-orders", "/api/masters/products"],
         ),
     ],
 )
@@ -207,11 +207,11 @@ def test_operator_sees_only_assigned_work_orders(client, register_admin):
     headers = {"Authorization": f"Bearer {operator['access_token']}"}
 
     resp = client.get("/api/production/work-orders", headers=headers)
-    assert resp.status_code == 200
-    orders = _unwrap_list(resp.json())
-    assert len(orders) >= 1
-    for wo in orders:
-        assert wo["work_order_number"] == "WO-OPERATOR-001" or wo.get("assigned_user_id") is not None
+    assert resp.status_code == 403
+    mine = client.get("/api/work-orders/my", headers=headers)
+    assert mine.status_code == 200
+    orders = mine.json().get("items") or mine.json().get("data") or []
+    assert any(wo["work_order_number"] == "WO-OPERATOR-001" for wo in orders)
 
 
 def test_operator_cannot_delete_product(client, register_admin):
@@ -333,7 +333,4 @@ def test_operator_sidebar_settings_children_are_personal_only(client, register_a
     settings_section = next((s for s in sidebar.json() if s.get("key") == "settings"), None)
     assert settings_section is not None
     paths = {c["path"] for c in settings_section.get("children") or []}
-    assert "/settings" in paths
-    assert "/settings/my-account" in paths or "/settings/appearance" in paths
-    assert "/settings/invoice-settings" not in paths
-    assert "/settings/sequence-reset" not in paths
+    assert paths == {"/settings"}

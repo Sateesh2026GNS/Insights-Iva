@@ -51,7 +51,23 @@ def create_alert_endpoint(
         payload.tenant_id = user.tenant_id
         if not payload.created_by:
             payload.created_by = getattr(user, "full_name", None) or getattr(user, "name", None) or user.email or "HR Manager"
-        return create_alert(db, payload)
+        from app.services.operator_scope import is_shop_floor_operator
+
+        if is_shop_floor_operator(user):
+            allowed = {"machine", "production_delay", "quality", "safety"}
+            if str(payload.alert_type or "").strip().lower() not in allowed:
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="Operators can report only machine, production delay, quality, or safety alerts",
+                )
+        alert = create_alert(db, payload, user=user)
+        from app.schemas.alert import AlertRead as AlertReadSchema
+        from app.services.alert_service import read_alert_ids
+
+        presented = AlertReadSchema.model_validate(alert)
+        if is_shop_floor_operator(user):
+            presented.is_read = alert.id in read_alert_ids(db, user.id, [alert.id])
+        return presented
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -104,8 +120,17 @@ def list_alerts_endpoint(
             page=page,
             page_size=page_size,
         )
+        from app.schemas.alert import AlertRead as AlertReadSchema
+        from app.services.alert_service import read_alert_ids
+
+        seen = read_alert_ids(db, user.id, [item.id for item in items])
+        presented = []
+        for item in items:
+            row = AlertReadSchema.model_validate(item)
+            row.is_read = item.id in seen
+            presented.append(row)
         return AlertListResponse(
-            items=items,
+            items=presented,
             total=total,
             page=page,
             page_size=page_size,
@@ -299,10 +324,15 @@ def mark_read_endpoint(
     db: Session = Depends(get_db),
 ) -> AlertRead:
     try:
-        alert = mark_alert_read(db, alert_id, user.tenant_id)
+        alert = mark_alert_read(db, alert_id, user.tenant_id, user)
         if not alert:
             raise HTTPException(404, "Alert not found")
-        return alert
+        from app.schemas.alert import AlertRead as AlertReadSchema
+        from app.services.alert_service import read_alert_ids
+
+        presented = AlertReadSchema.model_validate(alert)
+        presented.is_read = alert.id in read_alert_ids(db, user.id, [alert.id])
+        return presented
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -324,14 +354,22 @@ def mark_read_endpoint(
 @router.get("/{alert_id}", response_model=AlertRead)
 def get_alert_endpoint(
     alert_id: int,
-    tenant_id: int = Depends(tenant_scope(MODULE)),
+    user: User = Depends(require_permission(MODULE)),
     db: Session = Depends(get_db),
 ) -> AlertRead:
     try:
-        alert = get_alert(db, alert_id, tenant_id)
+        alert = get_alert(db, alert_id, user.tenant_id)
         if not alert:
             raise HTTPException(404, "Alert not found")
-        return alert
+        from app.schemas.alert import AlertRead as AlertReadSchema
+        from app.services.alert_service import read_alert_ids
+        from app.services.operator_scope import is_shop_floor_operator, operator_can_see_alert
+
+        if is_shop_floor_operator(user) and not operator_can_see_alert(db, user, alert):
+            raise HTTPException(404, "Alert not found")
+        presented = AlertReadSchema.model_validate(alert)
+        presented.is_read = alert.id in read_alert_ids(db, user.id, [alert.id])
+        return presented
     except HTTPException:
         raise
     except SQLAlchemyError as exc:

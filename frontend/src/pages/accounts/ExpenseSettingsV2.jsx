@@ -85,7 +85,7 @@ export default function ExpenseSettingsV2() {
           <div className="flex items-center gap-3">
             <Link
               to="/settings"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
+              className="grid h-11 w-11 place-items-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
               aria-label="Back to Settings"
               title="Back to Settings"
             >

@@ -77,6 +77,15 @@
   text-overflow: ellipsis;
 }
 
+@media (max-width: 639px) {
+  .app-navbar .app-page-title {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+  }
+}
+
 @media (min-width: 640px) {
   .app-navbar .app-page-title {
     font-size: 1.125rem;
@@ -758,4 +767,3 @@
 .dark .erp-confirm-dialog__message {
   color: var(--color-text);
 }
-

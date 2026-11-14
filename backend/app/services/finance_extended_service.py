@@ -27,15 +27,49 @@ from app.schemas.finance_extended import (
 from app.services.accounts_service import get_profit_loss, get_tax_report
 
 
+# Documents stored on the invoice table that are not open receivables and are not period revenue.
+# Credit notes are omitted rather than subtracted: the invoice balance is not reduced by an
+# unapplied credit-note link, so adding them would inflate receivables and subtracting them
+# would invent an application that is not stored.
+NON_AR_DOCUMENT_TYPES = frozenset({
+    "proforma",
+    "proforma_invoice",
+    "export_proforma",
+    "export_proforma_invoice",
+    "delivery_challan",
+    "challan",
+    "credit_note",
+    "creditnote",
+    "cn",
+    "sales_return",
+    "salesreturn",
+})
+
+
+def _invoice_document_type(inv: Invoice) -> str:
+    return (getattr(inv, "document_type", None) or "tax_invoice").strip().lower()
+
+
 def _invoice_eligible_for_ar(inv: Invoice) -> bool:
-    """Open receivable invoices — exclude draft and cancelled documents."""
+    """Open receivable invoices — exclude drafts, cancellations, proformas, challans, and credit notes."""
     if (inv.status or "").lower() == "draft":
         return False
     if (inv.status or "").lower() == "cancelled":
         return False
     if (inv.invoice_status or "").lower() == "cancelled":
         return False
+    if _invoice_document_type(inv) in NON_AR_DOCUMENT_TYPES:
+        return False
     return True
+
+
+def invoice_counts_as_period_revenue(status: str | None, invoice_status: str | None, document_type: str | None) -> bool:
+    """Invoiced sales for a period. Receipts are not included. Credit notes are not subtracted."""
+    if (status or "").lower() in {"draft", "cancelled"}:
+        return False
+    if (invoice_status or "").lower() == "cancelled":
+        return False
+    return (document_type or "tax_invoice").strip().lower() not in NON_AR_DOCUMENT_TYPES
 
 
 def _aging_bucket(days: int) -> str:

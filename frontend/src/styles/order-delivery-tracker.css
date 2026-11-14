@@ -63,7 +63,7 @@
 .odt-status--low, .odt-status--in-transit { background: #e8f1ff; color: #0e4cb0; }
 .odt-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .odt-action {
-  display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 6px 8px;
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 8px;
   border: 1px solid #c5d8e0; border-radius: 6px; background: #f4fbfc; color: #0f766e; font-weight: 650;
   text-decoration: none; cursor: pointer;
 }

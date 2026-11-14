@@ -54,7 +54,7 @@ const RoleIcon = () => (
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, clearSessionExpired } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
@@ -65,17 +65,26 @@ export default function Login() {
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const redirectTimerRef = useRef(null);
   const lockoutTimerRef = useRef(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = "light";
     document.documentElement.classList.remove("dark");
+    // Drop stale "Session expired" UI / tab flags so a fresh sign-in is not blocked.
+    clearSessionExpired?.();
+    try {
+      sessionStorage.removeItem("smrt-tab-expired");
+      sessionStorage.removeItem("smrt-tab-expired-reason");
+    } catch {
+      /* ignore */
+    }
     // Immediately warm up server when user opens the login screen
     triggerServerWakeup();
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
       if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
     };
-  }, []);
+  }, [clearSessionExpired]);
 
   // Countdown timer — decrements lockoutSeconds every second
   useEffect(() => {
@@ -135,12 +144,13 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || submittingRef.current || lockoutSeconds > 0) return;
     setError("");
-    if (lockoutSeconds > 0) return; // Block submission during cooldown
     if (!email.trim() || !password || !role) {
       setError("Company email, password, and role are required.");
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
 
     try {
@@ -160,6 +170,7 @@ export default function Login() {
         setError(getLoginErrorMessage(err, "Login failed. Please verify your credentials and network connection."));
       }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
