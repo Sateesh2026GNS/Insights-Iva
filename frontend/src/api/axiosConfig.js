@@ -33,15 +33,27 @@ export function isFatalAuthRefreshFailure(error) {
   return error?.response?.status === 401;
 }
 
-function isAuthRequestUrl(url = "") {
+/** Auth endpoints must not be blocked by client-side session timers / termination. */
+export function isAuthRequestUrl(url = "") {
+  const path = String(url || "");
   return (
-    url.includes("/auth/login") ||
-    url.includes("/platform/auth/login") ||
-    url.includes("/auth/verify-otp") ||
-    url.includes("/platform/auth/verify-otp") ||
-    url.includes("/auth/refresh") ||
-    url.includes("/auth/logout")
+    path.includes("/auth/login") ||
+    path.includes("/platform/auth/login") ||
+    path.includes("/auth/phone-login") ||
+    path.includes("/auth/verify-otp") ||
+    path.includes("/platform/auth/verify-otp") ||
+    path.includes("/auth/resend") ||
+    path.includes("/auth/refresh") ||
+    path.includes("/auth/logout") ||
+    path.includes("/auth/forgot-password") ||
+    path.includes("/auth/reset-password") ||
+    path.includes("/auth/csrf")
   );
+}
+
+/** Client session expiry applies only to authenticated API calls — never login/refresh. */
+export function shouldEnforceClientSessionExpiry(url = "") {
+  return !isAuthRequestUrl(url);
 }
 
 function applyLoginAuthPayload(data) {
@@ -198,25 +210,34 @@ export async function ensureCsrfCookie() {
 
 api.interceptors.request.use((config) => {
   try {
+    const url = String(config.url || "");
     if (!isPlatformRequest(config)) {
-      if (isSessionTerminated() && !isAuthRequestUrl(String(config.url || ""))) {
-        const err = new Error("Session ended");
-        err.response = { status: 401, data: { message: "Session ended" } };
-        return Promise.reject(err);
-      }
-      const sessionStatus = checkSessionStatus();
-      if (sessionStatus.expired && isDefinitiveSessionExpiry(sessionStatus.reason)) {
-        if (sessionStatus.reason === "primary_9hr_timeout") {
-          clearAuthStorage();
-          if (typeof onUnauthorized === "function") {
-            onUnauthorized();
-          }
+      // Login / refresh / logout must reach the server even when a previous
+      // client session (9h / new-tab timer) is marked expired. Otherwise the
+      // login page surfaces a synthetic "Session expired" 401 and never signs in.
+      if (shouldEnforceClientSessionExpiry(url)) {
+        if (isSessionTerminated()) {
+          const err = new Error("Session ended");
+          err.response = { status: 401, data: { message: "Session ended" } };
+          return Promise.reject(err);
         }
-        const err = new Error("Session expired");
-        err.response = { status: 401, data: { message: "Session expired", reason: sessionStatus.reason } };
-        return Promise.reject(err);
+        const sessionStatus = checkSessionStatus();
+        if (sessionStatus.expired && isDefinitiveSessionExpiry(sessionStatus.reason)) {
+          if (sessionStatus.reason === "primary_9hr_timeout") {
+            clearAuthStorage();
+            if (typeof onUnauthorized === "function") {
+              onUnauthorized();
+            }
+          }
+          const err = new Error("Session expired");
+          err.response = { status: 401, data: { message: "Session expired", reason: sessionStatus.reason } };
+          return Promise.reject(err);
+        }
+        attachAuthHeaders(config);
+      } else {
+        // Auth routes: CSRF only — do not attach a stale Bearer token.
+        attachCsrfHeader(config);
       }
-      attachAuthHeaders(config);
     } else {
       // Platform auth has no tenant Bearer. A leftover ERP session cookie still
       // requires the double-submit CSRF header on verify-otp and resend-otp.

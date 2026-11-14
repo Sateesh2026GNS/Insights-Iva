@@ -7,12 +7,14 @@ import {
   Boxes,
   CalendarDays,
   CheckCircle2,
+  ClipboardList,
   Factory,
   FolderOpen,
   GraduationCap,
   Landmark,
   Layers,
   LayoutDashboard,
+  MessageSquare,
   Palmtree,
   Settings,
   ShoppingCart,
@@ -68,6 +70,7 @@ import {
   buildNestedExpanded,
   navNodeIsActive,
   isSidebarLinkActive,
+  normalizeSidebarBottomOrder,
 } from "../../config/sidebarNav";
 
 import { ACCOUNTS_DASHBOARD_PATH, SALES_DASHBOARD_PATH } from "../../utils/roleRedirect";
@@ -113,6 +116,9 @@ const ICON_BY_KEY = {
   analytics: BarChart3,
   settings: Settings,
   admin: Settings,
+  chat: MessageSquare,
+  meetings: CalendarDays,
+  myJobCards: ClipboardList,
 };
 
 function dedupeNavSections(sections) {
@@ -266,14 +272,25 @@ function FactorySkyline() {
 function mapApiMenusToNav(menus) {
   return (menus || []).map((section) => {
     const Icon = ICON_BY_KEY[section.key] || LayoutDashboard;
-    if (section.path && !(section.children && section.children.length)) {
+    const children = (section.children || [])
+      .filter((c) => c?.path)
+      .map((c) => ({
+        key: c.key,
+        label: c.label,
+        to: c.path,
+        module: c.module,
+      }));
+    // Keep dashboard (and any path+children section) as a leaf link; children are
+    // promoted to top-level by normalizeSidebarBottomOrder.
+    if (section.path) {
       return {
         key: section.key,
         label: section.label,
         to: section.path,
         icon: Icon,
         module: section.module,
-        end: section.path === "/",
+        end: section.path === "/" || section.path === "/dashboard",
+        ...(children.length ? { children } : {}),
       };
     }
     return {
@@ -281,13 +298,7 @@ function mapApiMenusToNav(menus) {
       label: section.label,
       icon: Icon,
       module: section.module,
-      children: (section.children || [])
-        .filter((c) => c?.path)
-        .map((c) => ({
-          label: c.label,
-          to: c.path,
-          module: c.module,
-        })),
+      children,
     };
   });
 }
@@ -368,7 +379,7 @@ export function filterStaticNav(user) {
     }
   }
 
-  return filtered;
+  return normalizeSidebarBottomOrder(filtered);
 }
 
 function buildInitialExpanded(location, nav) {
@@ -504,7 +515,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose, 
     }
 
     const roleJobCardUrl = getRoleJobCardUrl(user);
-    const roleNav = dedupeNavSections(result).map((section) => {
+    const roleNav = dedupeNavSections(normalizeSidebarBottomOrder(result)).map((section) => {
       if (section.key === "myJobCards") {
         return {
           ...section,

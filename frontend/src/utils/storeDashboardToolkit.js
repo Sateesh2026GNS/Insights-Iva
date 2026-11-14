@@ -15,8 +15,6 @@ const STORE_DASHBOARD_KPI_ICONS = {
   pendingJobCards: "JC",
   pendingMaterialRequests: "MR",
   pendingTransfers: "ST",
-  stockIn: "IN",
-  stockOut: "OT",
 };
 
 export function storeDashboardKpiTone(index) {

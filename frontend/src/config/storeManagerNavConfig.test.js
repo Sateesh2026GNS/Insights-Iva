@@ -14,7 +14,39 @@ function flattenChildren(nodes) {
   return labels;
 }
 
+describe("storeManagerNavConfig purchases", () => {
+  it("omits restricted purchase/stock pages for Store Manager only", () => {
+    const purchases = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "purchases");
+    const children = purchases?.children || [];
+    expect(children.some((c) => c.key === "purchaseRequisitions")).toBe(false);
+    expect(children.some((c) => c.to === "/procurement/material-requests")).toBe(false);
+    expect(children.some((c) => c.label === "Purchase Requisitions")).toBe(false);
+    expect(children.some((c) => c.key === "goodsReceipt")).toBe(false);
+    expect(children.some((c) => c.to === "/procurement/goods-receipt")).toBe(false);
+    expect(children.some((c) => /goods receipt|grn/i.test(c.label || ""))).toBe(false);
+    expect(children.some((c) => c.key === "stockIn" || c.to === "/inventory/stock-in")).toBe(false);
+    expect(children.some((c) => c.key === "supplierPayments" || c.to === "/procurement/supplier-payments")).toBe(
+      false
+    );
+    expect(children.map((c) => c.key)).toContain("purchaseOrder");
+    expect(children.map((c) => c.to)).toContain("/procurement/purchase-orders");
+  });
+});
+
 describe("storeManagerNavConfig collaboration", () => {
+  it("places Work Chat, My Job Cards, and Meetings immediately above Settings", () => {
+    const keys = STORE_MANAGER_NAV_ITEMS.map((n) => n.key);
+    const chatIdx = keys.indexOf("chat");
+    const jobCardsIdx = keys.indexOf("myJobCards");
+    const meetingsIdx = keys.indexOf("meetings");
+    const settingsIdx = keys.indexOf("settings");
+    expect(chatIdx).toBeGreaterThan(keys.indexOf("dashboard"));
+    expect(jobCardsIdx).toBe(chatIdx + 1);
+    expect(meetingsIdx).toBe(jobCardsIdx + 1);
+    expect(settingsIdx).toBe(meetingsIdx + 1);
+    expect(keys.indexOf("purchases")).toBeLessThan(chatIdx);
+  });
+
   it("includes Meetings alongside Work Chat", () => {
     const meetings = STORE_MANAGER_NAV_ITEMS.find((n) => n.key === "meetings");
     expect(meetings?.to).toBe("/meetings");
@@ -57,14 +89,22 @@ describe("storeManagerNavConfig inventory submenu", () => {
     expect(paths).toContain("/inventory/low-stock");
     expect(paths).toContain("/inventory/out-of-stock");
     expect(paths).toContain("/inventory/pending-inventory-checks");
-    expect(paths).toContain("/inventory/todays-stock-out");
+    expect(paths).not.toContain("/inventory/todays-stock-out");
+  });
+
+  it("omits restricted inventory workflow pages", () => {
+    const paths = children.map((c) => c.to?.split("?")[0]);
+    expect(paths).not.toContain("/inventory/issue-materials");
+    expect(paths).not.toContain("/inventory/stock-return");
+    expect(paths).not.toContain("/inventory/stock-adjustment");
+    expect(paths).not.toContain("/inventory/stock-ledger");
+    expect(paths).not.toContain("/inventory/stock-in");
+    expect(paths).not.toContain("/inventory/material-requests");
   });
 
   it("includes core inventory pages", () => {
     const paths = children.map((c) => c.to?.split("?")[0]);
     expect(paths).toContain("/inventory");
-    expect(paths).toContain("/inventory/material-requests");
-    expect(paths).toContain("/inventory/issue-materials");
     expect(paths).toContain("/inventory/godown-planner");
     expect(children.find((c) => c.to === "/inventory/godown-planner")?.label).toBe("Godown Planner");
     expect(paths).toContain("/inventory/unit-converter");

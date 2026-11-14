@@ -111,7 +111,6 @@ export const ROUTE_MODULE_OVERRIDES = {
   "/settings/change-template": "admin",
   "/settings/alerts": "dashboard",
   "/settings/subscription": "settings",
-  "/masters/departments": "masters",
   "/masters/products": "masters",
   "/masters/categories": "masters",
   "/inventory/categories": "masters",
@@ -322,23 +321,13 @@ export const STORE_MANAGER_ALLOWED_PATHS = new Set([
   "/inventory/raw-materials",
   "/inventory/finished-goods",
   "/inventory/stock-transfer",
-  "/inventory/stock-adjustment",
-  "/inventory/stock-ledger",
   "/inventory/stock-movement",
-  "/inventory/stock-in",
-  "/inventory/material-requests",
-  "/inventory/issue-materials",
-  "/inventory/stock-return",
-  "/inventory/history",
   "/inventory/warehouses",
   "/inventory/items",
   "/accounts/ledger",
   "/accounts/expenses",
   "/ledger",
-  "/procurement/goods-receipt",
-  "/procurement/material-requests",
   "/procurement/purchase-orders",
-  "/procurement/supplier-payments",
   "/procurement/vendors",
   "/purchases",
   "/purchases/payments-made",
@@ -558,12 +547,34 @@ export function userCanAccessHrAttendanceLeavePath(user, pathname) {
   return false;
 }
 
+/** Paths removed from Store Manager nav — block direct URL access too. */
+const STORE_MANAGER_BLOCKED_PATH_PREFIXES = [
+  "/procurement/material-requests",
+  "/procurement/goods-receipt",
+  "/procurement/supplier-payments",
+  "/inventory/material-requests",
+  "/inventory/stock-in",
+  "/inventory/issue-materials",
+  "/inventory/stock-return",
+  "/inventory/stock-adjustment",
+  "/inventory/todays-stock-out",
+  "/inventory/stock-ledger",
+  "/inventory/history",
+];
+
 export function storeManagerPathAllowed(pathname) {
   if (!pathname) return false;
   const path = pathname.replace(/\/$/, "") || "/";
   if (path === "/") return true;
   if (path.startsWith("/job-cards/")) return true;
   if (path.startsWith("/my-job-cards/")) return true;
+  if (
+    STORE_MANAGER_BLOCKED_PATH_PREFIXES.some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+    )
+  ) {
+    return false;
+  }
   if (STORE_MANAGER_ALLOWED_PATHS.has(path)) return true;
   if (path === "/reports" || path.startsWith("/reports/")) return true;
   if (path.startsWith("/inventory")) return true;
@@ -575,8 +586,6 @@ export function storeManagerPathAllowed(pathname) {
   if (path.startsWith("/masters/products")) return true;
   if (path.startsWith("/masters/categories")) return true;
   if (path.startsWith("/inventory/categories")) return true;
-  if (path.startsWith("/procurement/goods-receipt")) return true;
-  if (path.startsWith("/procurement/material-requests")) return true;
   if (path.startsWith("/procurement/vendors")) return true;
   if (path.startsWith("/masters/vendors")) return true;
   if (path.startsWith("/settings")) return true;

@@ -319,9 +319,8 @@ function DashboardSkeleton() {
 
 const DEFAULT_CARD_LINKS = {
   "total-users": "/admin/users",
-  departments: "/masters/departments",
   "active-users": "/admin/users",
-  "total-employees": "/masters/departments",
+  "total-employees": "/hr/employees",
   "pending-approvals": "/admin/approvals",
   "total-orders": "/production/planning",
   "today-production": "/production/planning?preset=today",
@@ -356,13 +355,13 @@ const DEFAULT_CARD_LINKS = {
   "out-of-stock": "/inventory",
   "pending-material-issues": "/procurement/material-requests",
   "pending-goods-receipts": "/procurement/goods-receipt",
-  "present-today": "/masters/departments",
-  "absent-today": "/masters/departments",
-  "on-leave": "/masters/departments",
-  "pending-leave-requests": "/masters/departments",
-  "new-employees": "/masters/departments",
-  "attendance-rate": "/masters/departments",
-  "pending-hr-requests": "/masters/departments",
+  "present-today": "/hr/attendance",
+  "absent-today": "/hr/attendance",
+  "on-leave": "/hr/leave",
+  "pending-leave-requests": "/hr/leave/approvals",
+  "new-employees": "/hr/employees",
+  "attendance-rate": "/hr/attendance",
+  "pending-hr-requests": "/hr/leave/approvals",
   "total-receivables": "/finance/accounts-receivable",
   "total-payables": "/finance/accounts-payable",
   "todays-revenue": "/sales/invoices",
@@ -387,9 +386,18 @@ const OPERATOR_EXCLUDED_KPI_IDS = new Set([
   "revenue-cost-snapshot",
 ]);
 
+/** Departments master page removed from Admin UI — hide KPI everywhere. */
+const HIDDEN_KPI_IDS = new Set(["departments"]);
+
 function operatorDashboardKpiCards(cards) {
   return (Array.isArray(cards) ? cards : []).filter(
     (card) => !OPERATOR_EXCLUDED_KPI_IDS.has(String(card?.id || "").trim())
+  );
+}
+
+function visibleDashboardKpiCards(cards) {
+  return (Array.isArray(cards) ? cards : []).filter(
+    (card) => !HIDDEN_KPI_IDS.has(String(card?.id || "").trim())
   );
 }
 
@@ -1443,7 +1451,7 @@ export default function ReferenceDashboard() {
   const kpiCardsLive = useMemo(() => {
     if (!apiData?.kpi_cards?.length) return [];
 
-    return apiData.kpi_cards.map((k) => {
+    return visibleDashboardKpiCards(apiData.kpi_cards).map((k) => {
       const isFormattedValue =
         typeof k.value === "string" &&
         (k.value.includes("/") || k.value.includes("₹") || k.value.includes("%") || k.value === "—");

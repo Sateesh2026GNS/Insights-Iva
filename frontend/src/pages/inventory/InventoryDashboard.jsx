@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 
 import DashboardReportExport from "../../components/common/DashboardReportExport";
 import { metricExportRows } from "../../utils/dashboardExportRows";
@@ -12,7 +11,6 @@ import LoadingState from "../../components/common/states/LoadingState";
 import { getStoreDashboard } from "../../api/inventoryApi";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { apiErrorMessage, asArray } from "../../utils/apiError";
-import { todayIso } from "../../utils/dateUtils";
 import {
   STORE_DASHBOARD_TOOLKIT_SUBTITLE,
   STORE_DASHBOARD_TOOLKIT_TAGLINE,
@@ -120,18 +118,6 @@ function formatQty(value, unit) {
   return unit ? `${text} ${unit}` : text;
 }
 
-function formatActivityTime(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value).slice(0, 16);
-  return d.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function kpiValue(failed, value) {
   if (failed) return "—";
   return Number(value ?? 0).toLocaleString("en-IN");
@@ -202,12 +188,6 @@ export default function InventoryDashboard() {
   }
 
   const failed = Boolean(error);
-  const today = todayIso();
-  const movement = dash?.today_movement || {};
-  const stockInLink = `/inventory/stock-ledger?date=${encodeURIComponent(today)}&direction=in`;
-  const stockOutLink = `/inventory/stock-ledger?date=${encodeURIComponent(today)}&direction=out`;
-  const stockInAltLink = `/inventory/stock-in?date=${encodeURIComponent(today)}`;
-
   const totalItems = dash?.catalog_product_count ?? dash?.total_products ?? 0;
   const lowStock = dash?.catalog_low_stock_count ?? dash?.low_stock_items ?? 0;
   const outOfStock = dash?.catalog_out_of_stock_count ?? dash?.out_of_stock_items ?? 0;
@@ -216,7 +196,6 @@ export default function InventoryDashboard() {
   const lowStockRows = asArray(dash?.low_stock_preview);
   const materialRequests = asArray(dash?.pending_material_request_rows);
   const pendingTransfers = asArray(dash?.pending_transfer_rows);
-  const recentActivity = asArray(dash?.recent_stock_activity);
 
   const storeExportRows = metricExportRows([
     { label: "Total items", value: kpiValue(failed, totalItems) },
@@ -224,8 +203,7 @@ export default function InventoryDashboard() {
     { label: "Out of stock", value: kpiValue(failed, outOfStock) },
     { label: "Pending job cards", value: kpiValue(failed, dash?.store_pending ?? dash?.pending_inventory_checks) },
     { label: "Pending material requests", value: kpiValue(failed, dash?.pending_material_requests) },
-    { label: "Stock in today", value: kpiValue(failed, movement.stock_in) },
-    { label: "Stock out today", value: kpiValue(failed, movement.stock_out) },
+    { label: "Pending transfers", value: kpiValue(failed, dash?.pending_transfers) },
   ]);
 
   const compactTableClass = "store-dash-table";
@@ -270,7 +248,7 @@ export default function InventoryDashboard() {
           label: "Pending Material Requests",
           value: kpiValue(failed, dash?.pending_material_requests),
           unit: "Awaiting approval or issue",
-          to: "/procurement/material-requests?kpi=pending_approval",
+          to: "/inventory/pending-inventory-checks",
           title: "Pending material requests",
         },
         {
@@ -280,22 +258,6 @@ export default function InventoryDashboard() {
           unit: "Draft or in transit",
           to: "/inventory/stock-transfer?status=pending",
           title: "Pending stock transfers",
-        },
-        {
-          key: "stockIn",
-          label: "Today's Stock In",
-          value: kpiValue(failed, movement.stock_in_quantity),
-          unit: `${kpiValue(failed, movement.stock_in_count)} transactions`,
-          to: stockInAltLink,
-          title: "Today's stock in",
-        },
-        {
-          key: "stockOut",
-          label: "Today's Stock Out",
-          value: kpiValue(failed, movement.stock_out_quantity),
-          unit: `${kpiValue(failed, movement.stock_out_count)} transactions`,
-          to: stockOutLink,
-          title: "Today's stock out",
         },
       ].map((kpi, index) => ({
         ...kpi,
@@ -324,34 +286,6 @@ export default function InventoryDashboard() {
         </div>
 
         <div className="store-dash-stack">
-      <section className="mtk-panel">
-        <div className="mtk-panel__title store-dash-panel__title">
-          <h3>Today&apos;s Stock Movement</h3>
-        </div>
-        <div className="store-dash-movement">
-          <Link to={stockInLink} className="store-dash-movement__link">
-            <div className="flex items-center gap-2">
-              <ArrowDownToLine className="h-3.5 w-3.5 text-[#16a34a]" aria-hidden />
-              <div>
-                <p className="store-dash-movement__label">Stock In Today</p>
-                <p className="store-dash-movement__value">{kpiValue(failed, movement.stock_in_quantity)}</p>
-              </div>
-            </div>
-            <span className="store-dash-movement__meta">{kpiValue(failed, movement.stock_in_count)} txns</span>
-          </Link>
-          <Link to={stockOutLink} className="store-dash-movement__link">
-            <div className="flex items-center gap-2">
-              <ArrowUpFromLine className="h-3.5 w-3.5 text-[#ef4444]" aria-hidden />
-              <div>
-                <p className="store-dash-movement__label">Stock Out Today</p>
-                <p className="store-dash-movement__value">{kpiValue(failed, movement.stock_out_quantity)}</p>
-              </div>
-            </div>
-            <span className="store-dash-movement__meta">{kpiValue(failed, movement.stock_out_count)} txns</span>
-          </Link>
-        </div>
-      </section>
-
       <SectionCard title="Pending Material Checks" viewAllTo="/my-job-cards?dept=inventory&bucket=store_pending">
         {materialChecks.length === 0 ? (
           <EmptyState className="py-6" title="No pending material checks" description="Sales job cards awaiting store verification will appear here." />
@@ -400,7 +334,7 @@ export default function InventoryDashboard() {
       </SectionCard>
 
       <div className="store-dash-split">
-        <SectionCard title="Pending Material Requests" viewAllTo="/procurement/material-requests?status=pending">
+        <SectionCard title="Pending Material Requests" viewAllTo="/inventory/pending-inventory-checks">
           {materialRequests.length === 0 ? (
             <EmptyState className="py-6" title="No pending material requests" description="Open requests will show here for store follow-up." />
           ) : (
@@ -418,7 +352,7 @@ export default function InventoryDashboard() {
                   <tr key={row.id} className="border-t border-[var(--color-border-soft)]">
                     <td className={tdClass}>
                       <Link
-                        to={`/procurement/material-requests?id=${row.id}`}
+                        to="/inventory/pending-inventory-checks"
                         className="font-medium tabular-nums text-[var(--color-action-teal)] hover:underline"
                       >
                         {row.mr_number}
@@ -521,43 +455,6 @@ export default function InventoryDashboard() {
           )}
         </SectionCard>
       </div>
-
-      <SectionCard title="Recent Stock Activity" viewAllTo="/inventory/stock-ledger">
-        {recentActivity.length === 0 ? (
-          <EmptyState className="py-6" title="No recent stock activity" description="Inventory movements will appear here as they are recorded." />
-        ) : (
-          <table className={compactTableClass}>
-            <thead className="ui-table-head">
-              <tr>
-                <th className={`${thClass} w-[22%]`}>Time</th>
-                <th className={`${thClass} w-[22%]`}>Activity</th>
-                <th className={`${thClass} w-[36%]`}>Item</th>
-                <th className={`${thClass} w-[20%]`}>Quantity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentActivity.map((row) => (
-                <tr key={row.id} className="border-t border-[var(--color-border-soft)]">
-                  <td className={`${tdClass} whitespace-nowrap text-[12px] text-[var(--color-text-secondary)]`}>
-                    {formatActivityTime(row.occurred_at)}
-                  </td>
-                  <td className={tdClass}>
-                    <Link to="/inventory/stock-ledger" className="text-[var(--color-action-teal)] hover:underline">
-                      {row.activity_label}
-                    </Link>
-                  </td>
-                  <td className={`${tdClass} truncate text-[var(--color-text)]`} title={row.item_name}>
-                    {row.item_name}
-                  </td>
-                  <td className={`${tdClass} tabular-nums font-medium text-[var(--color-text)]`}>
-                    {Number(row.quantity || 0).toLocaleString("en-IN")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </SectionCard>
         </div>
       </div>
     </StoreToolkitShell>

@@ -35,23 +35,6 @@ export const SIDEBAR_NAV = [
     end: true,
   },
   {
-    key: "reportsCenter",
-    labelKey: "erpNav.reportsCenter",
-    label: "Reports Center",
-    to: "/reports",
-    icon: BarChart3,
-    module: "reports",
-    end: true,
-  },
-  {
-    key: "myJobCards",
-    label: "My Job Cards",
-    to: "/my-job-cards",
-    icon: ClipboardList,
-    module: "production",
-    end: false,
-  },
-  {
     key: "masters",
     labelKey: "erpNav.masters",
     label: "Masters",
@@ -236,22 +219,6 @@ export const SIDEBAR_NAV = [
     ],
   },
   {
-    key: "meetings",
-    labelKey: "erpNav.meetings",
-    to: "/meetings",
-    icon: CalendarDays,
-    module: "meetings",
-    end: true,
-  },
-  {
-    key: "chat",
-    label: "Work Chat",
-    to: "/chat",
-    icon: MessageSquare,
-    module: "chat",
-    end: true,
-  },
-  {
     key: "analytics",
     labelKey: "erpNav.analytics",
     icon: BarChart3,
@@ -281,6 +248,39 @@ export const SIDEBAR_NAV = [
     ],
   },
   {
+    key: "reportsCenter",
+    labelKey: "erpNav.reportsCenter",
+    label: "Reports Center",
+    to: "/reports",
+    icon: BarChart3,
+    module: "reports",
+    end: true,
+  },
+  {
+    key: "chat",
+    label: "Work Chat",
+    to: "/chat",
+    icon: MessageSquare,
+    module: "chat",
+    end: true,
+  },
+  {
+    key: "myJobCards",
+    label: "My Job Cards",
+    to: "/my-job-cards",
+    icon: ClipboardList,
+    module: "production",
+    end: false,
+  },
+  {
+    key: "meetings",
+    labelKey: "erpNav.meetings",
+    to: "/meetings",
+    icon: CalendarDays,
+    module: "meetings",
+    end: true,
+  },
+  {
     key: "settings",
     label: "Settings",
     labelKey: "erpNav.settings",
@@ -289,6 +289,126 @@ export const SIDEBAR_NAV = [
     module: "settings",
   },
 ];
+
+/** Bottom strip: Work Chat → My Job Cards → Meetings, always immediately above Settings. */
+export const SIDEBAR_BOTTOM_ORDER_KEYS = ["chat", "myJobCards", "meetings"];
+
+function pathWithoutQuery(to = "") {
+  return String(to).split("?")[0];
+}
+
+function isPromotedBottomChild(child, parentKey = "") {
+  const path = pathWithoutQuery(child?.to || child?.path || "");
+  const key = child?.key != null ? String(child.key) : "";
+  const label = String(child?.label || "").trim().toLowerCase();
+
+  if (path === "/chat" || key.toLowerCase() === "chat" || label === "work chat") return "chat";
+  if (path === "/meetings" || key.toLowerCase() === "meetings" || label === "meetings") return "meetings";
+
+  // Keep role "Job Card Queue" / planning links under their modules; only lift
+  // explicit My Job Cards entries (or dashboard-nested /my-job-cards links).
+  if (key === "myJobCards" || /^my.?job.?cards$/i.test(key) || label === "my job cards") {
+    return "myJobCards";
+  }
+  if (parentKey === "dashboard" && (path === "/my-job-cards" || path.startsWith("/my-job-cards"))) {
+    return "myJobCards";
+  }
+  return null;
+}
+
+function defaultBottomSection(key, seed = {}) {
+  if (key === "chat") {
+    return {
+      key: "chat",
+      label: seed.label || "Work Chat",
+      to: seed.to || seed.path || "/chat",
+      icon: seed.icon || MessageSquare,
+      module: seed.module || "chat",
+      end: true,
+    };
+  }
+  if (key === "myJobCards") {
+    return {
+      key: "myJobCards",
+      label: seed.label || "My Job Cards",
+      to: seed.to || seed.path || "/my-job-cards",
+      icon: seed.icon || ClipboardList,
+      module: seed.module || "production",
+      end: false,
+    };
+  }
+  return {
+    key: "meetings",
+    label: seed.label || "Meetings",
+    to: seed.to || seed.path || "/meetings",
+    icon: seed.icon || CalendarDays,
+    module: seed.module || "meetings",
+    end: true,
+  };
+}
+
+/**
+ * Promote Work Chat / My Job Cards / Meetings out of Dashboard (or any) submenu
+ * and place them as top-level items immediately above Settings.
+ * Preserves existing section objects (routes, icons, modules) when already top-level.
+ */
+export function normalizeSidebarBottomOrder(sections) {
+  if (!Array.isArray(sections) || sections.length === 0) return sections || [];
+
+  const list = sections.map((section) => ({
+    ...section,
+    children: Array.isArray(section.children) ? section.children.map((c) => ({ ...c })) : section.children,
+  }));
+
+  const extracted = { chat: null, myJobCards: null, meetings: null };
+
+  for (const key of SIDEBAR_BOTTOM_ORDER_KEYS) {
+    const idx = list.findIndex((s) => s.key === key);
+    if (idx === -1) continue;
+    extracted[key] = list[idx];
+    list.splice(idx, 1);
+  }
+
+  for (const section of list) {
+    if (!Array.isArray(section.children) || section.children.length === 0) continue;
+    const kept = [];
+    for (const child of section.children) {
+      const promoteKey = isPromotedBottomChild(child, section.key);
+      if (promoteKey) {
+        if (!extracted[promoteKey]) {
+          extracted[promoteKey] = defaultBottomSection(promoteKey, child);
+        }
+        continue;
+      }
+      kept.push(child);
+    }
+    section.children = kept;
+    if (section.to && section.children.length === 0) {
+      delete section.children;
+    }
+  }
+
+  // API catalog may expose Meetings as an expandable with a single /meetings child
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const section = list[i];
+    if (section.key !== "meetings") continue;
+    if (!extracted.meetings) {
+      const leaf = section.children?.[0];
+      extracted.meetings = section.to
+        ? section
+        : defaultBottomSection("meetings", leaf || section);
+    }
+    list.splice(i, 1);
+  }
+
+  const insert = SIDEBAR_BOTTOM_ORDER_KEYS.map((key) => extracted[key]).filter(Boolean);
+  if (insert.length === 0) return list;
+
+  const settingsIdx = list.findIndex((s) => s.key === "settings");
+  const at = settingsIdx === -1 ? list.length : settingsIdx;
+  list.splice(at, 0, ...insert);
+  return list;
+}
 
 export function isPathActive(pathname, to, end = false) {
   const pathOnly = (to || "").split("?")[0];

@@ -30,6 +30,21 @@ describe("reportEmailErrorMessage", () => {
     expect(reportEmailErrorMessage(err)).toMatch(/temporarily unavailable/i);
   });
 
+  it("maps smtp_connection_failed to temporary unavailable message", () => {
+    const err = {
+      response: {
+        status: 503,
+        data: {
+          detail: {
+            code: "smtp_connection_failed",
+            message: "Email service is temporarily unavailable. Please try again later.",
+          },
+        },
+      },
+    };
+    expect(reportEmailErrorMessage(err)).toMatch(/temporarily unavailable/i);
+  });
+
   it("sanitizes legacy SMTP configuration leak text", () => {
     const err = {
       response: {

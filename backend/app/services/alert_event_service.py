@@ -178,7 +178,7 @@ DEFAULT_LINKS: dict[str, str] = {
     "preventive_maintenance_due": "/maintenance/preventive",
     "machine_service_completed": "/maintenance",
     "maintenance_reminder": "/alerts/maintenance",
-    "leave_request": "/masters/departments",
+    "leave_request": "/hr/leave",
     "attendance_exception": "/dashboard",
     "login_failure": "/admin/access-logs",
     "license_expiry": "/settings",
