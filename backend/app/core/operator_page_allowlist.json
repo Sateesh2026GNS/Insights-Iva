@@ -1,0 +1,14 @@
+{
+  "exact": [
+    "/",
+    "/dashboard",
+    "/my-job-cards",
+    "/production/my-machine",
+    "/alerts",
+    "/documents",
+    "/chat",
+    "/settings"
+  ],
+  "prefixes": ["/my-job-cards/", "/chat/"],
+  "patterns": ["^/manufacturing/workflow/order/[^/]+/operator$"]
+}

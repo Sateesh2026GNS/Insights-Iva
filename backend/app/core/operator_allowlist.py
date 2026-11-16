@@ -1,8 +1,10 @@
 """Single Operator allowlists.
 
-Page paths are loaded from frontend/src/config/operatorPageAllowlist.json so the
-sidebar API and the frontend redirect share one file. API paths live here and
-are used by the request guard and the default-deny sweep.
+Page paths are loaded from a packaged JSON file shipped with the backend image
+(`app/core/operator_page_allowlist.json`). The same document is kept in sync with
+`frontend/src/config/operatorPageAllowlist.json` so the sidebar API and the
+frontend redirect share one allowlist. API paths live here and are used by the
+request guard and the default-deny sweep.
 """
 
 from __future__ import annotations
@@ -11,7 +13,12 @@ import json
 import re
 from pathlib import Path
 
-_PAGE_FILE = (
+# Packaged next to this module — available inside the Render Docker image
+# (dockerContext is backend/; the frontend tree is not copied into /app).
+_PACKAGED_PAGE_FILE = Path(__file__).resolve().parent / "operator_page_allowlist.json"
+
+# Monorepo checkout only (local/CI with full repo). Used for sync checks, not Docker.
+_MONOREPO_PAGE_FILE = (
     Path(__file__).resolve().parents[3]
     / "frontend"
     / "src"
@@ -20,9 +27,34 @@ _PAGE_FILE = (
 )
 
 
-def load_operator_page_allowlist() -> dict:
-    with _PAGE_FILE.open(encoding="utf-8") as handle:
+def operator_page_allowlist_candidates() -> tuple[Path, ...]:
+    """Ordered search paths: packaged (required in Docker), then monorepo frontend."""
+    return (_PACKAGED_PAGE_FILE, _MONOREPO_PAGE_FILE)
+
+
+def resolve_operator_page_allowlist_path() -> Path:
+    """Return the first existing allowlist path, or raise FileNotFoundError (fail-closed)."""
+    for path in operator_page_allowlist_candidates():
+        if path.is_file():
+            return path
+    expected = ", ".join(str(path) for path in operator_page_allowlist_candidates())
+    raise FileNotFoundError(
+        "Operator page allowlist JSON is missing (fail-closed). "
+        f"Expected one of: {expected}"
+    )
+
+
+def load_operator_page_allowlist(path: Path | None = None) -> dict:
+    """Load page allowlist JSON. Missing/unreadable file raises (no allow-all fallback)."""
+    target = path if path is not None else resolve_operator_page_allowlist_path()
+    if not target.is_file():
+        raise FileNotFoundError(
+            f"Operator page allowlist JSON is missing (fail-closed): {target}"
+        )
+    with target.open(encoding="utf-8") as handle:
         data = json.load(handle)
+    if not isinstance(data, dict):
+        raise ValueError("Operator page allowlist JSON must be an object")
     return {
         "exact": tuple(data.get("exact") or ()),
         "prefixes": tuple(data.get("prefixes") or ()),
