@@ -126,6 +126,7 @@ export default function Table({
               return (
                 <th
                   key={col.key}
+                  data-priority={col.priority}
                   className={`${headerPadding} font-semibold ${align} ${colClass} ${
                     isActionsCol ? "print:hidden" : ""
                   } ${
@@ -163,6 +164,7 @@ export default function Table({
                 return (
                   <td
                     key={col.key}
+                    data-priority={col.priority}
                     className={`${cellPadding} ${align} ${colClass} ${
                       isActionsCol ? "print:hidden" : ""
                     }`}

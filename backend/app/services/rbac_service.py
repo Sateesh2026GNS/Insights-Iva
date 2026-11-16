@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session, selectinload
 
 logger = logging.getLogger(__name__)
 
-from app.core.permissions import ADMIN_ROLE, get_role_names, get_user_permissions, is_valid_permission
+from app.core.permissions import (
+    ADMIN_ROLE,
+    get_role_names,
+    get_user_permissions,
+    is_admin_role_name,
+    is_valid_permission,
+)
 from app.models.security import AccessLog
 from app.models.role import Role
 from app.models.user import User
@@ -40,6 +46,7 @@ def serialize_user(u: User) -> dict:
         "department": getattr(u, "department", None),
         "assigned_machine_id": getattr(u, "assigned_machine_id", None),
         "created_at": u.created_at.isoformat() if u.created_at else None,
+        "last_login_at": u.last_login_at.isoformat() if getattr(u, "last_login_at", None) else None,
     }
 
 
@@ -51,7 +58,7 @@ def serialize_role(r: Role) -> dict:
         "description": r.description or "",
         "permissions": r.permissions or [],
         "user_count": len(users),
-        "is_system": r.name == ADMIN_ROLE,
+        "is_system": is_admin_role_name(r.name),
     }
 
 
@@ -116,7 +123,7 @@ def _active_admin_count(db: Session, tenant_id: int, exclude_user_id: int | None
     for u in users:
         if exclude_user_id is not None and u.id == exclude_user_id:
             continue
-        if u.is_active and ADMIN_ROLE in [r.name for r in u.roles]:
+        if u.is_active and any(is_admin_role_name(r.name) for r in u.roles):
             count += 1
     return count
 
@@ -352,7 +359,7 @@ def update_user(
                 )
             if (
                 not data["is_active"]
-                and ADMIN_ROLE in get_role_names(user)
+                and any(is_admin_role_name(n) for n in get_role_names(user))
                 and _active_admin_count(db, tenant_id, exclude_user_id=user.id) == 0
             ):
                 raise HTTPException(
@@ -363,8 +370,8 @@ def update_user(
 
         if "role_ids" in data and data["role_ids"] is not None:
             new_roles = _resolve_roles(db, tenant_id, data["role_ids"])
-            was_admin = ADMIN_ROLE in get_role_names(user)
-            will_be_admin = ADMIN_ROLE in [r.name for r in new_roles]
+            was_admin = any(is_admin_role_name(n) for n in get_role_names(user))
+            will_be_admin = any(is_admin_role_name(r.name) for r in new_roles)
             if (
                 was_admin
                 and not will_be_admin
@@ -406,7 +413,7 @@ def delete_user(db: Session, tenant_id: int, user_id: int, acting_user: User) ->
                 detail="You cannot delete your own account",
             )
         if (
-            ADMIN_ROLE in get_role_names(user)
+            any(is_admin_role_name(n) for n in get_role_names(user))
             and _active_admin_count(db, tenant_id, exclude_user_id=user.id) == 0
         ):
             raise HTTPException(
@@ -521,7 +528,7 @@ def update_role(db: Session, tenant_id: int, role_id: int, payload: RoleUpdate) 
         data = payload.model_dump(exclude_unset=True)
 
         if "name" in data and data["name"] and data["name"] != role.name:
-            if role.name == ADMIN_ROLE:
+            if is_admin_role_name(role.name):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="The Admin role cannot be renamed",
@@ -544,7 +551,7 @@ def update_role(db: Session, tenant_id: int, role_id: int, payload: RoleUpdate) 
             role.description = data["description"]
 
         if "permissions" in data and data["permissions"] is not None:
-            if role.name == ADMIN_ROLE:
+            if is_admin_role_name(role.name):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="The Admin role always has full access and cannot be restricted",
@@ -575,7 +582,7 @@ def update_role(db: Session, tenant_id: int, role_id: int, payload: RoleUpdate) 
 def delete_role(db: Session, tenant_id: int, role_id: int) -> None:
     try:
         role = _get_role_or_404(db, tenant_id, role_id)
-        if role.name == ADMIN_ROLE:
+        if is_admin_role_name(role.name):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="The Admin role cannot be deleted",
@@ -612,7 +619,7 @@ def get_user_stats(db: Session, tenant_id: int) -> dict:
     total = len(users)
     active = sum(1 for u in users if u.is_active)
     administrators = sum(
-        1 for u in users if u.is_active and ADMIN_ROLE in get_role_names(u)
+        1 for u in users if u.is_active and any(is_admin_role_name(n) for n in get_role_names(u))
     )
     return {
         "total_users": total,

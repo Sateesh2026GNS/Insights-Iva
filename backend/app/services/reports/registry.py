@@ -36,6 +36,7 @@ class ReportDefinition:
     default_sort: tuple[str, str]  # column key, asc|desc
     filters_supported: list[str]
     builder: ReportBuilder
+    requires_warehouse: bool = True
 
 
 REPORT_REGISTRY: dict[str, ReportDefinition] = {}
@@ -50,6 +51,7 @@ def register_report(
     columns: list[ReportColumn],
     default_sort: tuple[str, str],
     filters_supported: list[str],
+    requires_warehouse: bool = True,
 ):
     """Decorator — registers builder on REPORT_REGISTRY."""
 
@@ -64,6 +66,7 @@ def register_report(
             default_sort=default_sort,
             filters_supported=filters_supported,
             builder=builder,
+            requires_warehouse=requires_warehouse,
         )
         return builder
 

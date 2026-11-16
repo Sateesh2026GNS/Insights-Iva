@@ -1,0 +1,90 @@
+.gsp-gate .gsp-kpis strong {
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.gsp-gate select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #f5d76e;
+  background: #fff7cc;
+  border-radius: 2px;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+.gsp-gate .is-linked input {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.gsp-gate-table {
+  min-width: 760px;
+}
+
+.gsp-gate-table input,
+.gsp-gate-table select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 2px;
+  padding: 2px 4px;
+  font: inherit;
+}
+
+.gsp-gate-table .is-input {
+  background: #fff7cc;
+}
+
+.gsp-gate-table .is-blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.gsp-gate-table .is-calc {
+  background: #eff6ff;
+  font-weight: 700;
+}
+
+.gate-weight {
+  position: relative;
+  min-width: 88px;
+}
+
+.gate-weight .gsp-val-bar {
+  top: 4px;
+  bottom: 4px;
+}
+
+.gate-weight strong {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+}
+
+.gate-sign {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 28px;
+  font-size: 11px;
+}
+
+.gate-sign div {
+  border-top: 1px solid #94a3b8;
+  padding-top: 4px;
+}
+
+.gate-total {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+  background: #0b3a66;
+  color: #fff;
+  font-weight: 800;
+  padding: 6px 8px;
+}

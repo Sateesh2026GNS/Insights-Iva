@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import Table from "./Table";
+import Table from "./ResponsiveTable";
 import Pagination from "./Pagination";
 import { FilterSelect, LIST_PAGE_SEARCH_BAR_CLASS, SearchBar } from "./SearchFilter";
 import EmptyState from "./EmptyState";
@@ -27,11 +27,14 @@ export default function DataTable({
   toolbarClassName = "",
   searchInputClassName = "",
   showResultsCount = true,
+  initialFilterValues = null,
 }) {
   const { t } = useTranslation();
   const effectiveShowPagination = pagination !== undefined ? Boolean(pagination) : showPagination;
   const [search, setSearch] = useState("");
-  const [filterValues, setFilterValues] = useState({});
+  const [filterValues, setFilterValues] = useState(() => (
+    initialFilterValues && typeof initialFilterValues === "object" ? initialFilterValues : {}
+  ));
   const [page, setPage] = useState(1);
   const [currentPageSize, setCurrentPageSize] = useState(pageSize);
   const rows = useMemo(() => asArray(data), [data]);

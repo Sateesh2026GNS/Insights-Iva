@@ -306,6 +306,15 @@
   cursor: pointer;
 }
 
+.hr-overtime__checkbox-target {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 /* Request drawer (right slide-out) */
 .hr-overtime__overlay {
   --ot-title: #1e293b;

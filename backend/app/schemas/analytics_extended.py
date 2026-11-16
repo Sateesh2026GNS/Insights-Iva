@@ -27,19 +27,16 @@ class KpiItem(BaseModel):
 
 class ChartPoint(BaseModel):
     label: str
-    value: float = Field(0.0, ge=0.0)
-    value2: float | None = Field(None, ge=0.0)
-    value3: float | None = Field(None, ge=0.0)
+    value: float = 0.0
+    value2: float | None = None
+    value3: float | None = None
 
     @field_validator("value", "value2", "value3", mode="before")
     @classmethod
-    def non_negative(cls, v: Any) -> float | None:
-        if v is not None:
-            val = float(v)
-            if val < 0:
-                raise ValueError("Chart values cannot be negative.")
-            return val
-        return None
+    def coerce_number(cls, v: Any) -> float | None:
+        if v is None or v == "":
+            return None
+        return float(v)
 
 
 VALID_ALERT_ITEM_SEVERITIES = {"info", "warning", "success", "danger"}

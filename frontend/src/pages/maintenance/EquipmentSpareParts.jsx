@@ -26,7 +26,8 @@ import Button from "../../components/common/Button";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import RowActionMenu from "../../components/common/RowActionMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import EmptyState from "../../components/common/EmptyState";
 import { SearchBar } from "../../components/common/SearchFilter";
 import Loader from "../../components/common/Loader";
@@ -799,11 +800,23 @@ export default function EquipmentSpareParts() {
 
   const equipmentTrend = computeMonthTrend(machines, { dateKey: "created_at" });
 
-  if (loading) return <Loader label="Loading equipment & spare parts..." />;
-  if (error) return <MaintenanceErrorState message={error} onRetry={() => load()} />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="indigo" kicker="Equip · Spare · Service" title="EQUIPMENT" accent="SPARES">
+        <Loader label="Loading equipment & spare parts..." />
+      </InventoryPlanningShell>
+    );
+  }
+  if (error) {
+    return (
+      <InventoryPlanningShell theme="indigo" kicker="Equip · Spare · Service" title="EQUIPMENT" accent="SPARES">
+        <MaintenanceErrorState message={error} onRetry={() => load()} />
+      </InventoryPlanningShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="indigo" kicker="Equip · Spare · Service" title="EQUIPMENT" accent="SPARES">
       <div className="min-w-0 space-y-5 pb-5">
         <PageHeader
           title="Equipment & Spare Parts"
@@ -1413,6 +1426,6 @@ export default function EquipmentSpareParts() {
           <SparePartDetailModal part={viewSpare} onClose={() => setViewSpare(null)} />
         ) : null}
       </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

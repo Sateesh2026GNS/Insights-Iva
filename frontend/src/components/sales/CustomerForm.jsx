@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Globe, Mail, Plus, Upload, X } from "lucide-react";
@@ -11,6 +11,8 @@ import { INDIAN_STATES } from "../../data/indiaLocations";
 import { lookupIndianPincode } from "../../api/addressLookupApi";
 import { createCustomer, getCustomers, updateCustomer } from "../../api/salesApi";
 import { useToast } from "../../context/ToastContext";
+import SuccessCelebration from "../common/SuccessCelebration";
+import { resolveCreatedName } from "../../utils/successCelebration";
 import useTenantId from "../../hooks/useTenantId";
 import IndianMobilePhoneInput from "../common/IndianMobilePhoneInput";
 import { apiErrorMessage, applyBackendFieldErrors } from "../../utils/apiError";
@@ -140,6 +142,8 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
   const [saving, setSaving] = useState(false);
   const [gstOpen, setGstOpen] = useState(false);
   const [existingCustomers, setExistingCustomers] = useState([]);
+  const [celebration, setCelebration] = useState(null);
+  const createdRef = useRef(false);
 
   const isEdit = Boolean(customer?.id);
 
@@ -200,6 +204,7 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (createdRef.current || saving) return;
     const check = validateCustomerForm(form);
     setErrors(check.errors);
     if (!check.ok) {
@@ -224,11 +229,15 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
       if (isEdit) {
         await updateCustomer(customer.id, payload);
         addToast("Customer updated", "success");
+        navigate("/sales/customers");
       } else {
-        await createCustomer(payload);
+        const created = await createCustomer(payload);
+        createdRef.current = true;
         addToast("Customer created", "success");
+        setCelebration({
+          name: resolveCreatedName(created?.data, payload.name || form.display_name),
+        });
       }
-      navigate("/sales/customers");
     } catch (err) {
       const mapped = applyBackendFieldErrors(
         err,
@@ -635,6 +644,15 @@ export default function CustomerForm({ initialForm, customer = null, onCancel })
       </div>
 
       <GstPrefillModal open={gstOpen} onClose={() => setGstOpen(false)} onFetched={handleGstPrefill} />
+      <SuccessCelebration
+        open={Boolean(celebration)}
+        name={celebration?.name}
+        entityType="customer"
+        onClose={() => {
+          setCelebration(null);
+          navigate("/sales/customers");
+        }}
+      />
     </form>
   );
 }

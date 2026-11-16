@@ -263,13 +263,14 @@ def validate_refresh_token(db: Session, raw_token: str) -> User | None:
     return user
 
 
-def revoke_refresh_token(db: Session, raw_token: str) -> None:
+def revoke_refresh_token(db: Session, raw_token: str, *, commit: bool = True) -> None:
     token_hash = hash_token(raw_token)
     row = db.scalars(select(RefreshToken).where(RefreshToken.token_hash == token_hash)).first()
     if row:
         row.revoked = True
         row.revoked_at = row.revoked_at or _utcnow()
-        db.commit()
+        if commit:
+            db.commit()
 
 
 def revoke_all_refresh_tokens_for_user(db: Session, user_id: int) -> int:
@@ -299,6 +300,7 @@ def revoke_access_token(
     *,
     payload: dict | None = None,
     user_id: int | None = None,
+    commit: bool = True,
 ) -> None:
     """Add access token to RevokedToken blocklist."""
     if not raw_token:
@@ -324,7 +326,8 @@ def revoke_access_token(
             expires_at=expires_at,
         )
     )
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def is_access_token_revoked(

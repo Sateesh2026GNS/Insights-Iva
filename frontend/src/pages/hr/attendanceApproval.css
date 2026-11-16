@@ -250,3 +250,12 @@
   accent-color: var(--ha-primary);
   cursor: pointer;
 }
+
+.hr-approvals__checkbox-target {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}

@@ -6,6 +6,7 @@ import InventoryDashboard from "./InventoryDashboard";
 
 vi.mock("../../api/inventoryApi", () => ({
   getStoreDashboard: vi.fn(),
+  getStoreStockValueByCategory: vi.fn(),
 }));
 
 vi.mock("../../hooks/useManufacturingRefresh", () => ({
@@ -16,11 +17,19 @@ vi.mock("../../hooks/useAuth", () => ({
   default: () => ({ user: { role: "Store Manager" } }),
 }));
 
-import { getStoreDashboard } from "../../api/inventoryApi";
+import { getStoreDashboard, getStoreStockValueByCategory } from "../../api/inventoryApi";
+
+vi.mock("react-i18next", () => {
+  const t = (key) => key;
+  return { useTranslation: () => ({ t }) };
+});
 
 describe("InventoryDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getStoreStockValueByCategory.mockResolvedValue({
+      data: { total_value: 0, categories: [], has_unvalued: false, partial: false },
+    });
   });
 
   it("renders work-center sections from store dashboard API", async () => {
@@ -66,8 +75,11 @@ describe("InventoryDashboard", () => {
       "href",
       "/my-job-cards?dept=inventory&bucket=store_pending"
     );
-    expect(screen.getByText("Today's Stock Movement")).toBeInTheDocument();
+    expect(screen.queryByText("Today's Stock Movement")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Low Stock Items" })).toBeInTheDocument();
+    expect(
+      await screen.findByText("storeDashboard.stockValueByCategory.title")
+    ).toBeInTheDocument();
     expect(screen.getByText("No pending material checks")).toBeInTheDocument();
   });
 

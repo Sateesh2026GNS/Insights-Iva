@@ -148,15 +148,15 @@ def make_restricted_user(client):
     """Create a non-admin user in a tenant with a specific permission set,
     returning auth headers obtained via the login endpoint."""
 
-    def _make(tenant_id, permissions):
+    def _make(tenant_id, permissions, role_name="Operator"):
         email = _unique_email("limited")
         password = "Passw0rd!123"
         db = SessionLocal()
         try:
-            # Use a selectable login role name; permissions are customized for the test.
+            # Default login role is Operator; pass role_name to avoid the shop-floor allowlist.
             role = Role(
                 tenant_id=tenant_id,
-                name="Operator",
+                name=role_name,
                 description="Restricted role",
                 permissions=list(permissions),
             )
@@ -181,7 +181,7 @@ def make_restricted_user(client):
 
         resp = client.post(
             "/auth/login",
-            json={"email": email, "password": password, "role": "Operator"},
+            json={"email": email, "password": password, "role": role_name},
         )
         assert resp.status_code == 200, resp.text
         token = resp.json()["access_token"]

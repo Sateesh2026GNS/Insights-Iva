@@ -1,14 +1,12 @@
 """Shared dependencies for Operator /api routes."""
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 
 from app.api.auth_deps import get_current_user
 from app.core.permissions import (
-    MODULE_FORBIDDEN_MESSAGE,
-    get_role_names,
+    raise_permission_denied,
     user_has_any_permission,
     user_has_permission,
-    user_is_admin,
 )
 from app.models.user import User
 
@@ -30,6 +28,13 @@ MODULE_MAP = {
 
 
 def _check_operator_restrictions(user: User, module_key: str) -> None:
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if module_key in {"products", "bom", "batches"} and is_shop_floor_operator(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operators cannot access this resource",
+        )
     if module_key == "bom":
         # BOM authoring is for production/planning or masters-authorized members.
         if user_has_any_permission(user, "masters", "production", "admin"):
@@ -41,10 +46,7 @@ def _check_operator_restrictions(user: User, module_key: str) -> None:
             return
     rbac_module = MODULE_MAP.get(module_key, module_key)
     if not user_has_permission(user, rbac_module):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=MODULE_FORBIDDEN_MESSAGE,
-        )
+        raise_permission_denied(rbac_module)
 
 
 def require_api_access(module_key: str):
@@ -62,21 +64,41 @@ def require_tenant(module_key: str):
     return dependency
 
 
-def deny_operator_production_planning(current_user: User = Depends(get_current_user)) -> User:
-    """Block shop-floor operators from planning / allocation manager APIs."""
-    if user_is_admin(current_user):
-        return current_user
-    roles = {r.strip().lower() for r in get_role_names(current_user) if r}
-    if "operator" in roles and not any("manager" in r or "admin" in r for r in roles):
+def reject_shop_floor_operator(user: User) -> None:
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if is_shop_floor_operator(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Production planning and machine allocation are restricted to managers.",
+            detail="Operators cannot access this resource",
         )
+
+
+def deny_operator_production_planning(current_user: User = Depends(get_current_user)) -> User:
+    """Block shop-floor operators from planning / allocation manager APIs."""
+    reject_shop_floor_operator(current_user)
     return current_user
 
 
+def guard_operator_manufacturing(request: Request, user: User = Depends(get_current_user)) -> None:
+    """Operators may open only manufacturing paths on the shared API allowlist."""
+    from app.core.operator_allowlist import operator_api_allowed
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if not is_shop_floor_operator(user):
+        return
+    if operator_api_allowed(request.method, request.url.path):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Operators cannot access this resource",
+    )
+
+
 def deny_delete_for_operator(current_user: User = Depends(get_current_user)) -> User:
-    if not user_is_admin(current_user) and "Operator" in get_role_names(current_user):
+    from app.services.operator_scope import is_shop_floor_operator
+
+    if is_shop_floor_operator(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Operators are not allowed to perform delete operations.",

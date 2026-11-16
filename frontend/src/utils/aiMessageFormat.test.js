@@ -25,6 +25,13 @@ describe("aiMessageFormat", () => {
     }
   });
 
+  it("linkifies http urls without allowing javascript urls", () => {
+    const html = formatAiMessageInline("See https://example.com/report.");
+    expect(html).toContain('href="https://example.com/report"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(formatAiMessageInline("javascript:alert(1)")).not.toContain("href=");
+  });
+
   it("still applies bold and code after escaping", () => {
     expect(formatAiMessageInline("**Hello**")).toContain("<strong>Hello</strong>");
     expect(formatAiMessageInline("`x`")).toContain("<code");

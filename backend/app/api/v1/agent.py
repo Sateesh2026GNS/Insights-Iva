@@ -17,6 +17,11 @@ from app.schemas.agent import AgentChatRequest, AgentConfirmRequest, AgentLogIte
 from app.services.agent.confirmation import pop_confirmation
 from app.services.agent.context import build_agent_context
 from app.services.agent.agent_evaluation_service import run_agent_evaluation
+from app.services.agent.conversation import (
+    delete_user_conversation,
+    get_user_conversation,
+    list_user_conversations,
+)
 from app.services.agent.orchestrator import AgentChatResponse, execute_confirmed_write, run_agent_chat
 
 logger = logging.getLogger(__name__)
@@ -81,6 +86,40 @@ async def agent_chat(
                 "debug_detail": traceback.format_exc(),
             }
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail) from exc
+
+
+@router.get("/conversations")
+def agent_conversations(
+    q: str | None = Query(None, max_length=200),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_shared_agent_user),
+):
+    items = list_user_conversations(db, user.tenant_id, user.id, search=q)
+    return {"items": items}
+
+
+@router.get("/conversations/{external_id}")
+def agent_conversation_detail(
+    external_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_shared_agent_user),
+):
+    detail = get_user_conversation(db, user.tenant_id, user.id, external_id)
+    if not detail:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+    return detail
+
+
+@router.delete("/conversations/{external_id}")
+def agent_conversation_delete(
+    external_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_shared_agent_user),
+):
+    deleted = delete_user_conversation(db, user.tenant_id, user.id, external_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+    return {"success": True}
 
 
 @router.post("/confirm")

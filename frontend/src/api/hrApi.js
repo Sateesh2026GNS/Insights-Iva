@@ -5,7 +5,8 @@ export const getWorkforceDashboard = () => api.get("/hr/workforce-dashboard");
 
 export const getEmployees = () => api.get("/hr/employees");
 export const getEmployeeSummary = () => api.get("/hr/employees/summary");
-export const getEmployeesEnriched = () => api.get("/hr/employees/enriched");
+export const getEmployeesEnriched = (options = {}) =>
+  api.get("/hr/employees/enriched", options);
 export const getTeamDirectory = () => api.get("/team-directory");
 export const createEmployee = (payload) => api.post("/hr/employees", payload);
 export const updateEmployee = (employeeId, payload) => api.put(`/hr/employees/${employeeId}`, payload);
@@ -265,4 +266,3 @@ export const updateAnnouncement = (announcementId, payload) =>
   api.put(`/hr/announcements/${announcementId}`, payload);
 export const deleteAnnouncement = (announcementId) =>
   api.delete(`/hr/announcements/${announcementId}`);
-

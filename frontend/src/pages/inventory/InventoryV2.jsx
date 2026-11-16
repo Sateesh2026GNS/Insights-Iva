@@ -231,6 +231,14 @@ export default function InventoryV2({ forcedStockFilter = null }) {
   }, [kpiStockFilter, location.pathname, forcedStockFilter]);
 
   useEffect(() => {
+    const fromUrl = searchParams.get("category");
+    if (fromUrl) {
+      setCategoryFilter(fromUrl);
+      setTab("items");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     setPage(1);
   }, [search, sort, stockFilter, pageSize, tab, categoryFilter]);
 
@@ -254,8 +262,8 @@ export default function InventoryV2({ forcedStockFilter = null }) {
   }, []);
 
   const filteredItems = useMemo(
-    () => filterInventoryStockRows(products, { search, sort, stockFilter }),
-    [products, search, sort, stockFilter]
+    () => filterInventoryStockRows(products, { search, sort, stockFilter, categoryFilter }),
+    [products, search, sort, stockFilter, categoryFilter]
   );
 
   const categoryWiseItems = useMemo(

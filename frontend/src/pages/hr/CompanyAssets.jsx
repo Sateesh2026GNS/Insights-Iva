@@ -651,15 +651,17 @@ export default function CompanyAssets() {
                               <Link
                                 to="/hr/assets/create"
                                 title="Allocate Asset"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+                                aria-label="Allocate Asset"
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
                               >
                                 <UserCheck className="h-3.5 w-3.5" />
                               </Link>
                               <button
                                 type="button"
                                 title="Delete Asset"
+                                aria-label="Delete Asset"
                                 onClick={() => handleDeleteAsset(ast.id)}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-rose-500 hover:bg-rose-50 transition-colors"
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-rose-500 hover:bg-rose-50 transition-colors"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -731,7 +733,7 @@ export default function CompanyAssets() {
                             <button
                               type="button"
                               onClick={() => handleDeleteCategory(cat.id)}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-rose-500 hover:bg-rose-50 transition-colors"
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-rose-500 hover:bg-rose-50 transition-colors"
                               title="Delete Category"
                             >
                               <Trash2 className="h-3.5 w-3.5" />

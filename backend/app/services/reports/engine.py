@@ -94,7 +94,7 @@ def run_report(
         warehouse_ids=tuple(warehouse_ids),
         user=user,
     )
-    if not warehouse_ids:
+    if getattr(definition, "requires_warehouse", True) and not warehouse_ids:
         return _empty_result(definition, filters)
 
     stmt, column_map = definition.builder(ctx, filters)

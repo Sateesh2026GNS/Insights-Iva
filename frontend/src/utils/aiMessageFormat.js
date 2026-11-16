@@ -21,5 +21,13 @@ export function formatAiMessageInline(text) {
     /`([^`]+)`/g,
     '<code class="rounded bg-slate-200/70 px-1.5 py-0.5 text-xs font-mono text-slate-800">$1</code>'
   );
+  html = html.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    (url) => {
+      const href = url.replace(/[),.;]+$/g, "");
+      const tail = url.slice(href.length);
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${href}</a>${tail}`;
+    }
+  );
   return html;
 }

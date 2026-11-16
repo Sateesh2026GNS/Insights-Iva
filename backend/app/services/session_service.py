@@ -192,7 +192,13 @@ def revoke_all_user_sessions(
     }
 
 
-def bind_access_jti(db: Session, raw_refresh: str | None, access_token: str | None) -> None:
+def bind_access_jti(
+    db: Session,
+    raw_refresh: str | None,
+    access_token: str | None,
+    *,
+    commit: bool = True,
+) -> None:
     if not raw_refresh or not access_token:
         return
     from app.services.auth_service import decode_access_token
@@ -202,6 +208,8 @@ def bind_access_jti(db: Session, raw_refresh: str | None, access_token: str | No
     payload = decode_access_token(access_token) or {}
     if row and payload.get("jti"):
         row.last_jti = payload["jti"]
+        if not commit:
+            return
         try:
             db.commit()
         except Exception:

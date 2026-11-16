@@ -19,11 +19,5 @@ export function isAiCopilotEnabled() {
 /** Routes where the operator floating AI assistant may appear. */
 export function isOperatorAiRoute(pathname) {
   const path = normalizePath(pathname);
-  if (operatorPathAllowed(path)) return true;
-  return (
-    path === "/operations" ||
-    path.startsWith("/operations/") ||
-    path === "/iot" ||
-    path.startsWith("/iot/")
-  );
+  return operatorPathAllowed(path);
 }

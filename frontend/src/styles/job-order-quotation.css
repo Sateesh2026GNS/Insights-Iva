@@ -20,7 +20,7 @@
 .joq-kicker { margin: 0; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
 .joq-header h1 { margin: 4px 0; font-size: 28px; line-height: 1.1; }
 .joq-header p { margin: 0; max-width: 760px; font-size: 13px; }
-.joq-home { color: #fff; font-weight: 700; }
+.joq-home { display: inline-flex; min-width: 44px; align-items: center; color: #fff; font-weight: 700; }
 
 .joq-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .joq-kpi, .joq-panel, .joq-sheet { border: 1px solid #d5e0ea; border-radius: 8px; background: #fff; }
@@ -58,7 +58,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 34px;
+  min-height: 44px;
   padding: 6px 12px;
   border: 1px solid #0e4c92;
   border-radius: 6px;

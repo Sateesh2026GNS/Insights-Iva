@@ -55,6 +55,38 @@ export function resolveUploadUrl(url) {
   return `${base}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
+/** True when download must go through the API client (cookies / CSRF), not raw fetch. */
+export function isApiHostedFileUrl(url) {
+  if (!url) return false;
+  const resolved = resolveUploadUrl(url);
+  const base = getApiBaseURL().replace(/\/$/, "");
+  if (!resolved.startsWith(base)) return false;
+  try {
+    const path = resolved.slice(base.length).split("?")[0];
+    return path.startsWith("/api/files/");
+  } catch {
+    return false;
+  }
+}
+
+/** Download file bytes with auth when the URL is served by our API (local storage dev). */
+export async function downloadFileAsBlob(downloadUrl) {
+  const url = resolveUploadUrl(downloadUrl);
+  if (isApiHostedFileUrl(downloadUrl)) {
+    const base = getApiBaseURL().replace(/\/$/, "");
+    const path = url.slice(base.length) || "/";
+    const { data } = await api.get(path, { responseType: "blob" });
+    return data;
+  }
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Could not download file.");
+    return res.blob();
+  }
+  const { data } = await api.get(url, { responseType: "blob" });
+  return data;
+}
+
 /** PUT file bytes to presigned URL (local dev or S3). */
 export async function putToPresignedUrl(uploadUrl, file, headers = {}, onProgress) {
   const url = resolveUploadUrl(uploadUrl);

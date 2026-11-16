@@ -1,4 +1,5 @@
-import api from "./axiosConfig";
+import api, { ensureCsrfCookie } from "./axiosConfig";
+import { getCsrfTokenFromCookie } from "../utils/csrf";
 import { triggerServerWakeup, isServerWakeupOrTransientError } from "../utils/serverWakeup";
 
 const PLATFORM_TOKEN_KEY = "gns-platform-token";
@@ -62,8 +63,15 @@ export async function superAdminLogin(email, password) {
   });
 }
 
+async function ensurePlatformCsrf() {
+  if (!getCsrfTokenFromCookie()) {
+    await ensureCsrfCookie();
+  }
+}
+
 export async function superAdminVerifyOtp(challengeToken, otp, firebaseToken = null) {
   return withPlatformAuthRetry(async () => {
+    await ensurePlatformCsrf();
     const { data } = await api.post(
       "/platform/auth/verify-otp",
       {
@@ -79,6 +87,7 @@ export async function superAdminVerifyOtp(challengeToken, otp, firebaseToken = n
 
 export async function superAdminResendOtp(challengeToken) {
   return withPlatformAuthRetry(async () => {
+    await ensurePlatformCsrf();
     const { data } = await api.post(
       "/platform/auth/resend-otp",
       {

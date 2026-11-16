@@ -1,0 +1,520 @@
+.iva-ai-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.28);
+  pointer-events: auto;
+}
+
+.iva-ai-shell {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: #f4f7fb;
+  color: #0f172a;
+}
+
+.iva-ai-sidebar,
+.iva-ai-main {
+  min-width: 0;
+  min-height: 0;
+}
+
+.iva-ai-sidebar {
+  display: flex;
+  width: min(280px, 88vw);
+  flex-direction: column;
+  background: #fff;
+  border-right: 1px solid #e2e8f0;
+}
+
+.iva-ai-sidebar[hidden] {
+  display: none !important;
+}
+
+.iva-ai-sidebar__head,
+.iva-ai-header,
+.iva-ai-composer {
+  flex-shrink: 0;
+}
+
+.iva-ai-sidebar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 14px 8px;
+}
+
+.iva-ai-sidebar__head h2,
+.iva-ai-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.iva-ai-sidebar__search {
+  padding: 0 14px 10px;
+}
+
+.iva-ai-sidebar__search input,
+.iva-ai-composer textarea {
+  width: 100%;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+}
+
+.iva-ai-sidebar__search input {
+  height: 36px;
+  padding: 0 10px;
+}
+
+.iva-ai-sidebar__search input:focus,
+.iva-ai-composer textarea:focus {
+  outline: none;
+  border-color: var(--color-primary, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
+}
+
+.iva-ai-history {
+  flex: 1;
+  overflow: auto;
+  padding: 0 8px 12px;
+}
+
+.iva-ai-history__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 4px;
+  border-radius: 10px;
+}
+
+.iva-ai-history__item.is-active {
+  background: #eff6ff;
+}
+
+.iva-ai-history__open {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.iva-ai-history__open strong,
+.iva-ai-history__open span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iva-ai-history__open strong {
+  font-size: 13px;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.iva-ai-history__open span {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.iva-ai-history__delete,
+.iva-ai-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+.iva-ai-history__delete:hover,
+.iva-ai-icon-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.iva-ai-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 6px 8px;
+  padding: 8px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fff7f7;
+  font-size: 12px;
+}
+
+.iva-ai-confirm div {
+  display: flex;
+  gap: 6px;
+}
+
+.iva-ai-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+.iva-ai-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.iva-ai-header__copy {
+  min-width: 0;
+}
+
+.iva-ai-header__copy p {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.iva-ai-header__actions,
+.iva-ai-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.iva-ai-status {
+  margin-top: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.iva-ai-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16a34a;
+}
+
+.iva-ai-status--busy i { background: #2563eb; }
+.iva-ai-status--off i { background: #d97706; }
+
+.iva-ai-text-btn {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-primary, #2563eb);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.iva-ai-text-btn:hover {
+  background: #eff6ff;
+}
+
+.iva-ai-thread {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 12px 8px;
+}
+
+.iva-ai-thread__inner {
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.iva-ai-welcome h3 {
+  margin: 8px 0 6px;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.iva-ai-welcome p {
+  margin: 0 0 14px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.iva-ai-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.iva-ai-card {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  text-align: left;
+  cursor: pointer;
+}
+
+.iva-ai-card strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.iva-ai-card span {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.iva-ai-card:hover:not(:disabled) {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.iva-ai-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.iva-ai-row {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.iva-ai-row--user { justify-content: flex-end; }
+.iva-ai-row--assistant { justify-content: flex-start; }
+
+.iva-ai-bubble {
+  max-width: min(100%, 40rem);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.iva-ai-bubble--user {
+  max-width: min(85%, 32rem);
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px 14px 4px 14px;
+  background: #eff6ff;
+  color: #0f172a;
+}
+
+.iva-ai-bubble--assistant {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px 14px 14px 4px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.iva-ai-time {
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.iva-ai-row--user .iva-ai-time { text-align: right; }
+
+.iva-ai-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.iva-ai-composer {
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.iva-ai-composer__box {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.iva-ai-composer textarea {
+  min-height: 44px;
+  max-height: 140px;
+  resize: none;
+  padding: 10px 12px;
+  line-height: 1.4;
+}
+
+.iva-ai-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  cursor: pointer;
+}
+
+.iva-ai-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.iva-ai-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+}
+
+.iva-ai-code,
+.iva-ai-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  margin: 8px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.iva-ai-code {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.iva-ai-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.iva-ai-table-wrap th,
+.iva-ai-table-wrap td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.iva-ai-table-wrap th {
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+.iva-ai-empty {
+  padding: 16px 8px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.iva-ai-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .iva-ai-shell--history .iva-ai-sidebar {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    box-shadow: 8px 0 24px rgba(15, 23, 42, 0.12);
+  }
+
+  .iva-ai-shell--history .iva-ai-sidebar-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border: 0;
+    background: rgba(15, 23, 42, 0.28);
+  }
+}
+
+@media (min-width: 768px) {
+  .iva-ai-overlay {
+    align-items: center;
+    padding: 16px;
+  }
+
+  .iva-ai-shell {
+    height: min(760px, calc(100vh - 32px));
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  }
+
+  .iva-ai-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .iva-ai-overlay {
+    padding: 28px;
+  }
+
+  .iva-ai-shell {
+    width: min(1040px, 100%);
+    height: min(780px, calc(100vh - 56px));
+  }
+}
+
+@media (max-width: 639px) {
+  .iva-ai-header {
+    padding: 10px 10px;
+  }
+
+  .iva-ai-header__copy p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .iva-ai-welcome h3 {
+    font-size: 18px;
+  }
+}

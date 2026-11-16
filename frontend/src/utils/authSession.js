@@ -41,7 +41,23 @@ export function clearAuthTokens() {
   } catch {}
 }
 
+/** In-memory flag so an in-flight refresh cannot restore a session after logout. */
+let sessionTerminated = false;
+
+export function markSessionTerminated() {
+  sessionTerminated = true;
+}
+
+export function clearSessionTerminated() {
+  sessionTerminated = false;
+}
+
+export function isSessionTerminated() {
+  return sessionTerminated;
+}
+
 export function markBrowserSessionActive() {
+  sessionTerminated = false;
   try {
     localStorage.setItem(SESSION_ACTIVE_KEY, "1");
   } catch {}

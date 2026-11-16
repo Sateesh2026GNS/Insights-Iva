@@ -1,0 +1,339 @@
+/* Administration pages — one layout system, four page accent themes. */
+
+.admin-toolkit-page {
+  --admin-accent: #2563eb;
+  --admin-accent-hover: #1d4ed8;
+  --admin-accent-ink: #1e40af;
+  --admin-accent-soft: #eff6ff;
+  --admin-accent-selected: #dbeafe;
+  --admin-accent-contrast: #fff;
+  background: #f4f7fa;
+  color: #1a1a1a;
+}
+
+.ppt-root.admin-toolkit-theme--blue {
+  --ppt-navy: #1e3a8a;
+  --ppt-navy-mid: #2563eb;
+  --ppt-gold: #93c5fd;
+  --ppt-head: #1d4ed8;
+  --ppt-total: #1e3a8a;
+  --admin-accent: #2563eb;
+  --admin-accent-hover: #1d4ed8;
+  --admin-accent-ink: #1e40af;
+  --admin-accent-soft: #eff6ff;
+  --admin-accent-selected: #dbeafe;
+  --admin-accent-contrast: #fff;
+}
+
+.ppt-root.admin-toolkit-theme--purple {
+  --ppt-navy: #5b21b6;
+  --ppt-navy-mid: #7c3aed;
+  --ppt-gold: #c4b5fd;
+  --ppt-head: #6d28d9;
+  --ppt-total: #5b21b6;
+  --admin-accent: #7c3aed;
+  --admin-accent-hover: #6d28d9;
+  --admin-accent-ink: #6d28d9;
+  --admin-accent-soft: #f5f3ff;
+  --admin-accent-selected: #ede9fe;
+  --admin-accent-contrast: #fff;
+}
+
+.ppt-root.admin-toolkit-theme--teal {
+  --ppt-navy: #0f766e;
+  --ppt-navy-mid: #0d9488;
+  --ppt-gold: #5eead4;
+  --ppt-head: #0f766e;
+  --ppt-total: #115e59;
+  --admin-accent: #0d9488;
+  --admin-accent-hover: #0f766e;
+  --admin-accent-ink: #0f766e;
+  --admin-accent-soft: #f0fdfa;
+  --admin-accent-selected: #ccfbf1;
+  --admin-accent-contrast: #fff;
+}
+
+.ppt-root.admin-toolkit-theme--amber {
+  --ppt-navy: #92400e;
+  --ppt-navy-mid: #b45309;
+  --ppt-gold: #fde68a;
+  --ppt-head: #b45309;
+  --ppt-total: #78350f;
+  --admin-accent: #d97706;
+  --admin-accent-hover: #b45309;
+  --admin-accent-ink: #92400e;
+  --admin-accent-soft: #fffbeb;
+  --admin-accent-selected: #fef3c7;
+  --admin-accent-contrast: #1a1a1a;
+}
+
+.admin-toolkit-page .ppt-body {
+  background: #fff;
+}
+
+.admin-toolkit-page .ppt-tabs {
+  border-top-color: var(--admin-accent);
+}
+
+.admin-toolkit-page .ppt-tabs button.ppt-tabs__active,
+.admin-toolkit-page .ppt-tabs a.ppt-tabs__active {
+  color: var(--admin-accent-ink);
+  box-shadow: inset 0 -2px 0 var(--admin-accent);
+  background: var(--admin-accent-soft);
+}
+
+.admin-toolkit-page .ppt-tabs button:focus-visible,
+.admin-toolkit-page .ppt-tabs a:focus-visible {
+  outline-color: var(--admin-accent);
+}
+
+.admin-toolkit-page .admin-toolkit-actions .ui-btn--primary,
+.admin-toolkit-page .admin-toolkit-actions .ui-btn--add {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+  color: var(--admin-accent-contrast);
+  box-shadow: none;
+}
+
+.admin-toolkit-page .admin-toolkit-actions .ui-btn--primary:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]),
+.admin-toolkit-page .admin-toolkit-actions .ui-btn--add:hover:not(:disabled):not(.is-loading):not([aria-disabled="true"]) {
+  background: var(--admin-accent-hover);
+  border-color: var(--admin-accent-hover);
+}
+
+.admin-toolkit-page .admin-toolkit-field input:focus,
+.admin-toolkit-page .admin-toolkit-field select:focus {
+  border-color: var(--admin-accent);
+  outline: 1px solid var(--admin-accent);
+}
+
+.admin-toolkit-page .ppt-kpi--button.is-active {
+  background: var(--admin-accent-selected);
+  box-shadow: inset 0 0 0 2px var(--admin-accent);
+}
+
+.admin-toolkit-page .ppt-table tbody tr:hover td {
+  background: var(--admin-accent-soft);
+}
+
+.admin-toolkit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--admin-accent-selected);
+  border-radius: 2px;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-ink);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.admin-toolkit-chip__remove {
+  margin-left: 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-toolkit-chip-clear {
+  border: 0;
+  background: transparent;
+  color: var(--admin-accent-ink);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.admin-toolkit-empty .approvals-empty__icon {
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+}
+
+.admin-toolkit-empty .approvals-empty__icon--pending {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* Layout glue shared by every Administration theme. */
+
+.admin-toolkit-page .ppt-kpi-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 8px;
+  border-top: 1px solid var(--ppt-border);
+}
+
+@media (max-width: 1023px) {
+  .admin-toolkit-page .ppt-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.admin-toolkit-host {
+  gap: 8px;
+  padding-bottom: 1rem;
+}
+
+.admin-toolkit-empty h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-toolkit-empty p {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.admin-toolkit-empty .approvals-empty__icon {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 4px;
+  border-radius: 2px;
+}
+
+.admin-toolkit-desktop-table {
+  min-width: 0;
+}
+
+.admin-toolkit-mobile-cards {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-toolkit-page .approvals-chips {
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.admin-toolkit-page .approvals-card {
+  border: 1px solid var(--ppt-border);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 8px;
+}
+
+@media (max-width: 767px) {
+  .admin-toolkit-desktop-table {
+    display: none;
+  }
+
+  .admin-toolkit-mobile-cards {
+    display: flex;
+  }
+}
+
+.admin-toolkit-page .ppt-kpi--button {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.admin-toolkit-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin-toolkit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-toolkit-field--grow {
+  flex: 1 1 180px;
+}
+
+.admin-toolkit-field span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-toolkit-field input,
+.admin-toolkit-field select {
+  box-sizing: border-box;
+  height: 28px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--ppt-border);
+  border-radius: 2px;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 11px;
+}
+
+.admin-toolkit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-toolkit-actions .ui-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 2px;
+  font-size: 11px;
+}
+
+.admin-toolkit-empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.admin-toolkit-page .ppt-table td.ppt-left,
+.admin-toolkit-page .ppt-table th.ppt-left {
+  text-align: left;
+}
+
+.admin-toolkit-page .ppt-table .ppt-actions-cell {
+  white-space: nowrap;
+}
+
+.admin-toolkit-perm-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-start;
+}
+
+.admin-toolkit-perm-group strong {
+  display: block;
+  width: 100%;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .admin-toolkit-field--grow,
+  .admin-toolkit-actions {
+    flex-basis: 100%;
+  }
+
+  .admin-toolkit-actions .ui-btn {
+    flex: 1 1 auto;
+  }
+}

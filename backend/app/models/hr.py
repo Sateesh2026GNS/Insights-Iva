@@ -89,6 +89,9 @@ class AttendanceRecord(Base, TimestampMixin):
     early_departure_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     approval_status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
 
+    employee: Mapped["Employee"] = relationship("Employee", foreign_keys=[employee_id])
+    shift: Mapped["Shift | None"] = relationship("Shift", foreign_keys=[shift_id])
+
 
 class PayrollRecord(Base, TimestampMixin):
     """Payroll records per employee per pay period."""
@@ -117,6 +120,8 @@ class PayrollRecord(Base, TimestampMixin):
     deductions: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0, nullable=False)
     net_pay: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0, nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
+
+    employee: Mapped["Employee"] = relationship("Employee", foreign_keys=[employee_id])
 
 
 class LeaveRequest(Base, TimestampMixin):

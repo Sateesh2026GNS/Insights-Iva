@@ -1129,13 +1129,21 @@ export default function WorkChat() {
     }
   }, [showNewDirect, showNewGroup, userQuery]);
 
+  const conversationParam = searchParams.get("conversation");
+  const loadMessagesRef = useRef(loadMessages);
+  const loadConversationsRef = useRef(loadConversations);
+  const addToastRef = useRef(addToast);
+  loadMessagesRef.current = loadMessages;
+  loadConversationsRef.current = loadConversations;
+  addToastRef.current = addToast;
+
   useEffect(() => {
-    const cid = Number(searchParams.get("conversation"));
+    const cid = Number(conversationParam);
     if (cid) {
       setActiveId(cid);
       setMobileView("chat");
     }
-  }, [searchParams]);
+  }, [conversationParam]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -1149,29 +1157,41 @@ export default function WorkChat() {
 
     if (lockedConvs.has(activeId) && !unlockedConvs.has(activeId)) {
       setLockModal({ open: true, mode: "enter", convId: activeId });
-    } else {
-      loadMessages(activeId).catch(() => addToast("Could not load messages.", "error"));
+      return;
     }
-
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p);
-      next.set("conversation", String(activeId));
-      return next;
+    loadMessagesRef.current(activeId).catch(() => {
+      addToastRef.current("Could not load messages.", "error");
     });
-  }, [activeId, loadMessages, addToast, setSearchParams, lockedConvs, unlockedConvs]);
+  }, [activeId, lockedConvs, unlockedConvs]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    if (conversationParam === String(activeId)) return;
+    setSearchParams(
+      (p) => {
+        if (p.get("conversation") === String(activeId)) return p;
+        const next = new URLSearchParams(p);
+        next.set("conversation", String(activeId));
+        return next;
+      },
+      { replace: true }
+    );
+  }, [activeId, conversationParam, setSearchParams]);
 
   useEffect(() => {
     if (!activeId) return;
     if (lockedConvs.has(activeId) && !unlockedConvs.has(activeId)) return;
 
-    pollRef.current = window.setInterval(() => {
-      loadMessages(activeId).catch(() => {});
-      loadConversations();
+    const handle = window.setInterval(() => {
+      loadMessagesRef.current(activeId).catch(() => {});
+      loadConversationsRef.current();
     }, 12000);
+    pollRef.current = handle;
     return () => {
-      if (pollRef.current) window.clearInterval(pollRef.current);
+      window.clearInterval(handle);
+      if (pollRef.current === handle) pollRef.current = null;
     };
-  }, [activeId, loadMessages, loadConversations, lockedConvs, unlockedConvs]);
+  }, [activeId, lockedConvs, unlockedConvs]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;

@@ -270,13 +270,15 @@ export default function RestoreDeletedDocV2() {
                 <tr>
                   <SerialNumberHeader className={accountsThClass} />
                   <th className={`w-12 ${accountsThClass}`}>
-                    <input
-                      type="checkbox"
-                      checked={allChecked}
-                      onChange={toggleAll}
-                      className="h-4 w-4 rounded border-[#E2E8F0]"
-                      aria-label="Select all"
-                    />
+                    <label className="flex min-h-11 min-w-11 items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={toggleAll}
+                        className="h-4 w-4 rounded border-[#E2E8F0]"
+                        aria-label="Select all"
+                      />
+                    </label>
                   </th>
                   <th className={accountsThClass}>Doc. Reference Info.</th>
                   <th className={accountsThClass}>Party Name</th>
@@ -292,16 +294,18 @@ export default function RestoreDeletedDocV2() {
                     <tr key={row.id} className="text-[13px]" style={{ color: ACCOUNTS_TEXT }}>
                       <SerialNumberCell rowIndex={rowIndex} className={accountsTdClass} />
                       <td className={accountsTdClass}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() =>
-                            setSelected((prev) =>
-                              checked ? prev.filter((x) => x !== row.id) : [...prev, row.id]
-                            )
-                          }
-                          className="h-4 w-4 rounded border-[#E2E8F0]"
-                        />
+                        <label className="flex min-h-11 min-w-11 items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setSelected((prev) =>
+                                checked ? prev.filter((x) => x !== row.id) : [...prev, row.id]
+                              )
+                            }
+                            className="h-4 w-4 rounded border-[#E2E8F0]"
+                          />
+                        </label>
                       </td>
                       <td className={accountsTdClass}>{row.reference}</td>
                       <td className={accountsTdClass}>{row.party_name}</td>
@@ -312,7 +316,7 @@ export default function RestoreDeletedDocV2() {
                           <button
                             type="button"
                             onClick={() => restoreOne(row.id)}
-                            className="grid h-8 w-8 place-items-center rounded-full bg-[#e8f5e9] text-[#16a34a]"
+                            className="grid h-11 w-11 place-items-center rounded-full bg-[#e8f5e9] text-[#16a34a]"
                             title="Restore"
                             aria-label="Restore"
                           >
@@ -324,7 +328,7 @@ export default function RestoreDeletedDocV2() {
                               setRows((prev) => prev.filter((r) => r.id !== row.id));
                               addToast("Document permanently removed", "success");
                             }}
-                            className="grid h-8 w-8 place-items-center rounded-full bg-[#fde8e8] text-[#ef4444]"
+                            className="grid h-11 w-11 place-items-center rounded-full bg-[#fde8e8] text-[#ef4444]"
                             title="Delete permanently"
                             aria-label="Delete permanently"
                           >

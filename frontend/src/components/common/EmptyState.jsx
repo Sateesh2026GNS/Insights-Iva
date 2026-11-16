@@ -101,6 +101,7 @@ export default function EmptyState({
   actionLabel,
   actionHref,
   onAction,
+  actions = null,
   compact = false,
   className = "",
 }) {
@@ -141,6 +142,7 @@ export default function EmptyState({
           {description}
         </p>
       ) : null}
+      {actions ? <div className={`${ctaClass} flex flex-wrap items-center justify-center gap-2`}>{actions}</div> : null}
       {actionLabel && actionHref ? (
         <AddButton to={actionHref} className={ctaClass}>
           {actionLabel}

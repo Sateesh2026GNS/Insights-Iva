@@ -1,7 +1,6 @@
 """Storage abstraction: documents, exports, leads (local + moto S3)."""
 
 import io
-import time
 from unittest.mock import patch
 
 import pytest
@@ -104,7 +103,10 @@ def test_document_soft_delete_hides_from_list(register_admin, client):
 def test_report_export_link_expires(register_admin, client):
     admin = register_admin()
     headers = admin["headers"]
-    from app.services.reports.export import _EXPORT_TOKENS
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.database import SessionLocal
+    from app.models.reporting import ReportExportToken
 
     with patch("app.services.reports.export.run_report") as mock_run:
         mock_run.return_value = {
@@ -125,8 +127,13 @@ def test_report_export_link_expires(register_admin, client):
     assert exp.status_code == 200
     url = exp.json()["download_url"]
     token = url.rsplit("/", 1)[-1]
-    assert token in _EXPORT_TOKENS
-    _EXPORT_TOKENS[token] = (time.time() - 1, *_EXPORT_TOKENS[token][1:])
+    db = SessionLocal()
+    try:
+        row = db.query(ReportExportToken).filter(ReportExportToken.token == token).one()
+        row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        db.commit()
+    finally:
+        db.close()
     client.cookies.clear()
     expired = client.get(url, headers=headers)
     assert expired.status_code == 404

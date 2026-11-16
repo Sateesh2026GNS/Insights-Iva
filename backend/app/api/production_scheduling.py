@@ -6,11 +6,16 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.core.permissions import tenant_scope
+from app.routers.operator_deps import deny_operator_production_planning
 from app.models.machine import Machine
 from app.models.product import Product
 from app.models.production import DailyProductionReport, ProductionOrder, WorkOrder
 
-router = APIRouter(prefix="/production-scheduling", tags=["Production Scheduling"])
+router = APIRouter(
+    prefix="/production-scheduling",
+    tags=["Production Scheduling"],
+    dependencies=[Depends(deny_operator_production_planning)],
+)
 
 MODULE = "production"
 

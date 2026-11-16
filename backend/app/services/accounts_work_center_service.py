@@ -14,6 +14,7 @@ from app.schemas.finance_extended import AccountsWorkCenterRead
 from sqlalchemy.orm import joinedload
 
 from app.services.finance_extended_service import (
+    NON_AR_DOCUMENT_TYPES,
     _invoice_eligible_for_ar,
     get_ap_summary,
     get_ar_summary,
@@ -143,6 +144,7 @@ def _invoice_summary(db: Session, tenant_id: int, today: date) -> dict:
                 Invoice.due_date.isnot(None),
                 Invoice.due_date < today,
                 Invoice.amount_paid < Invoice.grand_total,
+                Invoice.document_type.notin_(tuple(NON_AR_DOCUMENT_TYPES)),
             )
         )
         or 0
@@ -188,6 +190,12 @@ def _gst_period_kpi(db: Session, tenant_id: int, today: date) -> dict:
     }
 
 
+def _pending_expense_claims(db: Session, tenant_id: int) -> list[dict]:
+    from app.services.hr_module_service import list_pending_expense_claims_for_dashboard
+
+    return list_pending_expense_claims_for_dashboard(db, tenant_id)
+
+
 def _recent_activity(db: Session, tenant_id: int, today: date) -> list[dict]:
     items: list[dict] = []
 
@@ -203,6 +211,8 @@ def _recent_activity(db: Session, tenant_id: int, today: date) -> list[dict]:
                 "amount": float(p.amount or 0),
                 "date": p_date,
                 "status": p.status,
+                "record_id": p.id,
+                "href": "/finance/payment-tracking",
             }
         )
 
@@ -223,6 +233,8 @@ def _recent_activity(db: Session, tenant_id: int, today: date) -> list[dict]:
                 "amount": None,
                 "date": je.entry_date.isoformat() if je.entry_date else None,
                 "status": je.status if hasattr(je, "status") else "posted",
+                "record_id": je.id,
+                "href": f"/accounts/journal-entries/{je.id}/edit",
             }
         )
 
@@ -243,6 +255,8 @@ def _recent_activity(db: Session, tenant_id: int, today: date) -> list[dict]:
                 "amount": float(inv.grand_total or 0),
                 "date": inv.issue_date.isoformat() if inv.issue_date else None,
                 "status": inv.payment_status or inv.status,
+                "record_id": inv.id,
+                "href": f"/sales/invoices/{inv.id}",
             }
         )
 
@@ -276,7 +290,6 @@ def get_accounts_work_center(
     )
 
     receivables = _receivable_rows(db, tenant_id, today)
-    open_ar_overdue = [r for r in receivables if r.get("days_overdue", 0) > 0]
 
     ap_rows = list_ap_enriched(db, tenant_id)
     open_ap = [r for r in ap_rows if float(r.balance or 0) > 0.01]
@@ -313,11 +326,22 @@ def get_accounts_work_center(
     money_out = payments_today_out
     net_cash_flow_today = money_in - money_out
 
+    unposted_journals = int(
+        db.scalar(
+            select(func.count(JournalEntry.id)).where(
+                JournalEntry.tenant_id == tenant_id,
+                func.lower(JournalEntry.status) == "draft",
+            )
+        )
+        or 0
+    )
+    invoice_counts = _invoice_summary(db, tenant_id, today)
+
     pending_work = [
         {
             "id": "overdue_receivables",
             "label": "Overdue receivables",
-            "count": len(open_ar_overdue),
+            "count": int(invoice_counts["overdue"] or 0),
             "amount": float(ar_sum.overdue or 0),
             "href": "/finance/accounts-receivable?focus=overdue",
         },
@@ -343,11 +367,25 @@ def get_accounts_work_center(
             "href": "/finance/accounts-receivable?focus=open",
         },
         {
-            "id": "bank_reconciliation",
-            "label": "Bank reconciliation",
-            "count": None,
+            "id": "due_supplier_payments",
+            "label": "Supplier bills due this week",
+            "count": int(ap_sum.due_this_week or 0),
             "amount": None,
-            "href": "/accounts/bank-reconciliation",
+            "href": "/accounts/accounts-payable",
+        },
+        {
+            "id": "draft_invoices",
+            "label": "Draft invoices",
+            "count": int(invoice_counts["draft"] or 0),
+            "amount": None,
+            "href": "/sales/invoices?invoice_status=draft",
+        },
+        {
+            "id": "unposted_journals",
+            "label": "Unposted journal entries",
+            "count": unposted_journals,
+            "amount": None,
+            "href": "/accounts/journal-entries",
         },
     ]
 
@@ -373,8 +411,9 @@ def get_accounts_work_center(
         bank_accounts=cash_bank_accounts,
         receivables=receivables,
         payables=payables,
-        invoice_summary=_invoice_summary(db, tenant_id, today),
+        invoice_summary=invoice_counts,
         pending_work=pending_work,
+        pending_expense_claims=_pending_expense_claims(db, tenant_id),
         recent_activity=_recent_activity(db, tenant_id, today),
         expense_summary={
             "month_total": expense_mtd,

@@ -13,7 +13,7 @@ import { WorkflowStatusBadge } from "./jobCardUiShared";
 import { getProductionOrderDetail, getProductionOrders } from "../../api/productionApi";
 import { PRIORITY_COLORS, enrichApiOrder } from "../../data/productionPlanningMasterData";
 import { getWorkflowStatusLabel } from "../../config/workflowStages";
-import { isStoreManager } from "../../config/permissions";
+import { isOperator, isStoreManager } from "../../config/permissions";
 import {
   downloadProductionJobCardPdf,
   downloadSalesJobCardPdf,
@@ -76,6 +76,7 @@ export default function JobCardDetailsShell({
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const operatorView = isOperator(user);
   const [productionOrder, setProductionOrder] = useState(null);
   const [companyProfile, setCompanyProfile] = useState(null);
   const [showProduction, setShowProduction] = useState(false);
@@ -93,6 +94,10 @@ export default function JobCardDetailsShell({
   const jobCardNo = summary.job_card_no || form?.job_card_no || `JC-${form?.sales_order_no || orderId}`;
 
   useEffect(() => {
+    if (operatorView) {
+      setCompanyProfile(null);
+      return undefined;
+    }
     let cancelled = false;
     getCompanySettings()
       .then((res) => {
@@ -104,12 +109,16 @@ export default function JobCardDetailsShell({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [operatorView]);
 
   useEffect(() => {
     let cancelled = false;
     async function loadPo() {
       try {
+        if (operatorView) {
+          if (!cancelled) setProductionOrder(null);
+          return;
+        }
         let poId = initialPoId || card?.header?.production_order_id;
         if (!poId) {
           const listRes = await getProductionOrders();
@@ -131,7 +140,7 @@ export default function JobCardDetailsShell({
     return () => {
       cancelled = true;
     };
-  }, [orderId, initialPoId, card?.header?.production_order_id]);
+  }, [orderId, initialPoId, card?.header?.production_order_id, operatorView]);
 
   const salesDocument = card?.sales_document;
 
@@ -157,6 +166,7 @@ export default function JobCardDetailsShell({
   });
 
   const fetchCompanyProfile = async () => {
+    if (operatorView) return companyProfile;
     try {
       const res = await getCompanySettings({ force: true });
       const profile = res?.data?.data ?? res?.data ?? null;

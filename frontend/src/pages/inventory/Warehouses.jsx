@@ -15,8 +15,10 @@ import {
 import Button from "../../components/common/Button";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/states/ErrorState";
 import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
+import PermissionDeniedState from "../../components/common/states/PermissionDeniedState";
 import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import PageHeader from "../../components/common/PageHeader";
@@ -42,7 +44,7 @@ import {
   WAREHOUSE_TYPES,
   enrichApiWarehouse,
 } from "../../data/warehousesMasterData";
-import { asArray } from "../../utils/apiError";
+import { apiErrorMessage, asArray } from "../../utils/apiError";
 import { todayIso } from "../../utils/dateUtils";
 import { uploadAndAttachWarehouseDocument } from "../../utils/warehouseDocuments";
 
@@ -69,6 +71,8 @@ export default function Warehouses() {
   const tenantId = useTenantId();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [warehouses, setWarehouses] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -87,14 +91,18 @@ export default function Warehouses() {
 
   const loadWarehouses = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
+    setPermissionDenied(false);
     try {
-      const wRes = await getWarehouses().catch(() => ({ data: [] }));
+      const wRes = await getWarehouses({ force: true });
       const apiRows = asArray(wRes.data);
       const createdDate = apiRows[0]?.created_at?.slice?.(0, 10) || todayIso();
       setHeaderDate(createdDate);
       setWarehouses(apiRows.map((row, i) => ({ ...enrichApiWarehouse(row, i), live: true })));
-    } catch {
+    } catch (error) {
       setWarehouses([]);
+      setLoadError(apiErrorMessage(error));
+      setPermissionDenied(error?.response?.status === 403);
     } finally {
       setLoading(false);
     }
@@ -440,6 +448,8 @@ export default function Warehouses() {
   ];
 
   if (loading) return <Loader label="Loading warehouses…" />;
+  if (permissionDenied) return <PermissionDeniedState description={loadError} />;
+  if (loadError) return <ErrorState description={loadError} onRetry={loadWarehouses} />;
 
   return (
     <div className="min-w-0 space-y-5 pb-4">

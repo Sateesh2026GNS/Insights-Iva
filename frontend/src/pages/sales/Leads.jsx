@@ -6,6 +6,7 @@ import KpiCard from "../../components/common/KpiCard";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import Loader from "../../components/common/Loader";
+import { ErrorState, PermissionDeniedState } from "../../components/common/states";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
 import { SearchBar } from "../../components/common/SearchFilter";
@@ -72,6 +73,8 @@ export default function Leads() {
   const { isAdmin, can, canAction } = usePermissions();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [rows, setRows] = useState([]);
   const [summaryState, setSummaryState] = useState(null);
@@ -140,10 +143,12 @@ export default function Leads() {
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setLoadError(null);
+    setPermissionDenied(false);
     try {
       const [summaryRes, listRes] = await Promise.allSettled([
-        getLeadSummary(),
-        getLeadsEnriched(leadQueryParams),
+        getLeadSummary({ skipGlobalError: true }),
+        getLeadsEnriched(leadQueryParams, { skipGlobalError: true }),
       ]);
 
       if (listRes.status === "rejected") {
@@ -175,6 +180,8 @@ export default function Leads() {
     } catch (err) {
       setRows([]);
       setSummaryState(null);
+      setLoadError(err);
+      setPermissionDenied(err?.response?.status === 403);
       addToast(apiErrorMessage(err, "Could not load leads from the server."), "error");
     } finally {
       setLoading(false);
@@ -389,6 +396,18 @@ export default function Leads() {
     return (
       <SalesPlanningShell theme="green" kicker="Record · Qualify · Quote · Order" title="LEADS" accent="ENQUIRIES">
         <Loader label="Loading leads..." />
+      </SalesPlanningShell>
+    );
+  }
+
+  if (permissionDenied || loadError) {
+    return (
+      <SalesPlanningShell theme="green" kicker="Record · Qualify · Quote · Order" title="LEADS" accent="ENQUIRIES">
+        {permissionDenied ? (
+          <PermissionDeniedState description={apiErrorMessage(loadError)} />
+        ) : (
+          <ErrorState description={apiErrorMessage(loadError)} onRetry={() => load()} />
+        )}
       </SalesPlanningShell>
     );
   }

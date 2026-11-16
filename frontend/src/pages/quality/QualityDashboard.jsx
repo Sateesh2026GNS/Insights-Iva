@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+﻿import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -12,91 +13,117 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CheckCircle, ClipboardCheck, Clock, Percent, XCircle } from "lucide-react";
-
 import Loader from "../../components/common/Loader";
 import DashboardReportExport from "../../components/common/DashboardReportExport";
-import PageHeader from "../../components/common/PageHeader";
 import { metricExportRows } from "../../utils/dashboardExportRows";
 import { getQualityHub } from "../../api/qualityApi";
-import { EMPTY_QUALITY_HUB, mergeQualityHub, qcStatusColor } from "../../data/qualityMasterData";
+import { EMPTY_QUALITY_HUB, mergeQualityHub } from "../../data/qualityMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
+import { classifyApiError } from "../../utils/apiError";
+import "../../styles/manufacturing-toolkit.css";
+import "./qualityDashboard.css";
 
-const TONE_CLASS = {
-  primary: "!bg-[#dbeafe] !text-[#2563eb]",
-  success: "!bg-[#dcfce7] !text-[#16a34a]",
-  danger: "!bg-[#fee2e2] !text-[#ef4444]",
-  warning: "!bg-[#ffedd5] !text-[#ea580c]",
-  violet: "!bg-[#ede9fe] !text-[#7c3aed]",
+const QUALITY_PAGES = [
+  { label: "Inspection Records", to: "/quality/inspection" },
+  { label: "Incoming Inspection", to: "/quality/incoming" },
+  { label: "In-Process QC", to: "/quality/in-process" },
+  { label: "Final QC", to: "/quality/final" },
+  { label: "Quality Issues", to: "/quality/defects" },
+  { label: "Batch Reports", to: "/quality/batch-reports" },
+];
+
+const TYPE_LIST = {
+  "Incoming Inspection": "/quality/incoming",
+  "In-Process QC": "/quality/in-process",
+  "Final QC": "/quality/final",
 };
 
-function QualityKpi({ label, value, icon: Icon, tone, trendPct, trendDir, trendGoodWhenDown = false }) {
-  const isUp = trendDir === "up";
-  const positive = trendGoodWhenDown ? !isUp : isUp;
+function typeListPath(name) {
+  return TYPE_LIST[name] || null;
+}
+
+function resultPill(value) {
+  const key = String(value || "").toLowerCase();
+  if (key === "passed" || key === "pass") return <span className="mtk-pill mtk-pill--success">Passed</span>;
+  if (key === "failed" || key === "fail") return <span className="mtk-pill mtk-pill--danger">Failed</span>;
+  if (!value) return "\u2014";
+  return <span className="mtk-pill mtk-pill--neutral">{value}</span>;
+}
+
+function statusPill(value) {
+  const key = String(value || "").toLowerCase();
+  if (key === "completed") return <span className="mtk-pill mtk-pill--success">Completed</span>;
+  if (key === "in_progress") return <span className="mtk-pill mtk-pill--info">In Progress</span>;
+  if (!value) return "\u2014";
+  return <span className="mtk-pill mtk-pill--neutral">{String(value).replace(/_/g, " ")}</span>;
+}
+
+function displayCount(value) {
+  return value == null || value === "" ? "\u2014" : value;
+}
+
+function TrackerKpi({ label, value, unit, icon, tone, to }) {
+  const body = (
+    <>
+      <div className={`mtk-kpi__icon mtk-kpi__icon--${tone}`}>{icon}</div>
+      <div className="mtk-kpi__label">{label}</div>
+      <div className="mtk-kpi__value">{value}</div>
+      {unit ? <div className="mtk-kpi__unit">{unit}</div> : null}
+    </>
+  );
+  if (!to) return <div className="mtk-kpi">{body}</div>;
   return (
-    <div className="ui-kpi">
-      <div className="ui-kpi__top">
-        <p className="ui-kpi__label">{label}</p>
-        {Icon ? (
-          <div className={`ui-kpi__icon ${TONE_CLASS[tone] || TONE_CLASS.primary}`}>
-            <Icon className="h-4 w-4" aria-hidden />
-          </div>
-        ) : null}
-      </div>
-      <p className="ui-kpi__value">{value}</p>
-      {trendPct != null ? (
-        <p className={`text-xs font-medium ${positive ? "text-emerald-600" : "text-red-600"}`}>
-          {isUp ? "↑" : "↓"} {trendPct}% vs last 14 days
-        </p>
-      ) : null}
-    </div>
+    <Link to={to} className="mtk-kpi qc-dash__kpi-link">
+      {body}
+    </Link>
   );
 }
 
-function StatusPill({ value, kind = "status" }) {
-  const key = String(value || "").toLowerCase();
-  const label =
-    kind === "result"
-      ? key === "passed" || key === "pass"
-        ? "Passed"
-        : key === "failed" || key === "fail"
-          ? "Failed"
-          : "—"
-      : key === "completed"
-        ? "Completed"
-        : key === "in_progress"
-          ? "In Progress"
-          : value || "—";
-
-  if (kind === "result" && (key === "passed" || key === "pass")) {
-    return <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Passed</span>;
-  }
-  if (kind === "result" && (key === "failed" || key === "fail")) {
-    return <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Failed</span>;
-  }
-  if (kind === "result" && !value) {
-    return <span className="text-sm text-[var(--color-text-muted)]">—</span>;
-  }
-  if (key === "completed") {
-    return <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Completed</span>;
-  }
-  if (key === "in_progress") {
-    return <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">In Progress</span>;
-  }
-  return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${qcStatusColor(key)}`}>{label}</span>;
+function DashboardHeader({ exportRows, exportDisabled }) {
+  return (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>Inspect · Measure · Release</span>
+        <div className="qc-dash__hero-actions">
+          <Link className="qc-dash__primary" to="/quality/inspection?new=1">
+            New Inspection
+          </Link>
+          <DashboardReportExport
+            title="Quality Dashboard"
+            filename="quality-dashboard"
+            rows={exportRows}
+            module="quality"
+            disabled={exportDisabled}
+          />
+        </div>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>
+          Manufacturing
+          <span className="mtk-accent"> Quality Control</span>
+        </h1>
+        <p>Manufacturing Production Planning &amp; Factory Control Toolkit</p>
+      </div>
+    </header>
+  );
 }
 
 export default function QualityDashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [hub, setHub] = useState(EMPTY_QUALITY_HUB);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setLoadError("");
     try {
       const res = await getQualityHub();
       setHub(mergeQualityHub(res.data));
     } catch (err) {
+      const classified = classifyApiError(err, "Quality dashboard data could not be loaded.");
       if (isRefresh) throw err;
+      setLoadError(classified.message);
       setHub(EMPTY_QUALITY_HUB);
     } finally {
       setLoading(false);
@@ -108,193 +135,221 @@ export default function QualityDashboard() {
   }, [load]);
   useManufacturingRefresh(() => load(true));
 
-  if (loading) return <Loader label="Loading quality dashboard..." />;
+  const qualityExportRows = metricExportRows([
+    { label: "Total inspections", value: hub.total_inspections },
+    { label: "Passed", value: hub.passed },
+    { label: "Failed", value: hub.failed },
+    { label: "In-process", value: hub.in_process },
+    { label: "Pass rate", value: hub.pass_rate == null ? "" : `${hub.pass_rate}%` },
+  ]);
+
+  if (loading) {
+    return (
+      <div className="qc-dash mtk-root mtk-theme--orange">
+        <Loader label="Loading quality dashboard..." />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="qc-dash mtk-root mtk-theme--orange min-w-0">
+        <DashboardHeader exportRows={[]} exportDisabled />
+        <div className="mtk-body">
+          <section className="mtk-panel" role="alert">
+            <div className="mtk-panel__title">Quality Dashboard</div>
+            <p className="qc-dash__empty">{loadError}</p>
+            <div className="qc-dash__footer">
+              <button type="button" className="qc-dash__retry" onClick={() => load()}>
+                Try again
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   const trends = hub.kpi_trends || {};
   const trendData = hub.inspection_trend || [];
   const typeData = hub.inspection_by_type || [];
   const recentRows = hub.recent_inspections || [];
-  const qualityExportRows = metricExportRows([
-    { label: "Total inspections", value: hub.total_inspections },
-    { label: "Passed", value: hub.passed },
-    { label: "Failed", value: hub.failed },
-    { label: "Pending", value: hub.pending },
-    { label: "Pass rate", value: `${hub.pass_rate ?? 0}%` },
-  ]);
+
+  const trendUnit = (key) => {
+    const item = trends[key];
+    if (item?.pct == null) return null;
+    const direction = item.direction === "up" ? "Up" : "Down";
+    return `${direction} ${item.pct}% vs last 14 days`;
+  };
 
   return (
-    <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader
-        subtitle="Overview of quality activities and performance."
-        action={
-          <DashboardReportExport
-            title="Quality Dashboard"
-            filename="quality-dashboard"
-            rows={qualityExportRows}
-            module="quality"
-          />
-        }
-      />
-
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <QualityKpi
+    <div className="qc-dash mtk-root mtk-theme--orange min-w-0">
+      <DashboardHeader exportRows={qualityExportRows} />
+      <div className="mtk-kpi-row" aria-label="Quality summary">
+        <TrackerKpi
           label="Total Inspections"
-          value={hub.total_inspections}
-          icon={ClipboardCheck}
-          tone="primary"
-          trendPct={trends.total?.pct}
-          trendDir={trends.total?.direction}
+          value={displayCount(hub.total_inspections)}
+          icon="QC"
+          tone="orange"
+          unit={trendUnit("total")}
+          to="/quality/inspection"
         />
-        <QualityKpi
+        <TrackerKpi
           label="Passed"
-          value={hub.passed}
-          icon={CheckCircle}
-          tone="success"
-          trendPct={trends.passed?.pct}
-          trendDir={trends.passed?.direction}
+          value={displayCount(hub.passed)}
+          icon="P"
+          tone="green"
+          unit={trendUnit("passed")}
+          to="/quality/inspection?result=pass"
         />
-        <QualityKpi
+        <TrackerKpi
           label="Failed"
-          value={hub.failed}
-          icon={XCircle}
-          tone="danger"
-          trendPct={trends.failed?.pct}
-          trendDir={trends.failed?.direction}
-          trendGoodWhenDown
+          value={displayCount(hub.failed)}
+          icon="F"
+          tone="red"
+          unit={trendUnit("failed")}
+          to="/quality/inspection?result=fail"
         />
-        <QualityKpi
+        <TrackerKpi
           label="In-Process"
-          value={hub.in_process ?? 0}
-          icon={Clock}
-          tone="warning"
-          trendPct={trends.in_process?.pct}
-          trendDir={trends.in_process?.direction}
+          value={displayCount(hub.in_process)}
+          icon="IP"
+          tone="orange"
+          unit={trendUnit("in_process")}
         />
-        <QualityKpi
+        <TrackerKpi
           label="Pass Rate"
-          value={`${hub.pass_rate ?? 0}%`}
-          icon={Percent}
-          tone="violet"
-          trendPct={trends.pass_rate?.pct}
-          trendDir={trends.pass_rate?.direction}
+          value={hub.pass_rate == null ? "\u2014" : `${hub.pass_rate}%`}
+          icon="%"
+          tone="blue"
+          unit={trendUnit("pass_rate")}
         />
       </div>
-
-      {/* Charts row */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="ui-card ui-card--padded">
-          <h2 className="mb-4 text-sm font-semibold text-[var(--color-text)]">Inspection Trend</h2>
-          <div className="mb-3 flex flex-wrap gap-4 text-xs font-medium text-[var(--color-text-muted)]">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" /> Passed
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-red-500" /> Failed
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-orange-500" /> In-Process
-            </span>
-          </div>
-          {trendData.length ? <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                <Line type="monotone" dataKey="passed" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Passed" />
-                <Line type="monotone" dataKey="failed" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Failed" />
-                <Line type="monotone" dataKey="in_process" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} name="In-Process" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div> : <div className="flex h-56 items-center justify-center text-sm text-[var(--color-text-muted)]">No inspection history available yet.</div>}
-        </div>
-
-        <div className="ui-card ui-card--padded">
-          <h2 className="mb-4 text-sm font-semibold text-[var(--color-text)]">Inspection by Type</h2>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {typeData.length ? <><div className="relative h-52 w-52 shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={typeData}
-                    dataKey="count"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={58}
-                    outerRadius={82}
-                    paddingAngle={2}
-                    stroke="none"
-                  >
-                    {typeData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-2xl font-bold text-[var(--color-text)]">{hub.total_inspections}</p>
-                <p className="text-xs text-[var(--color-text-muted)]">Total</p>
+      <div className="mtk-body">
+        <nav className="qc-dash__nav" aria-label="Quality pages">
+          {QUALITY_PAGES.map((page) => (
+            <Link key={page.to} to={page.to}>{page.label}</Link>
+          ))}
+        </nav>
+        <div className="mtk-layout-row mtk-layout-row--1-1">
+          <section className="mtk-panel">
+            <div className="mtk-panel__title">Inspection Trend</div>
+            {trendData.length ? (
+              <div className="mtk-chart">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: "#64748b" }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+                    <Tooltip contentStyle={{ fontSize: 11, borderRadius: 2 }} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    <Line type="monotone" dataKey="passed" stroke="#16a34a" strokeWidth={2} dot={{ r: 2 }} name="Passed" />
+                    <Line type="monotone" dataKey="failed" stroke="#dc2626" strokeWidth={2} dot={{ r: 2 }} name="Failed" />
+                    <Line type="monotone" dataKey="in_process" stroke="#ea580c" strokeWidth={2} dot={{ r: 2 }} name="In-Process" />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
-            </div>
-            <ul className="min-w-0 flex-1 space-y-2.5 text-sm">
-              {typeData.map((item) => (
-                <li key={item.name} className="flex items-center justify-between gap-3">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
-                    <span className="truncate text-[var(--color-text-secondary)]">{item.name}</span>
-                  </span>
-                  <span className="shrink-0 tabular-nums text-[var(--color-text-muted)]">
-                    {item.count} ({item.pct}%)
-                  </span>
-                </li>
-              ))}
-            </ul></> : <div className="flex h-52 flex-1 items-center justify-center text-sm text-[var(--color-text-muted)]">No inspection type data available yet.</div>}
-          </div>
+            ) : (
+              <p className="qc-dash__empty">No inspection history available yet.</p>
+            )}
+          </section>
+          <section className="mtk-panel">
+            <div className="mtk-panel__title">Inspection by Type</div>
+            {typeData.length ? (
+              <div className="qc-dash__type">
+                <div className="mtk-chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={typeData}
+                        dataKey="count"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={28}
+                        outerRadius={48}
+                        stroke="none"
+                        onClick={(entry) => {
+                          const path = typeListPath(entry?.name);
+                          if (path) navigate(path);
+                        }}
+                      >
+                        {typeData.map((entry) => (
+                          <Cell
+                            key={entry.name}
+                            fill={entry.color || "#ea580c"}
+                            cursor={typeListPath(entry.name) ? "pointer" : "default"}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 2 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <ul className="qc-dash__legend">
+                  {typeData.map((item) => {
+                    const path = typeListPath(item.name);
+                    const label = (
+                      <>
+                        <span style={{ background: item.color || "#ea580c" }} />
+                        <span>{item.name}</span>
+                        <strong>{item.count}{item.pct != null ? ` (${item.pct}%)` : ""}</strong>
+                      </>
+                    );
+                    return (
+                      <li key={item.name}>
+                        {path ? <Link to={path}>{label}</Link> : <div>{label}</div>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : (
+              <p className="qc-dash__empty">No inspection type data available yet.</p>
+            )}
+          </section>
         </div>
-      </div>
-
-      {/* Recent Inspections Table */}
-      <div className="ui-card overflow-hidden">
-        <div className="border-b border-[var(--color-border-soft)] px-5 py-4">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent Inspections</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-            <thead className="ui-table-head">
-              <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Reference</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Result</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border-muted)]">
-              {recentRows.map((row) => (
-                <tr key={`${row.reference}-${row.date}`} className="hover:bg-[var(--color-surface-muted)]/40">
-                  <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-secondary)]">{row.date}</td>
-                  <td className="px-4 py-3 text-[var(--color-text)]">{row.type}</td>
-                  <td className="px-4 py-3 font-medium text-[var(--color-text)]">{row.reference}</td>
-                  <td className="px-4 py-3">
-                    <StatusPill value={row.status} kind="status" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusPill value={row.result} kind="result" />
-                  </td>
+        <section className="mtk-panel">
+          <div className="mtk-panel__title">Recent Inspections</div>
+          <div className="mtk-table-wrap">
+            <table className="mtk-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                  <th>Result</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="border-t border-[var(--color-border-soft)] px-5 py-3">
-          <Link to="/quality/inspection" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
-            View All Inspections →
-          </Link>
-        </div>
+              </thead>
+              <tbody>
+                {recentRows.length ? recentRows.map((row) => {
+                  const path = typeListPath(row.type);
+                  return (
+                    <tr key={`${row.reference}-${row.date}-${row.type}`}>
+                      <td>{row.date}</td>
+                      <td className="mtk-left">{row.type}</td>
+                      <td className="mtk-left">{row.reference}</td>
+                      <td>{statusPill(row.status)}</td>
+                      <td>{resultPill(row.result)}</td>
+                      <td>
+                        {path ? <Link to={path}>Open list</Link> : "\u2014"}
+                      </td>
+                    </tr>
+                  );
+                }) : (
+                  <tr>
+                    <td colSpan={6}>No inspections yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="qc-dash__footer">
+            <Link to="/quality/inspection">View all inspections</Link>
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -203,6 +203,7 @@ class AccountsWorkCenterRead(BaseModel):
     payables: list[dict] = Field(default_factory=list)
     invoice_summary: dict = Field(default_factory=dict)
     pending_work: list[dict] = Field(default_factory=list)
+    pending_expense_claims: list[dict] = Field(default_factory=list)
     recent_activity: list[dict] = Field(default_factory=list)
     expense_summary: dict = Field(default_factory=dict)
     features: dict = Field(default_factory=dict)

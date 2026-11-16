@@ -39,6 +39,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import get_settings
 from app.middleware.csrf_middleware import CsrfMiddleware
+from app.middleware.operator_allowlist import OperatorAllowlistMiddleware
 from app.core.logging_config import get_logger, setup_logging
 
 from app.api.accounts import router as accounts_router
@@ -66,6 +67,7 @@ from app.api.departments import router as departments_router
 from app.api.hr import router as hr_router
 from app.api.integration import router as integration_router
 from app.api.inventory import router as inventory_router
+from app.api.godown_toolkit import router as godown_toolkit_router
 from app.api.inventory_v2 import router as inventory_v2_router
 from app.api.iot import router as iot_router
 from app.api.maintenance import router as maintenance_router
@@ -181,6 +183,7 @@ if _cors_regex:
     _cors_kwargs["allow_origin_regex"] = _cors_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 app.add_middleware(CsrfMiddleware)
+app.add_middleware(OperatorAllowlistMiddleware)
 
 
 @app.middleware("http")
@@ -273,6 +276,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     from app.utils.error_sanitizer import sanitize_client_message
 
     detail = jsonable_encoder(exc.detail)
+    error_code = detail.get("code") if isinstance(detail, dict) else None
     if request.url.path.startswith("/api/"):
         from app.utils.api_response import error_response
 
@@ -287,7 +291,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             errors = blockers if isinstance(blockers, list) and blockers else [message]
             return JSONResponse(
                 status_code=exc.status_code,
-                content=error_response(message, errors=errors, data=detail),
+                content=error_response(message, errors=errors, data=detail, code=error_code),
             )
         message = sanitize_client_message(
             str(detail) if detail is not None else "Request failed",
@@ -297,6 +301,23 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             status_code=exc.status_code,
             content=error_response(message, errors=[message]),
         )
+    if isinstance(detail, dict):
+        raw_message = detail.get("message") or detail.get("detail") or "Request failed"
+        safe_message = sanitize_client_message(str(raw_message), status_code=exc.status_code)
+        # Preserve structured payloads (validation errors, RBAC codes) for non-/api/ routes.
+        structured = dict(detail)
+        structured["message"] = safe_message
+        if isinstance(structured.get("detail"), str):
+            structured["detail"] = safe_message
+        body = {
+            "detail": structured,
+            "request_id": getattr(request.state, "request_id", None),
+        }
+        if error_code:
+            body["code"] = error_code
+        if detail.get("module"):
+            body["module"] = detail.get("module")
+        return JSONResponse(status_code=exc.status_code, content=body)
     safe_detail = sanitize_client_message(
         str(detail) if detail is not None else "Request failed",
         status_code=exc.status_code,
@@ -456,6 +477,14 @@ def on_startup():
     log_smtp_startup_status()
     start_automation_scheduler()
 
+
+@app.on_event("shutdown")
+def on_shutdown():
+    """Stop the in-process automation scheduler and release advisory locks cleanly."""
+    from app.services.automation.scheduler import stop_automation_scheduler
+
+    stop_automation_scheduler(join_timeout=5.0)
+
     # Production schema is managed exclusively by Alembic — never create_all / runtime DDL.
     if not settings.is_production:
         try:
@@ -564,6 +593,24 @@ def on_startup():
     finally:
         db.close()
 
+    # Production safety: empty / incomplete CORS allowlist breaks cookie auth from Firebase Hosting.
+    if settings.is_production:
+        origins = settings.cors_origin_list
+        frontend = (settings.frontend_base_url or "").rstrip("/")
+        if not origins:
+            logger.error(
+                "Production CORS allowlist is empty — browser sessions from the SPA will fail. "
+                "Set CORS_ORIGINS to include the Firebase / custom domain origins."
+            )
+        elif frontend and frontend not in origins and not settings.cors_origin_allowed_by_regex(frontend):
+            logger.warning(
+                "FRONTEND_BASE_URL=%s is not in CORS_ORIGINS (and does not match the trusted-host regex). "
+                "Cross-site cookie auth from that origin will fail.",
+                frontend,
+            )
+        else:
+            logger.info("Production CORS allowlist entries=%s frontend=%s", len(origins), frontend or "(unset)")
+
     if not settings.is_production:
         key = (settings.openai_api_key or "").strip()
         prefix = f"{key[:6]}..." if len(key) >= 6 else ("NOT SET" if not key else "(short)")
@@ -616,6 +663,8 @@ app.include_router(departments_router)
 app.include_router(hr_router)
 app.include_router(inventory_router)
 app.include_router(inventory_router, prefix="/api")
+app.include_router(godown_toolkit_router)
+app.include_router(godown_toolkit_router, prefix="/api")
 app.include_router(inventory_v2_router)
 app.include_router(inventory_v2_router, prefix="/api")
 app.include_router(alerts_router)

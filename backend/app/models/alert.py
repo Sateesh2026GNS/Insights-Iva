@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -34,3 +34,21 @@ class Alert(Base, TimestampMixin):
     target_role: Mapped[str | None] = mapped_column(String(255))
     metadata_json: Mapped[str | None] = mapped_column(Text)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class AlertRead(Base):
+    """Per-user read receipt. Operator views use this instead of Alert.is_read."""
+
+    __tablename__ = "alert_reads"
+    __table_args__ = (
+        UniqueConstraint("alert_id", "user_id", name="uq_alert_reads_alert_user"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    alert_id: Mapped[int] = mapped_column(
+        ForeignKey("alerts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

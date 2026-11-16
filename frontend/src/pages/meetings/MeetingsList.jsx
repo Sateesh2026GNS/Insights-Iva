@@ -65,9 +65,12 @@ export default function MeetingsList() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    let status = null;
     try {
       const [listRes, statusRes] = await Promise.allSettled([
         getMeetings(),
@@ -86,13 +89,15 @@ export default function MeetingsList() {
         setMeetings([]);
       }
       if (statusRes.status === "fulfilled") {
-        setGoogleStatus(statusRes.value?.data || { connected: false, configured: false });
+        status = statusRes.value?.data || { connected: false, configured: false };
+        setGoogleStatus(status);
       }
     } catch {
       setMeetings([]);
     } finally {
       setLoading(false);
     }
+    return status;
   }, []);
 
   useEffect(() => {
@@ -135,19 +140,26 @@ export default function MeetingsList() {
     const error = searchParams.get("google_error");
     if (connected === "1") {
       setSearchParams({}, { replace: true });
-      load();
-      // Silently auto-import events from Google Calendar immediately
-      importFromGoogleCalendar()
-        .then(() => load())
-        .catch(() => {});
-      addToast("Google Calendar connected! Your meetings are now syncing automatically.", "success");
+      load().then((status) => {
+        if (status?.connected) {
+          addToast("Google Calendar connected.", "success");
+          importFromGoogleCalendar().then(() => load()).catch(() => {});
+        } else {
+          addToast("Google Calendar authorization finished, but the account was not connected.", "error");
+        }
+      }).catch(() => {
+        addToast("Google Calendar authorization finished, but the connection could not be confirmed.", "error");
+      });
     } else if (error) {
       const decoded = decodeURIComponent(error);
       const isRefreshTokenError = decoded.toLowerCase().includes("refresh token") || decoded.toLowerCase().includes("revoke");
+      const denied = decoded === "access_denied";
       addToast(
         isRefreshTokenError
           ? "Google connection failed: Please go to myaccount.google.com/permissions, remove 'Insights Iva' access, then click Connect again."
-          : `Google Calendar connection failed: ${decoded}`,
+          : denied
+            ? "Google Calendar access was denied. You can try connecting again."
+            : `Google Calendar connection failed: ${decoded}`,
         "error"
       );
       setSearchParams({}, { replace: true });
@@ -155,11 +167,14 @@ export default function MeetingsList() {
   }, [searchParams, setSearchParams, addToast, load]);
 
   const handleConnect = async () => {
+    if (connecting) return;
     setConnecting(true);
     try {
       const res = await connectGoogleCalendar();
       const url = res?.data?.authorization_url;
-      if (!url) throw new Error("No authorization URL returned.");
+      if (!url || !url.includes("client_id=")) {
+        throw new Error("Google Calendar integration is not configured. Please contact your workspace administrator.");
+      }
       window.location.href = url;
     } catch (err) {
       addToast(apiErrorMessage(err, "Unable to start Google Calendar connection."), "error");
@@ -168,12 +183,16 @@ export default function MeetingsList() {
   };
 
   const handleDisconnect = async () => {
+    setDisconnecting(true);
     try {
       await disconnectGoogleCalendar();
       addToast("Google Calendar disconnected.", "success");
-      load();
+      setDisconnectOpen(false);
+      await load();
     } catch (err) {
       addToast(apiErrorMessage(err, "Unable to disconnect Google Calendar."), "error");
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -393,7 +412,7 @@ export default function MeetingsList() {
         onJoinMeeting={joinMeeting}
         onOpenCalendar={openCalendar}
         onConnectGoogle={handleConnect}
-        onDisconnectGoogle={handleDisconnect}
+        onDisconnectGoogle={() => setDisconnectOpen(true)}
         onImportGoogle={handleImportGoogle}
         onRefresh={load}
       />
@@ -409,6 +428,15 @@ export default function MeetingsList() {
         onSubmit={handleSave}
       />
 
+      <ConfirmDialog
+        open={disconnectOpen}
+        title="Disconnect Google Calendar?"
+        message="Meetings will no longer sync with this Google account until you connect again."
+        confirmLabel="Disconnect"
+        loading={disconnecting}
+        onConfirm={handleDisconnect}
+        onClose={() => { if (!disconnecting) setDisconnectOpen(false); }}
+      />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete meeting?"

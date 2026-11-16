@@ -4,11 +4,16 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.core.permissions import tenant_scope
+from app.routers.operator_deps import deny_operator_production_planning
 from app.models.machine import Machine
 from app.models.production import ProductionOrder, WorkOrder
 from app.models.product import Product
 
-router = APIRouter(prefix="/factory-monitor", tags=["Factory Monitor"])
+router = APIRouter(
+    prefix="/factory-monitor",
+    tags=["Factory Monitor"],
+    dependencies=[Depends(deny_operator_production_planning)],
+)
 
 MODULE = "factoryMonitor"
 

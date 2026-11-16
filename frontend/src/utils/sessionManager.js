@@ -13,7 +13,7 @@ import { isBrowserSessionMarked, isFastOfflineSessionToken } from "./authSession
 export const PRIMARY_SESSION_TIMEOUT_MS = 9 * 60 * 60 * 1000; // 9 hours
 export const NEW_TAB_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 /** Primary tab considered alive if heartbeat updated within this window (throttled tabs / brief idle). */
-export const HEARTBEAT_WINDOW_MS = 45_000;
+export const HEARTBEAT_WINDOW_MS = 5 * 60 * 1000;
 
 /**
  * Generate or retrieve unique tab ID for this browser tab.
@@ -220,14 +220,9 @@ export function clearTabSession() {
     sessionStorage.removeItem("smrt-new-tab-opened-at");
     sessionStorage.removeItem("smrt-tab-expired");
     sessionStorage.removeItem("smrt-tab-expired-reason");
-
-    const primaryTabId = localStorage.getItem("smrt-primary-tab-id");
-    const myTabId = sessionStorage.getItem("smrt-tab-id");
-    if (!primaryTabId || primaryTabId === myTabId) {
-      localStorage.removeItem("smrt-primary-window-name");
-      localStorage.removeItem("smrt-primary-tab-id");
-      localStorage.removeItem("smrt-primary-heartbeat");
-      localStorage.removeItem("smrt-login-time");
-    }
+    localStorage.removeItem("smrt-primary-window-name");
+    localStorage.removeItem("smrt-primary-tab-id");
+    localStorage.removeItem("smrt-primary-heartbeat");
+    localStorage.removeItem("smrt-login-time");
   } catch {}
 }

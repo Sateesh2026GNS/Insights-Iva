@@ -361,9 +361,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
   width: 100%;
+  min-height: 44px;
   box-sizing: border-box;
   gap: 8px;
-  padding: 4px 6px;
+  padding: 8px 6px;
   color: inherit;
   text-decoration: none;
   border-radius: 2px;
@@ -378,8 +379,16 @@
   background: #f1f5f9;
 }
 
+.ppt-panel__title a {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+}
+
 .ppt-module-link {
   display: flex;
+  min-height: 44px;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -424,6 +433,9 @@
 }
 
 .ppt-flow__chip {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   padding: 3px 8px;
   border: 1px solid var(--ppt-border);
   border-radius: 2px;
@@ -437,4 +449,3 @@
   border-color: #16a34a;
   background: #ecfdf5;
 }
-

@@ -18,7 +18,7 @@ function mapSoLine(line) {
   };
 }
 
-export function useSalesJobCardDocumentLoader(orderId, tenantId, enabled = true) {
+export function useSalesJobCardDocumentLoader(orderId, tenantId, enabled = true, includeCompanySettings = true) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [card, setCard] = useState(null);
@@ -37,7 +37,7 @@ export function useSalesJobCardDocumentLoader(orderId, tenantId, enabled = true)
       const [cardRes, soRes, companyRes, prodList] = await Promise.all([
         getSalesJobCard(orderId),
         getSalesOrderDetail(orderId).catch(() => null),
-        getCompanySettings().catch(() => null),
+        includeCompanySettings ? getCompanySettings().catch(() => null) : Promise.resolve(null),
         fetchProductsWithFallback(tenantId),
       ]);
       const data = cardRes?.data ?? cardRes;
@@ -80,7 +80,7 @@ export function useSalesJobCardDocumentLoader(orderId, tenantId, enabled = true)
     } finally {
       setLoading(false);
     }
-  }, [orderId, tenantId, enabled]);
+  }, [orderId, tenantId, enabled, includeCompanySettings]);
 
   useEffect(() => {
     if (enabled && orderId) load();

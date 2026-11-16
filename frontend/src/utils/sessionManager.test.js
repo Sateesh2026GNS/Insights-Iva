@@ -3,6 +3,7 @@ import { markBrowserSessionActive } from "./authSession";
 import {
   PRIMARY_SESSION_TIMEOUT_MS,
   NEW_TAB_TIMEOUT_MS,
+  HEARTBEAT_WINDOW_MS,
   getTabId,
   getTabType,
   markAsPrimaryTab,
@@ -88,7 +89,7 @@ describe("sessionManager", () => {
     sendPrimaryHeartbeat();
     expect(isPrimaryTabAlive()).toBe(true);
 
-    vi.advanceTimersByTime(46_000);
+    vi.advanceTimersByTime(HEARTBEAT_WINDOW_MS + 1000);
     expect(isPrimaryTabAlive()).toBe(false);
   });
 
@@ -103,7 +104,7 @@ describe("sessionManager", () => {
   it("recordSessionActivity refreshes primary heartbeat", () => {
     markBrowserSessionActive();
     markAsPrimaryTab();
-    vi.advanceTimersByTime(50_000);
+    vi.advanceTimersByTime(HEARTBEAT_WINDOW_MS + 1000);
     expect(isPrimaryTabAlive()).toBe(false);
     recordSessionActivity();
     expect(isPrimaryTabAlive()).toBe(true);
@@ -118,5 +119,14 @@ describe("sessionManager", () => {
     markAsPrimaryTab();
     expect(getTabType()).toBe("primary");
     expect(sessionStorage.getItem("smrt-new-tab-opened-at")).toBeNull();
+  });
+
+  it("clears primary session keys on logout cleanup", () => {
+    markAsPrimaryTab();
+    localStorage.setItem("smrt-login-time", "1");
+    clearTabSession();
+    expect(localStorage.getItem("smrt-primary-tab-id")).toBeNull();
+    expect(localStorage.getItem("smrt-login-time")).toBeNull();
+    expect(sessionStorage.getItem("smrt-tab-id")).toBeNull();
   });
 });

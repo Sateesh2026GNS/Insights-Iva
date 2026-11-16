@@ -82,7 +82,12 @@ def test_non_admin_roles_forbidden_on_subscription(client, admin_auth, role_name
     headers = _login_headers(client, tenant_id, role_name, permissions=["settings"])
     resp = client.get("/settings/subscription", headers=headers)
     assert resp.status_code == 403
-    assert "Administrator" in (resp.json().get("detail") or "")
+    detail = resp.json().get("detail") or ""
+    # Operator is stopped by the shop-floor allowlist before require_admin_role.
+    if role_name == "Operator":
+        assert "Operators cannot access this resource" in detail or "Administrator" in detail
+    else:
+        assert "Administrator" in detail
 
 
 def test_wildcard_permissions_without_admin_role_forbidden(client, admin_auth, make_restricted_user):

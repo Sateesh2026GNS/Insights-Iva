@@ -20,6 +20,8 @@ import { getFinanceAnalytics } from "../../api/analyticsApi";
 import { CHART_COLORS, currentFiscalYearLabel, fiscalYearToYear, SOURCE_LINKS, formatInr } from "../../data/analyticsMasterData";
 import useManufacturingRefresh from "../../hooks/useManufacturingRefresh";
 import { apiErrorMessage } from "../../utils/apiError";
+import "../../styles/manufacturing-toolkit.css";
+import "../accounts/accountsToolkit.css";
 
 const KPI_ICONS = {
   revenue: IndianRupee, expenses: TrendingDown, profit: TrendingUp, margin: Percent,
@@ -104,10 +106,20 @@ export default function FinanceAnalytics() {
   }, [autoRefresh, load]);
 
   if (loading && !data.kpis?.length) {
-    return <AnalyticsPageShell loading kpiCount={4} chartCount={6} />;
+    return (
+      <div className="acct-toolkit mtk-root mtk-theme--navy min-h-full">
+        <FinanceToolkitHero fiscalYear={filters.fiscalYear} />
+        <AnalyticsPageShell loading kpiCount={4} chartCount={6} />
+      </div>
+    );
   }
   if (error && !data.kpis?.length) {
-    return <AnalyticsPageShell error={error} onRetry={() => load()} />;
+    return (
+      <div className="acct-toolkit mtk-root mtk-theme--navy min-h-full">
+        <FinanceToolkitHero fiscalYear={filters.fiscalYear} />
+        <AnalyticsPageShell error={error} onRetry={() => load()} />
+      </div>
+    );
   }
   const setF = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }));
 
@@ -119,10 +131,11 @@ export default function FinanceAnalytics() {
   const monthlyMargin = normalizeChartData(data.monthly_margin);
 
   return (
+    <div className="acct-toolkit mtk-root mtk-theme--navy min-h-full">
+    <FinanceToolkitHero fiscalYear={filters.fiscalYear} />
     <AnalyticsPageShell>
       <AnalyticsDashboardHeader
         title="Finance KPI"
-        subtitle="Revenue, expenses, cash flow, receivables, and margins from live finance data."
         lastUpdated={data.last_updated}
         onRefresh={load}
         autoRefresh={autoRefresh}
@@ -155,7 +168,7 @@ export default function FinanceAnalytics() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <AnalyticsChartCard id="chart-rev-exp" title="Revenue vs Expense" data={data.revenue_vs_expense} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
+        <AnalyticsChartCard variant="toolkit" id="chart-rev-exp" title="Revenue vs Expense" data={data.revenue_vs_expense} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={revenueVsExpense}>
               <CartesianGrid {...ANALYTICS_GRID} />
@@ -163,13 +176,13 @@ export default function FinanceAnalytics() {
               <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
               <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => formatInr(v)} />
               <Legend {...ANALYTICS_LEGEND} />
-              <Bar dataKey="value" name="Revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="value2" name="Expense" fill={CHART_COLORS[5]} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" name="Revenue" fill="#1e40af" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value2" name="Expense" fill="#ea580c" radius={[4, 4, 0, 0]} />
             </ComposedChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-cashflow" title="Cash Flow" data={data.cash_flow} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
+        <AnalyticsChartCard variant="toolkit" id="chart-cashflow" title="Cash Flow" data={data.cash_flow} dataKeys={["label", "value", "value2"]} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={cashFlow}>
               <CartesianGrid {...ANALYTICS_GRID} />
@@ -183,19 +196,19 @@ export default function FinanceAnalytics() {
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-profit" title="Profit Trend" data={data.profit_trend} sourceLink="/accounts/profit-loss" sourceLabel="P&L">
+        <AnalyticsChartCard variant="toolkit" id="chart-profit" title="Profit Trend" data={data.profit_trend} sourceLink="/accounts/profit-loss" sourceLabel="P&L">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={profitTrend}>
               <CartesianGrid {...ANALYTICS_GRID} />
               <XAxis dataKey="label" {...ANALYTICS_AXIS} />
               <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
               <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [formatInr(v), "Profit"]} />
-              <Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} />
+              <Line type="monotone" dataKey="value" stroke="#1e40af" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-expense-cat" title="Expense Category" data={data.expense_category} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
+        <AnalyticsChartCard variant="toolkit" id="chart-expense-cat" title="Expense Category" data={data.expense_category} sourceLink={SOURCE_LINKS.finance} sourceLabel="Finance">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie data={expenseCategory || []} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={100} label>
@@ -207,30 +220,46 @@ export default function FinanceAnalytics() {
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-recv-aging" title="Receivable Aging" data={data.receivable_aging} sourceLink="/finance/accounts-receivable" sourceLabel="AR">
+        <AnalyticsChartCard variant="toolkit" id="chart-recv-aging" title="Receivable Aging" data={data.receivable_aging} sourceLink="/finance/accounts-receivable" sourceLabel="AR">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={receivableAging}>
               <CartesianGrid {...ANALYTICS_GRID} />
               <XAxis dataKey="label" {...ANALYTICS_AXIS} />
               <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => formatInr(v)} />
               <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [formatInr(v), "Amount"]} />
-              <Bar dataKey="value" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill="#1e40af" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
 
-        <AnalyticsChartCard id="chart-margin" title="Monthly Margin" data={data.monthly_margin} sourceLink="/accounts/profit-loss" sourceLabel="P&L">
+        <AnalyticsChartCard variant="toolkit" id="chart-margin" title="Monthly Margin" data={data.monthly_margin} sourceLink="/accounts/profit-loss" sourceLabel="P&L">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyMargin}>
               <CartesianGrid {...ANALYTICS_GRID} />
               <XAxis dataKey="label" {...ANALYTICS_AXIS} />
               <YAxis {...ANALYTICS_AXIS} tickFormatter={(v) => `${v}%`} />
               <Tooltip {...ANALYTICS_TOOLTIP} formatter={(v) => [`${v}%`, "Margin"]} />
-              <Line type="monotone" dataKey="value" stroke={CHART_COLORS[4]} strokeWidth={2} />
+              <Line type="monotone" dataKey="value" stroke="#1e40af" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </AnalyticsChartCard>
       </div>
     </AnalyticsPageShell>
+    </div>
+  );
+}
+
+function FinanceToolkitHero({ fiscalYear }) {
+  return (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>Record · Review · Reconcile</span>
+        <span className="hidden sm:inline">{fiscalYear}</span>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>Finance <span className="mtk-accent">KPI</span></h1>
+        <p>Revenue, expenses, cash flow, receivables, and margins from live finance data.</p>
+      </div>
+    </header>
   );
 }

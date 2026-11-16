@@ -20,6 +20,7 @@ MODULE_CATALOG = [
     {"code": "hr", "label": "Human Resources"},
     {"code": "settings", "label": "Settings"},
     {"code": "admin", "label": "Security & Administration"},
+    {"code": "reports", "label": "Reports Center"},
 ]
 
 VALID_MODULES = {m["code"] for m in MODULE_CATALOG}
@@ -55,6 +56,14 @@ REGISTERABLE_ROLES = [
 PERMISSION_MATRIX = {
     "Admin": {
         "modules": list(VALID_MODULES),
+        "actions": [
+            "reports:view",
+            "reports:run",
+            "reports:export",
+            "reports:create",
+            "reports:share",
+            "reports:schedule",
+        ],
         "description": "Full system access — Management view of entire manufacturing workflow.",
     },
     "Sales Manager": {
@@ -66,8 +75,9 @@ PERMISSION_MATRIX = {
             "documents",
             "meetings",
             "settings",
+            "reports",
         ],
-        "actions": ["leads:create"],
+        "actions": ["leads:create", "reports:view", "reports:run", "reports:export"],
         "description": (
             "Leads, quotations, sales orders, customers, dispatch follow-up, and sales reporting."
         ),
@@ -88,7 +98,9 @@ PERMISSION_MATRIX = {
             "procurement",
             "settings",
             "iot",
+            "reports",
         ],
+        "actions": ["reports:view"],
         "description": (
             "Dashboard, Production, Planning, Work Orders, Quality, "
             "Inventory, Maintenance, Procurement, Analytics, and Smart Factory IoT."
@@ -106,7 +118,9 @@ PERMISSION_MATRIX = {
             "meetings",
             "settings",
             "analytics",
+            "reports",
         ],
+        "actions": ["reports:view", "reports:run", "reports:export"],
         "description": (
             "Store operations: inventory, warehouses, GRN, finished goods, and dispatch."
         ),
@@ -121,7 +135,9 @@ PERMISSION_MATRIX = {
             "alerts",
             "documents",
             "analytics",
+            "reports",
         ],
+        "actions": ["reports:view"],
         "description": "Full Vendor Master and purchase lifecycle access.",
     },
     "Quality Control": {
@@ -135,6 +151,7 @@ PERMISSION_MATRIX = {
             "alerts",
             "analytics",
             "meetings",
+            "settings",
         ],
         "actions": [
             "quality:read",
@@ -161,7 +178,9 @@ PERMISSION_MATRIX = {
             "alerts",
             "masters",
             "meetings",
+            "reports",
         ],
+        "actions": ["reports:view"],
         "description": "Tax invoice, payments, AR/AP, and financial transactions.",
     },
     "Operator": {
@@ -190,38 +209,12 @@ PERMISSION_MATRIX = {
 
 # Sidebar / route paths Store Manager may see.
 # Module grants stay broader so GRN/dispatch APIs still authorize; UI is narrowed here.
-# Settings sidebar links visible to Operator (personal prefs only; admin sections use module guards).
-OPERATOR_SIDEBAR_CHILDREN = frozenset({
-    "/",
-    "/my-job-cards",
-    "/production/work-orders",
-    "/production/schedule",
-    "/production/my-machine",
-    "/production/my-entry",
-    "/alerts",
-    "/alerts/low-stock",
-    "/alerts/machine-failure",
-    "/alerts/production-delay",
-    "/alerts/maintenance",
-    "/alerts/quality",
-    "/alerts/safety",
-    "/alerts/general",
-    "/documents",
-    "/documents/production",
-    "/settings",
-    "/settings/my-account",
-    "/settings/my-account/devices",
-    "/settings/appearance",
-    "/settings/notifications",
-})
+# Settings sidebar links visible to Operator. Paths come from the shared page allowlist.
+from app.core.operator_allowlist import OPERATOR_PAGE_EXACT as OPERATOR_SIDEBAR_CHILDREN
 
-OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset({
-    "/settings",
-    "/settings/my-account",
-    "/settings/my-account/devices",
-    "/settings/appearance",
-    "/settings/notifications",
-})
+OPERATOR_SETTINGS_SIDEBAR_PATHS = frozenset(
+    path for path in OPERATOR_SIDEBAR_CHILDREN if path == "/settings" or path.startswith("/settings/")
+)
 
 STORE_MANAGER_ALLOWED_PATHS = frozenset({
     "/",

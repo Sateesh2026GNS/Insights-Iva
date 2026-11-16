@@ -59,8 +59,8 @@ describe("BomMaster Filter Actions", () => {
     render(<BomMaster />);
 
     await waitFor(() => {
-      expect(screen.getByText("Alpha Widget")).toBeInTheDocument();
-      expect(screen.getByText("Beta Gadget")).toBeInTheDocument();
+      expect(screen.getAllByText("Alpha Widget").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Beta Gadget").length).toBeGreaterThan(0);
     });
 
     expect(screen.getByRole("button", { name: /Apply Filters/i })).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe("BomMaster Filter Actions", () => {
     render(<BomMaster />);
 
     await waitFor(() => {
-      expect(screen.getByText("Alpha Widget")).toBeInTheDocument();
+      expect(screen.getAllByText("Alpha Widget").length).toBeGreaterThan(0);
     });
 
     const selects = screen.getAllByRole("combobox");
@@ -81,22 +81,22 @@ describe("BomMaster Filter Actions", () => {
     fireEvent.change(categorySelect, { target: { value: "Semi-Finished" } });
 
     // Both items should still be in the document before applying
-    expect(screen.getByText("Alpha Widget")).toBeInTheDocument();
-    expect(screen.getByText("Beta Gadget")).toBeInTheDocument();
+    expect(screen.getAllByText("Alpha Widget").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Beta Gadget").length).toBeGreaterThan(0);
 
     // Click "Apply Filters"
     fireEvent.click(screen.getByRole("button", { name: /Apply Filters/i }));
 
     // Now only "Beta Gadget" should be shown
-    expect(screen.queryByText("Alpha Widget")).not.toBeInTheDocument();
-    expect(screen.getByText("Beta Gadget")).toBeInTheDocument();
+    expect(screen.queryAllByText("Alpha Widget")).toHaveLength(0);
+    expect(screen.getAllByText("Beta Gadget").length).toBeGreaterThan(0);
   });
 
   it("clears applied filters when Clear button is clicked", async () => {
     render(<BomMaster />);
 
     await waitFor(() => {
-      expect(screen.getByText("Alpha Widget")).toBeInTheDocument();
+      expect(screen.getAllByText("Alpha Widget").length).toBeGreaterThan(0);
     });
 
     const selects = screen.getAllByRole("combobox");
@@ -106,14 +106,14 @@ describe("BomMaster Filter Actions", () => {
     fireEvent.change(categorySelect, { target: { value: "Semi-Finished" } });
     fireEvent.click(screen.getByRole("button", { name: /Apply Filters/i }));
 
-    expect(screen.queryByText("Alpha Widget")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("Alpha Widget")).toHaveLength(0);
 
     // Click "Clear"
     fireEvent.click(screen.getByRole("button", { name: /^Clear$/i }));
 
     // Both items should be back
-    expect(screen.getByText("Alpha Widget")).toBeInTheDocument();
-    expect(screen.getByText("Beta Gadget")).toBeInTheDocument();
+    expect(screen.getAllByText("Alpha Widget").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Beta Gadget").length).toBeGreaterThan(0);
     expect(categorySelect.value).toBe("");
   });
 });

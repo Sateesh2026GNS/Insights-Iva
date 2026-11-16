@@ -66,10 +66,7 @@
 }
 
 .order-delays .ui-kpi__meta {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
 }
 
 .order-delays .ui-kpi:focus-visible {

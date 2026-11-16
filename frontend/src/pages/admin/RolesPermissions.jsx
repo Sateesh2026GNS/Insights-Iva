@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Plus, Pencil, Trash2, ShieldCheck, Lock, Users, KeyRound } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
-import PageHeader from "../../components/common/PageHeader";
 import NewRoleModal from "../../components/admin/NewRoleModal";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import AccessDenied from "../../components/admin/AccessDenied";
+import AdminToolkitChrome, { AdminToolkitKpis } from "../../components/admin/AdminToolkitChrome";
 import usePermissions from "../../hooks/usePermissions";
 import usePageRefresh from "../../hooks/usePageRefresh";
 import { countModulePermissions, permissionLabel } from "../../config/permissions";
@@ -18,6 +18,38 @@ import {
   updateRole,
   deleteRole,
 } from "../../api/adminApi";
+
+const MODULE_GROUPS = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "sales", label: "Sales" },
+  { id: "inventory", label: "Inventory" },
+  { id: "procurement", label: "Procurement" },
+  { id: "production", label: "Production" },
+  { id: "quality", label: "Quality Control" },
+  { id: "dispatch", label: "Dispatch" },
+  { id: "accounts", label: "Accounts" },
+  { id: "hr", label: "HR" },
+  { id: "admin", label: "Administration" },
+];
+
+function permissionModule(code) {
+  if (!code) return "other";
+  if (code.includes(":")) return code.split(":")[0];
+  return code;
+}
+
+function groupedPermissionSummary(permissions, modules) {
+  if (!permissions?.length) return [];
+  const buckets = new Map();
+  permissions.forEach((code) => {
+    const mod = permissionModule(code);
+    const group = MODULE_GROUPS.find((g) => g.id === mod) || { id: mod, label: permissionLabel(mod, modules) };
+    const list = buckets.get(group.id) || { label: group.label, items: [] };
+    list.items.push(permissionLabel(code, modules));
+    buckets.set(group.id, list);
+  });
+  return [...buckets.values()];
+}
 
 export default function RolesPermissions() {
   const { pathname } = useLocation();
@@ -33,6 +65,7 @@ export default function RolesPermissions() {
   const [saving, setSaving] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -65,8 +98,6 @@ export default function RolesPermissions() {
   }, [isAdmin, load]);
 
   if (!isAdmin) return <AccessDenied />;
-
-  const labelFor = (code) => permissionLabel(code, modules);
 
   const openCreate = () => {
     setEditing(null);
@@ -116,119 +147,152 @@ export default function RolesPermissions() {
   };
 
   const isAdminRole = editing?.is_system;
+  const filteredRoles = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return roles;
+    return roles.filter((role) =>
+      [role.name, role.description, ...(role.permissions || [])]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [roles, searchQuery]);
+
+  const kpiItems = [
+    { label: "Total Roles", value: roles.length, tone: "blue", icon: String(roles.length || 0) },
+    { label: "System Roles", value: roles.filter((r) => r.is_system).length, tone: "purple", icon: "S" },
+    { label: "Custom Roles", value: roles.filter((r) => !r.is_system).length, tone: "green", icon: "C" },
+    {
+      label: "Assigned Users",
+      value: roles.reduce((sum, r) => sum + Number(r.user_count || 0), 0),
+      tone: "orange",
+      icon: "U",
+    },
+  ];
 
   return (
-    <div className="space-y-5 pb-4">
-      <PageHeader
-        eyebrow="Admin"
-        title={permissionsOnly ? "Permissions" : "Roles"}
+    <div className="space-y-0 pb-4">
+      <AdminToolkitChrome
+        theme="purple"
+        title={permissionsOnly ? "ROLES &" : "ROLES &"}
+        highlight="PERMISSIONS"
         subtitle={
           permissionsOnly
             ? "Assign module access to roles and control what each team can use."
             : "Define roles and control which modules each role can access across the system."
         }
-        action={
-          permissionsOnly ? null : (
-            <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
-              New Role
-            </Button>
-          )
-        }
-      />
-
-      {loading ? (
-        <p className="py-10 text-center text-sm text-slate-500">Loading roles…</p>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {roles.map((role) => (
-            <div
-              key={role.id}
-              className="flex flex-col ui-card p-5"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  {role.is_system ? (
-                    <ShieldCheck className="h-5 w-5 text-teal-600" />
-                  ) : permissionsOnly ? (
-                    <KeyRound className="h-5 w-5 text-slate-400" />
-                  ) : (
-                    <Lock className="h-5 w-5 text-slate-400" />
-                  )}
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-100">{role.name}</h3>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                  <Users className="h-3 w-3" />
-                  {role.user_count}
-                </span>
-              </div>
-
-              {!permissionsOnly && (
-                <p className="mt-1 min-h-[2.5rem] text-sm text-slate-500 dark:text-slate-400">
-                  {role.description || "No description"}
-                </p>
-              )}
-
-              <div className={`flex flex-wrap gap-1.5 ${permissionsOnly ? "mt-3" : "mt-3"}`}>
-                {role.is_system ? (
-                  <span className="inline-flex rounded-md bg-[var(--color-success-soft)] px-2 py-0.5 text-xs font-medium text-[var(--color-success)] dark:bg-teal-900/30 dark:text-teal-300">
-                    Full access (all modules)
-                  </span>
-                ) : permissionsOnly ? (
-                  role.permissions.length ? (
-                    role.permissions.map((code) => (
-                      <span
-                        key={code}
-                        className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                      >
-                        {labelFor(code)}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-slate-400">No modules granted</span>
-                  )
-                ) : (
-                  <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                    {countModulePermissions(role.permissions, modules)} module
-                    {countModulePermissions(role.permissions, modules) === 1 ? "" : "s"} granted
-                    {role.permissions.some((p) => p.includes(":"))
-                      ? ` · ${role.permissions.filter((p) => p.includes(":")).length} action rule(s)`
-                      : ""}
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-4 flex justify-end gap-1 border-t border-slate-100 pt-3 dark:border-slate-700/50">
-                <button
-                  type="button"
-                  onClick={() => openEdit(role)}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 hover:bg-[var(--color-success-soft)] hover:text-teal-600 dark:text-slate-300 dark:hover:bg-teal-900/20"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  {permissionsOnly ? "Edit Permissions" : "Edit"}
-                </button>
-                {!permissionsOnly && (
-                  <button
-                    type="button"
-                    onClick={() => setToDelete(role)}
-                    disabled={role.is_system || role.user_count > 0}
-                    title={
-                      role.is_system
-                        ? "The Admin role cannot be deleted"
-                        : role.user_count > 0
-                          ? "Reassign users before deleting this role"
-                          : "Delete role"
-                    }
-                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-300 dark:hover:bg-red-900/20"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+      >
+        <AdminToolkitKpis items={kpiItems} />
+        <div className="admin-toolkit-toolbar">
+          <label className="admin-toolkit-field admin-toolkit-field--grow">
+            <span>Search roles</span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by role name, description or permission"
+            />
+          </label>
+          <div className="admin-toolkit-actions">
+            {permissionsOnly ? null : (
+              <Button variant="add" type="button" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />}>
+                Add Role
+              </Button>
+            )}
+          </div>
         </div>
-      )}
+
+        <section className="ppt-panel">
+          <div className="ppt-panel__title">{permissionsOnly ? "Permission management" : "Roles listing"}</div>
+          {loading ? (
+            <p className="admin-toolkit-empty">Loading roles…</p>
+          ) : filteredRoles.length === 0 ? (
+            <p className="admin-toolkit-empty">
+              {roles.length === 0 ? "No roles available." : "No roles match the search."}
+            </p>
+          ) : (
+            <div className="ppt-table-wrap">
+              <table className="ppt-table">
+                <thead>
+                  <tr>
+                    <th className="ppt-left">Role Name</th>
+                    <th className="ppt-left">Description</th>
+                    <th>Assigned Users</th>
+                    <th className="ppt-left">Permissions</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRoles.map((role) => {
+                    const groups = role.is_system
+                      ? [{ label: "All modules", items: ["Full access"] }]
+                      : groupedPermissionSummary(role.permissions, modules);
+                    return (
+                      <tr key={role.id}>
+                        <td className="ppt-left">{role.name}</td>
+                        <td className="ppt-left">{role.description || "—"}</td>
+                        <td>{role.user_count}</td>
+                        <td className="ppt-left">
+                          {groups.length === 0 ? (
+                            "No modules granted"
+                          ) : (
+                            <div className="admin-toolkit-perm-group">
+                              {groups.slice(0, 6).map((group) => (
+                                <span key={group.label} className="ppt-status ppt-status--info">
+                                  {group.label}
+                                  {permissionsOnly && group.items.length ? ` · ${group.items.length}` : ""}
+                                </span>
+                              ))}
+                              {groups.length > 6 ? (
+                                <span className="ppt-status ppt-status--pending">+{groups.length - 6}</span>
+                              ) : null}
+                              {!permissionsOnly && !role.is_system ? (
+                                <span className="ppt-status ppt-status--success">
+                                  {countModulePermissions(role.permissions, modules)} modules
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`ppt-status ${role.is_system ? "ppt-status--success" : "ppt-status--info"}`}>
+                            {role.is_system ? "System" : "Custom"}
+                          </span>
+                        </td>
+                        <td className="ppt-actions-cell">
+                          <Button variant="ghost" size="sm" type="button" onClick={() => openEdit(role)}>
+                            <Pencil className="h-3.5 w-3.5" /> {permissionsOnly ? "Edit Permissions" : "Edit"}
+                          </Button>
+                          {!permissionsOnly ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              type="button"
+                              onClick={() => setToDelete(role)}
+                              disabled={role.is_system || role.user_count > 0}
+                              title={
+                                role.is_system
+                                  ? "The Admin role cannot be deleted"
+                                  : role.user_count > 0
+                                    ? "Reassign users before deleting this role"
+                                    : "Delete role"
+                              }
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </Button>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </AdminToolkitChrome>
 
       <NewRoleModal
         open={modalOpen}

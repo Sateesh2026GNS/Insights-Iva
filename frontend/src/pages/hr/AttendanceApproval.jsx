@@ -351,14 +351,16 @@ export default function AttendanceApproval() {
             <thead>
               <tr>
                 <th rowSpan={2} className="w-10">
-                  <input
-                    type="checkbox"
-                    className="hr-approvals__checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    disabled={!filteredRecords.length}
-                    aria-label="Select all"
-                  />
+                  <label className="hr-approvals__checkbox-target">
+                    <input
+                      type="checkbox"
+                      className="hr-approvals__checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      disabled={!filteredRecords.length}
+                      aria-label="Select all"
+                    />
+                  </label>
                 </th>
                 <th rowSpan={2} className="hr-approvals__th-left whitespace-nowrap">SR No.</th>
                 <th rowSpan={2} className="hr-approvals__th-left whitespace-nowrap">Employee</th>
@@ -391,13 +393,15 @@ export default function AttendanceApproval() {
                 filteredRecords.map((row, index) => (
                   <tr key={row.id}>
                     <td className="text-center">
-                      <input
-                        type="checkbox"
-                        className="hr-approvals__checkbox"
-                        checked={selectedIds.includes(row.id)}
-                        onChange={() => toggleRow(row.id)}
-                        aria-label={`Select row ${index + 1}`}
-                      />
+                      <label className="hr-approvals__checkbox-target">
+                        <input
+                          type="checkbox"
+                          className="hr-approvals__checkbox"
+                          checked={selectedIds.includes(row.id)}
+                          onChange={() => toggleRow(row.id)}
+                          aria-label={`Select row ${index + 1}`}
+                        />
+                      </label>
                     </td>
                     <td>{index + 1}</td>
                     <td>{row.employee_name || row.name || "—"}</td>

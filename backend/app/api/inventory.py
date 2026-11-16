@@ -239,7 +239,7 @@ def create_supplier_endpoint(
     db: Session = Depends(get_db),
 ) -> SupplierRead:
     payload.tenant_id = user.tenant_id
-    return create_supplier(db, payload)
+    return create_supplier(db, payload, submitted_by_user_id=user.id)
 
 
 @router.get("/suppliers", response_model=list[SupplierRead])
@@ -518,10 +518,13 @@ def adjustments_list(
 @router.post("/adjustments", response_model=StockAdjustmentRead)
 def create_adjustment_endpoint(
     payload: StockAdjustmentCreate,
+    user: User = Depends(require_permission(MODULE)),
     tenant_id: int = Depends(tenant_scope(MODULE)),
     db: Session = Depends(get_db),
 ):
-    a = create_adjustment(db, tenant_id, payload)
+    a = create_adjustment(
+        db, tenant_id, payload, submitted_by_user_id=user.id
+    )
     rows = list_adjustments(db, tenant_id)
     match = next((r for r in rows if r.id == a.id), None)
     if not match:

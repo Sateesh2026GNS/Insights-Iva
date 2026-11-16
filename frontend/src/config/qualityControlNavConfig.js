@@ -8,7 +8,6 @@ import {
   FolderOpen,
   LayoutDashboard,
   MessageSquare,
-  Settings,
 } from "lucide-react";
 
 /** Quality module home route (`QualityDashboard` page). */
@@ -74,6 +73,7 @@ export const QUALITY_CONTROL_NAV_ITEMS = [
     children: [
       { key: "rawMaterials", label: "Raw Materials", to: "/inventory/raw-materials", module: "inventory", end: true },
       { key: "finishedGoods", label: "Finished Goods", to: "/inventory/finished-goods", module: "inventory", end: true },
+      { key: "inventorySettings", label: "Inventory Settings", to: "/inventory/settings", module: "inventory", end: true },
     ],
   },
   {
@@ -97,11 +97,11 @@ export const QUALITY_CONTROL_NAV_ITEMS = [
     end: true,
   },
   {
-    key: "meetings",
-    label: "Meetings",
-    to: "/meetings",
-    icon: CalendarDays,
-    module: "meetings",
+    key: "analytics",
+    label: "Analytics",
+    to: "/analytics/production",
+    icon: BarChart3,
+    module: "analytics",
     end: true,
   },
   {
@@ -113,19 +113,11 @@ export const QUALITY_CONTROL_NAV_ITEMS = [
     end: true,
   },
   {
-    key: "analytics",
-    label: "Analytics",
-    to: "/analytics/production",
-    icon: BarChart3,
-    module: "analytics",
-    end: true,
-  },
-  {
-    key: "settings",
-    label: "Settings",
-    to: "/settings",
-    icon: Settings,
-    module: "settings",
+    key: "meetings",
+    label: "Meetings",
+    to: "/meetings",
+    icon: CalendarDays,
+    module: "meetings",
     end: true,
   },
 ];

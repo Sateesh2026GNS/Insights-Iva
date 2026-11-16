@@ -109,12 +109,12 @@ export default function WorkflowStagePipeline({
 
   const stageLinkClass = (state) => {
     if (state === "completed") {
-      return "rounded-lg px-2 py-1.5 transition whitespace-nowrap bg-[var(--color-success-soft)]/60 ring-1 ring-[var(--color-success)]/20";
+      return "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 py-1.5 transition whitespace-nowrap bg-[var(--color-success-soft)]/60 ring-1 ring-[var(--color-success)]/20";
     }
     if (state === "current") {
-      return "rounded-lg px-2 py-1.5 transition whitespace-nowrap bg-[var(--color-primary-soft)] ring-2 ring-[var(--color-primary)]/30 shadow-sm";
+      return "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 py-1.5 transition whitespace-nowrap bg-[var(--color-primary-soft)] ring-2 ring-[var(--color-primary)]/30 shadow-sm";
     }
-    return "rounded-lg px-2 py-1.5 transition whitespace-nowrap text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]";
+    return "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 py-1.5 transition whitespace-nowrap text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]";
   };
 
   const labelClass = (state) => {

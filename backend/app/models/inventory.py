@@ -45,6 +45,9 @@ class Supplier(Base, TimestampMixin):
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
     )
+    submitted_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     vendor_code: Mapped[str | None] = mapped_column(String(32), index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     contact: Mapped[str | None] = mapped_column(String(255))
@@ -248,12 +251,16 @@ class StockAdjustment(Base, TimestampMixin):
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenants.id"), nullable=False, index=True
     )
+    submitted_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"))
     item_id: Mapped[int] = mapped_column(ForeignKey("inventory_items.id"))
     old_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     new_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     difference: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reason: Mapped[str] = mapped_column(String(64), nullable=False)
+    remarks: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     approved_by: Mapped[str | None] = mapped_column(String(255))
     adjustment_date: Mapped[date | None] = mapped_column(Date)

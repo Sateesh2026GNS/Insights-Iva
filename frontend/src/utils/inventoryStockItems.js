@@ -1,5 +1,7 @@
 /** Stock list filtering and table layout for Inventory V2 (all / low / out routes). */
 
+import { normalizeCategoryName } from "./inventoryCategoryWise";
+
 export const SORT_OPTIONS = [
   { id: "name-asc", label: "Item Name A-Z" },
   { id: "name-desc", label: "Item Name Z-A" },
@@ -45,9 +47,16 @@ export function isLockedKpiStockFilter({ pathname, forcedStockFilter = null }) {
   return stockFilterFromPath(pathname) != null;
 }
 
-export function filterInventoryStockRows(products, { search = "", sort = "name-asc", stockFilter = "all" }) {
+export function filterInventoryStockRows(
+  products,
+  { search = "", sort = "name-asc", stockFilter = "all", categoryFilter = "all" } = {}
+) {
   const q = String(search).trim().toLowerCase();
   let rows = (products || []).filter((p) => {
+    if (categoryFilter !== "all") {
+      const cat = normalizeCategoryName(p.category);
+      if (cat !== categoryFilter && String(p.category || "").trim() !== categoryFilter) return false;
+    }
     if (q) {
       const hay = `${p.name} ${p.hsn_code} ${p.category} ${p.product_code || p.sku}`.toLowerCase();
       if (!hay.includes(q)) return false;

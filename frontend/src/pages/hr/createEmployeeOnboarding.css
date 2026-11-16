@@ -498,3 +498,22 @@
   font-size: 12px;
   color: #ef4444;
 }
+
+@media (max-width: 639px) {
+  .hr-create-employee__footer {
+    position: sticky;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    justify-content: flex-start;
+    margin: 0 -12px;
+    border-top: 1px solid var(--ce-border);
+    background: var(--ce-surface);
+    padding: 12px;
+  }
+
+  .hr-create-employee__save-btn,
+  .hr-create-employee__cancel-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

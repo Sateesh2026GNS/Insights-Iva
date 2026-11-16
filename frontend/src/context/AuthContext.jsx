@@ -1,14 +1,16 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUser, logout as logoutApi, removeProfileAvatar, updateProfileAvatar } from "../api/authApi";
 import { AUTH_TOKEN_UPDATED_EVENT, ensureCsrfCookie, setUnauthorizedHandler } from "../api/axiosConfig";
 import {
-  clearAuthTokens,
   clearBrowserSessionMarkers,
-  clearLegacyAuthTokens,
+  clearSessionTerminated,
+  getStoredAccessToken,
+  getStoredRefreshToken,
   isBrowserSessionMarked,
   isFastOfflineSessionToken,
   markBrowserSessionActive,
+  markSessionTerminated,
   setStoredTokens,
 } from "../utils/authSession";
 import { invalidateReferenceCache } from "../utils/referenceDataCache";
@@ -18,7 +20,6 @@ import {
   getSessionExpiryReason,
   getTabType,
   initTabSession,
-  isPrimaryTabAlive,
   markAsPrimaryTab,
   markTabExpired,
   sendPrimaryHeartbeat,
@@ -96,7 +97,7 @@ function readStoredUser() {
   try {
     const status = checkSessionStatus();
     if (status.expired) {
-      if (status.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
+      if (status.reason === "primary_9hr_timeout") {
         clearTenantDataCaches();
         clearBrowserSessionMarkers();
         localStorage.removeItem("smrt-user");
@@ -149,14 +150,17 @@ export function AuthProvider({ children }) {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [sessionExpiryReason, setSessionExpiryReason] = useState(() => getSessionExpiryReason());
 
+  const logoutInFlightRef = useRef(null);
+
   const logout = useCallback(async ({ allDevices = false } = {}) => {
-    try {
-      if (isBrowserSessionMarked()) {
-        await logoutApi({ allDevices }).catch(() => {});
-      }
-    } catch {
-      /* ignore network errors — still clear local session */
-    } finally {
+    if (logoutInFlightRef.current) return logoutInFlightRef.current;
+
+    logoutInFlightRef.current = (async () => {
+      const shouldNotifyBackend = isBrowserSessionMarked();
+      const refreshToken = getStoredRefreshToken();
+      const accessToken = getStoredAccessToken();
+
+      markSessionTerminated();
       setUser(null);
       setSessionExpired(false);
       setSessionExpiryReason(null);
@@ -168,6 +172,16 @@ export function AuthProvider({ children }) {
       } catch {
         /* ignore */
       }
+
+      if (shouldNotifyBackend) {
+        logoutApi({ allDevices, refreshToken, accessToken }).catch(() => {});
+      }
+    })();
+
+    try {
+      await logoutInFlightRef.current;
+    } finally {
+      logoutInFlightRef.current = null;
     }
   }, []);
 
@@ -220,11 +234,10 @@ export function AuthProvider({ children }) {
       const status = checkSessionStatus();
       if (status.expired) {
         setSessionExpiryReason(status.reason);
-        if (status.reason === "primary_9hr_timeout" || !isPrimaryTabAlive()) {
+        if (status.reason === "primary_9hr_timeout") {
           logout();
           setSessionExpired(true);
         } else {
-          // Tab-specific expiration for new tab: keep primary 9hr tab active
           markTabExpired(status.reason);
           setUser(null);
           setSessionExpired(true);
@@ -243,23 +256,20 @@ export function AuthProvider({ children }) {
     const onTokenUpdated = () => {
       recordSessionActivity();
     };
-    window.addEventListener("storage", onStorageChange);
-    window.addEventListener(AUTH_TOKEN_UPDATED_EVENT, onTokenUpdated);
-
-    const onUnload = () => {
-      if (getTabType() === "primary") {
-        try {
-          localStorage.removeItem("smrt-primary-heartbeat");
-        } catch {}
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && getTabType() === "primary") {
+        sendPrimaryHeartbeat();
       }
     };
-    window.addEventListener("beforeunload", onUnload);
+    window.addEventListener("storage", onStorageChange);
+    window.addEventListener(AUTH_TOKEN_UPDATED_EVENT, onTokenUpdated);
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener("storage", onStorageChange);
       window.removeEventListener(AUTH_TOKEN_UPDATED_EVENT, onTokenUpdated);
-      window.removeEventListener("beforeunload", onUnload);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [logout]);
 
@@ -295,6 +305,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback((authData) => {
+    clearSessionTerminated();
     setSessionExpired(false);
     setSessionExpiryReason(null);
     markAsPrimaryTab();

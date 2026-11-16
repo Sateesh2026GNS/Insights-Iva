@@ -39,6 +39,8 @@ import {
   VENDOR_TYPES,
 } from "../../data/vendorsMasterData";
 import { useToast } from "../../context/ToastContext";
+import SuccessCelebration from "../../components/common/SuccessCelebration";
+import { resolveCreatedName } from "../../utils/successCelebration";
 
 import Button from "../../components/common/Button";
 import { inputClass } from "../../design-system/classes";
@@ -224,6 +226,8 @@ export default function CreateVendor() {
   const bankLookupSeq = useRef(0);
   const lastVerifiedBankKey = useRef("");
   const holderEditedManually = useRef(false);
+  const [celebration, setCelebration] = useState(null);
+  const afterCelebrationRef = useRef(null);
 
   // Only bounce after we know the user; avoid racing an empty session into a redirect.
   useEffect(() => {
@@ -517,15 +521,22 @@ export default function CreateVendor() {
       if (isEdit) {
         await updateVendor(vendorId, payload);
         addToast("Vendor updated");
-      } else {
-        const { data } = await createVendor(payload);
-        savedId = data.id;
-        addToast("Vendor created");
+        if (pendingDocs.length && savedId) {
+          await uploadDocs(savedId);
+        }
+        navigate(savedId ? `/procurement/vendors/${savedId}` : "/procurement/vendors");
+        return;
       }
+      const { data } = await createVendor(payload);
+      savedId = data?.id;
+      addToast("Vendor created");
       if (pendingDocs.length && savedId) {
         await uploadDocs(savedId);
       }
-      navigate(savedId ? `/procurement/vendors/${savedId}` : "/procurement/vendors");
+      afterCelebrationRef.current = () => {
+        navigate(savedId ? `/procurement/vendors/${savedId}` : "/procurement/vendors");
+      };
+      setCelebration({ name: resolveCreatedName(data, payload.name || form.name) });
     } catch (err) {
       const mapped = applyBackendFieldErrors(err, setFieldErrors, { phone: "phone" }, { t });
       setError(mapped ? t("validation.fixHighlightedFields") : formatApiError(err.response?.data?.detail));
@@ -912,6 +923,17 @@ export default function CreateVendor() {
         </div>
       </div>
       </div>
+      <SuccessCelebration
+        open={Boolean(celebration)}
+        name={celebration?.name}
+        entityType="vendor"
+        onClose={() => {
+          const next = afterCelebrationRef.current;
+          afterCelebrationRef.current = null;
+          setCelebration(null);
+          next?.();
+        }}
+      />
     </div>
   );
 }

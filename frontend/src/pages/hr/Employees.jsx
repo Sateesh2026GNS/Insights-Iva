@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import Loader from "../../components/common/Loader";
+import { ErrorState, PermissionDeniedState } from "../../components/common/states";
 import { SearchBar } from "../../components/common/SearchFilter";
 import { ListPageShell } from "../../components/common/ListPageShell";
 import usePageRefresh from "../../hooks/usePageRefresh";
@@ -141,7 +142,8 @@ function ActionMenu({ onEdit, onDelete, onOffboard }) {
 export default function Employees() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [records, setRecords] = useState([]);
   const [search, setSearch] = useState("");
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -155,12 +157,15 @@ export default function Employees() {
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setLoadError(null);
     try {
-      const res = await getEmployeesEnriched();
+      const res = await getEmployeesEnriched({ skipGlobalError: true });
       const rows = Array.isArray(res?.data) ? res.data : [];
       setRecords(rows);
-    } catch {
+    } catch (error) {
       setRecords([]);
+      setLoadError(error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -318,6 +323,13 @@ export default function Employees() {
           </div>
         ) : null}
 
+        {loading ? (
+          <Loader />
+        ) : loadError?.response?.status === 403 ? (
+          <PermissionDeniedState />
+        ) : loadError ? (
+          <ErrorState onRetry={() => load()} />
+        ) : (
         <div className="hr-emp-onboard__table-wrap">
           <table className="hr-emp-onboard__table">
             <thead>
@@ -385,6 +397,7 @@ export default function Employees() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </ListPageShell>
   );

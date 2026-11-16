@@ -126,22 +126,6 @@ export const SALES_MANAGER_NAV_ITEMS = [
     ],
   },
   {
-    key: "meetings",
-    label: "Meetings",
-    to: "/meetings",
-    icon: CalendarDays,
-    module: "meetings",
-    end: true,
-  },
-  {
-    key: "chat",
-    label: "Work Chat",
-    to: "/chat",
-    icon: MessageSquare,
-    module: "chat",
-    end: true,
-  },
-  {
     key: "masters",
     label: "Masters",
     icon: Layers,
@@ -154,6 +138,7 @@ export const SALES_MANAGER_NAV_ITEMS = [
     icon: BarChart3,
     module: "sales",
     children: [
+      { key: "reportsCenter", label: "Reports Center", to: "/reports", icon: BarChart3, module: "reports" },
       { key: "salesReport", label: "Sales Report", to: "/sales/reports/sales", icon: BarChart3, module: "sales" },
       {
         key: "salesOrderReport",
@@ -171,6 +156,22 @@ export const SALES_MANAGER_NAV_ITEMS = [
       },
       { key: "customerReport", label: "Customer Report", to: "/sales/reports/customers", icon: Users, module: "sales" },
     ],
+  },
+  {
+    key: "chat",
+    label: "Work Chat",
+    to: "/chat",
+    icon: MessageSquare,
+    module: "chat",
+    end: true,
+  },
+  {
+    key: "meetings",
+    label: "Meetings",
+    to: "/meetings",
+    icon: CalendarDays,
+    module: "meetings",
+    end: true,
   },
   {
     key: "settings",

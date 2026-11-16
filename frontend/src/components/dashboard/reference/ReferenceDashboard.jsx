@@ -36,11 +36,14 @@ import {
 import DashboardReportExport from "../../common/DashboardReportExport";
 import EmptyChart from "../../common/EmptyChart";
 import { metricExportRows } from "../../../utils/dashboardExportRows";
+import AdminDashboardMoreMenu from "./AdminDashboardMoreMenu";
 import SkeletonCard, { SkeletonChart } from "../../common/SkeletonCard";
 import AdminProductionWidgets from "./AdminProductionWidgets";
 import AdminQuickActions from "./AdminQuickActions";
 import ProductionPipeline from "./ProductionPipeline";
 import { getErpDashboard } from "../../../api/dashboardApi";
+import { classifyApiError } from "../../../utils/apiError";
+import { getMyProductionEntries } from "../../../api/operatorExecutionApi";
 import { getProductionOrders, getWorkOrders } from "../../../api/productionApi";
 import { getMyApprovalCounts } from "../../../api/approvalsApi";
 import useAuth from "../../../hooks/useAuth";
@@ -49,14 +52,23 @@ import ManufacturingWorkflowHub from "../ManufacturingWorkflowHub";
 import DashboardCheckIn from "../DashboardCheckIn";
 import useManufacturingRefresh from "../../../hooks/useManufacturingRefresh";
 import { isAdmin, isOperator, userCanAccessApprovalQueue } from "../../../config/permissions";
+import {
+  OPERATOR_DASHBOARD_TAGLINE,
+  OPERATOR_DASHBOARD_TOOLKIT_SUBTITLE,
+  operatorDashboardKpiHref,
+  operatorDashboardKpiIcon,
+  operatorDashboardKpiTone,
+} from "../../../utils/operatorDashboardToolkit";
 import { CardShell, KpiIconWell, StatusBadge, TrendBadge, getKpiAccent } from "./ReferenceParts";
 import {
   ADMIN_DASHBOARD_TOOLKIT_SUBTITLE,
   adminDashboardKpiIcon,
   adminDashboardKpiTone,
+  buildAdminDashboardExportRows,
   formatAdminDashboardHeroDate,
 } from "../../../utils/adminDashboardToolkit";
 import "../../../styles/manufacturing-toolkit.css";
+import "../../../styles/operator-dashboard.css";
 import "../../../styles/admin-dashboard-toolkit.css";
 
 /** Masters → Products visual tokens (only reference for this dashboard). */
@@ -307,9 +319,8 @@ function DashboardSkeleton() {
 
 const DEFAULT_CARD_LINKS = {
   "total-users": "/admin/users",
-  departments: "/masters/departments",
   "active-users": "/admin/users",
-  "total-employees": "/masters/departments",
+  "total-employees": "/hr/employees",
   "pending-approvals": "/admin/approvals",
   "total-orders": "/production/planning",
   "today-production": "/production/planning?preset=today",
@@ -344,13 +355,13 @@ const DEFAULT_CARD_LINKS = {
   "out-of-stock": "/inventory",
   "pending-material-issues": "/procurement/material-requests",
   "pending-goods-receipts": "/procurement/goods-receipt",
-  "present-today": "/masters/departments",
-  "absent-today": "/masters/departments",
-  "on-leave": "/masters/departments",
-  "pending-leave-requests": "/masters/departments",
-  "new-employees": "/masters/departments",
-  "attendance-rate": "/masters/departments",
-  "pending-hr-requests": "/masters/departments",
+  "present-today": "/hr/attendance",
+  "absent-today": "/hr/attendance",
+  "on-leave": "/hr/leave",
+  "pending-leave-requests": "/hr/leave/approvals",
+  "new-employees": "/hr/employees",
+  "attendance-rate": "/hr/attendance",
+  "pending-hr-requests": "/hr/leave/approvals",
   "total-receivables": "/finance/accounts-receivable",
   "total-payables": "/finance/accounts-payable",
   "todays-revenue": "/sales/invoices",
@@ -359,18 +370,38 @@ const DEFAULT_CARD_LINKS = {
   expenses: "/accounts/expenses",
   "gst-payable": "/accounts/tax-reports",
   "cash-bank-balance": "/accounts/ledger",
-  "my-work-orders": "/production/work-orders",
-  "todays-target": "/production/planning",
-  "completed-today": "/production/work-orders",
-  "operator-in-progress": "/production/work-orders",
-  "pending-tasks": "/production/work-orders",
-  "assigned-machine": "/production/machines",
-  "machine-status": "/production/machines",
-  "material-availability": "/inventory",
-  "quality-checks-pending": "/quality",
+  "my-work-orders": "/my-job-cards",
+  "todays-target": "/my-job-cards",
+  "completed-today": "/my-job-cards",
+  "operator-in-progress": "/my-job-cards",
+  "pending-tasks": "/my-job-cards",
+  "assigned-machine": "/production/my-machine",
+  "machine-status": "/production/my-machine",
+  "material-availability": "/my-job-cards",
 };
 
-function KpiStrip({ cards = [] }) {
+const OPERATOR_EXCLUDED_KPI_IDS = new Set([
+  "departments",
+  "pending-approvals",
+  "revenue-cost-snapshot",
+]);
+
+/** Departments master page removed from Admin UI — hide KPI everywhere. */
+const HIDDEN_KPI_IDS = new Set(["departments"]);
+
+function operatorDashboardKpiCards(cards) {
+  return (Array.isArray(cards) ? cards : []).filter(
+    (card) => !OPERATOR_EXCLUDED_KPI_IDS.has(String(card?.id || "").trim())
+  );
+}
+
+function visibleDashboardKpiCards(cards) {
+  return (Array.isArray(cards) ? cards : []).filter(
+    (card) => !HIDDEN_KPI_IDS.has(String(card?.id || "").trim())
+  );
+}
+
+function KpiStrip({ cards = [], dense = false }) {
   const { t } = useTranslation();
   if (!cards.length) {
     return (
@@ -386,7 +417,7 @@ function KpiStrip({ cards = [] }) {
         ? "ui-kpi-strip--5"
         : "";
   return (
-    <div className={`ui-kpi-strip ${stripModifier}`.trim()}>
+    <div className={dense ? "op-kpi-grid" : `ui-kpi-strip ${stripModifier}`.trim()}>
       {cards.map((card) => {
         const titleKey = KPI_TITLE_KEYS[card.id];
         const trendKey = TREND_LABEL_KEYS[card.trendLabel];
@@ -400,7 +431,9 @@ function KpiStrip({ cards = [] }) {
             : card.trendLabel;
         const cardTitle = titleKey ? t(`refDashboard.${titleKey}`) : card.title;
         const targetLink = card.link || DEFAULT_CARD_LINKS[card.id];
-        const cardSurfaceCls = `group relative flex h-full w-full min-h-[var(--kpi-dashboard-min-height)] flex-col overflow-hidden rounded-xl p-3.5 shadow-sm transition-colors duration-200 ${accent.cardBg} ${accent.hoverBorder}`;
+        const cardSurfaceCls = dense
+          ? "op-kpi"
+          : `group relative flex h-full w-full min-h-[var(--kpi-dashboard-min-height)] flex-col overflow-hidden rounded-xl p-3.5 shadow-sm transition-colors duration-200 ${accent.cardBg} ${accent.hoverBorder}`;
         const linkCardCls = `${cardSurfaceCls} cursor-pointer transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]`;
         const staticCardCls = cardSurfaceCls;
         const cls = targetLink ? linkCardCls : staticCardCls;
@@ -408,7 +441,7 @@ function KpiStrip({ cards = [] }) {
           <>
             <div className="mb-1.5 flex items-start justify-between gap-2">
               <KpiIconWell id={card.id} />
-              {targetLink ? (
+              {targetLink && !dense ? (
                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-faint)] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--color-primary)]" />
               ) : null}
             </div>
@@ -419,12 +452,16 @@ function KpiStrip({ cards = [] }) {
               {card.suffix ? <span className="ml-1 text-base font-semibold text-[var(--color-text-muted)]">{card.suffix}</span> : null}
             </p>
             <div className="mt-auto flex items-end justify-between gap-2 pt-2">
-              <TrendBadge
-                up={card.trendUp}
-                value={card.trend}
-                label={trendLabel}
-                mode={isMachines ? "utilization" : trendIsPct ? "change" : "info"}
-              />
+              {dense ? (
+                trendLabel ? <p className="op-kpi__meta">{trendLabel}</p> : null
+              ) : (
+                <TrendBadge
+                  up={card.trendUp}
+                  value={card.trend}
+                  label={trendLabel}
+                  mode={isMachines ? "utilization" : trendIsPct ? "change" : "info"}
+                />
+              )}
             </div>
           </>
         );
@@ -447,13 +484,14 @@ function KpiStrip({ cards = [] }) {
   );
 }
 
-function AdminDashboardToolkitHero({ title, subtitle }) {
+function AdminDashboardToolkitHero({ title, subtitle, actions = null }) {
   return (
     <header className="mtk-hero">
       <div className="mtk-hero__row">
         <span>{ADMIN_DASHBOARD_TOOLKIT_SUBTITLE}</span>
         <div className="mtk-hero__meta">
           <div>As of {formatAdminDashboardHeroDate()}</div>
+          {actions}
         </div>
       </div>
       <div className="mtk-hero__title">
@@ -505,6 +543,72 @@ function AdminDashboardToolkitKpiRow({ cards = [], t }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function OperatorDashboardToolkitKpiRow({ cards = [], t }) {
+  if (!cards.length) {
+    return <p className="op-dash-empty">No data available.</p>;
+  }
+  return (
+    <div className="mtk-kpi-row" aria-label="Operator dashboard KPIs">
+      {cards.map((card, index) => {
+        const titleKey = KPI_TITLE_KEYS[card.id];
+        const cardTitle = titleKey ? t(`refDashboard.${titleKey}`) : card.title;
+        const targetLink = operatorDashboardKpiHref(card);
+        const inner = (
+          <>
+            <div className={`mtk-kpi__icon mtk-kpi__icon--${operatorDashboardKpiTone(index)}`}>
+              {operatorDashboardKpiIcon(card)}
+            </div>
+            <div className="mtk-kpi__label">{cardTitle}</div>
+            <div className="mtk-kpi__value">{card.value}</div>
+            {card.trendLabel ? <div className="mtk-kpi__unit">{card.trendLabel}</div> : null}
+          </>
+        );
+        if (targetLink) {
+          return (
+            <Link key={card.id} to={targetLink} className="mtk-kpi mtk-kpi--link">
+              {inner}
+            </Link>
+          );
+        }
+        return (
+          <div key={card.id} className="mtk-kpi">
+            {inner}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function OperatorDashboardToolkitHero({ title, dateLabel }) {
+  return (
+    <header className="mtk-hero">
+      <div className="mtk-hero__row">
+        <span>{OPERATOR_DASHBOARD_TAGLINE}</span>
+        <span className="hidden sm:inline">{dateLabel}</span>
+      </div>
+      <div className="mtk-hero__title">
+        <h1>{title}</h1>
+        <p style={{ fontSize: 10, opacity: 0.9, margin: 0 }}>{OPERATOR_DASHBOARD_TOOLKIT_SUBTITLE}</p>
+      </div>
+    </header>
+  );
+}
+
+function OperatorDashboardToolkitSkeleton() {
+  const todayLabel = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return (
+    <div className="operator-dashboard min-h-full w-full">
+      <div className="mtk-root mtk-theme--teal">
+        <OperatorDashboardToolkitHero title="OPERATOR DASHBOARD" dateLabel={todayLabel} />
+        <div className="mtk-body">
+          <p className="op-dash-empty">Loading operator dashboard…</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -625,7 +729,7 @@ function PendingTasks({ overview, inventoryBlocks = [], alerts = [], profile }) 
             <li key={task.id}>
               <Link
                 to={task.to}
-                className="flex items-center justify-between gap-3 rounded-lg border border-[#ececf0] bg-[#fafafa] px-3 py-2.5 transition hover:bg-[#f3f3f6] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
+                className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-[#ececf0] bg-[#fafafa] px-3 py-2.5 transition hover:bg-[#f3f3f6] dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
               >
                 <span className="text-[13px] font-medium text-[#1a1a1f] dark:text-white">{task.label}</span>
                 <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${toneClass[task.tone]}`}>
@@ -683,49 +787,64 @@ function FinancialSnapshot({ inventoryBlocks = [] }) {
   );
 }
 
-function ProductionOverview({ chartSets }) {
+function ProductionOverview({ chartSets, toolkit = false }) {
   const { t } = useTranslation();
   const [period, setPeriod] = useState("Daily");
   const chartData = chartSets?.[period] ?? [];
   const hasChartData = chartData.length > 0;
+  const periodTabs = Object.entries(PERIOD_KEYS).map(([label, key]) => (
+    <button
+      key={label}
+      type="button"
+      role="tab"
+      aria-selected={period === label}
+      onClick={() => setPeriod(label)}
+      className={toolkit ? undefined : `rounded-md px-2.5 py-1 transition-colors ${period === label ? "bg-white text-[#1a1a1f] shadow-sm dark:bg-slate-700 dark:text-white" : "text-[#6b6b76] dark:text-slate-400"}`}
+    >
+      {t(`refDashboard.${key}`)}
+    </button>
+  ));
+  const chart = hasChartData ? (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }} key={period}>
+        <CartesianGrid strokeDasharray="3 3" stroke={toolkit ? "#e2e8f0" : "#ececf0"} vertical={false} />
+        <XAxis dataKey="date" tick={{ fontSize: toolkit ? 9 : 11, fill: toolkit ? "#64748b" : "#6b6b76" }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: toolkit ? 9 : 11, fill: toolkit ? "#64748b" : "#6b6b76" }} axisLine={false} tickLine={false} />
+        <Tooltip contentStyle={tooltipStyle} />
+        <Legend wrapperStyle={{ fontSize: toolkit ? 9 : 12, paddingTop: 8, color: "#4a4a55" }} />
+        <Line type="monotone" dataKey="planned" name={t("refDashboard.plannedQty")} stroke="var(--color-primary)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--color-primary)" }} />
+        <Line type="monotone" dataKey="actual" name={t("refDashboard.actualQty")} stroke="#15803d" strokeWidth={2.5} dot={{ r: 3, fill: "#15803d" }} />
+      </LineChart>
+    </ResponsiveContainer>
+  ) : toolkit ? (
+    <p className="op-dash-empty">{t("common.noData", "No data available.")}</p>
+  ) : (
+    <EmptyChart message={t("common.noData", "No data available.")} />
+  );
+
+  if (toolkit) {
+    return (
+      <section className="mtk-panel h-full">
+        <div className="mtk-panel__title">{t("refDashboard.productionOverview")}</div>
+        <div className="op-dash-filters" role="tablist" aria-label={t("refDashboard.productionOverview")}>
+          {periodTabs}
+        </div>
+        <div className="mtk-chart op-dash-chart">{chart}</div>
+      </section>
+    );
+  }
+
   return (
     <CardShell
       title={t("refDashboard.productionOverview")}
       className="h-full"
       action={
         <div className="flex rounded-lg border border-[#e8e8ee] bg-[#f3f3f6] p-0.5 text-[11px] font-semibold dark:border-slate-700 dark:bg-slate-800" role="tablist" aria-label={t("refDashboard.productionOverview")}>
-          {Object.entries(PERIOD_KEYS).map(([label, key]) => (
-            <button
-              key={label}
-              type="button"
-              role="tab"
-              aria-selected={period === label}
-              onClick={() => setPeriod(label)}
-              className={`rounded-md px-2.5 py-1 transition-colors ${period === label ? "bg-white text-[#1a1a1f] shadow-sm dark:bg-slate-700 dark:text-white" : "text-[#6b6b76] dark:text-slate-400"}`}
-            >
-              {t(`refDashboard.${key}`)}
-            </button>
-          ))}
+          {periodTabs}
         </div>
       }
     >
-      <div className="h-[260px] w-full">
-        {hasChartData ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }} key={period}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ececf0" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b6b76" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#6b6b76" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8, color: "#4a4a55" }} />
-              <Line type="monotone" dataKey="planned" name={t("refDashboard.plannedQty")} stroke="var(--color-primary)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--color-primary)" }} />
-              <Line type="monotone" dataKey="actual" name={t("refDashboard.actualQty")} stroke="#15803d" strokeWidth={2.5} dot={{ r: 3, fill: "#15803d" }} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <EmptyChart message={t("common.noData", "No data available.")} />
-        )}
-      </div>
+      <div className="h-[260px] w-full">{chart}</div>
     </CardShell>
   );
 }
@@ -949,47 +1068,151 @@ function AlertsNotifications({ alerts = [] }) {
   );
 }
 
-function RecentWorkOrders({ workOrders = [] }) {
-  const { t } = useTranslation();
-  return (
-    <CardShell
-      title={t("refDashboard.recentWorkOrders")}
-      action={
-        <Link to="/production/work-orders" className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
-          {t("common.viewAll")}
-        </Link>
-      }
-    >
-      {!workOrders.length ? (
-        <p className="py-6 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noRecords", "No records found.")}</p>
-      ) : (
-        <div className="ui-table-wrap ui-table-wrap--scroll">
-          <table className="ui-table w-full min-w-[420px] text-left text-sm">
-            <thead className="ui-table-head">
+function OperatorProductionEntries({ toolkit = false }) {
+  const [state, setState] = useState({ status: "loading", items: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyProductionEntries()
+      .then((res) => {
+        if (cancelled) return;
+        const items = res?.data?.items;
+        setState({ status: "ready", items: Array.isArray(items) ? items : [] });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: "error", items: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const body = (
+    <>
+      {state.status === "loading" ? <p className="op-dash-empty">Loading production entries…</p> : null}
+      {state.status === "error" ? <p className="op-dash-empty">Production entries are unavailable right now.</p> : null}
+      {state.status === "ready" && state.items.length === 0 ? (
+        <p className="op-dash-empty">No production entries recorded today.</p>
+      ) : null}
+      {state.status === "ready" && state.items.length > 0 ? (
+        <div className={toolkit ? "mtk-table-wrap" : "ui-table-wrap ui-table-wrap--scroll"}>
+          <table className={toolkit ? "mtk-table" : "ui-table w-full min-w-[420px] text-left text-sm"}>
+            <thead className={toolkit ? undefined : "ui-table-head"}>
               <tr>
-                <th className="px-3 py-2.5 font-medium">{t("refDashboard.woNo")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("refDashboard.product")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("refDashboard.qty")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("refDashboard.status")}</th>
-                <th className="px-3 py-2.5 font-medium">{t("refDashboard.dueDate")}</th>
+                <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Work order</th>
+                <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Product</th>
+                <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Produced</th>
+                <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Rejected</th>
+                <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Shift</th>
               </tr>
             </thead>
             <tbody>
-              {workOrders.map((wo) => (
-                <tr key={wo._rowKey ?? wo.id ?? wo.wo}>
-                  <td className="px-3 py-2.5 font-semibold text-[var(--color-primary)]">{wo.wo}</td>
-                  <td className="px-3 py-2.5 text-[#1a1a1f] dark:text-white">{wo.product}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-[#4a4a55] dark:text-slate-300">{wo.qty}</td>
-                  <td className="px-3 py-2.5">
-                    <StatusBadge status={wo.status} />
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-[#8a8a96] dark:text-slate-400">{wo.due}</td>
+              {state.items.slice(0, 8).map((row) => (
+                <tr key={row.id}>
+                  <td className={toolkit ? "mtk-left" : "px-3 py-2.5 font-semibold"}>{row.work_order_number || "—"}</td>
+                  <td className={toolkit ? "mtk-left" : "px-3 py-2.5"}>{row.product_name || "—"}</td>
+                  <td className={toolkit ? undefined : "px-3 py-2.5 tabular-nums"}>{row.quantity_produced ?? "—"}</td>
+                  <td className={toolkit ? undefined : "px-3 py-2.5 tabular-nums"}>{row.quantity_rejected ?? "—"}</td>
+                  <td className={toolkit ? undefined : "px-3 py-2.5"}>{row.shift || "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
+    </>
+  );
+
+  if (toolkit) {
+    return (
+      <section className="mtk-panel">
+        <div className="mtk-panel__title">Today&apos;s production entries</div>
+        {body}
+      </section>
+    );
+  }
+
+  return <CardShell title="Today's production entries">{body}</CardShell>;
+}
+
+function workOrderStatusPill(status) {
+  const key = String(status || "").toLowerCase().replace(/\s+/g, "_");
+  const tone = key.includes("complete")
+    ? "success"
+    : key.includes("progress") || key.includes("running")
+      ? "info"
+      : key.includes("hold") || key.includes("stop") || key.includes("pending")
+        ? "warning"
+        : "neutral";
+  const label = String(status || "—").replace(/_/g, " ");
+  return <span className={`mtk-pill mtk-pill--${tone}`}>{label}</span>;
+}
+
+function RecentWorkOrders({ workOrders = [], emptyHint = "", listPath = "", toolkit = false }) {
+  const { t } = useTranslation();
+  const showProgress = workOrders.some((wo) => wo.completed != null || wo.remaining != null);
+  const showPriority = workOrders.some((wo) => wo.priority);
+  const viewAll = (
+    <Link to={listPath || "/production/work-orders"} className={toolkit ? "op-dash-panel-link" : "text-xs font-semibold text-[var(--color-primary)] hover:underline"}>
+      {t("common.viewAll")}
+    </Link>
+  );
+  const table = !workOrders.length ? (
+    <p className={toolkit ? "op-dash-empty" : "py-6 text-center text-sm text-[#8a8a96] dark:text-slate-400"}>
+      {emptyHint || t("common.noRecords", "No records found.")}
+    </p>
+  ) : (
+    <div className={toolkit ? "mtk-table-wrap" : "ui-table-wrap ui-table-wrap--scroll"}>
+      <table className={toolkit ? "mtk-table" : "ui-table w-full min-w-[420px] text-left text-sm"}>
+        <thead className={toolkit ? undefined : "ui-table-head"}>
+          <tr>
+            <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>{t("refDashboard.woNo")}</th>
+            <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>{t("refDashboard.product")}</th>
+            <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>{t("refDashboard.qty")}</th>
+            {showProgress ? <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Completed</th> : null}
+            {showProgress ? <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Remaining</th> : null}
+            {showPriority ? <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>Priority</th> : null}
+            <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>{t("refDashboard.status")}</th>
+            <th className={toolkit ? undefined : "px-3 py-2.5 font-medium"}>{t("refDashboard.dueDate")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {workOrders.map((wo) => (
+            <tr key={wo._rowKey ?? wo.id ?? wo.wo}>
+              <td className={toolkit ? "mtk-left" : "px-3 py-2.5 font-semibold text-[var(--color-primary)]"}>
+                {listPath ? <Link to={listPath}>{wo.wo}</Link> : wo.wo}
+              </td>
+              <td className={toolkit ? "mtk-left" : "px-3 py-2.5 text-[#1a1a1f] dark:text-white"}>{wo.product}</td>
+              <td className={toolkit ? undefined : "px-3 py-2.5 tabular-nums text-[#4a4a55] dark:text-slate-300"}>{wo.qty}</td>
+              {showProgress ? <td className={toolkit ? undefined : "px-3 py-2.5 tabular-nums"}>{wo.completed ?? "—"}</td> : null}
+              {showProgress ? <td className={toolkit ? undefined : "px-3 py-2.5 tabular-nums"}>{wo.remaining ?? "—"}</td> : null}
+              {showPriority ? <td className={toolkit ? undefined : "px-3 py-2.5"}>{wo.priority || "—"}</td> : null}
+              <td className={toolkit ? undefined : "px-3 py-2.5"}>
+                {toolkit ? workOrderStatusPill(wo.status) : <StatusBadge status={wo.status} />}
+              </td>
+              <td className={toolkit ? undefined : "px-3 py-2.5 text-xs text-[#8a8a96] dark:text-slate-400"}>{wo.due}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  if (toolkit) {
+    return (
+      <section className="mtk-panel">
+        <div className="mtk-panel__title op-dash-panel-title">
+          <span>{t("refDashboard.recentWorkOrders")}</span>
+          {viewAll}
+        </div>
+        {table}
+      </section>
+    );
+  }
+
+  return (
+    <CardShell title={t("refDashboard.recentWorkOrders")} action={viewAll}>
+      {table}
     </CardShell>
   );
 }
@@ -1005,7 +1228,7 @@ function isProductionManagerUser(user) {
   return allRoles.some((r) => r.includes("production manager") || r.includes("production_manager"));
 }
 
-function TodaysSummary({ items = [] }) {
+function TodaysSummary({ items = [], toolkit = false }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isPM = isProductionManagerUser(user);
@@ -1036,36 +1259,56 @@ function TodaysSummary({ items = [] }) {
     return items;
   }, [items, isPM, isOp]);
 
-  if (!filteredItems.length) {
-    return (
-      <CardShell title={t("refDashboard.todaysSummary")}>
-        <p className="py-8 text-center text-sm text-[#8a8a96] dark:text-slate-400">{t("common.noData", "No data available.")}</p>
-      </CardShell>
-    );
-  }
-  return (
-    <CardShell title={t("refDashboard.todaysSummary")}>
-      <ul className="space-y-2.5">
-        {filteredItems.map((item, i) => {
-          const Icon = summaryIcons[item.icon] || BarChart3;
-          const label = item.key
-            ? t(`refDashboard.${item.key}`, item.label)
-            : SUMMARY_KEYS[i]
-              ? t(`refDashboard.${SUMMARY_KEYS[i]}`)
-              : item.label;
+  const title = t("refDashboard.todaysSummary");
+  const list = !filteredItems.length ? (
+    <p className={toolkit ? "op-dash-empty" : "py-8 text-center text-sm text-[#8a8a96] dark:text-slate-400"}>
+      {t("common.noData", "No data available.")}
+    </p>
+  ) : (
+    <ul className={toolkit ? "op-dash-summary" : "space-y-2.5"}>
+      {filteredItems.map((item, i) => {
+        const Icon = summaryIcons[item.icon] || BarChart3;
+        const label = item.key
+          ? t(`refDashboard.${item.key}`, item.label)
+          : SUMMARY_KEYS[i]
+            ? t(`refDashboard.${SUMMARY_KEYS[i]}`)
+            : item.label;
+        if (toolkit) {
           return (
-            <li key={item.key || item.label || i} className="flex items-center justify-between gap-3 rounded-lg bg-[#f3f3f6] px-3 py-2.5 dark:bg-slate-800">
-              <span className="flex items-center gap-2.5 text-sm text-[#4a4a55] dark:text-slate-300">
-                <Icon className="h-4 w-4 text-[var(--color-primary)]" aria-hidden />
+            <li key={item.key || item.label || i}>
+              <span className="op-dash-summary__label">
+                <span className={`op-dash-mark mtk-kpi__icon--${operatorDashboardKpiTone(i)}`} aria-hidden>
+                  {String(label || "•").charAt(0).toUpperCase()}
+                </span>
                 {label}
               </span>
-              <span className="text-sm font-bold tabular-nums text-[#1a1a1f] dark:text-white">{item.value}</span>
+              <strong>{item.value ?? "—"}</strong>
             </li>
           );
-        })}
-      </ul>
-    </CardShell>
+        }
+        return (
+          <li key={item.key || item.label || i} className="flex items-center justify-between gap-3 rounded-lg bg-[#f3f3f6] px-3 py-2.5 dark:bg-slate-800">
+            <span className="flex items-center gap-2.5 text-sm text-[#4a4a55] dark:text-slate-300">
+              <Icon className="h-4 w-4 text-[var(--color-primary)]" aria-hidden />
+              {label}
+            </span>
+            <span className="text-sm font-bold tabular-nums text-[#1a1a1f] dark:text-white">{item.value}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
+
+  if (toolkit) {
+    return (
+      <section className="mtk-panel">
+        <div className="mtk-panel__title">{title}</div>
+        {list}
+      </section>
+    );
+  }
+
+  return <CardShell title={title}>{list}</CardShell>;
 }
 
 export default function ReferenceDashboard() {
@@ -1087,7 +1330,7 @@ export default function ReferenceDashboard() {
     if (!isRefresh) setLoading(true);
     setError(null);
 
-    const approvalsFetch = userCanAccessApprovalQueue(user)
+    const approvalsFetch = !isOp && userCanAccessApprovalQueue(user)
       ? getMyApprovalCounts()
       : Promise.resolve({ data: null });
 
@@ -1104,11 +1347,24 @@ export default function ReferenceDashboard() {
       })
       .catch((err) => {
         setApiData(EMPTY_ERP_DASHBOARD);
-        const status = err?.response?.status;
-        const msg = status === 401
-          ? "Your session has expired. Please log in again to continue."
-          : err?.response?.data?.message || err?.message || "Unable to load dashboard.";
-        setError(msg);
+        const classified = classifyApiError(err, "Unable to load dashboard.");
+        let msg = classified.message;
+        if (classified.type === "session") {
+          msg = "Your session has expired. Please log in again to continue.";
+        } else if (classified.type === "csrf") {
+          msg = classified.message;
+        } else if (classified.type === "permission") {
+          msg =
+            err?.response?.data?.message ||
+            (typeof err?.response?.data?.detail === "string"
+              ? err.response.data.detail
+              : null) ||
+            classified.message ||
+            "You do not have permission to access this module.";
+        } else if (classified.type === "network" || classified.type === "server") {
+          msg = classified.message || "Unable to load dashboard.";
+        }
+        setError(typeof msg === "string" ? msg : "Unable to load dashboard.");
         setLoading(false);
       });
 
@@ -1195,7 +1451,7 @@ export default function ReferenceDashboard() {
   const kpiCardsLive = useMemo(() => {
     if (!apiData?.kpi_cards?.length) return [];
 
-    return apiData.kpi_cards.map((k) => {
+    return visibleDashboardKpiCards(apiData.kpi_cards).map((k) => {
       const isFormattedValue =
         typeof k.value === "string" &&
         (k.value.includes("/") || k.value.includes("₹") || k.value.includes("%") || k.value === "—");
@@ -1241,6 +1497,9 @@ export default function ReferenceDashboard() {
       wo: w.wo,
       product: w.product,
       qty: w.qty,
+      completed: w.completed,
+      remaining: w.remaining,
+      priority: w.priority,
       status: w.status,
       due: w.due ? String(w.due).slice(0, 10) : "—",
       _rowKey: w.id != null ? `wo-${w.id}` : `${w.wo}-${index}`,
@@ -1286,10 +1545,50 @@ export default function ReferenceDashboard() {
     () => metricExportRows(kpiCardsLive.map((card) => ({ label: card.title, value: card.value }))),
     [kpiCardsLive]
   );
+  const adminExportRows = useMemo(
+    () =>
+      buildAdminDashboardExportRows({
+        kpis: kpiCardsLive,
+        orders: showOrdersOverview ? ordersOverview : null,
+        summary: showTodaysSummary ? apiData?.todays_summary || [] : [],
+        inventory: showInventory ? apiData?.inventory_blocks || [] : [],
+        warehouses: showInventory ? apiData?.warehouse_locations || [] : [],
+        alerts: showAlerts ? alertsLive : [],
+        pipeline: showProductionPipeline ? apiData?.production_pipeline : null,
+        shopFloor: showShopFloor ? apiData?.shop_floor_status || [] : [],
+        machines: showTopMachines ? apiData?.top_machines || [] : [],
+        workOrders: showRecentWo ? workOrdersLive : [],
+        productionOverview: showProduction ? apiData?.production_overview || [] : [],
+        productionWidgets: showAdminProductionWidgets ? apiData?.admin_production_widgets : null,
+      }),
+    [
+      kpiCardsLive,
+      showOrdersOverview,
+      ordersOverview,
+      showTodaysSummary,
+      apiData,
+      showInventory,
+      showAlerts,
+      alertsLive,
+      showProductionPipeline,
+      showShopFloor,
+      showTopMachines,
+      showRecentWo,
+      workOrdersLive,
+      showProduction,
+      showAdminProductionWidgets,
+    ]
+  );
+  const operatorKpiCards = useMemo(() => operatorDashboardKpiCards(kpiCardsLive), [kpiCardsLive]);
+  const operatorExportRows = useMemo(
+    () => metricExportRows(operatorKpiCards.map((card) => ({ label: card.title, value: card.value }))),
+    [operatorKpiCards]
+  );
 
   const adminToolkitLayout = profile === "admin";
 
   if (loading) {
+    if (isOp) return <OperatorDashboardToolkitSkeleton />;
     return isAdmin(user) ? <AdminDashboardToolkitSkeleton /> : <DashboardSkeleton />;
   }
 
@@ -1318,6 +1617,18 @@ export default function ReferenceDashboard() {
       </div>
     );
 
+    if (isOp) {
+      const todayLabel = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      return (
+        <div className="operator-dashboard min-h-full w-full">
+          <div className="mtk-root mtk-theme--teal">
+            <OperatorDashboardToolkitHero title="OPERATOR DASHBOARD" dateLabel={todayLabel} />
+            <div className="mtk-body">{errorPanel}</div>
+          </div>
+        </div>
+      );
+    }
+
     if (adminToolkitLayout) {
       return (
         <div className="admin-dashboard-page admin-dashboard-page--toolkit min-h-full w-full">
@@ -1345,7 +1656,7 @@ export default function ReferenceDashboard() {
     <>
         {sectionVisible(sections, "kpi") && !adminToolkitLayout ? <KpiStrip cards={kpiCardsLive} /> : null}
 
-        {sectionVisible(sections, "kpi") ? (
+        {sectionVisible(sections, "kpi") && !adminToolkitLayout ? (
           <div className="flex justify-end">
             <DashboardReportExport
               title={isOp ? "Operator Dashboard" : "ERP Dashboard"}
@@ -1356,9 +1667,11 @@ export default function ReferenceDashboard() {
           </div>
         ) : null}
 
-        <DashboardCheckIn />
+        {!isAdmin(user) ? <DashboardCheckIn /> : null}
 
-        {sectionVisible(sections, "manufacturing_workflow") ? <ManufacturingWorkflowHub /> : null}
+        {!isAdmin(user) && sectionVisible(sections, "manufacturing_workflow") ? (
+          <ManufacturingWorkflowHub />
+        ) : null}
 
         {topRowVisibleCount > 0 && (
           <div className={`grid gap-5 ${topRowGridCls}`}>
@@ -1486,13 +1799,23 @@ export default function ReferenceDashboard() {
     </>
   );
 
-  if (adminToolkitLayout) {
+  if (adminToolkitLayout && !isOpProfile) {
     return (
       <div className="admin-dashboard-page admin-dashboard-page--toolkit min-h-full w-full">
         <div className="mtk-root mtk-theme--navy">
           <AdminDashboardToolkitHero
             title={t("refDashboard.manufacturingDashboardTitle", "Admin Dashboard")}
             subtitle={t("refDashboard.executiveOverview", "Executive Overview")}
+            actions={
+              sectionVisible(sections, "kpi") ? (
+                <AdminDashboardMoreMenu
+                  title="Admin Dashboard"
+                  filename="admin-dashboard"
+                  rows={adminExportRows}
+                  defaultRecipient={user?.email || ""}
+                />
+              ) : null
+            }
           />
           {sectionVisible(sections, "kpi") ? (
             <AdminDashboardToolkitKpiRow cards={kpiCardsLive} t={t} />
@@ -1501,6 +1824,58 @@ export default function ReferenceDashboard() {
             <div className="ui-page mx-auto max-w-[var(--page-max)] ui-stack admin-dashboard-toolkit-content">
               {dashboardStack}
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isOpProfile) {
+    const todayLabel = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    return (
+      <div className="operator-dashboard min-h-full w-full">
+        <div className="mtk-root mtk-theme--teal">
+          <OperatorDashboardToolkitHero title="OPERATOR DASHBOARD" dateLabel={todayLabel} />
+          {sectionVisible(sections, "kpi") ? <OperatorDashboardToolkitKpiRow cards={operatorKpiCards} t={t} /> : null}
+          <div className="mtk-body">
+            {sectionVisible(sections, "kpi") ? (
+              <div className="op-dash-export">
+                <DashboardReportExport
+                  title="Operator Dashboard"
+                  filename="operator-dashboard"
+                  rows={operatorExportRows}
+                  module="dashboard"
+                />
+              </div>
+            ) : null}
+            <div className={`mtk-layout-row${showTodaysSummary ? " mtk-layout-row--1-1" : ""}`}>
+              <DashboardCheckIn variant="toolkit" />
+              {showTodaysSummary ? <TodaysSummary toolkit items={apiData?.todays_summary || []} /> : null}
+            </div>
+            {showRecentWo ? (
+              <div className="mtk-layout-row">
+                <RecentWorkOrders
+                  toolkit
+                  workOrders={workOrdersLive}
+                  emptyHint="No work orders are assigned to you."
+                  listPath="/my-job-cards?dept=operator"
+                />
+              </div>
+            ) : null}
+            <div className="mtk-layout-row">
+              <OperatorProductionEntries toolkit />
+            </div>
+            {sectionVisible(sections, "production_overview") ? (
+              <div className="mtk-layout-row mtk-layout-row--1-1">
+                <ProductionOverview toolkit chartSets={chartSets} />
+                <MachineControlCard
+                  variant="toolkit"
+                  scoped
+                  initialMachines={apiData?.top_machines || []}
+                  onRefreshData={() => load(true)}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

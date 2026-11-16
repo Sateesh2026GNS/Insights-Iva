@@ -12,13 +12,13 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import NavyMastersShell from "../../components/common/NavyMastersShell";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
-import PageHeader from "../../components/common/PageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
@@ -514,25 +514,32 @@ export default function FinishedGoods() {
     }
   };
 
-  if (loading) return <Loader label="Loading finished goods…" />;
+  if (loading) {
+    return (
+      <NavyMastersShell theme="green" kicker="Produce · Store · Ship" title="FINISHED" accent="GOODS">
+        <Loader label="Loading finished goods…" />
+      </NavyMastersShell>
+    );
+  }
 
   return (
-    <ListPageShell>
+    <NavyMastersShell theme="green"
+      kicker="Produce · Store · Ship"
+      title="FINISHED"
+      accent="GOODS"
+      actions={
+        <InventoryHeaderControls
+          sectionTitle="Finished Goods"
+          itemType="finished_good"
+          dateValue={selectedDate}
+          onDateChange={(v) => setSelectedDate(v || todayISO())}
+          warehouseValue={headerWarehouse}
+          onWarehouseChange={setHeaderWarehouse}
+          warehouses={warehousesApi}
+        />
+      }
+    >
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader variant="inventory"
-        subtitle="Manage and track your finished goods inventory"
-        action={
-          <InventoryHeaderControls
-            sectionTitle="Finished Goods"
-            itemType="finished_good"
-            dateValue={selectedDate}
-            onDateChange={(v) => setSelectedDate(v || todayISO())}
-            warehouseValue={headerWarehouse}
-            onWarehouseChange={setHeaderWarehouse}
-            warehouses={warehousesApi}
-          />
-        }
-      />
 
       <div className="ui-grid-kpi">
         <ClickableKpiCard
@@ -756,6 +763,6 @@ export default function FinishedGoods() {
         }}
       />
     </div>
-    </ListPageShell>
+    </NavyMastersShell>
   );
 }

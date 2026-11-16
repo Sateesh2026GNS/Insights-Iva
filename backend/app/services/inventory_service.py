@@ -38,8 +38,16 @@ def list_warehouses(db: Session, tenant_id: int) -> list[Warehouse]:
     return list(db.scalars(stmt).all())
 
 
-def create_supplier(db: Session, payload: SupplierCreate) -> Supplier:
-    s = Supplier(**payload.model_dump())
+def create_supplier(
+    db: Session,
+    payload: SupplierCreate,
+    *,
+    submitted_by_user_id: int | None = None,
+) -> Supplier:
+    s = Supplier(
+        **payload.model_dump(),
+        submitted_by_user_id=submitted_by_user_id,
+    )
     db.add(s)
     db.commit()
     db.refresh(s)
@@ -147,7 +155,12 @@ def list_suppliers(db: Session, tenant_id: int) -> list[Supplier]:
 
 
 def update_supplier_approval(
-    db: Session, tenant_id: int, supplier_id: int, approval_status: str
+    db: Session,
+    tenant_id: int,
+    supplier_id: int,
+    approval_status: str,
+    *,
+    commit: bool = True,
 ) -> Supplier | None:
     supplier = db.scalars(
         select(Supplier).where(
@@ -157,8 +170,11 @@ def update_supplier_approval(
     if not supplier:
         return None
     supplier.approval_status = approval_status
-    db.commit()
-    db.refresh(supplier)
+    if commit:
+        db.commit()
+        db.refresh(supplier)
+    else:
+        db.flush()
     return supplier
 
 

@@ -92,21 +92,27 @@ def test_api_dashboard(operator_auth, client):
 
 
 def test_api_workorders_today(operator_auth, client):
+    # Plant-wide /api/workorders/* is not on the Operator allowlist; own queue is.
     resp = client.get("/api/workorders/today", headers=operator_auth["headers"])
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["success"] is True
-    assert isinstance(body["data"], list)
+    assert resp.status_code == 403
+    mine = client.get("/api/work-orders/my", headers=operator_auth["headers"])
+    assert mine.status_code == 200
+    assert isinstance(mine.json(), (list, dict))
 
 
 def test_api_machines(operator_auth, client):
     resp = client.get("/api/machines", headers=operator_auth["headers"])
-    assert resp.status_code == 200
-    assert client.get("/api/machines/running", headers=operator_auth["headers"]).json()["success"]
+    assert resp.status_code == 403
+    running = client.get("/api/machines/running", headers=operator_auth["headers"])
+    assert running.status_code == 403
+    mine = client.get("/api/machines/my", headers=operator_auth["headers"])
+    assert mine.status_code == 200
 
 
 def test_api_response_envelope(operator_auth, client):
-    resp = client.get("/api/products", headers=operator_auth["headers"])
+    denied = client.get("/api/products", headers=operator_auth["headers"])
+    assert denied.status_code == 403
+    resp = client.get("/api/dashboard", headers=operator_auth["headers"])
     body = resp.json()
     assert set(body.keys()) == {"success", "message", "data", "errors", "timestamp"}
     assert body["success"] is True

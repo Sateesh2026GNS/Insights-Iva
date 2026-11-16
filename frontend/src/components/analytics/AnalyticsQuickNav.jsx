@@ -23,7 +23,7 @@ export default function AnalyticsQuickNav() {
           key={link.to}
           to={link.to}
           className={({ isActive }) =>
-            `rounded-full px-3 py-1.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30 ${
+            `inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30 ${
               isActive
                 ? "bg-[var(--color-primary)] font-medium text-white"
                 : "border border-[var(--color-border)] bg-[var(--color-surface)] font-normal text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]"

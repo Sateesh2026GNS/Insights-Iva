@@ -91,6 +91,12 @@ def get_current_user(
     touch_user_activity(db, user)
     if session_id:
         touch_refresh_session(db, str(session_id))
+    # Activity/session commits expire the instance (expire_on_commit). Re-load roles
+    # so RBAC checks never see an empty relationship after auth.
+    try:
+        db.refresh(user, attribute_names=["roles"])
+    except Exception:
+        db.expire(user, ["roles"])
     request.state.session_id = session_id
     return user
 

@@ -1,0 +1,237 @@
+.gsp-hamali .gsp-kpis strong {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.gsp-hamali-art {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex: none;
+  color: #f8fafc;
+}
+
+.gsp-hamali-art svg {
+  width: 42px;
+  height: 42px;
+}
+
+.gsp-hamali-boxes {
+  display: grid;
+  grid-template-columns: 16px 16px;
+  gap: 3px;
+  align-items: end;
+}
+
+.gsp-hamali-boxes span {
+  display: block;
+  background: linear-gradient(#f8e2b8, #c4843a);
+  border: 1px solid #9a5b16;
+  border-radius: 2px;
+}
+
+.gsp-hamali-boxes span:nth-child(1) { height: 14px; }
+.gsp-hamali-boxes span:nth-child(2) { height: 24px; }
+.gsp-hamali-boxes span:nth-child(3) { height: 18px; grid-column: 1 / -1; }
+
+.gsp-hamali h3 {
+  margin: 12px 0 4px;
+  padding: 0;
+  border: 0;
+  color: #0b3a66;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gsp-hamali select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #f5d76e;
+  background: #fff7cc;
+  border-radius: 2px;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+.gsp-hamali .is-linked input {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.hamali-vchart {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 6px;
+  height: 168px;
+}
+
+.hamali-vchart__axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 9px;
+  text-align: right;
+}
+
+.hamali-vchart__plot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  border-left: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.hamali-vcol {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 42px;
+  height: 100%;
+}
+
+.hamali-vcol i {
+  display: block;
+  width: 28px;
+  border-radius: 2px 2px 0 0;
+}
+
+.hamali-vlabels {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.hamali-vlabels div {
+  display: flex;
+  justify-content: space-around;
+}
+
+.gsp-hamali .gsp-bars--trucks li {
+  grid-template-columns: 108px 1fr;
+  margin-bottom: 4px;
+  font-size: 10px;
+}
+
+.gsp-hamali .gsp-bars--trucks .gsp-bar {
+  height: 8px;
+}
+
+.gsp-hamali .gsp-axis {
+  margin-left: 114px;
+}
+
+.hamali-compare {
+  min-width: 460px;
+}
+
+.hamali-compare td:first-child,
+.hamali-compare th:first-child {
+  text-align: left;
+}
+
+.hamali-compare tr.is-cheapest td:first-child {
+  font-weight: 800;
+}
+
+.hamali-month {
+  position: relative;
+  min-width: 96px;
+}
+
+.hamali-month .gsp-val-bar {
+  top: 4px;
+  bottom: 4px;
+}
+
+.hamali-month.is-cheap .gsp-val-bar {
+  background: #f97316;
+}
+
+.hamali-month strong {
+  position: relative;
+  z-index: 1;
+}
+
+.hamali-month.is-on-bar strong {
+  color: #fff;
+}
+
+.gsp-hamali-table {
+  min-width: 980px;
+}
+
+.gsp-hamali-table th:nth-child(-n + 4),
+.gsp-hamali-table td:nth-child(-n + 4) {
+  text-align: left;
+}
+
+.gsp-hamali-table input,
+.gsp-hamali-table select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 2px;
+  padding: 2px 4px;
+  font: inherit;
+  color: inherit;
+}
+
+.gsp-hamali-table .is-input {
+  background: #fff7cc;
+}
+
+.gsp-hamali-table .is-input input,
+.gsp-hamali-table .is-input select {
+  text-align: right;
+}
+
+.gsp-hamali-table td:nth-child(-n + 4) input,
+.gsp-hamali-table td:nth-child(-n + 4) select {
+  text-align: left;
+}
+
+.gsp-hamali-table .is-kg {
+  background: #dbeafe;
+}
+
+.gsp-hamali-table .is-kg input {
+  color: #1d4ed8;
+  font-weight: 700;
+  text-align: right;
+  background: transparent;
+}
+
+.gsp-hamali-table .is-calc {
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .gsp-hamali .hamali-vchart,
+  .gsp-hamali .hamali-vlabels {
+    grid-template-columns: minmax(40px, 58px) minmax(0, 1fr);
+  }
+
+  .gsp-hamali .hamali-vchart__plot {
+    min-width: 0;
+  }
+
+  .gsp-hamali .hamali-vcol {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .gsp-hamali .hamali-vcol i {
+    max-width: 100%;
+  }
+}

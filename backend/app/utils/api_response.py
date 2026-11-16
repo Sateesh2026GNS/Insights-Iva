@@ -32,10 +32,15 @@ def error_response(
     message: str,
     errors: list[str] | str | None = None,
     data: Any = None,
+    *,
+    code: str | None = None,
 ) -> dict:
-    return ApiResponse(
+    payload = ApiResponse(
         success=False,
         message=message,
         data=jsonable_encoder(data) if data is not None else None,
         errors=errors,
     ).model_dump()
+    if code:
+        payload["code"] = code
+    return payload

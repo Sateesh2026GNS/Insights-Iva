@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "insights-734ee",
+    "site": "insights-iva-erp",
     "public": "dist",
     "predeploy": "npm run build",
     "ignore": [

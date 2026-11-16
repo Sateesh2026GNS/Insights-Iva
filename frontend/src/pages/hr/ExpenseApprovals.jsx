@@ -708,12 +708,14 @@ export default function ExpenseApprovals() {
               <thead>
                 <tr>
                   <th style={{ width: 40 }}>
-                    <input
-                      type="checkbox"
-                      checked={allPageSelected}
-                      onChange={() => setSelected(allPageSelected ? [] : pagedRows.map((r) => r.id))}
-                      aria-label="Select all on page"
-                    />
+                    <label className="hr-exp-approvals__checkbox-target">
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        onChange={() => setSelected(allPageSelected ? [] : pagedRows.map((r) => r.id))}
+                        aria-label="Select all on page"
+                      />
+                    </label>
                   </th>
                   <th>Employee</th>
                   <th>Branch</th>
@@ -740,12 +742,14 @@ export default function ExpenseApprovals() {
                     return (
                       <tr key={row.id}>
                         <td>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => setSelected((prev) => (checked ? prev.filter((id) => id !== row.id) : [...prev, row.id]))}
-                            aria-label={`Select ${row.employee_name || row.name}`}
-                          />
+                          <label className="hr-exp-approvals__checkbox-target">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setSelected((prev) => (checked ? prev.filter((id) => id !== row.id) : [...prev, row.id]))}
+                              aria-label={`Select ${row.employee_name || row.name}`}
+                            />
+                          </label>
                         </td>
                         <td>{row.employee_name || row.employee || "—"}</td>
                         <td>{branchLabel(row.branch)}</td>

@@ -52,7 +52,7 @@ def test_operator_cannot_view_unassigned_work_order_detail(client, register_admi
         f"/api/work-orders/my/{wo_id}",
         headers={"Authorization": f"Bearer {op_b['access_token']}"},
     )
-    assert res.status_code == 403
+    assert res.status_code == 404
 
 
 def test_production_entry_reject_reason_required(client, register_admin):
@@ -258,4 +258,4 @@ def test_unassigned_operator_cannot_post_entry(client, register_admin):
             "quantity_rejected": 0,
         },
     )
-    assert res.status_code == 403
+    assert res.status_code == 404

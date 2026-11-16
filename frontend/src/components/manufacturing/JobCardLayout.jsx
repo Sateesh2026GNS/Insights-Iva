@@ -125,7 +125,7 @@ export function StageNavLinks({ orderId, currentStage }) {
         <Link
           key={s.key}
           to={s.path}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+          className={`inline-flex min-h-11 items-center rounded-full px-3 py-1 text-xs font-semibold transition ${
             currentStage === s.key
               ? "bg-[var(--color-primary)] text-white shadow-sm"
               : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]"

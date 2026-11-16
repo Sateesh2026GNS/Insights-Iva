@@ -13,13 +13,13 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
+import { ListPageCard, ListPageCardBody } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import DataTable from "../../components/common/DataTable";
 import EmptyState from "../../components/common/EmptyState";
 import KpiCard, { ClickableKpiCard } from "../../components/common/KpiCard";
 import Loader from "../../components/common/Loader";
 import { SearchBar } from "../../components/common/SearchFilter";
-import PageHeader from "../../components/common/PageHeader";
 import SkeletonCard from "../../components/common/SkeletonCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
@@ -488,29 +488,32 @@ export default function RawMaterials() {
   };
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell
+      theme="yellow"
+      kicker="Receive · Store · Issue"
+      title="RAW"
+      accent="MATERIALS"
+      subtitle="Manage and track your raw materials inventory"
+      actions={
+        <InventoryHeaderControls
+          sectionTitle="Raw Materials"
+          itemType="raw_material"
+          dateValue={selectedDate}
+          onDateChange={(v) => setSelectedDate(v || todayISO())}
+          warehouseValue={headerWarehouse}
+          onWarehouseChange={setHeaderWarehouse}
+          warehouses={warehousesApi}
+        >
+          {refreshing ? (
+            <span className="inline-flex items-center gap-1.5 pb-1 text-[12px] text-[var(--color-text-muted)]">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              Refreshing…
+            </span>
+          ) : null}
+        </InventoryHeaderControls>
+      }
+    >
     <div className="min-w-0 space-y-5 pb-4">
-      <PageHeader variant="inventory"
-        subtitle="Manage and track your raw materials inventory"
-        action={
-          <InventoryHeaderControls
-            sectionTitle="Raw Materials"
-            itemType="raw_material"
-            dateValue={selectedDate}
-            onDateChange={(v) => setSelectedDate(v || todayISO())}
-            warehouseValue={headerWarehouse}
-            onWarehouseChange={setHeaderWarehouse}
-            warehouses={warehousesApi}
-          >
-            {refreshing ? (
-              <span className="inline-flex items-center gap-1.5 pb-1 text-[12px] text-[var(--color-text-muted)]">
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                Refreshing…
-              </span>
-            ) : null}
-          </InventoryHeaderControls>
-        }
-      />
 
       <div className="ui-grid-kpi">
         {initialLoading ? (
@@ -705,6 +708,7 @@ export default function RawMaterials() {
       ) : null}
 
       <ConfirmDialog
+        className="inv-plan-dialog mtk-root mtk-theme--yellow"
         open={Boolean(deleteTarget)}
         title="Delete record"
         message="Are you sure you want to delete this record?"
@@ -717,6 +721,6 @@ export default function RawMaterials() {
         }}
       />
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

@@ -147,8 +147,8 @@ describe("ProductionPlanning", () => {
         <ProductionPlanning />
       </MemoryRouter>
     );
-    expect(await screen.findByText("Live Bracket")).toBeTruthy();
-    expect(screen.getByText("PO-101")).toBeTruthy();
+    expect((await screen.findAllByText("Live Bracket")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("PO-101").length).toBeGreaterThan(0);
   });
 
   it("shows error state without sample rows when planning API fails", async () => {

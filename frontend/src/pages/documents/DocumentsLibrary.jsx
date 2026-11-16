@@ -59,7 +59,7 @@ import {
   getDocumentPreviewFile,
 } from "../../api/documentsV1Api";
 import { apiErrorMessage, classifyApiError } from "../../utils/apiError";
-import { isAdmin, userCanAction } from "../../config/permissions";
+import { isAdmin, isOperator, userCanAction } from "../../config/permissions";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import { formatDocDate, formatFileSize } from "../../utils/documentUtils";
 import { DOCUMENTS_TOOLKIT_KPIS, formatDocumentsKpiValue } from "../../utils/documentsToolkit";
@@ -213,6 +213,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   const [statusEditValue, setStatusEditValue] = useState("draft");
 
   const canHr = userCanHr(user);
+  const operatorView = isOperator(user);
   const canDelete = userCanDelete(user);
   const canUpdateStatus = isAdmin(user) || userCanAction(user, "documents", "update");
   const categoryOptions = CATEGORIES.filter((c) => c.value !== "hr" || canHr);
@@ -240,8 +241,8 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
     setListError(null);
     const params = filtersToApi(filters);
     const [listRes, sumRes] = await Promise.allSettled([
-      listDocuments(params),
-      getDocumentsSummary(params),
+      listDocuments(params, { skipGlobalError: operatorView }),
+      getDocumentsSummary(params, { skipGlobalError: operatorView }),
     ]);
 
     if (listRes.status === "fulfilled") {
@@ -275,7 +276,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
 
     setLoading(false);
     setSummaryLoading(false);
-  }, [filters]);
+  }, [filters, operatorView]);
 
   usePageRefresh(load);
   useEffect(() => {
@@ -283,6 +284,10 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
   }, [load]);
 
   useEffect(() => {
+    if (operatorView) {
+      setDepartments([]);
+      return undefined;
+    }
     let active = true;
     getDepartments()
       .then((res) => {
@@ -293,7 +298,7 @@ export default function DocumentsLibrary({ initialDocType = null, title, subtitl
         if (active) setDepartments([]);
       });
     return () => { active = false; };
-  }, []);
+  }, [operatorView]);
 
   useEffect(() => {
     const on = () => setOffline(false);

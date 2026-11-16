@@ -24,11 +24,11 @@ export default function PermissionDeniedState({
       <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
       <p className="mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">{description}</p>
       {onBack ? (
-        <Button type="button" variant="secondary" className="mt-6" onClick={onBack}>
+        <Button type="button" variant="secondary" className="mt-6 min-h-11" onClick={onBack}>
           {backLabel}
         </Button>
       ) : (
-        <Button variant="primary" to="/" className="mt-6">
+        <Button variant="primary" to="/" className="mt-6 min-h-11">
           Back to Dashboard
         </Button>
       )}

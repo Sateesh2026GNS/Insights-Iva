@@ -1,9 +1,11 @@
 import ResourcePage from "../../components/common/ResourcePage";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { StatusBadge } from "../../components/common/Table";
 import { getComplianceLogs, createComplianceLog } from "../../api/qualityApi";
 
 export default function ComplianceLogs() {
   return (
+    <InventoryPlanningShell theme="orange" kicker="Audit · Certify · Record" title="COMPLIANCE" accent="LOGS">
     <ResourcePage
       title="Compliance Logs"
       subtitle="Track audits, certifications, and regulatory checks."
@@ -54,5 +56,6 @@ export default function ComplianceLogs() {
         { name: "description", label: "Description", type: "textarea", full: true },
       ]}
     />
+    </InventoryPlanningShell>
   );
 }

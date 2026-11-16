@@ -83,9 +83,9 @@ describe("productionManagerNavConfig", () => {
       "maintenance",
       "alerts",
       "documents",
-      "meetings",
-      "chat",
       "analytics",
+      "chat",
+      "meetings",
       "settings",
     ]);
   });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import Loader from "../../components/common/Loader";
-import Table from "../../components/common/Table";
+import Table from "../../components/common/ResponsiveTable";
 import { listExpenses } from "../../api/accountsApi";
 import { exportToExcel, exportToPdf } from "../../utils/exportUtils";
 import useTenantId from "../../hooks/useTenantId";

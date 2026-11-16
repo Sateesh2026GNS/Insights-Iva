@@ -28,6 +28,7 @@ from app.services.documents.registry_service import (
     list_versions,
     soft_delete_document,
     transition_status,
+    _serialize_document,
 )
 from app.services.documents.storage import (
     get_document_bytes,
@@ -131,6 +132,16 @@ async def create_document_endpoint(
         filename=file.filename or "upload",
         upload_note=upload_note,
     )
+
+
+@router.get("/{document_id}")
+def get_document_endpoint(
+    document_id: int,
+    user: User = Depends(require_permission(MODULE)),
+    db: Session = Depends(get_db),
+):
+    doc = get_document(db, user, document_id)
+    return _serialize_document(db, doc)
 
 
 @router.post("/{document_id}/versions")

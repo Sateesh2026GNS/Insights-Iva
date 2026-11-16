@@ -8,7 +8,7 @@ import {
   storeStockIssuedTodayPath,
 } from "./storeInventoryReportCatalog";
 
-const ALLOWED_PREFIXES = ["/inventory", "/procurement/goods-receipt"];
+const ALLOWED_PREFIXES = ["/inventory"];
 
 function hrefAllowed(href) {
   return ALLOWED_PREFIXES.some((p) => href === p || href.startsWith(`${p}`));
@@ -17,11 +17,17 @@ function hrefAllowed(href) {
 describe("storeInventoryReportCatalog", () => {
   it("lists store/inventory report destinations only (no accounting)", () => {
     const links = getStoreInventoryReportLinks();
-    expect(links.length).toBe(11);
+    expect(links.length).toBe(6);
     for (const row of links) {
       expect(hrefAllowed(row.href.split("?")[0])).toBe(true);
       expect(row.href).not.toMatch(/^\/reports/);
       expect(row.href).not.toMatch(/^\/accounts\//);
+      expect(row.href).not.toMatch(/^\/procurement\/goods-receipt/);
+      expect(row.href).not.toMatch(/^\/inventory\/stock-in/);
+      expect(row.href).not.toMatch(/^\/inventory\/stock-return/);
+      expect(row.href).not.toMatch(/^\/inventory\/stock-ledger/);
+      expect(row.href).not.toMatch(/^\/inventory\/material-requests/);
+      expect(row.href).not.toMatch(/^\/inventory\/history/);
     }
     expect(links.some((r) => r.id === "stock-ledger")).toBe(false);
   });
@@ -30,23 +36,25 @@ describe("storeInventoryReportCatalog", () => {
     const sections = getReportsByCategory();
     expect(sections.length).toBeGreaterThan(0);
     const total = sections.reduce((n, s) => n + s.reports.length, 0);
-    expect(total).toBe(11);
+    expect(total).toBe(6);
   });
 
-  it("exposes stock ledger separately from report cards", () => {
-    expect(STORE_STOCK_LEDGER_PATH).toBe("/inventory/stock-ledger");
+  it("points leftover stock footer helpers at stock items (history removed)", () => {
+    expect(STORE_STOCK_LEDGER_PATH).toBe("/inventory");
   });
 
-  it("builds today's stock issued path for dashboard KPI alignment", () => {
-    expect(storeStockIssuedTodayPath("2026-03-16")).toContain("type=out");
-    expect(storeStockIssuedTodayPath("2026-03-16")).toContain("from=2026-03-16");
+  it("builds today's stock issued path without inventory history", () => {
+    expect(storeStockIssuedTodayPath("2026-03-16")).toBe("/inventory");
   });
 
   it("includes user-facing report ids", () => {
     const ids = new Set(STORE_INVENTORY_REPORTS.filter((r) => r.available).map((r) => r.id));
     expect(ids.has("low-stock")).toBe(true);
-    expect(ids.has("stock-issued")).toBe(true);
+    expect(ids.has("stock-issued")).toBe(false);
     expect(ids.has("pending-stock-transfers")).toBe(true);
-    expect(ids.has("purchase-receipts")).toBe(true);
+    expect(ids.has("purchase-receipts")).toBe(false);
+    expect(ids.has("stock-received")).toBe(false);
+    expect(ids.has("material-returns")).toBe(false);
+    expect(ids.has("material-requests")).toBe(false);
   });
 });

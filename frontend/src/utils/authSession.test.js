@@ -4,8 +4,11 @@ import {
   SESSION_ACTIVE_KEY,
   clearBrowserSessionMarkers,
   clearLegacyAuthTokens,
+  clearSessionTerminated,
   isBrowserSessionMarked,
+  isSessionTerminated,
   markBrowserSessionActive,
+  markSessionTerminated,
 } from "./authSession";
 
 describe("authSession", () => {
@@ -28,5 +31,15 @@ describe("authSession", () => {
     clearLegacyAuthTokens();
     expect(localStorage.getItem("smrt-token")).toBeNull();
     expect(localStorage.getItem("smrt-refresh-token")).toBeNull();
+  });
+
+  it("blocks session restore after logout until the next login", () => {
+    markSessionTerminated();
+    expect(isSessionTerminated()).toBe(true);
+    markBrowserSessionActive();
+    expect(isSessionTerminated()).toBe(false);
+    markSessionTerminated();
+    clearSessionTerminated();
+    expect(isSessionTerminated()).toBe(false);
   });
 });

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <pattern id="rc" width="160" height="160" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#9ca3bf" stroke-width="1.2" opacity="0.45">
+        <rect x="14" y="18" width="22" height="28" rx="2"/>
+        <path d="M18 26h14M18 32h10"/>
+        <path d="M52 44v18M46 53h12M58 48v10"/>
+        <circle cx="98" cy="28" r="10"/>
+        <path d="M93 28h10M98 23v10"/>
+        <path d="M24 72h8v14h-8zM36 76h14v6H36zM58 70v18M52 79h12"/>
+        <path d="M88 62h20v14H88zM92 66h12M92 70h8"/>
+        <circle cx="130" cy="78" r="8"/>
+        <path d="M120 108c6-8 16-8 22 0s6 14-2 20-16 4-20-8"/>
+        <path d="M18 118h28v12H18zM22 122h8"/>
+        <path d="M70 108l6-10 6 10-6 10z"/>
+        <path d="M108 118h24v8h-24zM112 122h16"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="#eef0f6"/>
+  <rect width="100%" height="100%" fill="url(#rc)"/>
+</svg>

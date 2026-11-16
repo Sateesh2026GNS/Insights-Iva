@@ -1,11 +1,9 @@
-/** Lightweight, robust markdown renderer for AI messages (bold, code, lists, headings, callouts). */
+/** Lightweight markdown renderer for AI messages (headings, lists, tables, code, links). */
 
 import { formatAiMessageInline } from "../../utils/aiMessageFormat";
 
-export default function AiMessageContent({ content, contentRef }) {
-  if (!content) return null;
-
-  const rawLines = String(content).split("\n");
+function parseTextBlocks(text) {
+  const rawLines = String(text || "").split("\n");
   const blocks = [];
   let currentList = [];
 
@@ -64,6 +62,70 @@ export default function AiMessageContent({ content, contentRef }) {
   });
 
   flushList();
+  return absorbTables(rawLines, blocks);
+}
+
+function absorbTables(rawLines, blocks) {
+  const tables = [];
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const line = rawLines[i].trim();
+    const divider = (rawLines[i + 1] || "").trim();
+    if (!line.startsWith("|") || !/^\|?\s*:?-{3,}/.test(divider)) continue;
+    const header = splitTableRow(line);
+    const rows = [];
+    let j = i + 2;
+    while (j < rawLines.length && rawLines[j].trim().startsWith("|")) {
+      rows.push(splitTableRow(rawLines[j]));
+      j += 1;
+    }
+    tables.push({ header, rows, start: line });
+    i = j - 1;
+  }
+  if (!tables.length) return blocks;
+  const next = [];
+  blocks.forEach((block) => {
+    const table = tables.find((item) => block.type === "p" && block.text === item.start);
+    if (table) {
+      next.push({ type: "table", header: table.header, rows: table.rows });
+      return;
+    }
+    if (block.type === "p" && (block.text.startsWith("|") || /^\|?\s*:?-{3,}/.test(block.text))) return;
+    next.push(block);
+  });
+  return next;
+}
+
+function splitTableRow(line) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function splitFenced(content) {
+  const parts = [];
+  const re = /```([^\n`]*)\n?([\s\S]*?)```/g;
+  let last = 0;
+  let match = re.exec(content);
+  while (match) {
+    if (match.index > last) parts.push({ type: "text", text: content.slice(last, match.index) });
+    parts.push({ type: "code", text: match[2].replace(/\n$/, "") });
+    last = match.index + match[0].length;
+    match = re.exec(content);
+  }
+  if (last < content.length) parts.push({ type: "text", text: content.slice(last) });
+  return parts.length ? parts : [{ type: "text", text: content }];
+}
+
+export default function AiMessageContent({ content, contentRef }) {
+  if (!content) return null;
+
+  const sections = splitFenced(String(content));
+  const blocks = sections.flatMap((section) =>
+    section.type === "code" ? [{ type: "code", text: section.text }] : parseTextBlocks(section.text)
+  );
 
   return (
     <div ref={contentRef} className="space-y-1.5 text-slate-800">
@@ -104,16 +166,46 @@ export default function AiMessageContent({ content, contentRef }) {
             />
           );
         }
+        if (block.type === "code") {
+          return (
+            <pre key={idx} className="iva-ai-code">
+              <code>{block.text}</code>
+            </pre>
+          );
+        }
+        if (block.type === "table") {
+          return (
+            <div key={idx} className="iva-ai-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    {block.header.map((cell, cellIdx) => (
+                      <th key={cellIdx} dangerouslySetInnerHTML={{ __html: formatAiMessageInline(cell) }} />
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIdx) => (
+                    <tr key={rowIdx}>
+                      {row.map((cell, cellIdx) => (
+                        <td key={cellIdx} dangerouslySetInnerHTML={{ __html: formatAiMessageInline(cell) }} />
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
         if (block.type === "list") {
           return (
-            <div key={idx} className="my-1.5 rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-xs">
+            <div key={idx} className="my-1.5 rounded-xl border border-slate-200/80 bg-white p-2.5">
               <ul className="space-y-1.5">
                 {block.items.map((item, itemIdx) => (
-                  <li
-                    key={itemIdx}
-                    className="text-xs sm:text-sm leading-relaxed text-slate-700 flex items-start gap-1.5"
-                    dangerouslySetInnerHTML={{ __html: formatAiMessageInline(item) }}
-                  />
+                  <li key={itemIdx} className="flex items-start gap-2 text-sm leading-relaxed text-slate-700">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-primary)]" aria-hidden />
+                    <span dangerouslySetInnerHTML={{ __html: formatAiMessageInline(item) }} />
+                  </li>
                 ))}
               </ul>
             </div>
@@ -131,10 +223,11 @@ export default function AiMessageContent({ content, contentRef }) {
         if (block.type === "spacer") {
           return <div key={idx} className="h-1" />;
         }
+        if (!block.text) return null;
         return (
           <p
             key={idx}
-            className="text-xs sm:text-sm leading-relaxed text-slate-700"
+            className="text-sm leading-relaxed text-slate-700 break-words"
             dangerouslySetInnerHTML={{ __html: formatAiMessageInline(block.text) }}
           />
         );

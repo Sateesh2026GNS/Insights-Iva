@@ -17,6 +17,7 @@ import { SearchBar } from "../common/SearchFilter";
 import EmptyState from "../common/EmptyState";
 import StatusBadge from "../common/StatusBadge";
 import { useToast } from "../../context/ToastContext";
+import { isAdmin } from "../../config/permissions";
 import CreateDropdown from "./CreateDropdown";
 import GoogleCalendarSetupPanel from "./GoogleCalendarSetupPanel";
 import "./meetingsCalendar.css";
@@ -191,6 +192,9 @@ export default function MeetingsCalendarView({
   setOpenMenuId,
 }) {
   const { addToast } = useToast();
+  const googleReady = googleStatus?.configured === true;
+  const missingSettings = Array.isArray(googleStatus?.missing_settings) ? googleStatus.missing_settings : [];
+  const showAdminDiagnostic = !googleReady && isAdmin(user) && missingSettings.length > 0;
   const [viewMode, setViewMode] = useState("week");
   const [weekStart, setWeekStart] = useState(() => startOfWeekSunday(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => toIsoDate(new Date()));
@@ -466,9 +470,16 @@ export default function MeetingsCalendarView({
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
             <span className="font-medium">
-              Google Calendar is not connected. Connect your Google account to auto-sync meetings and generate Google Meet links.
+              {googleReady
+                ? "Google Calendar is not connected. Connect your Google account to auto-sync meetings and generate Google Meet links."
+                : "Google Calendar integration is not configured. Please contact your workspace administrator."}
             </span>
           </div>
+          {showAdminDiagnostic ? (
+            <p className="w-full font-medium">
+              Missing server settings: {missingSettings.join(", ")}. Set them in the API environment and restart the server.
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={onConnectGoogle}
@@ -578,7 +589,9 @@ export default function MeetingsCalendarView({
             ) : (
               <>
                 <p className="text-[11px] text-[var(--gcal-muted)] mb-2.5 leading-snug">
-                  Sync meetings and generate Google Meet links with 1 click.
+                  {googleReady
+                    ? "Sync meetings and generate Google Meet links with 1 click."
+                    : "Google Calendar integration is not configured. Please contact your workspace administrator."}
                 </p>
                 <button
                   type="button"

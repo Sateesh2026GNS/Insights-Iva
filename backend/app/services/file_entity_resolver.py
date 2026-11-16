@@ -6,11 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.sales import Customer, Lead, SalesOrder
-from app.models.hr import Employee
+from app.models.hr import Employee, LeaveRequest
 from app.models.document import Document
 from app.models.accounts import Expense
-from app.models.inventory import InventoryItem, Warehouse
-from app.models.procurement import PurchaseOrder
+from app.models.inventory import InventoryItem, StockAdjustment, Supplier, Warehouse
+from app.models.procurement import MaterialRequest, PurchaseOrder
+from app.models.production import ProductionOrder
 
 
 ENTITY_MODELS = {
@@ -21,6 +22,13 @@ ENTITY_MODELS = {
     "inventory_item": InventoryItem,
     "warehouse": Warehouse,
     "purchase_order": PurchaseOrder,
+    "material_request": MaterialRequest,
+    "supplier": Supplier,
+    "vendor": Supplier,
+    "leave_request": LeaveRequest,
+    "production_order": ProductionOrder,
+    "stock_adjustment": StockAdjustment,
+    "inventory_adjustment": StockAdjustment,
     "expense": Expense,
     "lead": Lead,
 }

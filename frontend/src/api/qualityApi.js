@@ -1,6 +1,6 @@
 import api from "./axiosConfig";
 
-export const getInspections = () => api.get("/quality/inspection");
+export const getInspections = () => api.get("/quality/inspection", { skipGlobalError: true });
 export const createInspection = (payload) => api.post("/quality/inspection", payload);
 
 export const getQualityHub = () => api.get("/quality/hub");

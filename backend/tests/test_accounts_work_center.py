@@ -1,9 +1,10 @@
 """Accounts work-control dashboard API."""
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from app.core.database import SessionLocal
+from app.models.hr_module import ExpenseClaim
 from app.models.sales import Customer, Invoice
 from app.services.accounts_work_center_service import get_accounts_work_center
 
@@ -96,6 +97,148 @@ def test_cancelled_invoice_excluded_from_receivables_kpi(register_admin, client)
     assert float(body["kpis"]["total_receivables"]) < 99999.0
 
 
+def test_credit_note_and_proforma_are_not_added_to_receivables(register_admin, client):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    today = date.today().isoformat()
+    before = client.get(
+        "/accounts/dashboard",
+        headers=admin["headers"],
+        params={"date_from": today, "date_to": today},
+    ).json()
+    before_recv = float(before["kpis"]["total_receivables"])
+    before_sales = float(before["financial_dashboard"]["sales_purchases"]["totals"]["sales"])
+
+    db = SessionLocal()
+    try:
+        customer = Customer(tenant_id=tenant_id, name="Credit Note Customer", status="active")
+        db.add(customer)
+        db.flush()
+        common = dict(
+            tenant_id=tenant_id,
+            customer_id=customer.id,
+            issue_date=date.today(),
+            due_date=date.today(),
+            amount_paid=0.0,
+            status="sent",
+            invoice_status="active",
+            payment_status="unpaid",
+        )
+        db.add(Invoice(invoice_number=f"INV-REV-{uuid.uuid4().hex[:6]}", document_type="tax_invoice", grand_total=10000.0, subtotal=10000.0, **common))
+        db.add(Invoice(invoice_number=f"CN-{uuid.uuid4().hex[:6]}", document_type="credit_note", grand_total=4000.0, subtotal=4000.0, **common))
+        db.add(Invoice(invoice_number=f"PF-{uuid.uuid4().hex[:6]}", document_type="proforma", grand_total=8000.0, subtotal=8000.0, **common))
+        db.commit()
+    finally:
+        db.close()
+
+    after = client.get(
+        "/accounts/dashboard",
+        headers=admin["headers"],
+        params={"date_from": today, "date_to": today},
+    ).json()
+    assert float(after["kpis"]["total_receivables"]) >= before_recv + 9999.0
+    assert float(after["kpis"]["total_receivables"]) < before_recv + 12000.0
+    sales_delta = float(after["financial_dashboard"]["sales_purchases"]["totals"]["sales"]) - before_sales
+    assert sales_delta >= 9999.0
+    assert sales_delta < 12000.0
+    assert after["financial_dashboard"]["profit"]["available"] is False
+    assert after["financial_dashboard"]["definitions"]["revenue"]
+
+
+def test_draft_journal_is_an_unposted_action(register_admin, client):
+    from app.models.accounts import JournalEntry
+
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    db = SessionLocal()
+    try:
+        db.add(
+            JournalEntry(
+                tenant_id=tenant_id,
+                entry_number=f"JE-{uuid.uuid4().hex[:6]}",
+                entry_date=date.today(),
+                description="Unposted accrual",
+                status="Draft",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    body = client.get("/accounts/dashboard", headers=admin["headers"]).json()
+    item = next(row for row in body["pending_work"] if row["id"] == "unposted_journals")
+    assert item["count"] >= 1
+    assert item["href"] == "/accounts/journal-entries"
+
+
+def test_aging_buckets_sum_equals_total_receivables(register_admin, client):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    today = date.today()
+    db = SessionLocal()
+    try:
+        customer = Customer(tenant_id=tenant_id, name="Aging Co", status="active")
+        db.add(customer)
+        db.flush()
+        specs = [
+            ("current", today + timedelta(days=10), 10000),
+            ("soon", today + timedelta(days=15), 5000),
+            ("d15", today - timedelta(days=15), 4000),
+            ("d45", today - timedelta(days=45), 3000),
+            ("d100", today - timedelta(days=100), 2000),
+        ]
+        for label, due, amount in specs:
+            db.add(
+                Invoice(
+                    tenant_id=tenant_id,
+                    customer_id=customer.id,
+                    invoice_number=f"INV-AGE-{label}-{uuid.uuid4().hex[:6]}",
+                    issue_date=today,
+                    due_date=due,
+                    grand_total=amount,
+                    amount_paid=0.0,
+                    status="sent",
+                    invoice_status="active",
+                    payment_status="unpaid",
+                    subtotal=amount,
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+
+    body = client.get("/accounts/dashboard", headers=admin["headers"]).json()
+    aging = body["financial_dashboard"]["aging"]["receivable"]
+    bucket_sum = round(sum(float(value) for value in aging["buckets"].values()), 2)
+    receivables = round(float(body["financial_dashboard"]["overview"]["receivables"]["total"]), 2)
+    assert bucket_sum == round(float(aging["total"]), 2)
+    assert bucket_sum == receivables
+
+
+def test_dashboard_lists_pending_expense_claims(register_admin, client):
+    admin = register_admin()
+    tenant_id = admin["user"]["tenant_id"]
+    db = SessionLocal()
+    try:
+        db.add(
+            ExpenseClaim(
+                tenant_id=tenant_id,
+                expense_name="Site travel",
+                amount=1800,
+                status="pending",
+                created_by_name="Other Staff",
+                expense_date=date.today(),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    body = client.get("/accounts/dashboard", headers=admin["headers"]).json()
+    claims = body.get("pending_expense_claims") or []
+    assert any(row.get("name") == "Site travel" and row.get("created_by") == "Other Staff" for row in claims)
+
+
 def test_operator_cannot_access_dashboard(client, register_admin):
     admin = register_admin()
     email = "op-dash@example.com"
@@ -115,3 +258,24 @@ def test_operator_cannot_access_dashboard(client, register_admin):
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     resp = client.get("/accounts/dashboard", headers=headers)
     assert resp.status_code in (403, 404)
+
+
+def test_week_due_bars_place_overdue_this_week_and_later():
+    from app.services.accounts_financial_dashboard_service import week_due_bars
+
+    today = date(2026, 10, 28)
+    bars = week_due_bars(
+        [
+            (date(2026, 7, 1), 4000),
+            (date(2026, 10, 28), 15000),
+            (date(2026, 11, 27), 20000),
+        ],
+        today,
+    )
+    assert [bar["label"] for bar in bars][0] == "Due"
+    assert bars[0]["amount"] == 4000
+    assert bars[3]["label"] == "This week"
+    assert bars[3]["amount"] == 15000
+    assert bars[5]["label"] == "Not due"
+    assert bars[5]["amount"] == 20000
+    assert sum(bar["amount"] for bar in bars) == 39000

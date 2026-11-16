@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import AppRoutes from "./routes/AppRoutes";
+import HrPlanningLayout from "./components/hr/HrPlanningLayout";
 import RouteFallback from "./components/common/RouteFallback";
 import NavigationProgressBar from "./components/common/NavigationProgressBar";
 import NavigationLoadingOverlay from "./components/common/NavigationLoadingOverlay";
@@ -13,12 +14,13 @@ import GlobalRefreshButton from "./components/common/GlobalRefreshButton";
 import AppShellBottomActionBar from "./components/layout/AppShellBottomActionBar";
 import Button from "./components/common/Button";
 import useAuth from "./hooks/useAuth";
+import useBreakpoint from "./hooks/useBreakpoint";
 import useSettings from "./context/SettingsContext";
+import { isStoreManager } from "./config/permissions";
 import { resolveErpAiAssistantMode, erpPageContextLabel } from "./utils/erpAiAssistant";
 import { triggerServerWakeup, startServerKeepAlive, stopServerKeepAlive } from "./utils/serverWakeup";
 
 const ErpAiAssistant = lazy(() => import("./components/ai/ErpAiAssistant"));
-const OperatorSafetyFab = lazy(() => import("./components/operator/OperatorSafetyFab"));
 
 function normalizePath(pathname) {
   return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -67,24 +69,25 @@ export function shouldShowStoreAgent(user, pathname) {
 export default function App() {
   const location = useLocation();
   const { user } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [isDesktopNav, setIsDesktopNav] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return window.matchMedia("(min-width: 1024px)").matches;
+  const { isLaptop, isDesktop } = useBreakpoint();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const saved = window.localStorage.getItem("erp-sidebar-collapsed");
+      if (saved !== null) return saved === "true";
+    } catch {
+      return window.innerWidth >= 1024 && window.innerWidth < 1440;
+    }
+    return window.innerWidth >= 1024 && window.innerWidth < 1440;
   });
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [navItems, setNavItems] = useState([]);
+  const isDesktopNav = isLaptop || isDesktop;
+  const handleNavChange = useCallback((items) => setNavItems(items), []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const onChange = () => {
-      setIsDesktopNav(mq.matches);
-      if (mq.matches) setMobileSidebarOpen(false);
-    };
-    onChange();
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+    if (isDesktopNav) setMobileSidebarOpen(false);
+  }, [isDesktopNav]);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -100,6 +103,18 @@ export default function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [mobileSidebarOpen]);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      try {
+        window.localStorage.setItem("erp-sidebar-collapsed", String(next));
+      } catch {
+        // Keep the in-memory choice when browser storage is unavailable.
+      }
+      return next;
+    });
+  };
 
   // Silently warm up the backend and keep it alive in background
   useEffect(() => {
@@ -210,6 +225,16 @@ export default function App() {
     location.pathname === "/inventory" ||
     location.pathname.startsWith("/inventory/items/") ||
     location.pathname === "/inventory/settings" ||
+    location.pathname === "/inventory/godown-planner" ||
+    location.pathname === "/inventory/unit-converter" ||
+    location.pathname === "/inventory/eoq-helper" ||
+    location.pathname === "/inventory/stock-valuation" ||
+    location.pathname === "/inventory/hamali-cost" ||
+    location.pathname === "/inventory/truck-load" ||
+    location.pathname === "/inventory/damage-loss" ||
+    location.pathname === "/inventory/storage-quotation" ||
+    location.pathname === "/inventory/gate-pass" ||
+    location.pathname === "/inventory/godown-dashboard" ||
     location.pathname === "/settings/change-template" ||
     location.pathname === "/settings/template-settings" ||
     location.pathname === "/settings/invoice-template" ||
@@ -249,6 +274,14 @@ export default function App() {
   const isDocumentsLibrary = isDocumentsLibraryRoute(location.pathname);
   const isEInvoiceLogin = location.pathname === "/sales/e-invoice";
   const path = normalizePath(location.pathname);
+  const isStoreManagerProductPage =
+    isStoreManager(user) &&
+    (path === "/products" ||
+      path.startsWith("/products/") ||
+      path === "/masters/products" ||
+      path.startsWith("/masters/products/") ||
+      path === "/master/products" ||
+      path.startsWith("/master/products/"));
   const isJobCardAuthoring =
     path === "/sales/job-cards/create" || /^\/sales\/job-cards\/[^/]+\/edit$/.test(path);
   const isCustomerForm =
@@ -258,6 +291,7 @@ export default function App() {
   /** Full-bleed editors keep their own chrome; list/dashboard surfaces use Products page surface. */
   const isFullBleedSales =
     isInvoiceEditor || isSalesDocList || isEInvoiceLogin || path === "/" || isJobCardsWorkspace || isCustomerForm;
+  const isHrModule = path === "/hr" || path.startsWith("/hr/");
 
   if (isShellLessRoute(location.pathname)) {
     const path = normalizePath(location.pathname);
@@ -292,12 +326,12 @@ export default function App() {
     <div
       className={`app-shell relative grid h-screen overflow-hidden dark:bg-slate-950 ${
         isDesktopNav
-          ? sidebarCollapsed
+          ? isLaptop && sidebarCollapsed
             ? "grid-cols-[4.5rem_minmax(0,1fr)]"
-            : "grid-cols-[15rem_minmax(0,1fr)]"
+            : "grid-cols-[16.25rem_minmax(0,1fr)]"
           : "grid-cols-[minmax(0,1fr)]"
       }`}
-      data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
+      data-sidebar-collapsed={isLaptop && sidebarCollapsed ? "true" : "false"}
     >
       <NavigationProgressBar />
       <NavigationLoadingOverlay />
@@ -305,7 +339,7 @@ export default function App() {
         as="a"
         href="#main-content"
         variant="primary"
-        className="absolute left-4 top-4 z-[100] -translate-y-[200%] shadow-lg outline-none ring-2 ring-[var(--color-primary)]/40 ring-offset-2 transition-transform focus:translate-y-0 dark:ring-offset-slate-900"
+        className="absolute left-4 top-4 z-[100] min-h-[44px] -translate-y-[200%] shadow-lg outline-none ring-2 ring-[var(--color-primary)]/40 ring-offset-2 transition-transform focus:translate-y-0 dark:ring-offset-slate-900"
       >
         Skip to main content
       </Button>
@@ -318,36 +352,36 @@ export default function App() {
         />
       )}
 
-      {/* Mobile Off-Canvas Navigation Drawer — mount only when open (one Sidebar instance in DOM) */}
-      {mobileSidebarOpen && !isDesktopNav ? (
+      {!isDesktopNav && mobileSidebarOpen ? (
         <div
-          className="fixed inset-y-0 left-0 z-[75] flex w-[280px] max-w-[85vw] flex-col shadow-2xl transition-transform duration-300 ease-in-out"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation Menu"
-        >
-          <Sidebar
-            collapsed={false}
-            onClose={() => setMobileSidebarOpen(false)}
-            isMobile={true}
-          />
-        </div>
+          className="fixed inset-0 z-[70] bg-slate-950/45 transition-opacity"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
       ) : null}
-
-      {/* Desktop In-Flow Sidebar — mount only at lg+ so one Sidebar instance exists in the DOM */}
-      {isDesktopNav ? (
-        <aside
-          id="app-sidebar"
-          className={`relative z-40 flex h-full min-h-0 shrink-0 flex-col overflow-visible transition-[width] duration-300 ease-in-out ${
-            sidebarCollapsed ? "w-[72px]" : "w-60"
-          }`}
-        >
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          />
-        </aside>
-      ) : null}
+      <aside
+        id="app-sidebar"
+        className={`flex h-full min-h-0 shrink-0 flex-col overflow-visible transition-[width,transform] duration-300 ease-in-out ${
+          isDesktopNav
+            ? `relative z-40 ${isLaptop && sidebarCollapsed ? "w-[72px]" : "w-[260px]"}`
+            : `fixed inset-y-0 left-0 z-[75] w-[280px] max-w-[85vw] shadow-2xl ${
+                mobileSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+              }`
+        }`}
+        role={!isDesktopNav && mobileSidebarOpen ? "dialog" : undefined}
+        aria-modal={!isDesktopNav && mobileSidebarOpen ? "true" : undefined}
+        aria-label={!isDesktopNav && mobileSidebarOpen ? "Navigation Menu" : undefined}
+        aria-hidden={!isDesktopNav && !mobileSidebarOpen}
+        inert={!isDesktopNav && !mobileSidebarOpen ? "" : undefined}
+      >
+        <Sidebar
+          collapsed={isLaptop && sidebarCollapsed}
+          onToggleCollapse={isLaptop ? toggleSidebar : undefined}
+          onClose={() => setMobileSidebarOpen(false)}
+          onNavChange={handleNavChange}
+          isMobile={!isDesktopNav}
+        />
+      </aside>
       <div className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden">
         <main
           id="main-content"
@@ -357,7 +391,7 @@ export default function App() {
             overscrollBehaviorX: "none",
             overscrollBehaviorY: "contain",
           }}
-          className={`flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-x-hidden bg-transparent outline-none overscroll-contain max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
+          className={`flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-x-hidden bg-transparent outline-none overscroll-contain max-sm:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${
             isInvoiceEditor || isEInvoiceLogin
               ? "overflow-hidden max-lg:pb-0"
               : "overflow-y-auto"
@@ -365,18 +399,20 @@ export default function App() {
         >
           <div className="sticky top-0 z-[60] shrink-0">
             <Navbar
-              onOpenSidebar={() => setMobileSidebarOpen(true)}
-              onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
-              sidebarCollapsed={sidebarCollapsed}
+              onOpenSidebar={!isDesktopNav ? () => setMobileSidebarOpen(true) : undefined}
+              onToggleSidebar={isLaptop ? toggleSidebar : undefined}
+              sidebarCollapsed={isLaptop && sidebarCollapsed}
             />
           </div>
           <div
             className={
               isInvoiceEditor || isEInvoiceLogin || isFullBleedSales
-                ? "flex min-h-0 flex-1 flex-col"
+                ? `flex min-h-0 flex-1 flex-col ${isStoreManagerProductPage ? "pt-5" : ""}`
                 : isSettings
-                  ? "settings-page min-h-0 flex-1"
-                  : "ui-page ui-stack min-w-0 w-full"
+                  ? `settings-page min-h-0 flex-1 ${isStoreManager(user) ? "pt-5" : ""}`
+                  : isHrModule
+                ? "hr-plan-slot min-h-0 min-w-0 w-full flex-1"
+                : "ui-page ui-stack min-w-0 w-full"
             }
           >
             <Suspense
@@ -388,16 +424,19 @@ export default function App() {
             >
               <RouteErrorBoundary>
                 <PageTransition fillViewport={isInvoiceEditor || isEInvoiceLogin}>
-                  <AppRoutes />
+                  {isHrModule ? (
+                    <HrPlanningLayout>
+                      <AppRoutes />
+                    </HrPlanningLayout>
+                  ) : (
+                    <AppRoutes />
+                  )}
                 </PageTransition>
               </RouteErrorBoundary>
             </Suspense>
           </div>
-          <Suspense fallback={null}>
-            <OperatorSafetyFab />
-          </Suspense>
         </main>
-        {user && !isInvoiceEditor && !isEInvoiceLogin ? <AppShellBottomActionBar /> : null}
+        {user && !isInvoiceEditor && !isEInvoiceLogin ? <AppShellBottomActionBar navItems={navItems} /> : null}
         {!isInvoiceEditor ? (
           <div
             className={`app-shell-fab-stack pointer-events-none fixed bottom-5 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-6 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] ${

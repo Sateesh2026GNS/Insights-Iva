@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
 import { ListPageCard, ListPageCardBody, ListPageShell } from "../../components/common/ListPageShell";
@@ -212,7 +213,13 @@ export default function DefectTracking() {
     status: rejectionStatusLabel(r.status),
   }));
 
-  if (loading) return <Loader label="Loading rejections..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="orange" kicker="Find · Record · Close" title="QUALITY" accent="ISSUES">
+        <Loader label="Loading rejections..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   const handleExport = (format) => {
     const rowsToExport = exportRows.length
@@ -242,6 +249,7 @@ export default function DefectTracking() {
   };
 
   return (
+    <InventoryPlanningShell theme="orange" kicker="Find · Record · Close" title="QUALITY" accent="ISSUES">
     <ListPageShell>
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
@@ -531,5 +539,6 @@ export default function DefectTracking() {
       ) : null}
     </div>
     </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

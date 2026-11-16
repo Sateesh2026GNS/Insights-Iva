@@ -14,8 +14,8 @@ export function getMyProductionSchedule() {
   return api.get(`${BASE}/production-schedule/my`);
 }
 
-export function getMyMachines() {
-  return api.get(`${BASE}/machines/my`);
+export function getMyMachines(config = {}) {
+  return api.get(`${BASE}/machines/my`, config);
 }
 
 export function getMyShifts() {

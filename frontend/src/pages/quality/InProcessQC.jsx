@@ -18,7 +18,7 @@ import {
 
 import Button from "../../components/common/Button";
 import ExportDownloadMenu from "../../components/common/ExportDownloadMenu";
-import { ListPageShell } from "../../components/common/ListPageShell";
+import InventoryPlanningShell from "../../components/inventory/InventoryPlanningShell";
 import { SearchBar } from "../../components/common/SearchFilter";
 import InventoryRowActionsMenu from "../../components/inventory/InventoryRowActionsMenu";
 import KpiCard from "../../components/common/KpiCard";
@@ -242,9 +242,12 @@ export default function InProcessQC() {
   const [search, setSearch] = useState("");
   const [selectedWorkOrders, setSelectedWorkOrders] = useState([]);
   const [selectedProcesses, setSelectedProcesses] = useState([]);
-  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedStatuses, setSelectedStatuses] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get("status");
+    return PROCESS_STATUS_OPTIONS.some((option) => option.value === raw) ? [raw] : [];
+  });
   const [dateFilter, setDateFilter] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(() => selectedStatuses.length > 0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -398,7 +401,13 @@ export default function InProcessQC() {
     result: processResultLabel(r) || "—",
   }));
 
-  if (loading) return <Loader label="Loading in-process QC..." />;
+  if (loading) {
+    return (
+      <InventoryPlanningShell theme="orange" kicker="Inspect · Record · Release" title="IN-PROCESS" accent="QC">
+        <Loader label="Loading in-process QC..." />
+      </InventoryPlanningShell>
+    );
+  }
 
   const handleExport = async (format) => {
     try {
@@ -420,7 +429,7 @@ export default function InProcessQC() {
   };
 
   return (
-    <ListPageShell>
+    <InventoryPlanningShell theme="orange" kicker="Inspect · Record · Release" title="IN-PROCESS" accent="QC">
     <div className="min-w-0 space-y-5 pb-4">
       <PageHeader
         subtitle="Monitor and manage quality checks during the production process"
@@ -788,6 +797,6 @@ export default function InProcessQC() {
         </div>
       ) : null}
     </div>
-    </ListPageShell>
+    </InventoryPlanningShell>
   );
 }

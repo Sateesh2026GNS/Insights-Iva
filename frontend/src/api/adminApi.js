@@ -4,7 +4,7 @@ import api from "./axiosConfig";
 // argument is kept for backward compatibility but no longer required.
 
 // ----- Users -----
-export const getUsers = () => api.get("/admin/users");
+export const getUsers = (options = {}) => api.get("/admin/users", options);
 export const getTeamDirectory = () => api.get("/team-directory");
 export const createTeamDirectorySalesExecutive = (payload) =>
   api.post("/team-directory/sales-executives", payload);
@@ -16,7 +16,7 @@ export const adminResetUserPassword = (id) =>
   api.post(`/api/users/${id}/reset-password`);
 
 // ----- Roles -----
-export const getRoles = () => api.get("/admin/roles");
+export const getRoles = (options = {}) => api.get("/admin/roles", options);
 export const getRole = (id) => api.get(`/admin/roles/${id}`);
 export const createRole = (payload) => api.post("/admin/roles", payload);
 export const updateRole = (id, payload) => api.put(`/admin/roles/${id}`, payload);

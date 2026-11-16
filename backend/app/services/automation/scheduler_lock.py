@@ -1,4 +1,10 @@
-"""PostgreSQL advisory lock so only one app instance runs a scheduler tick."""
+"""PostgreSQL advisory lock so only one app instance runs a scheduler tick.
+
+Uses session-level ``pg_try_advisory_lock`` (not xact-level) so intermediate
+``db.rollback()`` during a tick does not release the lock. The same SQLAlchemy
+``Session`` / connection must acquire and release; ``scheduler._run_all_tenants``
+releases in ``finally`` and closes the session (disconnect also drops the lock).
+"""
 
 from __future__ import annotations
 
@@ -21,6 +27,7 @@ def try_acquire_scheduler_lock(db: Session) -> bool:
     if settings.is_sqlite:
         return True
     try:
+        # Bind to this session's connection for the lifetime of the tick.
         acquired = db.execute(
             text("SELECT pg_try_advisory_lock(:key)"),
             {"key": _SCHEDULER_ADVISORY_LOCK_KEY},
@@ -32,6 +39,7 @@ def try_acquire_scheduler_lock(db: Session) -> bool:
 
 
 def release_scheduler_lock(db: Session) -> None:
+    """Release the session-level advisory lock on the same connection that acquired it."""
     settings = get_settings()
     if settings.is_sqlite:
         return

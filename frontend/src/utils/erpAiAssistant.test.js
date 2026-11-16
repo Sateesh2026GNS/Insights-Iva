@@ -27,9 +27,10 @@ describe("erpAiAssistant", () => {
   });
 
   it("operator gets shared mode on allowed operator paths", () => {
-    expect(resolveErpAiAssistantMode({ role: "Operator" }, "/production/work-orders")).toBe(
+    expect(resolveErpAiAssistantMode({ role: "Operator" }, "/production/my-machine")).toBe(
       AI_ASSISTANT_MODES.SHARED
     );
+    expect(resolveErpAiAssistantMode({ role: "Operator" }, "/production/work-orders")).toBe(null);
     expect(resolveErpAiAssistantMode({ role: "Operator" }, "/sales/orders")).toBe(null);
   });
 
