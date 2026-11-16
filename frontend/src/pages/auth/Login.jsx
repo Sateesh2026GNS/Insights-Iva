@@ -54,7 +54,7 @@ const RoleIcon = () => (
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, clearSessionExpired } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
@@ -70,13 +70,21 @@ export default function Login() {
   useEffect(() => {
     document.documentElement.dataset.theme = "light";
     document.documentElement.classList.remove("dark");
+    // Drop stale "Session expired" UI / tab flags so a fresh sign-in is not blocked.
+    clearSessionExpired?.();
+    try {
+      sessionStorage.removeItem("smrt-tab-expired");
+      sessionStorage.removeItem("smrt-tab-expired-reason");
+    } catch {
+      /* ignore */
+    }
     // Immediately warm up server when user opens the login screen
     triggerServerWakeup();
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
       if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
     };
-  }, []);
+  }, [clearSessionExpired]);
 
   // Countdown timer — decrements lockoutSeconds every second
   useEffect(() => {

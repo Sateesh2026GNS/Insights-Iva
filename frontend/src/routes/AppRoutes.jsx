@@ -1022,7 +1022,7 @@ export default function AppRoutes() {
       <Route path="/master/products/:id/edit" element={<ProtectedRoute><P.CreateProduct /></ProtectedRoute>} />
       <Route path="/inventory/products/bulk-import" element={<ProtectedRoute><P.BulkImportProduct /></ProtectedRoute>} />
       <Route path="/masters/bom" element={<Navigate to="/production/bom" replace />} />
-      <Route path="/masters/departments" element={<ProtectedRoute><P.DepartmentManagement /></ProtectedRoute>} />
+      <Route path="/masters/departments" element={<Navigate to="/" replace />} />
       <Route path="/production/schedule" element={<ProtectedRoute><P.ProductionSchedule /></ProtectedRoute>} />
       <Route path="/production/my-machine" element={<ProtectedRoute><P.OperatorMyMachine /></ProtectedRoute>} />
       <Route path="/procurement/rfq" element={<ProtectedRoute><P.RFQ /></ProtectedRoute>} />

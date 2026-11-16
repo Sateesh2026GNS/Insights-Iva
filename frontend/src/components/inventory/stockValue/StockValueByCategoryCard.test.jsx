@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import StockValueByCategoryCard from "./StockValueByCategoryCard";
@@ -12,11 +12,13 @@ vi.mock("../../../context/NetworkStatusContext", () => ({
   useNetworkStatus: () => ({ online: true }),
 }));
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key) => key,
-  }),
-}));
+vi.mock("react-i18next", () => {
+  // Stable translator identity — avoids fetch/loading loops when `t` is a useCallback dep.
+  const t = (key) => key;
+  return {
+    useTranslation: () => ({ t }),
+  };
+});
 
 import { getStoreStockValueByCategory } from "../../../api/inventoryApi";
 
@@ -44,10 +46,11 @@ describe("StockValueByCategoryCard", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("storeDashboard.stockValueByCategory.title")).toBeInTheDocument();
-      expect(screen.getByText("Electronics")).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText("storeDashboard.stockValueByCategory.title")
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Electronics")).toBeInTheDocument();
+    expect(getStoreStockValueByCategory).toHaveBeenCalledTimes(1);
   });
 
   it("shows empty state when no stock", async () => {
@@ -61,13 +64,23 @@ describe("StockValueByCategoryCard", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("storeDashboard.stockValueByCategory.emptyTitle")).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText("storeDashboard.stockValueByCategory.emptyTitle")
+    ).toBeInTheDocument();
+    expect(getStoreStockValueByCategory).toHaveBeenCalledTimes(1);
   });
 
   it("shows error with retry when API fails", async () => {
-    getStoreStockValueByCategory.mockRejectedValue(new Error("boom"));
+    getStoreStockValueByCategory
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce({
+        data: {
+          total_value: 1000,
+          categories: [{ category: "Electronics", value: 1000, item_count: 1 }],
+          has_unvalued: false,
+          partial: false,
+        },
+      });
 
     render(
       <MemoryRouter>
@@ -75,15 +88,18 @@ describe("StockValueByCategoryCard", () => {
       </MemoryRouter>
     );
 
-    // Full-suite CI can be slower; wait until loading skeleton clears and error title appears.
-    await waitFor(
-      () => {
-        expect(
-          screen.getByText("storeDashboard.stockValueByCategory.errorTitle")
-        ).toBeInTheDocument();
-      },
-      { timeout: 8000 }
-    );
+    expect(
+      await screen.findByText("storeDashboard.stockValueByCategory.errorTitle")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(getStoreStockValueByCategory).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    await waitFor(() => {
+      expect(getStoreStockValueByCategory).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("Electronics")).toBeInTheDocument();
+    });
   });
 
   it("merges Others in legend for many small categories", async () => {
@@ -110,8 +126,6 @@ describe("StockValueByCategoryCard", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("Others")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Others")).toBeInTheDocument();
   });
 });

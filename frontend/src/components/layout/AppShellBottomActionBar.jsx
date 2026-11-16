@@ -57,7 +57,7 @@ function getRolePriority(user) {
   if (role.includes("operator")) return ["/production/my-machine", "/my-job-cards", "/documents"];
   if (role.includes("quality")) return ["/quality", "/quality/incoming", "/quality/in-process", "/my-job-cards"];
   if (role.includes("production")) return ["/production/dashboard", "/production/work-orders", "/production/planning", "/alerts"];
-  if (role.includes("store")) return ["/inventory/dashboard", "/inventory", "/inventory/material-requests", "/inventory/issue-materials"];
+  if (role.includes("store")) return ["/inventory/dashboard", "/inventory", "/inventory/warehouses", "/inventory/stock-transfer"];
   if (role.includes("sales")) return ["/sales/dashboard", "/sales/leads", "/my-job-cards", "/alerts"];
   if (role.includes("hr")) return ["/hr/attendance", "/hr/leave", "/hr/employees", "/hr/payroll"];
   if (role.includes("admin")) return ["/", "/admin/approvals", "/admin/users", "/audit-logs"];

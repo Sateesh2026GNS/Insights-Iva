@@ -48,8 +48,20 @@ credentials/
 frontend/e2e/.auth/
 frontend/e2e/.env.e2e
 backend/e2e-responsive-qa*.db*
+backend/_probe_reports.db*
 frontend/test-results/
 frontend/playwright-report/
+test-results/
+
+# Generated responsive QA screenshots / outputs (keep local; do not commit)
+docs/responsive-qa/
+
+# Local Firebase tooling backups (keep .firebaserc / firebase.json tracked)
+frontend/.firebaserc.backup
+.firebaserc.backup
+
+# Generated frontend PDF export/report samples in repo root of frontend/
+frontend/*.pdf
 
 # Local dev scratch scripts (may contain test credentials)
 scratch/

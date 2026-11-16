@@ -67,4 +67,14 @@ describe("salesManagerNavConfig", () => {
       "/sales/reports/customers",
     ]);
   });
+
+  it("places Work Chat and Meetings immediately above Settings", () => {
+    const keys = SALES_MANAGER_NAV_ITEMS.map((n) => n.key);
+    const chatIdx = keys.indexOf("chat");
+    const meetingsIdx = keys.indexOf("meetings");
+    const settingsIdx = keys.indexOf("settings");
+    expect(chatIdx).toBeGreaterThan(keys.indexOf("reports"));
+    expect(meetingsIdx).toBe(chatIdx + 1);
+    expect(settingsIdx).toBe(meetingsIdx + 1);
+  });
 });

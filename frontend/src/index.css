@@ -2901,6 +2901,12 @@ table > tbody > tr:first-child:has(th) {
 .app-navbar__title-block {
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.app-navbar__title-block--title-only {
+  justify-content: center;
 }
 @media (min-width: 768px) {
   .app-navbar__title-block {

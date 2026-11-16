@@ -14,7 +14,11 @@ import useAuth from "../../hooks/useAuth";
 import GlobalSearch from "../common/GlobalSearch";
 import BrandLogo from "../common/BrandLogo";
 import AppPageTitle from "../common/AppPageTitle";
-import Breadcrumbs, { getPageTitle } from "../common/Breadcrumbs";
+import Breadcrumbs, {
+  getPageTitle,
+  getVisibleBreadcrumbItems,
+  shouldShowNavbarBreadcrumb,
+} from "../common/Breadcrumbs";
 import ClientProfilePanel from "../common/ClientProfilePanel";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import NotificationBell from "../notifications/NotificationBell";
@@ -39,6 +43,8 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
   const profileRef = useRef(null);
 
   const pageTitle = getPageTitle(location.pathname, user);
+  const breadcrumbItems = getVisibleBreadcrumbItems(location.pathname, pageTitle);
+  const showBreadcrumbRow = shouldShowNavbarBreadcrumb(location.pathname, pageTitle);
   const displayName = user?.full_name || user?.name || "User";
   const displayRole = formatRoleLabel(user?.role_name || user?.role || "");
 
@@ -130,11 +136,17 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
               <Menu className="h-5 w-5" />
             </button>
           ) : null}
-          <div className="app-navbar__title-block min-w-0 flex-1">
+          <div
+            className={`app-navbar__title-block min-w-0 flex-1${
+              showBreadcrumbRow ? "" : " app-navbar__title-block--title-only"
+            }`}
+          >
             <AppPageTitle title={pageTitle} />
-            <div className="mt-2 hidden lg:block">
-              <Breadcrumbs compact />
-            </div>
+            {showBreadcrumbRow ? (
+              <div className="mt-2 hidden lg:block">
+                <Breadcrumbs compact items={breadcrumbItems} />
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -243,10 +255,12 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
           />
         </div>
       ) : null}
-      {/* Mobile single-line breadcrumb strip */}
-      <div className="overflow-x-auto whitespace-nowrap scrollbar-none px-3.5 py-1 bg-black/10 border-t border-white/10 lg:hidden text-xs">
-        <Breadcrumbs compact />
-      </div>
+      {/* Mobile single-line breadcrumb strip — hidden on role dashboard homes */}
+      {showBreadcrumbRow ? (
+        <div className="overflow-x-auto whitespace-nowrap scrollbar-none px-3.5 py-1 bg-black/10 border-t border-white/10 lg:hidden text-xs">
+          <Breadcrumbs compact items={breadcrumbItems} />
+        </div>
+      ) : null}
 
       <LogoutConfirmModal
         open={logoutOpen}

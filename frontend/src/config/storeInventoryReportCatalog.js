@@ -1,7 +1,7 @@
 import { todayIso } from "../utils/dateUtils";
 
-/** Stock Ledger — linked from Reports footer only, not listed as a report card. */
-export const STORE_STOCK_LEDGER_PATH = "/inventory/stock-ledger";
+/** Fallback stock destination after Inventory History was removed for Store Manager. */
+export const STORE_STOCK_LEDGER_PATH = "/inventory";
 
 /**
  * Store Manager report hub — plain-language cards (inventory / store only).
@@ -15,22 +15,6 @@ export const STORE_INVENTORY_REPORTS = [
     to: "/inventory",
     available: true,
     category: "stock",
-  },
-  {
-    id: "stock-received",
-    title: "Stock Received",
-    description: "See items received into the warehouse, including quantity and date.",
-    to: "/inventory/stock-in",
-    available: true,
-    category: "activity",
-  },
-  {
-    id: "stock-issued",
-    title: "Stock Issued",
-    description: "See items taken out of the warehouse, including quantity and reason/reference.",
-    to: "/inventory/history?type=out",
-    available: true,
-    category: "activity",
   },
   {
     id: "low-stock",
@@ -65,36 +49,12 @@ export const STORE_INVENTORY_REPORTS = [
     category: "workflow",
   },
   {
-    id: "material-requests",
-    title: "Material Requests",
-    description: "Review materials requested by teams or departments.",
-    to: "/inventory/material-requests",
-    available: true,
-    category: "workflow",
-  },
-  {
-    id: "material-returns",
-    title: "Material Returns",
-    description: "See materials returned to the warehouse.",
-    to: "/inventory/stock-return",
-    available: true,
-    category: "activity",
-  },
-  {
     id: "warehouse-stock",
     title: "Warehouse Stock",
     description: "Compare available stock across warehouses.",
     to: "/inventory/warehouses",
     available: true,
     category: "stock",
-  },
-  {
-    id: "purchase-receipts",
-    title: "Purchase Receipts",
-    description: "See materials received against purchase orders.",
-    to: "/procurement/goods-receipt",
-    available: true,
-    category: "activity",
   },
 ];
 
@@ -104,10 +64,9 @@ export const STORE_REPORT_CATEGORIES = [
   { id: "workflow", label: "Pending work" },
 ];
 
-/** Today's stock issued — same rules as dashboard KPI (history, type out, business date). */
-export function storeStockIssuedTodayPath(date = todayIso()) {
-  const q = new URLSearchParams({ type: "out", from: date, to: date });
-  return `/inventory/history?${q.toString()}`;
+/** Legacy helper — Inventory History removed for Store Manager; keep stock items path. */
+export function storeStockIssuedTodayPath(_date = todayIso()) {
+  return "/inventory";
 }
 
 export function getStoreInventoryReportLinks() {

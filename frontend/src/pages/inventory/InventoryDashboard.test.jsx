@@ -19,9 +19,10 @@ vi.mock("../../hooks/useAuth", () => ({
 
 import { getStoreDashboard, getStoreStockValueByCategory } from "../../api/inventoryApi";
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key) => key }),
-}));
+vi.mock("react-i18next", () => {
+  const t = (key) => key;
+  return { useTranslation: () => ({ t }) };
+});
 
 describe("InventoryDashboard", () => {
   beforeEach(() => {
@@ -74,9 +75,11 @@ describe("InventoryDashboard", () => {
       "href",
       "/my-job-cards?dept=inventory&bucket=store_pending"
     );
-    expect(screen.getByText("Today's Stock Movement")).toBeInTheDocument();
+    expect(screen.queryByText("Today's Stock Movement")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Low Stock Items" })).toBeInTheDocument();
-    expect(screen.getByText("storeDashboard.stockValueByCategory.title")).toBeInTheDocument();
+    expect(
+      await screen.findByText("storeDashboard.stockValueByCategory.title")
+    ).toBeInTheDocument();
     expect(screen.getByText("No pending material checks")).toBeInTheDocument();
   });
 

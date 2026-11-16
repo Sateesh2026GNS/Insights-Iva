@@ -340,6 +340,7 @@ def _permissions_for_role_record(role) -> list[str]:
     Must stay aligned with ``get_user_permissions``:
     - Admin (any casing) always expands to the full catalog (stale JSON cannot hide dashboard).
     - Non-Admin non-empty stored JSON is honored as-is (explicit revocations stick).
+    - Quality Control always includes Settings when stored JSON is present.
     - Empty JSON falls back to PERMISSION_MATRIX for known roles.
     """
     from app.core.permissions import is_admin_role_name, normalize_role_name

@@ -97,11 +97,11 @@ export const QUALITY_CONTROL_NAV_ITEMS = [
     end: true,
   },
   {
-    key: "meetings",
-    label: "Meetings",
-    to: "/meetings",
-    icon: CalendarDays,
-    module: "meetings",
+    key: "analytics",
+    label: "Analytics",
+    to: "/analytics/production",
+    icon: BarChart3,
+    module: "analytics",
     end: true,
   },
   {
@@ -113,11 +113,11 @@ export const QUALITY_CONTROL_NAV_ITEMS = [
     end: true,
   },
   {
-    key: "analytics",
-    label: "Analytics",
-    to: "/analytics/production",
-    icon: BarChart3,
-    module: "analytics",
+    key: "meetings",
+    label: "Meetings",
+    to: "/meetings",
+    icon: CalendarDays,
+    module: "meetings",
     end: true,
   },
 ];

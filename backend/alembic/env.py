@@ -19,7 +19,9 @@ from app.core.config import get_settings
 
 settings = get_settings()
 database_url = settings.database_url
-config.set_main_option("sqlalchemy.url", database_url)
+# ConfigParser treats '%' as interpolation; escape for Alembic config only.
+# create_engine() below must keep the original URL (including URL-encoded '%').
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Importing the models package registers every table on Base.metadata
 # (required for autogenerate and for the metadata-driven baseline).

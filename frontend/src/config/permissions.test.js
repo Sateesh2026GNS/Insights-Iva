@@ -137,11 +137,12 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/settings")).toBe(true);
   });
 
-  it("allows Store Manager to open inventory reports and stock ledger", () => {
+  it("allows Store Manager inventory reports but blocks inventory history and stock ledger", () => {
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/reports")).toBe(true);
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/store/reports")).toBe(true);
+    expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/history")).toBe(false);
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/inventory/stock-ledger")).toBe(
-      true
+      false
     );
     expect(userCanAccessPath({ role: "Store Manager", permissions: [] }, "/reports")).toBe(true);
   });
@@ -162,6 +163,32 @@ describe("Store Manager settings access", () => {
     expect(userCanAccessPath(storeManager, "/sales/job-cards/create")).toBe(false);
     expect(userCanAccessPath(storeManager, "/sales/job-cards/42/edit")).toBe(false);
     expect(userCanAccessPath(storeManager, "/my-job-cards")).toBe(true);
+  });
+
+  it("blocks removed Store Manager pages while keeping allowed inventory/procurement routes", () => {
+    const storeManager = {
+      role: "Store Manager",
+      permissions: ["dashboard", "inventory", "procurement"],
+    };
+    expect(userCanAccessPath(storeManager, "/procurement/material-requests")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/procurement/goods-receipt")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/procurement/supplier-payments")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-in")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/issue-materials")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-return")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-adjustment")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/todays-stock-out")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-ledger")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/history")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/material-requests")).toBe(false);
+    expect(userCanAccessPath(storeManager, "/inventory/stock-transfer")).toBe(true);
+    expect(userCanAccessPath(storeManager, "/procurement/purchase-orders")).toBe(true);
+    expect(
+      userCanAccessPath({ role: "Admin", permissions: ["*"] }, "/procurement/goods-receipt")
+    ).toBe(true);
+    expect(
+      userCanAccessPath({ role: "Admin", permissions: ["*"] }, "/inventory/stock-ledger")
+    ).toBe(true);
   });
 
 });

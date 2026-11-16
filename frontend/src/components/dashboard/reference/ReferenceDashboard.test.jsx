@@ -232,7 +232,7 @@ describe("ReferenceDashboard", () => {
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
   });
 
-  it("hides Departments, Pending Approvals, and Revenue/Cost Snapshot for operators only", async () => {
+  it("hides Departments for all roles; Pending Approvals and Revenue/Cost for operators only", async () => {
     const sharedCards = [
       { id: "departments", title: "Departments", value: "4", trendLabel: "active departments", link: "/masters/departments" },
       { id: "pending-approvals", title: "Pending Approvals", value: "2", trendLabel: "awaiting action", link: "/admin/approvals" },
@@ -281,8 +281,8 @@ describe("ReferenceDashboard", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("refDashboard.departments")).toBeInTheDocument();
-    expect(screen.getByText("refDashboard.pendingApprovals")).toBeInTheDocument();
+    expect(screen.queryByText("refDashboard.departments")).not.toBeInTheDocument();
+    expect(await screen.findByText("refDashboard.pendingApprovals")).toBeInTheDocument();
     expect(screen.getByText("refDashboard.revenueCostSnapshot")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Check In" })).not.toBeInTheDocument();
     expect(screen.queryByText("Live Manufacturing Workflow")).not.toBeInTheDocument();

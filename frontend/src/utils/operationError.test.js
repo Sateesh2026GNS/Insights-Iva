@@ -53,4 +53,19 @@ describe("operationError dialog mapping", () => {
       message: "Failed to save customer",
     });
   });
+
+  it("titles email delivery failures as Unable to send email (not Unable to save)", () => {
+    expect(
+      resolveOperationErrorDialog(
+        "Email service is temporarily unavailable. Please try again later.",
+      ),
+    ).toEqual({
+      title: "Unable to send email",
+      message: "Email service is temporarily unavailable. Please try again later.",
+    });
+    expect(resolveOperationErrorDialog("Unable to send the report. Please try again.")).toEqual({
+      title: "Unable to send email",
+      message: "Unable to send the report. Please try again.",
+    });
+  });
 });
