@@ -345,7 +345,15 @@ def approval_my_counts(
 ):
     from app.services.approval_queue_service import pending_counts_for_user
 
-    return pending_counts_for_user(db, user)
+    try:
+        return pending_counts_for_user(db, user)
+    except SQLAlchemyError:
+        logger.exception("approval_my_counts database error tenant=%s", user.tenant_id)
+        db.rollback()
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to load approval counts",
+        )
 
 
 @router.get("/approvals/summary", response_model=ApprovalSummaryRead)

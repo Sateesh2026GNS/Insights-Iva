@@ -1399,29 +1399,63 @@ def approval_summary_for_user(db: Session, user: User) -> dict[str, int]:
     return counts
 
 
+def _pending_count_for_category(db: Session, tenant_id: int, category: str) -> int:
+    """Lightweight pending totals (COUNT only — no DTO / attachment queries)."""
+    if category == CATEGORY_LEAVE:
+        stmt = select(func.count()).select_from(LeaveRequest).where(
+            LeaveRequest.tenant_id == tenant_id,
+            LeaveRequest.status == "pending",
+        )
+    elif category == CATEGORY_MATERIAL_REQUEST:
+        stmt = select(func.count()).select_from(MaterialRequest).where(
+            MaterialRequest.tenant_id == tenant_id,
+            MaterialRequest.approval_status == "pending",
+        )
+    elif category == CATEGORY_PURCHASE_ORDER:
+        stmt = select(func.count()).select_from(PurchaseOrder).where(
+            PurchaseOrder.tenant_id == tenant_id,
+            PurchaseOrder.status == "draft",
+        )
+    elif category == CATEGORY_VENDOR:
+        stmt = select(func.count()).select_from(Supplier).where(
+            Supplier.tenant_id == tenant_id,
+            Supplier.approval_status == "pending",
+        )
+    elif category == CATEGORY_PRODUCTION:
+        stmt = select(func.count()).select_from(ProductionOrder).where(
+            ProductionOrder.tenant_id == tenant_id,
+            ProductionOrder.status.in_(("planned", "pending")),
+        )
+    elif category == CATEGORY_INVENTORY:
+        stmt = select(func.count()).select_from(StockAdjustment).where(
+            StockAdjustment.tenant_id == tenant_id,
+            StockAdjustment.status == "pending",
+        )
+    else:
+        return 0
+    return int(db.scalar(stmt) or 0)
+
+
 def pending_counts_for_user(db: Session, user: User) -> dict[str, int]:
-    by_cat: dict[str, int] = {}
     allowed = approval_categories_for_user(user)
-    collectors = {
-        CATEGORY_LEAVE: _collect_leave_items,
-        CATEGORY_MATERIAL_REQUEST: _collect_material_requests,
-        CATEGORY_PURCHASE_ORDER: _collect_purchase_orders,
-        CATEGORY_VENDOR: _collect_vendors,
-        CATEGORY_PRODUCTION: _collect_production_orders,
-        CATEGORY_INVENTORY: _collect_stock_adjustments,
+    counts = {
+        "leave_requests": 0,
+        "material_requests": 0,
+        "purchase_orders": 0,
+        "vendors": 0,
+        "production_orders": 0,
+        "inventory": 0,
     }
-    all_items: list[ApprovalQueueItemRead] = []
-    for cat in collectors:
-        if cat in allowed:
-            all_items.extend(collectors[cat](db, user.tenant_id))
-    for item in all_items:
-        by_cat[item.category] = by_cat.get(item.category, 0) + 1
-    return {
-        "leave_requests": by_cat.get(CATEGORY_LEAVE, 0),
-        "material_requests": by_cat.get(CATEGORY_MATERIAL_REQUEST, 0),
-        "purchase_orders": by_cat.get(CATEGORY_PURCHASE_ORDER, 0),
-        "vendors": by_cat.get(CATEGORY_VENDOR, 0),
-        "production_orders": by_cat.get(CATEGORY_PRODUCTION, 0),
-        "inventory": by_cat.get(CATEGORY_INVENTORY, 0),
-        "total": len(all_items),
+    category_to_field = {
+        CATEGORY_LEAVE: "leave_requests",
+        CATEGORY_MATERIAL_REQUEST: "material_requests",
+        CATEGORY_PURCHASE_ORDER: "purchase_orders",
+        CATEGORY_VENDOR: "vendors",
+        CATEGORY_PRODUCTION: "production_orders",
+        CATEGORY_INVENTORY: "inventory",
     }
+    for category, field in category_to_field.items():
+        if category in allowed:
+            counts[field] = _pending_count_for_category(db, user.tenant_id, category)
+    counts["total"] = sum(counts.values())
+    return counts
