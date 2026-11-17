@@ -523,7 +523,7 @@ export default function MonthlyShifts() {
             </div>
           </div>
 
-          <div className="hr-monthly-shifts__table-wrap">
+          <div className="hr-monthly-shifts__table-wrap" role="region" aria-label="Shift schedule" tabIndex={0}>
             <table className="hr-monthly-shifts__table">
               <thead>
                 <tr>

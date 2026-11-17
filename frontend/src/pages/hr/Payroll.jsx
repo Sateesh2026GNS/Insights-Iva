@@ -508,8 +508,8 @@ export default function Payroll() {
                   </Link>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
-                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                <div className="erp-hscroll rounded-xl border border-[var(--color-border-soft)]" role="region" aria-label="Payroll table" tabIndex={0}>
+                  <table className="min-w-[880px] w-full border-collapse text-left text-sm">
                     <thead className="ui-table-head">
                       <tr>
                         <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Run Name</th>
@@ -627,8 +627,8 @@ export default function Payroll() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
-                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                <div className="erp-hscroll rounded-xl border border-[var(--color-border-soft)]" role="region" aria-label="Payroll table" tabIndex={0}>
+                  <table className="min-w-[880px] w-full border-collapse text-left text-sm">
                     <thead className="ui-table-head">
                       <tr>
                         <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
@@ -696,8 +696,8 @@ export default function Payroll() {
                   <span className="text-xs font-semibold text-slate-500">Period: {period}</span>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
-                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                <div className="erp-hscroll rounded-xl border border-[var(--color-border-soft)]" role="region" aria-label="Payroll table" tabIndex={0}>
+                  <table className="min-w-[880px] w-full border-collapse text-left text-sm">
                     <thead className="ui-table-head">
                       <tr>
                         <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
@@ -759,8 +759,8 @@ export default function Payroll() {
                   </Link>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
-                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                <div className="erp-hscroll rounded-xl border border-[var(--color-border-soft)]" role="region" aria-label="Payroll table" tabIndex={0}>
+                  <table className="min-w-[880px] w-full border-collapse text-left text-sm">
                     <thead className="ui-table-head">
                       <tr>
                         <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
@@ -818,8 +818,8 @@ export default function Payroll() {
                   </Link>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
-                  <table className="min-w-full w-full border-collapse text-left text-sm">
+                <div className="erp-hscroll rounded-xl border border-[var(--color-border-soft)]" role="region" aria-label="Payroll table" tabIndex={0}>
+                  <table className="min-w-[880px] w-full border-collapse text-left text-sm">
                     <thead className="ui-table-head">
                       <tr>
                         <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>
@@ -888,8 +888,8 @@ export default function Payroll() {
               <h2 className="ui-section-title">Recent Payslips</h2>
               <Link to="/hr/payroll/my-payslips" className="text-sm font-semibold text-[var(--color-primary)]">View All</Link>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-[var(--color-border-soft)]">
-              <table className="min-w-full w-full border-collapse text-left text-sm">
+            <div className="erp-hscroll rounded-xl border border-[var(--color-border-soft)]" role="region" aria-label="Payroll table" tabIndex={0}>
+              <table className="min-w-[880px] w-full border-collapse text-left text-sm">
                 <thead className="ui-table-head">
                   <tr>
                     <th className="border-b border-[var(--color-border-soft)] px-3 py-3">Employee</th>

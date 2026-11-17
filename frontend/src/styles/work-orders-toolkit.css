@@ -93,11 +93,14 @@
 }
 
 .work-orders-page--toolkit .work-orders-table__wrap {
+  min-width: 0;
+  max-width: 100%;
   border: none;
   border-radius: 0;
 }
 
 .work-orders-page--toolkit .work-orders-table.mtk-table {
+  min-width: 960px;
   font-size: 11px;
 }
 

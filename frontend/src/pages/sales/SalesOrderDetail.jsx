@@ -427,7 +427,7 @@ export default function SalesOrderDetail() {
 
           <h3>Line Items</h3>
           {lineItems.length ? (
-            <div className="overflow-x-auto">
+            <div className="erp-hscroll" role="region" aria-label="Sales order lines" tabIndex={0}>
               <table className="w-full text-left text-sm">
                 <thead className="ui-table-head">
                   <tr>

@@ -368,7 +368,8 @@ export default function NewJournalEntryV2() {
           </div>
 
           <div className="px-5 py-5">
-            <div className="overflow-hidden rounded-lg border border-[#d0d0d8]">
+            <div className="erp-hscroll rounded-lg border border-[#d0d0d8]" role="region" aria-label="Journal lines" tabIndex={0}>
+              <div className="min-w-[36rem]">
               <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_44px] bg-[#fafafa] text-[13px] font-semibold text-[#6b6b76]">
                 <div className={`${cell} border-b`}>Account</div>
                 <div className={`${cell} border-b`}>Debit</div>
@@ -457,6 +458,7 @@ export default function NewJournalEntryV2() {
                   <span className="font-bold tabular-nums">{formatInr(totals.credit)}</span>
                 </div>
                 <div className="px-2.5 py-3" />
+              </div>
               </div>
             </div>
 

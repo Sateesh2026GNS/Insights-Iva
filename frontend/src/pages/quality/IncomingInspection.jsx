@@ -616,7 +616,7 @@ export default function IncomingInspection() {
 
       {/* Table */}
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="qc-table-scroll" role="region" aria-label="Incoming inspection records" tabIndex={0}>
           <table className="min-w-[1200px] w-full table-fixed border-collapse text-left text-[13px] [&_th]:align-middle [&_td]:align-middle">
             <colgroup>
               <col className="w-[5%]" />

@@ -420,7 +420,7 @@ export default function FinalQC() {
       </div>
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="qc-table-scroll" role="region" aria-label="Final QC records" tabIndex={0}>
           <table className="w-full min-w-[1440px] table-fixed border-collapse text-left text-[13px]">
             <colgroup>
               <col className="w-[4.5rem]" />
@@ -518,7 +518,7 @@ export default function FinalQC() {
         </div>
 
         <div className="ui-pagination justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
-          <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[#596b82]">
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5 text-[13px] text-[#596b82]">
             <span>Rows per page:</span>
             <select
               value={pageSize}
@@ -573,10 +573,10 @@ export default function FinalQC() {
 
       {viewRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/45 p-4">
-          <div className="ui-modal !p-0 flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden">
+          <div className="ui-modal !p-0 flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="final-qc-detail-title">
             <div className="flex shrink-0 items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-[var(--color-text)]">
+                <h2 id="final-qc-detail-title" className="text-lg font-bold text-[var(--color-text)]">
                   {viewRow.qc_number || viewRow.inspection_number}
                 </h2>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">Final quality check details</p>
@@ -630,10 +630,10 @@ export default function FinalQC() {
       ) : null}
       {showCreateForm ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/45 p-4">
-          <form onSubmit={handleCreateFinalQC} className="ui-modal !p-0 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden">
+          <form onSubmit={handleCreateFinalQC} className="ui-modal !p-0 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="final-qc-create-title">
             <div className="flex shrink-0 items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-[var(--color-text)]">New Final QC</h2>
+                <h2 id="final-qc-create-title" className="text-lg font-bold text-[var(--color-text)]">New Final QC</h2>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">Create a final quality check record.</p>
               </div>
               <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-lg p-2 text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]" aria-label="Close">

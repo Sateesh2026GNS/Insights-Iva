@@ -1084,7 +1084,7 @@ export default function AccountsPayable() {
                       <span className="font-bold">{formatInr(total)}</span>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="erp-hscroll" role="region" aria-label="Payable bills" tabIndex={0}>
                     <table className="ui-table w-full text-sm">
                       <thead className="ui-table-head">
                         <tr>

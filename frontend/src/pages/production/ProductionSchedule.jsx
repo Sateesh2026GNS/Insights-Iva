@@ -186,7 +186,7 @@ function TimelineView({ rows, onDrop, onCreate }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="erp-hscroll" role="region" aria-label="Machine timeline" tabIndex={0}>
       <div className="mb-2 grid min-w-[720px] grid-cols-[9rem_repeat(6,1fr)] gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
         <div className="text-left normal-case tracking-normal">Machine</div>
         {TIMELINE_SLOTS.map((s) => (
@@ -383,7 +383,7 @@ function CalendarView({ events, onCreate }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
+      <div className="erp-hscroll rounded-xl border border-[var(--color-border)]" role="region" aria-label="Production schedule" tabIndex={0}>
         <div className="grid min-w-[640px] grid-cols-7 divide-x divide-[var(--color-border-soft)]">
           {days.map((d, di) => {
             const dayEvents = eventsByDay[di];

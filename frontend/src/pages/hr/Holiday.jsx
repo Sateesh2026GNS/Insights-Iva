@@ -364,7 +364,7 @@ export default function Holiday() {
             </button>
           </div>
 
-          <div className="hr-holiday__table-wrap">
+          <div className="hr-holiday__table-wrap" role="region" aria-label="Holiday calendar" tabIndex={0}>
             <table className="hr-holiday__table">
               <thead>
                 <tr>

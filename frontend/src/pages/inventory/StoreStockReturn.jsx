@@ -794,7 +794,7 @@ export default function StoreStockReturn() {
                 Add Material
               </Button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="erp-hscroll" role="region" aria-label="Stock return lines" tabIndex={0}>
               <table className="min-w-full text-sm">
                 <thead className="ui-table-head">
                   <tr>

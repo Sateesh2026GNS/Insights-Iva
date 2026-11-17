@@ -937,8 +937,8 @@ export default function LedgerV2() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
-            <div className="ui-table-wrap ui-table-wrap--scroll">
+          <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-[var(--color-border)]">
+            <div className="ui-table-wrap ui-table-wrap--scroll" role="region" aria-label="Ledger accounts" tabIndex={0}>
               {isPartyTab ? (
                 <table className="ui-table min-w-[1100px] w-full border-collapse text-left text-[13px]">
                   <thead className="ui-table-head">

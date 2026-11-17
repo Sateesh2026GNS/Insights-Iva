@@ -187,7 +187,10 @@
 }
 
 .ppt-table-wrap {
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ppt-table {
@@ -337,6 +340,25 @@
 .ppt-tabs a:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: -2px;
+}
+
+@media (max-width: 1023px) {
+  .ppt-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .ppt-tabs button,
+  .ppt-tabs a {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px 12px;
+  }
 }
 
 .ppt-panel__body {

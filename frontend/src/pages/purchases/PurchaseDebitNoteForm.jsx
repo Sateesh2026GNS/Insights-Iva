@@ -883,7 +883,7 @@ export default function PurchaseDebitNoteForm() {
             </button>
           </SectionHeader>
 
-          <div className="overflow-x-auto">
+          <div className="erp-hscroll" role="region" aria-label="Debit note lines" tabIndex={0}>
             <table className="w-full min-w-[1100px] border-collapse text-left text-[12px]">
               <thead className="ui-table-head">
                 <tr>

@@ -311,7 +311,7 @@ export default function QualityDashboard() {
         </div>
         <section className="mtk-panel">
           <div className="mtk-panel__title">Recent Inspections</div>
-          <div className="mtk-table-wrap">
+          <div className="mtk-table-wrap" role="region" aria-label="Recent inspections" tabIndex={0}>
             <table className="mtk-table">
               <thead>
                 <tr>

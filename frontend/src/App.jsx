@@ -326,12 +326,12 @@ export default function App() {
     <div
       className={`app-shell relative grid h-screen overflow-hidden dark:bg-slate-950 ${
         isDesktopNav
-          ? isLaptop && sidebarCollapsed
+          ? sidebarCollapsed
             ? "grid-cols-[4.5rem_minmax(0,1fr)]"
             : "grid-cols-[16.25rem_minmax(0,1fr)]"
           : "grid-cols-[minmax(0,1fr)]"
       }`}
-      data-sidebar-collapsed={isLaptop && sidebarCollapsed ? "true" : "false"}
+      data-sidebar-collapsed={isDesktopNav && sidebarCollapsed ? "true" : "false"}
     >
       <NavigationProgressBar />
       <NavigationLoadingOverlay />
@@ -343,15 +343,6 @@ export default function App() {
       >
         Skip to main content
       </Button>
-      {/* Mobile Drawer Backdrop */}
-      {mobileSidebarOpen && (
-        <div
-     className="fixed inset-0 z-[70] transition-opacity lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
       {!isDesktopNav && mobileSidebarOpen ? (
         <div
           className="fixed inset-0 z-[70] bg-slate-950/45 transition-opacity"
@@ -363,7 +354,7 @@ export default function App() {
         id="app-sidebar"
         className={`flex h-full min-h-0 shrink-0 flex-col overflow-visible transition-[width,transform] duration-300 ease-in-out ${
           isDesktopNav
-            ? `relative z-40 ${isLaptop && sidebarCollapsed ? "w-[72px]" : "w-[260px]"}`
+            ? `relative z-40 ${sidebarCollapsed ? "w-[72px]" : "w-[260px]"}`
             : `fixed inset-y-0 left-0 z-[75] w-[280px] max-w-[85vw] shadow-2xl ${
                 mobileSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
               }`
@@ -375,8 +366,8 @@ export default function App() {
         inert={!isDesktopNav && !mobileSidebarOpen ? "" : undefined}
       >
         <Sidebar
-          collapsed={isLaptop && sidebarCollapsed}
-          onToggleCollapse={isLaptop ? toggleSidebar : undefined}
+          collapsed={isDesktopNav && sidebarCollapsed}
+          onToggleCollapse={isDesktopNav ? toggleSidebar : undefined}
           onClose={() => setMobileSidebarOpen(false)}
           onNavChange={handleNavChange}
           isMobile={!isDesktopNav}
@@ -400,8 +391,9 @@ export default function App() {
           <div className="sticky top-0 z-[60] shrink-0">
             <Navbar
               onOpenSidebar={!isDesktopNav ? () => setMobileSidebarOpen(true) : undefined}
-              onToggleSidebar={isLaptop ? toggleSidebar : undefined}
-              sidebarCollapsed={isLaptop && sidebarCollapsed}
+              onToggleSidebar={isDesktopNav ? toggleSidebar : undefined}
+              sidebarCollapsed={isDesktopNav && sidebarCollapsed}
+              mobileNavOpen={!isDesktopNav && mobileSidebarOpen}
             />
           </div>
           <div

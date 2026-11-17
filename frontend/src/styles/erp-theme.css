@@ -72,17 +72,22 @@
 .app-navbar .app-page-title {
   font-size: 0.9375rem;
   line-height: 1.25;
+  min-width: 0;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 @media (max-width: 639px) {
   .app-navbar .app-page-title {
-    white-space: normal;
-    overflow: visible;
-    overflow-wrap: anywhere;
-    text-overflow: clip;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 }
 

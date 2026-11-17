@@ -29,7 +29,12 @@ function formatRoleLabel(role) {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapsed = false }) {
+export default function Navbar({
+  onOpenSidebar,
+  onToggleSidebar,
+  sidebarCollapsed = false,
+  mobileNavOpen = false,
+}) {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -104,9 +109,14 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
   const fullscreenLabel = isFullscreen
     ? t("common.exitFullscreen", { defaultValue: "Exit fullscreen" })
     : t("common.fullscreen", { defaultValue: "Enter fullscreen" });
-  const menuLabel = sidebarCollapsed
-    ? t("common.expandNavigation", { defaultValue: "Expand navigation menu" })
-    : t("common.openMenu", { defaultValue: "Open navigation menu" });
+  const desktopNav = typeof onToggleSidebar === "function" && typeof onOpenSidebar !== "function";
+  const menuLabel = desktopNav
+    ? sidebarCollapsed
+      ? t("common.expandNavigation", { defaultValue: "Expand navigation menu" })
+      : t("common.collapseNavigation", { defaultValue: "Collapse navigation menu" })
+    : mobileNavOpen
+      ? t("common.closeMenu", { defaultValue: "Close navigation menu" })
+      : t("common.openMenu", { defaultValue: "Open navigation menu" });
 
   const handleMenuClick = () => {
     if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
@@ -131,7 +141,7 @@ export default function Navbar({ onOpenSidebar, onToggleSidebar, sidebarCollapse
               className="app-navbar__icon-btn app-navbar__menu-btn"
               aria-label={menuLabel}
               title={menuLabel}
-              aria-expanded={!sidebarCollapsed}
+              aria-expanded={desktopNav ? !sidebarCollapsed : mobileNavOpen}
             >
               <Menu className="h-5 w-5" />
             </button>

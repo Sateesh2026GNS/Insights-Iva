@@ -27,6 +27,21 @@ describe("OperationErrorDialog", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("close control uses the minimum 44px touch target class", () => {
+    render(
+      <OperationErrorDialog
+        open
+        title={OPERATION_ERROR_DUPLICATE_TITLE}
+        message={OPERATION_ERROR_DUPLICATE_MESSAGE}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const close = screen.getByLabelText("Close");
+    expect(close.className).toContain("operation-error-dialog__close");
+    expect(close.getAttribute("aria-label")).toBe("Close");
+  });
+
   it("closes when the top-right control is clicked", () => {
     const onClose = vi.fn();
     render(

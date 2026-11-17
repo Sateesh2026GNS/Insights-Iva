@@ -24,6 +24,7 @@ describe("ResponsiveTable", () => {
     expect(screen.getByRole("button", { name: "responsiveTable.showLowPriority" })).toBeInTheDocument();
     expect(screen.getAllByText("WO-42")).toHaveLength(2);
     expect(screen.getAllByText("Open")).toHaveLength(2);
-    expect(screen.getByText("Owner")).toBeInTheDocument();
+    expect(screen.getAllByText("Owner").length).toBeGreaterThan(1);
+    expect(screen.getByRole("region", { name: "Data table" })).toBeInTheDocument();
   });
 });

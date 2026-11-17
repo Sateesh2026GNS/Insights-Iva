@@ -4,7 +4,7 @@
  */
 export default function AppPageTitle({ title }) {
   return (
-    <h1 className="app-page-title">
+    <h1 className="app-page-title" title={title || undefined}>
       {title}
     </h1>
   );

@@ -188,7 +188,7 @@ export default function ManualJournalEntriesV2() {
             </div>
           </div>
 
-          <div className={accountsTableWrapClass}>
+          <div className={accountsTableWrapClass} role="region" aria-label="Journal entries" tabIndex={0}>
             <table className={accountsTableClass}>
               <thead className={accountsTableHeadClass}>
                 <tr>

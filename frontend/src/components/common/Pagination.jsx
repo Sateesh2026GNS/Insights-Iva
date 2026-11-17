@@ -38,7 +38,7 @@ export default function Pagination({
 
   return (
     <div className={`ui-pagination justify-between w-full border-t border-[var(--color-border-soft)] pt-3 ${className}`.trim()}>
-      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">
+      <div className="ui-pagination__summary flex min-w-0 flex-wrap items-center gap-2.5 text-[13px] text-[var(--color-text-muted)]">
         {summaryMode === "entries" && entriesSummary ? (
           <span className="ui-pagination-entries-label font-medium text-[var(--color-text-muted)]">
             {entriesSummary}
@@ -78,7 +78,7 @@ export default function Pagination({
         ) : null}
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="ui-pagination__pages flex max-w-full items-center gap-1 overflow-x-auto">
         <button
           type="button"
           className="ui-page-btn"

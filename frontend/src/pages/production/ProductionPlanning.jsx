@@ -1591,7 +1591,7 @@ export default function ProductionPlanning() {
               </div>
             )}
 
-            <div className="planning-table-panel print:border-none print:shadow-none">
+            <div className="planning-table-panel print:border-none print:shadow-none" role="region" aria-label="Production planning" tabIndex={0}>
               <DataTable
                 columns={columns}
                 data={paginatedOrders}
