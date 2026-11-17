@@ -22,6 +22,21 @@ def test_approval_queue_empty_for_admin(register_admin, client):
     assert body["items"] == []
 
 
+def test_approval_my_counts_empty_for_admin(register_admin, client):
+    auth = register_admin()
+    resp = client.get("/admin/approvals/my-counts", headers=auth["headers"])
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "leave_requests": 0,
+        "material_requests": 0,
+        "purchase_orders": 0,
+        "vendors": 0,
+        "production_orders": 0,
+        "inventory": 0,
+        "total": 0,
+    }
+
+
 def test_approval_queue_shows_pending_leave(register_admin, client):
     auth = register_admin()
     tenant_id = auth["user"]["tenant_id"]
@@ -415,6 +430,18 @@ def test_approval_tabs_summary_and_details(register_admin, client):
         "pending": 2,
         "approved": 0,
         "rejected": 0,
+    }
+
+    my_counts = client.get("/admin/approvals/my-counts", headers=auth["headers"])
+    assert my_counts.status_code == 200
+    assert my_counts.json() == {
+        "leave_requests": 1,
+        "material_requests": 1,
+        "purchase_orders": 0,
+        "vendors": 0,
+        "production_orders": 0,
+        "inventory": 0,
+        "total": 2,
     }
 
 
