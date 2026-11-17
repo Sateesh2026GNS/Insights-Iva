@@ -5,6 +5,7 @@ import Pagination from "./Pagination";
 import { FilterSelect, LIST_PAGE_SEARCH_BAR_CLASS, SearchBar } from "./SearchFilter";
 import EmptyState from "./EmptyState";
 import NoResultsState from "./states/NoResultsState";
+import SkeletonTable from "./SkeletonTable";
 import { asArray } from "../../utils/apiError";
 
 export default function DataTable({
@@ -28,6 +29,8 @@ export default function DataTable({
   searchInputClassName = "",
   showResultsCount = true,
   initialFilterValues = null,
+  loading = false,
+  error = null,
 }) {
   const { t } = useTranslation();
   const effectiveShowPagination = pagination !== undefined ? Boolean(pagination) : showPagination;
@@ -93,7 +96,19 @@ export default function DataTable({
   );
 
   let body;
-  if (!rows.length) {
+  if (loading) {
+    body = (
+      <div role="status" aria-busy="true" aria-live="polite">
+        <SkeletonTable rows={5} cols={Math.max(columns?.length || 4, 1)} />
+      </div>
+    );
+  } else if (error) {
+    body = (
+      <div className="ui-empty" role="alert">
+        {error}
+      </div>
+    );
+  } else if (!rows.length) {
     body = defaultEmpty;
   } else if (!filtered.length && hasActiveFilters) {
     body = defaultNoResults;

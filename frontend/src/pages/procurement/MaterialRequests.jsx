@@ -348,7 +348,7 @@ function MRDetailModal({ row, onClose, onConvert, onApproved }) {
           ) : detailError ? (
             <p className="rounded-lg bg-[var(--color-danger-soft)] px-3 py-3 text-sm text-[var(--color-danger)]">{detailError}</p>
           ) : (detail?.line_items || []).length ? (
-            <div className="overflow-x-auto rounded-lg border border-[var(--color-border-soft)]">
+            <div className="erp-hscroll rounded-lg border border-[var(--color-border-soft)]" role="region" aria-label="Requested materials" tabIndex={0}>
               <table className="w-full min-w-[600px] table-fixed text-left text-sm">
                 <colgroup>
                   <col className="w-[32%]" />

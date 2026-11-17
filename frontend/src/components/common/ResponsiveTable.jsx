@@ -54,9 +54,7 @@ export default function ResponsiveTable({
             }
 
             const titleColumn = mobileColumns.find((column) => column.priority === 1) || mobileColumns[0];
-            const details = mobileColumns
-              .filter((column) => column !== titleColumn && column.priority !== 3)
-              .slice(0, 3);
+            const details = mobileColumns.filter((column) => column !== titleColumn);
             const actionsColumn = columns.find((column) => column.key === "actions");
 
             return (

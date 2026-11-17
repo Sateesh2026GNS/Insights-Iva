@@ -191,7 +191,12 @@
   text-align: center;
 }
 
-.mtk-table-wrap { overflow-x: auto; }
+.mtk-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
 .mtk-table {
   width: 100%;

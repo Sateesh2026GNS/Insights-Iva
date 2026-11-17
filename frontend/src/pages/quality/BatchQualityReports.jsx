@@ -565,7 +565,7 @@ export default function BatchQualityReports() {
       </div>
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="qc-table-scroll" role="region" aria-label="Batch quality records" tabIndex={0}>
           <table className="min-w-[1280px] w-full border-collapse text-left text-[13px]">
             <thead className="ui-table-head">
               <tr>

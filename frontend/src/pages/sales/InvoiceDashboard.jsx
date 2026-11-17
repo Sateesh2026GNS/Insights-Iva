@@ -430,8 +430,8 @@ export default function InvoiceDashboard() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
-        <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0">
+        <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-surface)]">
+        <div className="ui-table-wrap ui-table-wrap--scroll !rounded-none !border-0" role="region" aria-label="Invoices" tabIndex={0}>
           <table className="ui-table w-full min-w-[880px] border-collapse text-left">
             <thead className="ui-table-head">
               <tr>

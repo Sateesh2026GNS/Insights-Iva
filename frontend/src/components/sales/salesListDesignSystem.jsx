@@ -29,7 +29,7 @@ export const salesListDropdownClass =
   "absolute right-0 z-20 mt-1.5 w-[280px] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg";
 
 export const salesListTableWrapClass =
-  "overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-table-bg)]";
+  "min-w-0 max-w-full overflow-hidden rounded-xl border border-[var(--color-table-border)] bg-[var(--color-table-bg)]";
 
 export const salesListTableClass = "ui-table w-full min-w-[880px] border-collapse text-left";
 

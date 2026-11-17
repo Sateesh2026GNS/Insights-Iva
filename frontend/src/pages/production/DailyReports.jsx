@@ -659,7 +659,7 @@ export default function DailyReports() {
           <Loader label="Refreshing…" />
         ) : (
           <>
-            <div className="overflow-x-auto rounded-lg border border-[var(--color-border-soft)]">
+            <div className="erp-hscroll rounded-lg border border-[var(--color-border-soft)]" role="region" aria-label="Daily production report" tabIndex={0}>
               <DataTable
                 columns={columns}
                 data={paginated}

@@ -1102,7 +1102,7 @@ function DayAttendanceDetailModal({
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] shadow-2xs">
-              <div className="overflow-x-auto">
+              <div className="erp-hscroll" role="region" aria-label="Attendance records" tabIndex={0}>
                 <table className="w-full text-left text-xs text-[var(--color-text)]">
                   <thead className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/50 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                     <tr>
@@ -1807,7 +1807,7 @@ function EmployeeAttendanceCalendar({
     <div
       ref={containerRef}
       className={`rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface)] shadow-xs ${
-        isFullscreen ? "h-full w-full overflow-y-auto p-2 sm:p-4" : "overflow-hidden"
+        isFullscreen ? "h-full w-full overflow-y-auto p-2 sm:p-4" : "min-w-0"
       }`}
     >
       <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-2">
@@ -1825,6 +1825,8 @@ function EmployeeAttendanceCalendar({
         </button>
       </div>
 
+      <div className="erp-hscroll" role="region" aria-label="Attendance calendar" tabIndex={0}>
+      <div className="min-w-[36rem]">
       <div className="grid grid-cols-7 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-muted)]/40">
         {WEEKDAYS.map((d) => (
           <div
@@ -1957,6 +1959,8 @@ function EmployeeAttendanceCalendar({
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
     </div>
   );

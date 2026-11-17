@@ -194,7 +194,7 @@ export default function DailyWeeklyProductionPlanner({
         <div className="ppt-grid-2">
           <section className="ppt-panel" id="ppt-daily-table">
             <div className="ppt-panel__title">Daily Production Plan vs Actual</div>
-            <div className="ppt-table-wrap">
+            <div className="ppt-table-wrap" role="region" aria-label="Daily production plan" tabIndex={0}>
               <table className="ppt-table">
                 <thead>
                   <tr>
@@ -251,7 +251,7 @@ export default function DailyWeeklyProductionPlanner({
 
           <section className="ppt-panel" id="ppt-weekly-table">
             <div className="ppt-panel__title">Weekly Production Schedule ({model.weekLabel})</div>
-            <div className="ppt-table-wrap">
+            <div className="ppt-table-wrap" role="region" aria-label="Weekly production schedule" tabIndex={0}>
               <table className="ppt-table">
                 <thead>
                   <tr>

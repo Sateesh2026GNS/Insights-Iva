@@ -429,7 +429,7 @@ export default function LedgerDetailsV2() {
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-[#e4e4ea]">
+        <div className="erp-hscroll rounded-lg border border-[#e4e4ea]" role="region" aria-label="Ledger lines" tabIndex={0}>
           <table className="min-w-full border-collapse text-left text-[13px]">
             <thead className="ui-table-head">
               <tr>

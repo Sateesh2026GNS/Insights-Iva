@@ -947,7 +947,7 @@ export default function StoreStockIn() {
             {fieldErrors.lines ? (
               <p className="px-4 pt-3 text-sm text-red-600" role="alert">{fieldErrors.lines}</p>
             ) : null}
-            <div className="overflow-x-auto">
+            <div className="erp-hscroll" role="region" aria-label="Stock in lines" tabIndex={0}>
               <table className="min-w-full text-sm">
                 <thead className="ui-table-head">
                   <tr>

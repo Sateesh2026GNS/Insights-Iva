@@ -372,7 +372,7 @@ export default function DefectTracking() {
       ) : null}
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="qc-table-scroll" role="region" aria-label="Defect tracking records" tabIndex={0}>
           <table className="min-w-[1200px] w-full border-collapse text-left text-[13px]">
             <thead className="ui-table-head">
               <tr className="border-b border-[var(--color-border-soft)]">

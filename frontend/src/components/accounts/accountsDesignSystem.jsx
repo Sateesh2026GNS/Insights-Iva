@@ -43,7 +43,7 @@ export function AccountsPageShell({ children, className = "" }) {
 
 export function AccountsCard({ children, className = "" }) {
   return (
-    <div className={`ui-card overflow-hidden ${className}`}>
+    <div className={`ui-card overflow-hidden accounts-list-card ${className}`}>
       {children}
     </div>
   );
@@ -220,7 +220,8 @@ export function AccountsSecondaryButton({ children, className = "", ...props }) 
 
 export const accountsTableHeadClass = "ui-table-head";
 export const accountsTableHeadAltClass = "ui-table-head";
-export const accountsTableWrapClass = "ui-table-wrap ui-table-wrap--scroll";
+export const accountsTableWrapClass =
+  "ui-table-wrap ui-table-wrap--scroll accounts-table-scroll";
 export const accountsTableClass = "ui-table min-w-full w-full border-collapse text-left";
 export const accountsThClass = "px-4 py-3 font-semibold";
 export const accountsTdClass = "px-4 py-3.5 align-middle";

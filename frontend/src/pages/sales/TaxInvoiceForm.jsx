@@ -1353,7 +1353,7 @@ export default function TaxInvoiceForm() {
             </button>
           </SectionHeader>
 
-          <div className="overflow-x-auto">
+          <div className="erp-hscroll" role="region" aria-label="Invoice lines" tabIndex={0}>
             <table className="w-full min-w-[1180px] border-collapse text-left text-[12px]">
               <thead className="ui-table-head">
                 <tr>

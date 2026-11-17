@@ -527,7 +527,7 @@ export default function Shipping() {
               </div>
 
               {/* Desktop Shipment Table */}
-              <div className="hidden overflow-x-auto md:block">
+              <div className="erp-hscroll hidden md:block" role="region" aria-label="Shipments" tabIndex={0}>
                 <table className="shipping-table mtk-table w-full min-w-[720px]">
                   <thead>
                     <tr>

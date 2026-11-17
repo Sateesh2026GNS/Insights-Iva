@@ -314,7 +314,7 @@ export default function ChartOfAccountsV2() {
             </div>
           </div>
 
-          <div className={accountsTableWrapClass}>
+          <div className={accountsTableWrapClass} role="region" aria-label="Chart of accounts" tabIndex={0}>
             <table className={accountsTableClass}>
               <thead className={accountsTableHeadClass}>
                 <tr>

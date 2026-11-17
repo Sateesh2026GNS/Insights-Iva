@@ -152,7 +152,7 @@ export default function JournalEntries() {
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="ui-table-wrap ui-table-wrap--scroll">
+        <div className="ui-table-wrap ui-table-wrap--scroll" role="region" aria-label="Journal entries" tabIndex={0}>
           <table className="ui-table w-full text-sm">
             <thead className="ui-table-head">
               <tr>

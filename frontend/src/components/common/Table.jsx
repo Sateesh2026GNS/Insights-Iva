@@ -108,7 +108,12 @@ export default function Table({
   const cellPadding = compact ? "px-2.5 py-2 text-xs" : "px-4 py-3.5 text-[var(--text-sm)]";
 
   return (
-    <div className={`ui-table-wrap ui-table-wrap--scroll overflow-x-auto print:overflow-visible print:rounded-none print:border-none print:shadow-none ${wrapClassName}`}>
+    <div
+      className={`ui-table-wrap ui-table-wrap--scroll overflow-x-auto print:overflow-visible print:rounded-none print:border-none print:shadow-none ${wrapClassName}`}
+      role="region"
+      aria-label="Data table"
+      tabIndex={0}
+    >
       <table className={`ui-table w-full border-collapse text-left ${className}`}>
         <thead className="ui-table-head">
           <tr>
@@ -123,20 +128,40 @@ export default function Table({
               const headerJustify =
                 alignDir === "right" ? "justify-end" : alignDir === "center" ? "justify-center" : "justify-start";
               const colClass = col.className || "";
+              const canSort = Boolean(sortable && col.sortable !== false);
               return (
                 <th
                   key={col.key}
                   data-priority={col.priority}
                   className={`${headerPadding} font-semibold ${align} ${colClass} ${
                     isActionsCol ? "print:hidden" : ""
-                  } ${
-                    sortable && col.sortable !== false ? "ui-table-th--sortable" : ""
-                  }`}
+                  } ${canSort ? "ui-table-th--sortable" : ""}`}
                   style={col.width ? { width: col.width, minWidth: col.minWidth } : col.minWidth ? { minWidth: col.minWidth } : undefined}
-                  onClick={() => col.sortable !== false && sortable && handleSort(col.key)}
+                  scope="col"
+                  tabIndex={canSort ? 0 : undefined}
+                  aria-sort={
+                    !canSort
+                      ? undefined
+                      : sortKey === col.key
+                        ? sortOrder === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                  }
+                  onClick={() => canSort && handleSort(col.key)}
+                  onKeyDown={(event) => {
+                    if (!canSort) return;
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleSort(col.key);
+                    }
+                  }}
                 >
                   <span className={`flex w-full items-center gap-1 ${headerJustify}`}>
                     {col.label}
+                    {canSort && sortKey === col.key ? (
+                      <span aria-hidden="true">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                    ) : null}
                   </span>
                 </th>
               );

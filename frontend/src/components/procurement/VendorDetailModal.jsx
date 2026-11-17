@@ -843,7 +843,7 @@ export default function VendorDetailModal({
 
               {filteredPos.length > 0 ? (
                 <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
-                  <div className="overflow-x-auto">
+                  <div className="erp-hscroll" role="region" aria-label="Supplier details" tabIndex={0}>
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200/70">
                         <tr>
@@ -948,7 +948,7 @@ export default function VendorDetailModal({
                 </div>
               ) : grns.length > 0 ? (
                 <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
-                  <div className="overflow-x-auto">
+                  <div className="erp-hscroll" role="region" aria-label="Supplier details" tabIndex={0}>
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200/70">
                         <tr>
@@ -1061,7 +1061,7 @@ export default function VendorDetailModal({
                 </div>
               ) : bills.length > 0 ? (
                 <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
-                  <div className="overflow-x-auto">
+                  <div className="erp-hscroll" role="region" aria-label="Supplier details" tabIndex={0}>
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200/70">
                         <tr>
@@ -1162,7 +1162,7 @@ export default function VendorDetailModal({
                 </div>
               ) : payments.length > 0 ? (
                 <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
-                  <div className="overflow-x-auto">
+                  <div className="erp-hscroll" role="region" aria-label="Supplier details" tabIndex={0}>
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200/70">
                         <tr>
@@ -1253,7 +1253,7 @@ export default function VendorDetailModal({
 
               {computedLedger.length > 0 ? (
                 <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
-                  <div className="overflow-x-auto">
+                  <div className="erp-hscroll" role="region" aria-label="Supplier details" tabIndex={0}>
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200/70">
                         <tr>

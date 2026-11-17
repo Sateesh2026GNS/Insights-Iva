@@ -62,7 +62,7 @@ function TaxTable({ columns, rows, emptyLabel }) {
     return <EmptyState icon="clipboard" title={emptyLabel || "No data"} description="" />;
   }
   return (
-    <div className="ui-table-wrap overflow-x-auto">
+    <div className="ui-table-wrap ui-table-wrap--scroll" role="region" aria-label="GST amounts" tabIndex={0}>
       <table className="ui-table ui-table--compact min-w-[960px]">
         <thead>
           <tr>

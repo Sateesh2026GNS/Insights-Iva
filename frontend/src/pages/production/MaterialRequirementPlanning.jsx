@@ -347,7 +347,7 @@ export default function MaterialRequirementPlanning() {
           </div>
 
           <ListPageCard>
-            <ListPageCardBody className="overflow-x-auto p-0 sm:p-0">
+            <ListPageCardBody className="erp-hscroll p-0 sm:p-0">
             <DataTable
               columns={columns}
               data={tableRows}

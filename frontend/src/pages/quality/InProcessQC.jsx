@@ -579,7 +579,7 @@ export default function InProcessQC() {
       </div>
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="qc-table-scroll" role="region" aria-label="In-process QC records" tabIndex={0}>
           <table className="min-w-[1100px] w-full border-collapse text-left text-[13px]">
             <thead className="ui-table-head">
               <tr>

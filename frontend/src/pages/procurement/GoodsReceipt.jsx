@@ -85,7 +85,7 @@ function GRNDetailModal({ row, onClose, onQC }) {
         <section className="mt-4">
           <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">Received items</h3>
           {row.line_items?.length ? (
-            <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
+            <div className="erp-hscroll rounded-lg border border-[var(--color-border)]" role="region" aria-label="Received items" tabIndex={0}>
               <table className="w-full min-w-[34rem] text-left text-xs">
                 <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
                   <tr>
