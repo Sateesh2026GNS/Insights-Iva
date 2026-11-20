@@ -56,6 +56,7 @@ def super_admin_login(
         req.password,
         ip_address=_client_ip(request),
         user_agent=request.headers.get("User-Agent"),
+        request_id=getattr(request.state, "request_id", None),
     )
 
 
@@ -86,6 +87,7 @@ def super_admin_resend_otp(
         req.challenge_token,
         ip_address=_client_ip(request),
         user_agent=request.headers.get("User-Agent"),
+        request_id=getattr(request.state, "request_id", None),
     )
 
 

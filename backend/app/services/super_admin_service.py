@@ -64,6 +64,7 @@ class SuperAdminService:
         *,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        request_id: str | None = None,
     ) -> dict:
         admin = self._get_admin_by_email(email)
         if not admin or not verify_password(password, admin.hashed_password):
@@ -83,6 +84,7 @@ class SuperAdminService:
             ip_address=ip_address,
             user_agent=user_agent,
             is_resend=False,
+            request_id=request_id,
         )
 
     def resend_otp(
@@ -91,6 +93,7 @@ class SuperAdminService:
         *,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        request_id: str | None = None,
     ) -> dict:
         from app.models.platform import OtpChallenge
 
@@ -118,6 +121,7 @@ class SuperAdminService:
             ip_address=ip_address,
             user_agent=user_agent,
             is_resend=True,
+            request_id=request_id,
         )
 
     def verify_login_otp(

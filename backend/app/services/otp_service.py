@@ -78,80 +78,84 @@ def mask_mobile(mobile: str | None) -> str:
     return f"+91 XXXXXXX{last3}"
 
 
-def send_otp_sms(mobile: str, code: str) -> None:
-    """Deliver OTP via WhatsApp (Green-API) or SMS provider."""
-    import json
-    import urllib.request
-    from fastapi import HTTPException
+def send_otp_sms(
+    mobile: str,
+    code: str,
+    *,
+    request_id: str | None = None,
+) -> None:
+    """Deliver OTP via Fast2SMS (POST + header auth) and optional Green-API WhatsApp."""
     from app.core.config import get_settings
+    from app.services.sms_delivery_service import (
+        SmsDeliveryError,
+        SmsDeliveryResult,
+        send_fast2sms,
+        send_green_api_whatsapp,
+    )
 
     settings = get_settings()
     masked = mask_mobile(mobile)
     digits = "".join(c for c in (mobile or "") if c.isdigit())
     digits10 = digits[-10:] if len(digits) >= 10 else digits
     phone_with_country = f"91{digits10}" if len(digits10) == 10 else digits
-    delivered = False
-    delivery_errors: list[str] = []
+    sms_message = (
+        f"Your Insights Iva verification OTP is {code}. "
+        f"Valid for {OTP_EXPIRE_MINUTES} minutes."
+    )
+    whatsapp_message = (
+        f"Insights Iva verification.\n\n"
+        f"Your Super Admin login OTP is: {code}\n\n"
+        f"Valid for {OTP_EXPIRE_MINUTES} minutes."
+    )
 
-    # 1. Cellular SMS via Fast2SMS
+    results: list[SmsDeliveryResult] = []
     if settings.sms_api_key:
-        api_url = getattr(settings, "sms_api_url", None) or "https://www.fast2sms.com/dev/bulkV2"
-        api_key = settings.sms_api_key.strip()
-        import urllib.parse
-
-        # Fast2SMS Quick Route (100% verified & active)
-        params = {
-            "authorization": api_key,
-            "message": f"Your Insights Iva verification OTP is {code}. Valid for {OTP_EXPIRE_MINUTES} minutes.",
-            "language": "english",
-            "route": "q",
-            "numbers": digits10,
-        }
-
-        try:
-            full_url = f"{api_url}?{urllib.parse.urlencode(params)}"
-            req = urllib.request.Request(full_url, headers={"cache-control": "no-cache"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                resp_body = resp.read().decode("utf-8")
-                if resp.status < 200 or resp.status >= 300:
-                    raise RuntimeError(f"Fast2SMS returned HTTP {resp.status}")
-                try:
-                    provider_result = json.loads(resp_body)
-                except json.JSONDecodeError as exc:
-                    raise RuntimeError("Fast2SMS returned an invalid response") from exc
-                if provider_result.get("return") is False:
-                    raise RuntimeError("Fast2SMS rejected the OTP request")
-                logger.info("Fast2SMS Cellular OTP sent to %s (status=%s)", masked, resp.status)
-                delivered = True
-        except Exception as exc:
-            delivery_errors.append("SMS delivery failed")
-            logger.exception("Fast2SMS delivery error: %s", exc)
-
-    # 2. WhatsApp Notification via Green-API (Instant Backup)
+        results.append(
+            send_fast2sms(
+                numbers10=digits10,
+                message=sms_message,
+                request_id=request_id,
+            )
+        )
     if settings.green_api_id_instance and settings.green_api_token_instance:
-        base_url = (settings.green_api_url or "https://7107.api.greenapi.com").rstrip("/")
-        api_url = f"{base_url}/waInstance{settings.green_api_id_instance}/sendMessage/{settings.green_api_token_instance}"
-        payload = {
-            "chatId": f"{phone_with_country}@c.us",
-            "message": f"🔐 *Insights Iva Verification*\n\nYour Super Admin login OTP is: *{code}*\n\nValid for {OTP_EXPIRE_MINUTES} minutes.",
-        }
-        try:
-            req_data = json.dumps(payload).encode("utf-8")
-            headers = {"Content-Type": "application/json"}
-            req = urllib.request.Request(api_url, data=req_data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                resp_body = resp.read().decode("utf-8")
-                if resp.status < 200 or resp.status >= 300:
-                    raise RuntimeError(f"Green-API returned HTTP {resp.status}")
-                logger.info("Green-API WhatsApp OTP sent to %s (status=%s)", masked, resp.status)
-                delivered = True
-        except Exception as exc:
-            delivery_errors.append("WhatsApp delivery failed")
-            logger.warning("Green-API WhatsApp delivery notice: %s", exc)
+        results.append(
+            send_green_api_whatsapp(
+                phone_with_country=phone_with_country,
+                message=whatsapp_message,
+                request_id=request_id,
+            )
+        )
 
-    if not delivered:
-        reason = ", ".join(delivery_errors) or "No SMS or WhatsApp provider is configured"
-        raise RuntimeError(f"OTP could not be delivered to {masked}: {reason}")
+    if any(r.delivered for r in results):
+        return
+
+    if not results:
+        logger.error(
+            "otp_delivery_skipped request_id=%s mobile=%s reason=no_provider_configured",
+            request_id or "-",
+            masked,
+        )
+        raise SmsDeliveryError(
+            SmsDeliveryResult(
+                delivered=False,
+                provider="none",
+                error_kind="no_provider_configured",
+                provider_message="SMS and WhatsApp OTP delivery are not configured",
+            )
+        )
+
+    primary = results[0]
+    logger.error(
+        "otp_delivery_failed request_id=%s mobile=%s provider=%s error_kind=%s "
+        "http_status=%s provider_status=%s",
+        request_id or "-",
+        masked,
+        primary.provider,
+        primary.error_kind,
+        primary.http_status,
+        primary.provider_status,
+    )
+    raise SmsDeliveryError(primary)
 
 
 def _log_audit(
@@ -250,6 +254,7 @@ def create_login_challenge(
     ip_address: str | None = None,
     user_agent: str | None = None,
     is_resend: bool = False,
+    request_id: str | None = None,
 ) -> dict:
     """
     Create a new OTP challenge.
@@ -323,6 +328,65 @@ def create_login_challenge(
     code = _generate_otp()
     now = _utcnow()
     challenge_token = secrets.token_urlsafe(32)
+
+    from app.services.sms_delivery_service import SmsDeliveryError
+
+    try:
+        send_otp_sms(admin.mobile, code, request_id=request_id)
+    except SmsDeliveryError as exc:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        detail = exc.result.error_kind or "delivery_failed"
+        _log_audit(
+            db,
+            event="otp_send_failed",
+            success=False,
+            super_admin_id=admin.id,
+            detail=detail[:255],
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        db.commit()
+        logger.error(
+            "otp_challenge_aborted request_id=%s admin_id=%s error_kind=%s "
+            "http_status=%s provider_status=%s",
+            request_id or "-",
+            admin.id,
+            exc.result.error_kind,
+            exc.result.http_status,
+            exc.result.provider_status,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send OTP to your registered mobile. Please try again later.",
+        ) from exc
+    except Exception as exc:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        logger.exception(
+            "otp_send_unexpected request_id=%s admin_id=%s",
+            request_id or "-",
+            admin.id,
+        )
+        _log_audit(
+            db,
+            event="otp_send_failed",
+            success=False,
+            super_admin_id=admin.id,
+            detail="unexpected_error",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send OTP to your registered mobile. Please try again later.",
+        ) from exc
+
     challenge = OtpChallenge(
         super_admin_id=admin.id,
         challenge_token=challenge_token,
@@ -341,25 +405,11 @@ def create_login_challenge(
         success=True,
         super_admin_id=admin.id,
         challenge_token=challenge_token,
-        detail="hashed_otp_stored",
+        detail="sms_delivered",
         ip_address=ip_address,
         user_agent=user_agent,
     )
-    try:
-        send_otp_sms(admin.mobile, code)
-        db.commit()
-    except Exception as exc:
-        logger.exception("Failed to send OTP SMS for admin id=%s: %s", admin.id, exc)
-        try:
-            db.rollback()
-        except Exception:
-            pass
-        if isinstance(exc, HTTPException):
-            raise
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to send OTP SMS. Transaction has been rolled back.",
-        ) from exc
+    db.commit()
 
     payload = {
         "challenge_token": challenge_token,
