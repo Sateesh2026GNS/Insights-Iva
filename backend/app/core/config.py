@@ -284,6 +284,14 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("SMS_API_KEY", "FAST2SMS_API_KEY", "sms_api_key"),
     )
+    sms_api_url: str = Field(
+        default="https://www.fast2sms.com/dev/bulkV2",
+        validation_alias=AliasChoices("SMS_API_URL", "FAST2SMS_API_URL", "sms_api_url"),
+    )
+    sms_route: str = Field(
+        default="q",
+        validation_alias=AliasChoices("SMS_ROUTE", "FAST2SMS_ROUTE", "sms_route"),
+    )
     green_api_url: str = "https://7107.api.greenapi.com"
     green_api_id_instance: str = ""
     green_api_token_instance: str = ""
